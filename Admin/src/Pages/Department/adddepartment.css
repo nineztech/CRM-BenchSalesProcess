@@ -1,0 +1,131 @@
+.add-department-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f3f6fa;
+  padding: 20px;
+}
+
+.add-department-container {
+  width: 100%;
+  max-width: 400px;
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  font-family: 'Poppins', sans-serif;
+}
+
+.add-department-container h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.add-department-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.add-department-form input {
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 30px;
+  background-color: #f9f9f9;
+}
+
+.add-department-form button {
+  padding: 12px;
+  font-size: 16px;
+  background-color: #3e7079;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+}
+
+.department-list {
+  margin-top: 20px;
+  list-style: none;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background-color: #fefefe;
+}
+
+.department-item {
+  padding: 10px 20px;
+  border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
+  cursor: grab;
+  user-select: none;
+}
+
+.department-item:last-child {
+  border-bottom: none;
+}
+
+.department-item:hover {
+  background-color: #f1f1f1;
+}
+.department-item {
+  background-color: #fff;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+}
+
+.sequence-number {
+  font-weight: bold;
+  color: #333;
+  margin-right: 10px;
+}
+
+.dept-name {
+  flex: 1;
+}
+
+.item-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.edit-btn,
+.delete-btn,
+.update-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.edit-btn:hover {
+  color: #007bff;
+}
+
+.delete-btn:hover {
+  color: #d9363e;
+}
+
+.update-btn:hover {
+  color: rgb(19, 0, 128);
+}
+
+.edit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-right: 6px;
+  font-size: 15px;
+}

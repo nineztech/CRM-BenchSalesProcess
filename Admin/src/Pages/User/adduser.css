@@ -1,0 +1,112 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #eef2f5;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+
+/* Center the form vertically and horizontally */
+.add-user-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #eef2f5;
+  padding: 20px;
+}
+
+/* Card container for the form */
+.add-user-container {
+  width: 100%;
+  max-width: 500px;
+  background-color: #ffffff;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Title */
+.add-user-container h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 24px;
+  font-weight: 600;
+  font-style: initial;
+}
+
+/* Form layout */
+.add-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Flex rows for grouped fields */
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+/* Each field inside .form-row takes equal space */
+.form-row > div {
+  flex: 1;
+}
+
+/* Common style for all inputs and select */
+.add-user-form input,
+.add-user-form select {
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 30px;
+  font-size: 15px;
+  background-color: #f9f9f9;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Focus effect */
+.add-user-form input:focus,
+.add-user-form select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+  outline: none;
+}
+
+/* Submit button */
+.add-user-form button {
+  padding: 14px;
+  background-color: #3e7079;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-user-form button:hover {
+  background-color: #6d9caf;
+}
+
+/* Error message styling */
+.error {
+  color: red;
+  font-size: 13px;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .add-user-wrapper {
+    padding: 10px;
+  }
+}

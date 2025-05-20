@@ -1,0 +1,134 @@
+/* Dashboard.css */
+body, html {
+  margin-top: 30px;
+  padding-top: 30px;
+  font-family: Arial, sans-serif;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  background-color: #fdfdfd;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #fdcea8;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+ 
+.logo {
+  width: 80px; 
+  height: auto;
+  margin-bottom: 20px;
+  margin-left: 0px;
+  justify-content: center;
+  align-items: center;
+   display: flex;
+}
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+  margin-left: 0px;
+}
+ 
+
+
+.menu-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #000000;
+}
+
+.menu a {
+  display: block;
+  color: #000000;
+  text-decoration: none;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.menu a:hover {
+  text-decoration: underline;
+  color: #000000;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 15px;
+  background-color: #a7a9b6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.admin-pic-label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.admin-pic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.admin-placeholder {
+  width: 40px;
+  height: 40px;
+  background-color: #d1d5db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  font-size: 18px;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.admin-name-btn {
+  background: none;
+  border: none;
+  color: #1f2937;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-name-btn:hover {
+  text-decoration: underline;
+}
+
+.content {
+  flex: 1;
+  padding: 30px;
+}
+
+.content h1 {
+  font-size: 24px;
+  font-weight: bold;
+}
