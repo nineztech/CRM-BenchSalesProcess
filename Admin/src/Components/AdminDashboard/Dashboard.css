@@ -1,70 +1,16 @@
-/* Dashboard.css */
-body, html {
-  margin-top: 30px;
-  padding-top: 30px;
-  font-family: Arial, sans-serif;
-}
+src/Components/AdminDashboard/Dashboard.css
 
 .dashboard-container {
   display: flex;
   height: 100vh;
-  background-color: #fdfdfd;
-}
-
-.sidebar {
-  width: 250px;
-  background-color: #fdcea8;
-  padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-}
- 
-.logo {
-  width: 80px; 
-  height: auto;
-  margin-bottom: 20px;
-  margin-left: 0px;
-  justify-content: center;
-  align-items: center;
-   display: flex;
-}
-.logo-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 1rem;
-  margin-left: 0px;
-}
- 
-
-
-.menu-title {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  text-align: center;
-  color: #000000;
-}
-
-.menu a {
-  display: block;
-  color: #000000;
-  text-decoration: none;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.menu a:hover {
-  text-decoration: underline;
-  color: #000000;
 }
 
 .main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  /* margin-left: 250px; */
+  padding: 20px;
+  width: 100%;
+  background-color: #447bb3;
+  transition: margin-left 0.3s ease;
 }
 
 .topbar {
@@ -74,8 +20,18 @@ body, html {
   padding: 15px;
   background-color: #a7a9b6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-left: 310px;
+  margin-top: -35px;
+  width:1000px;
+  position: absolute;
 }
 
+.topbar h2{
+   font-size: 2rem;
+  font-weight: bold;
+   margin-right: 520px;
+  position: absolute;
+}
 .admin-info {
   display: flex;
   align-items: center;
@@ -124,11 +80,13 @@ body, html {
 }
 
 .content {
-  flex: 1;
-  padding: 30px;
+  margin-top: 20px;
 }
 
 .content h1 {
-  font-size: 24px;
+  font-size: 2rem;
   font-weight: bold;
+  margin-left: 330px;
+  position: absolute;
 }
+ 
