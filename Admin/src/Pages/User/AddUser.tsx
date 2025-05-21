@@ -1,208 +1,105 @@
 import React, { useState } from 'react';
 import './adduser.css';
-
-const departmentOptions: { [key: string]: string } = {
-  leadGen: 'Lead Generation',
-  sales: 'Sales',
-  resume: 'Resume Making',
-  training: 'Training',
-  marketing: 'Marketing',
-  onboarding: 'Onboarding BGC'
-};
+import Sidebar from '../../Components/Sidebar/Sidebar';
 
 const AddUser: React.FC = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    password: '',
-    confirmPassword: '',
-    department: '',
-    mobileNumber: ''
+    firstName: "",
+    lastName: "",
+    department: "",
+    mobileNumber: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const validate = () => {
-    const newErrors: { [key: string]: string } = {};
+  const departments = [
+    "Lead Generation",
+    "Sales",
+    "Resume Making",
+    "Training",
+    "Marketing",
+    "Onboarding BGC",
+    
+  ];
+  
 
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
 
-    if (!formData.department) newErrors.department = 'Please select a department';
-
-    if (!formData.mobileNumber.trim()) {
-      newErrors.mobileNumber = 'Mobile number is required';
-    } else if (!/^\d{10}$/.test(formData.mobileNumber)) {
-      newErrors.mobileNumber = 'Mobile number must be 10 digits';
+    let errorMsg = "";
+    if (!value.trim()) {
+      errorMsg = "This field is required";
+    } else if (name === "mobileNumber" && (!/^\d+$/.test(value) || value.length !== 10)) {
+      errorMsg = "Enter a valid 10-digit mobile number";
+    } else if (name === "confirmPassword" && value !== formData.password) {
+      errorMsg = "Passwords do not match";
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.username.trim()) newErrors.username = 'Username is required';
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirm password is required';
-    } else if (formData.confirmPassword !== formData.password) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-
-    return Object.keys(newErrors).length === 0;
+    setErrors({ ...errors, [name]: errorMsg });
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setErrors({ ...errors, [e.target.name]: '' }); // Clear error on change
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validate()) {
-      console.log('User Created:', formData);
-      alert('User created successfully!');
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        username: '',
-        password: '',
-        confirmPassword: '',
-        department: '',
-        mobileNumber: ''
-      });
-    }
-  };
+  
 
   return (
-    <div className="add-user-wrapper">
-      <div className="add-user-container">
-        <h2>Create New User</h2>
-        <form onSubmit={handleSubmit} className="add-user-form">
-
-           
+    <>
+      <Sidebar />
+    
+      <div className="form-container">
+          
+        <h2 className="form-title">User Creation</h2>
+       
+        <form className="user-form">
+           <div className="form-buttons">
+            <button type="submit">Save</button>
+            <button type="reset">Discard</button>
+          </div>
+          {/* Row 1 */}
           <div className="form-row">
-            <div>
-              <input
-                type="text"
-                name="firstName"
-                placeholder="First Name"
-                value={formData.firstName}
-                onChange={handleChange}
-              />
-              {errors.firstName && <span className="error">{errors.firstName}</span>}
+            <div className="form-group">
+              <input type="text" name="firstName" placeholder="First Name *" onChange={handleChange} />
             </div>
-            <div>
-              <input
-                type="text"
-                name="lastName"
-                placeholder="Last Name"
-                value={formData.lastName}
-                onChange={handleChange}
-              />
-              {errors.lastName && <span className="error">{errors.lastName}</span>}
+            <div className="form-group">
+              <input type="text" name="lastName" placeholder="Last Name *" onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <select name="department" value={formData.department} onChange={handleChange}>
+                <option value="">Select Department *</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <input type="text" name="mobileNumber" placeholder="Mobile Number *" onChange={handleChange} maxLength={10} />
+            </div>
+            <div className="form-group">
+              <input type="text" name="username" placeholder="Username *" onChange={handleChange} />
             </div>
           </div>
 
-         
-          <div>
-            <select
-              name="department"
-              value={formData.department}
-              onChange={handleChange}
-            >
-              <option value="">Select Department</option>
-              {Object.entries(departmentOptions).map(([key, value]) => (
-                <option key={key} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            {errors.department && <span className="error">{errors.department}</span>}
-          </div>
-
-         
+          {/* Row 2 */}
           <div className="form-row">
-            <div>
-              <input
-                type="tel"
-                name="mobileNumber"
-                placeholder="Mobile Number"
-                value={formData.mobileNumber}
-                onChange={handleChange}
-              />
-              {errors.mobileNumber && <span className="error">{errors.mobileNumber}</span>}
+            <div className="form-group">
+              <input type="email" name="email" placeholder="Email ID *" onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <input type="password" name="password" placeholder="Password *" onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <input type="password" name="confirmPassword" placeholder="Confirm Password *" onChange={handleChange} />
             </div>
           </div>
 
-           
-          <div className="form-row">
-            <div>
-              <input
-                type="email"
-                name="email"
-                placeholder="Email ID"
-                value={formData.email}
-                onChange={handleChange}
-              />
-              {errors.email && <span className="error">{errors.email}</span>}
-            </div>
-            <div>
-              <input
-                type="text"
-                name="username"
-                placeholder="Username"
-                value={formData.username}
-                onChange={handleChange}
-              />
-              {errors.username && <span className="error">{errors.username}</span>}
-            </div>
-          </div>
-
-           
-          <div className="form-row">
-            <div>
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              {errors.password && <span className="error">{errors.password}</span>}
-            </div>
-            <div>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-              {errors.confirmPassword && (
-                <span className="error">{errors.confirmPassword}</span>
-              )}
-            </div>
-          </div>
-
-          <button type="submit">Create User</button>
+          {/* Buttons */}
+          
         </form>
       </div>
-    </div>
+    </>
   );
 };
 
