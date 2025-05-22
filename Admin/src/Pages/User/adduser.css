@@ -1,6 +1,5 @@
 .form-container {
-    width:1200px;
-    /* max-width: 800px; */
+    width: 1200px;
     margin: 40px auto;
     margin-top: -4px;
     margin-left: 70px;
@@ -13,7 +12,6 @@
 .form-title {
     margin-bottom: 20px;
     font-size: 1.5rem;
-    padding-top: -40px;
     margin-top: 0px;
     position: absolute;
 }
@@ -23,20 +21,21 @@
     flex-direction: column;
 }
 
-.user-form button ::placeholder{
-    text-align: center;
-    margin-top: 3PX;
-}
-
 .form-row {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     margin-bottom: 15px;
 }
 
 .form-group {
-    flex: 1;
+    flex: 1 1 23%;
     margin-right: 10px;
+    min-width: 200px;
+}
+
+.form-group:last-child {
+    margin-right: 0;
 }
 
 .form-group label {
@@ -45,11 +44,13 @@
     margin-bottom: 5px;
 }
 
-.form-group input, .form-group select {
-    width: 90%;
+.form-group input,
+.form-group select {
+    width: 100%;
     padding: 8px;
     border-radius: 5px;
     border: 1px solid #ccc;
+    outline: none;
 }
 
 .form-group .error {
@@ -61,10 +62,9 @@
     display: flex;
     justify-content: flex-start;
     gap: 10px;
-    margin-top: 0px;
-    margin-left: 950px;
+    margin-left: auto;
+    margin-right: 10px;
     margin-bottom: 30px;
-
 }
 
 .form-buttons button {
@@ -75,23 +75,103 @@
     cursor: pointer;
     background-color: #3e5f80;
     color: white;
-    border-radius: 30px;
     width: 200px;
+}
 
-    
-    
+.form-buttons :hover {
+    background-color: #2f4e6a;
 }
 
 .form-buttons button[type="reset"] {
     background-color: #dc3545;
-    border-radius: 30px;
-    width: 200px;
-
 }
 
-/* Responsive Styling */
+/* Responsive */
 @media (max-width: 768px) {
     .form-row {
         flex-direction: column;
     }
+
+    .form-group {
+        flex: 1 1 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
 }
+
+.table-container {
+    /* width: 1200px; */
+    margin: 40px auto;
+    /* margin-left: 70px; */
+    border: 2px solid #ccc;
+    padding: 200px;
+    border-radius: 8px;
+    /* box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); */
+}
+
+table {
+    /* margin-top: 20px; */
+    /* width: 100%; */
+    border: 1px solid #ccc;
+}
+
+th,
+td {
+    padding: 10px;
+    text-align: center;
+    /* border-bottom: 1px solid #ccc; */
+}
+
+.edit-btn,
+.delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    /* margin-right: -30px; */
+    font-size: 16px;
+}
+
+.edit-btn {
+    color: #212933;
+
+}
+
+.delete-btn {
+    color: #dc3545;
+    margin-left: -30px;
+}
+
+.edit-btn svg,
+.delete-btn svg {
+  font-size: 14px;
+}
+table {
+    margin-top: 20px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+th,
+td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+}
+
+th:nth-child(1),
+td:nth-child(1) {
+    width: 60px !important;
+    white-space: nowrap;
+    text-align: center;
+}
+
+th:nth-last-child(1),
+td:nth-last-child(1) {
+    width: 80px !important;
+    white-space: nowrap;
+}
+
+
+
