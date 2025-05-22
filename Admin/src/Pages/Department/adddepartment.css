@@ -1,92 +1,154 @@
 .add-department-container {
-    width: 80%;
-    max-width: 800px;
-    margin: 40px auto;
-    margin-left: 130px;
-    border: 2px solid #ccc;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-    font-family: 'Poppins', sans-serif;
+  width: 80%;
+  max-width: 600px;
+  margin: 40px auto;
+  margin-left: 70px;
+  border: 2px solid #ccc;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  font-family: 'Poppins', sans-serif;
 }
 
-.add-department-title {
-    margin-bottom: 20px;
-    font-size: 1.5rem;
-    font-weight: bold;
+.form-title {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
 }
 
-.add-department-form {
-    display: flex;
-    
-    /* flex-direction: column; */
+.horizontal-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 30px 0;
 }
 
-.department-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
+.horizontal-form input[type="text"] {
+  flex: 1;
+  padding: 10px;
+  margin-top: 19px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
 }
 
-.department-group {
-    flex: 1;
-    margin-right: 10px;
+.btn {
+  padding: 10px 20px;
+  margin-top: 20px;
+  background-color: #3e5f80;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  cursor: pointer;
 }
 
-.department-group input {
-    /* width: 100%; */
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #4e1111;
-    position: absolute;
+.btn:hover {
+  background-color: #2f4e6a;
 }
 
-.department-group .error {
-    color: red;
-    font-size: 12px;
+.department-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 30px;
+  table-layout: fixed; /* fixed layout */
 }
 
-/* .department-buttons {
-    display: flex;
-    justify-content: flex-start;
-    gap: 10px;
-    margin-top: 20px;
-} */
-
-/* .department-buttons button {
-    padding: 10px 15px;
-    border: none;
-    cursor: pointer;
-    background-color: #426183;
-    color: white;
-    border-radius: 5px;
-    margin-top: 40px;
-    position: absolute;
-
-} */
-
-.department-buttons button[type="reset"] {
-    background-color: #dc3545;
-
-}
-.btn{
-  
- 
-    border: none;
-    cursor: pointer;
-    background-color: #3e5f80;
-    color: white;
-    border-radius: 30px;
-    width: 100px;
-    margin-top: 20px;
-    /* margin-left: ; */
-    
+/* Drag handle column */
+.department-table th.drag-handle-column,
+.department-table td.drag-handle-column {
+  width: 10px;
+  text-align: center;
+  cursor: grab;
+  user-select: none;
 }
 
+/* Sr.No column - narrow */
+.department-table th.sr-no,
+.department-table td.sr-no {
+  width: 40px; /* narrow */
+  text-align: center;
+  white-space: nowrap;
+}
 
-/* Responsive Styling */
+/* Department column - broad */
+.department-table th.department,
+.department-table td.department {
+  width: auto;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Date & Time column */
+.department-table th.date-time,
+.department-table td.date-time {
+  width: 160px;
+  white-space: nowrap;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Action column - fixed width */
+.department-table th.action-column,
+.department-table td.action-column {
+  width: 80px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Table cells */
+.department-table th,
+.department-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.department-table th {
+  background-color: #f5f5f5;
+}
+
+/* Buttons */
+.edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #007bff;
+}
+
+.edit-btn:hover {
+  color: #0056b3;
+}
+
+/* Delete button override */
+.edit-btn[title="Delete"] {
+  color: red;
+}
+
+.edit-btn[title="Delete"]:hover {
+  color: darkred;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-    .department-row {
-        flex-direction: column;
-    }
+  .horizontal-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .horizontal-form input[type="text"],
+  .btn {
+    width: 100%;
+  }
+
+  .department-table {
+    font-size: 0.9rem;
+  }
 }

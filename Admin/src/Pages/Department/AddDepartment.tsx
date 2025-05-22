@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sidebar from '../../Components/Sidebar/Sidebar';
 import {
   DndContext,
@@ -10,15 +10,17 @@ import {
 import {
   arrayMove,
   SortableContext,
-  verticalListSortingStrategy,
   useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { FaEdit, FaGripVertical, FaTrash } from 'react-icons/fa';
 import './adddepartment.css';
 
 interface Department {
   id: string;
   name: string;
+  dateTime: string;
 }
 
 const LOCAL_STORAGE_KEY = 'departments';
@@ -29,6 +31,7 @@ const AddDepartment: React.FC = () => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   });
+  const [editId, setEditId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -39,20 +42,53 @@ const AddDepartment: React.FC = () => {
       alert('Please enter a department name.');
       return;
     }
-    if (departments.find((d) => d.name.toLowerCase() === trimmed.toLowerCase())) {
+
+    const duplicate = departments.find(
+      (d) => d.name.toLowerCase() === trimmed.toLowerCase() && d.id !== editId
+    );
+    if (duplicate) {
       alert('This department already exists.');
       return;
     }
 
-    const newDepartment: Department = {
-      id: crypto.randomUUID(),
-      name: trimmed,
-    };
-
-    const updated = [...departments, newDepartment];
-    setDepartments(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    if (editId) {
+      const updated = departments.map((dept) =>
+        dept.id === editId ? { ...dept, name: trimmed } : dept
+      );
+      setDepartments(updated);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      setEditId(null);
+    } else {
+      const newDepartment: Department = {
+        id: crypto.randomUUID(),
+        name: trimmed,
+        dateTime: new Date().toLocaleString(),
+      };
+      const updated = [...departments, newDepartment];
+      setDepartments(updated);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    }
     setDepartmentName('');
+  };
+
+  const handleEdit = (id: string) => {
+    const dept = departments.find((d) => d.id === id);
+    if (dept) {
+      setDepartmentName(dept.name);
+      setEditId(id);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this department?')) {
+      const updated = departments.filter((d) => d.id !== id);
+      setDepartments(updated);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      if (editId === id) {
+        setEditId(null);
+        setDepartmentName('');
+      }
+    }
   };
 
   const handleDragEnd = (event: any) => {
@@ -66,24 +102,13 @@ const AddDepartment: React.FC = () => {
     }
   };
 
-  const updateDepartment = (id: string, newName: string) => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-
-    const updated = departments.map((dept) =>
-      dept.id === id ? { ...dept, name: trimmed } : dept
-    );
-    setDepartments(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-  };
-
   return (
     <>
       <Sidebar />
       <div className="add-department-wrapper">
         <div className="add-department-container">
-          <h2>Add Department</h2>
-          <form onSubmit={handleSubmit} className="form-group">
+          <h2 className="form-title">Add Department</h2>
+          <form onSubmit={handleSubmit} className="horizontal-form">
             <input
               type="text"
               placeholder="Enter Department Name"
@@ -91,23 +116,47 @@ const AddDepartment: React.FC = () => {
               onChange={(e) => setDepartmentName(e.target.value)}
               required
             />
-            <button type="submit" className="btn">Add</button>
+            <button type="submit" className="btn">
+              {editId ? 'Update' : 'Add'}
+            </button>
           </form>
+        </div>
 
+        <div className="add-department-container">
           {departments.length > 0 && (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={departments.map((d) => d.id)} strategy={verticalListSortingStrategy}>
-                <ul className="department-list">
-                  {departments.map((dept, index) => (
-                    <SortableItem
-                      key={dept.id}
-                      id={dept.id}
-                      name={dept.name}
-                      index={index}
-                      onSave={updateDepartment}
-                    />
-                  ))}
-                </ul>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={departments.map((d) => d.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <table className="department-table">
+                  <thead>
+                    <tr>
+                      <th className="drag-handle-column"></th>
+                      <th className="sr-no">Sr.No</th>
+                      <th className="department">Department</th>
+                      <th className="date-time">Date & Time</th>
+                      <th className="action-column">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {departments.map((dept, index) => (
+                      <DraggableRow
+                        key={dept.id}
+                        id={dept.id}
+                        index={index}
+                        name={dept.name}
+                        dateTime={dept.dateTime}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </SortableContext>
             </DndContext>
           )}
@@ -117,76 +166,45 @@ const AddDepartment: React.FC = () => {
   );
 };
 
-export default AddDepartment;
-
-interface SortableItemProps {
+interface RowProps {
   id: string;
-  name: string;
   index: number;
-  onSave: (id: string, newName: string) => void;
+  name: string;
+  dateTime: string;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-const SortableItem: React.FC<SortableItemProps> = ({ id, name, index, onSave }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [newName, setNewName] = useState(name);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // ✅ Auto-focus on input when editing starts
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
+const DraggableRow: React.FC<RowProps> = ({
+  id,
+  index,
+  name,
+  dateTime,
+  onEdit,
+  onDelete,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const handleSave = () => {
-    onSave(id, newName);
-    setIsEditing(false);
-  };
-
   return (
-    <li ref={setNodeRef} style={style} {...attributes} {...listeners} className="department-item">
-      <span className="sequence-number">{index + 1}.</span>
-      {isEditing ? (
-        <>
-          <input
-            ref={inputRef}
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            className="edit-input"
-            onClick={(e) => e.stopPropagation()} // Stop drag interference
-          />
-          <button onClick={handleSave}>💾</button>
-        </>
-      ) : (
-        <>
-          <span>{name}</span>
-          <button
-            className="edit-btn"
-            onClick={(e) => {
-              e.stopPropagation(); // prevent drag when clicking edit
-              setIsEditing(true);
-              setNewName(name);
-            }}
-          >
-            ✏️
-          </button>
-        </>
-      )}
-    </li>
+    <tr ref={setNodeRef} style={style}>
+      <td {...attributes} {...listeners} className="drag-handle-column" style={{ cursor: 'grab', textAlign: 'center' }}>
+        <FaGripVertical />
+      </td>
+      <td className="sr-no" style={{ textAlign: 'center' }}>{index + 1}</td>
+      <td className="department">{name}</td>
+      <td className="date-time">{dateTime}</td>
+      <td className="action-column">
+        <button onClick={() => onEdit(id)} className="edit-btn" title="Edit">
+          <FaEdit />
+        </button>
+      
+      </td>
+    </tr>
   );
 };
+
+export default AddDepartment;
