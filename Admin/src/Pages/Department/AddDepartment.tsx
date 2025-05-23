@@ -14,7 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FaEdit, FaGripVertical, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaGripVertical } from 'react-icons/fa';
 import './adddepartment.css';
 
 interface Department {
@@ -106,21 +106,27 @@ const AddDepartment: React.FC = () => {
     <>
       <Sidebar />
       <div className="add-department-wrapper">
-        <div className="add-department-container">
-          <h2 className="form-title">Add Department</h2>
-          <form onSubmit={handleSubmit} className="horizontal-form">
-            <input
-              type="text"
-              placeholder="Enter Department Name"
-              value={departmentName}
-              onChange={(e) => setDepartmentName(e.target.value)}
-              required
-            />
-            <button type="submit" className="btn">
-              {editId ? 'Update' : 'Add'}
-            </button>
-          </form>
-        </div>
+       <div className="add-department-container">
+  <div className="title-form-row">
+    <h2 className="form-title">Add Department</h2>
+
+    <form className="inline-form" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        placeholder="Enter department name"
+        value={departmentName}
+        onChange={(e) => setDepartmentName(e.target.value)}
+        required
+      />
+      <button type="submit" className="btn">
+        Add
+      </button>
+    </form>
+  </div>
+
+  {/* The department table would go here, but you said no change needed */}
+</div>
+
 
         <div className="add-department-container">
           {departments.length > 0 && (
@@ -201,7 +207,6 @@ const DraggableRow: React.FC<RowProps> = ({
         <button onClick={() => onEdit(id)} className="edit-btn" title="Edit">
           <FaEdit />
         </button>
-      
       </td>
     </tr>
   );
