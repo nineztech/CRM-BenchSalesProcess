@@ -15,16 +15,14 @@ const AdminRegister: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
-  // Initialize admins from localStorage
   const [admins, setAdmins] = useState<any[]>(() => {
     const saved = localStorage.getItem("admins");
     return saved ? JSON.parse(saved) : [];
   });
 
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Save to localStorage on any change to admins
   useEffect(() => {
     localStorage.setItem("admins", JSON.stringify(admins));
   }, [admins]);
@@ -120,6 +118,17 @@ const AdminRegister: React.FC = () => {
     }
   };
 
+  const filteredAdmins = admins.filter((admin) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      admin.firstName.toLowerCase().includes(search) ||
+      admin.lastName.toLowerCase().includes(search) ||
+      admin.mobileNumber.toLowerCase().includes(search) ||
+      admin.username.toLowerCase().includes(search) ||
+      admin.email.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <>
       <Sidebar />
@@ -168,9 +177,20 @@ const AdminRegister: React.FC = () => {
         </form>
       </div>
 
+      {/* Search bar between form and table */}
+      <div className="search-container">
+        <input
+          type="text"
+          placeholder="Search Here..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="table-container">
         <h3>Registered Admins</h3>
-        {admins.length > 0 ? (
+
+        {filteredAdmins.length > 0 ? (
           <table>
             <thead>
               <tr>
@@ -185,7 +205,7 @@ const AdminRegister: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {admins.map((admin, index) => (
+              {filteredAdmins.map((admin, index) => (
                 <tr key={admin.id}>
                   <td>{admin.id}</td>
                   <td>{admin.firstName}</td>
@@ -195,15 +215,17 @@ const AdminRegister: React.FC = () => {
                   <td>{admin.email}</td>
                   <td>{admin.dateTime}</td>
                   <td>
-                    <button className="edit-btn" onClick={() => handleEdit(index)}><FaEdit /></button>
-                    <button className="delete-btn" onClick={() => handleDelete(admin.id)}><FaTrash /></button>
+                    <div className="action-buttons">
+                      <button className="edit-btn" onClick={() => handleEdit(index)}><FaEdit /></button>
+                      <button className="delete-btn" onClick={() => handleDelete(admin.id)}><FaTrash /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p>No admins registered yet.</p>
+          <p>No admins found.</p>
         )}
       </div>
     </>
