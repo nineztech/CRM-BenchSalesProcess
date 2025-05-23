@@ -21,6 +21,7 @@ const AddUser: React.FC = () => {
     return savedUsers ? JSON.parse(savedUsers) : [];
   });
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const departments = [
     "Lead Generation", "Sales", "Resume Making", "Training", "Marketing", "Onboarding BGC"
@@ -33,7 +34,7 @@ const AddUser: React.FC = () => {
     let errorMsg = "";
     if (!value.trim()) {
       errorMsg = "This field is required";
-    } else if (name === "mobileNumber" && (!/^\d+$/.test(value) || value.length !== 10)) {
+    } else if (name === "mobileNumber" && (!/^\d{10}$/.test(value))) {
       errorMsg = "Enter a valid 10-digit mobile number";
     } else if (name === "confirmPassword" && value !== formData.password) {
       errorMsg = "Passwords do not match";
@@ -125,6 +126,18 @@ const AddUser: React.FC = () => {
     localStorage.setItem("users", JSON.stringify(users));
   }, [users]);
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value.toLowerCase());
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.firstName.toLowerCase().includes(searchQuery) ||
+    user.lastName.toLowerCase().includes(searchQuery) ||
+    user.department.toLowerCase().includes(searchQuery) ||
+    user.email.toLowerCase().includes(searchQuery) ||
+    user.username.toLowerCase().includes(searchQuery)
+  );
+
   return (
     <>
       <Sidebar />
@@ -181,9 +194,19 @@ const AddUser: React.FC = () => {
         </form>
       </div>
 
+      {/* 🔍 Search Bar */}
+      <div className="search-container">
+        <input
+          type="text"
+          placeholder="Search Here..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+      </div>
+
       <div className="table-container">
         <h3>Submitted Users</h3>
-        {users.length > 0 ? (
+        {filteredUsers.length > 0 ? (
           <table>
             <thead>
               <tr>
@@ -199,7 +222,7 @@ const AddUser: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map((user, index) => (
+              {filteredUsers.map((user, index) => (
                 <tr key={user.id}>
                   <td>{user.id}</td>
                   <td>{user.firstName}</td>
@@ -209,7 +232,7 @@ const AddUser: React.FC = () => {
                   <td>{user.username}</td>
                   <td>{user.email}</td>
                   <td>{user.dateTime}</td>
-                  <td style={{ width: '80px', whiteSpace: 'nowrap' }}>
+                  <td>
                     <button className="edit-btn" onClick={() => handleEdit(index)}><FaEdit /></button>
                     <button className="delete-btn" onClick={() => handleDelete(user.id)}><FaTrash /></button>
                   </td>
