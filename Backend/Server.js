@@ -1,28 +1,26 @@
-const dotenv = require("dotenv");
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./db/Connection"); // correct import path
+console.log('Current dir:', __dirname);
+console.log('Loading routes...');
 
-dotenv.config();
-
-console.log("MongoDB URI from .env:", process.env.MONGODB_URI);
-
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
+// ✅ Correct paths
+const adminRoutes = require("./Routes/adminRoutes.js");
+const userRoutes = require('./Routes/userRoutes.js');
+const departmentRoutes = require('./Routes/departmentRoutes.js');
 
-connectDB();
 
- 
-app.get("/", (req, res) => {
-  res.send("🚀 CRM Backend is running and connected to MongoDB Atlas!");
-});
-
- 
+app.use('/api/admins', adminRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/departments', departmentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(` Server running on ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
