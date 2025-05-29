@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import xls_logo from '../../assets/xls_logo.webp';
+import iconn from '../../assets/iconn.png';
 import SpreadsheetEditor from './SpreadsheetEditor';
+import Badge from '@mui/material/Badge';
+
 import './LeadCreation.css';
 
 interface Lead {
-  executiveName: string;
   candidateName: string;
   contactNumber: string;
   email: string;
@@ -13,13 +15,12 @@ interface Lead {
   technology: string;
   country: string;
   visaStatus: string;
+  remark: string;
+  sales?: string;
 }
-
-
 
 const LeadCreation: React.FC = () => {
   const [formData, setFormData] = useState<Lead>({
-    executiveName: '',
     candidateName: '',
     contactNumber: '',
     email: '',
@@ -27,21 +28,19 @@ const LeadCreation: React.FC = () => {
     technology: '',
     country: '',
     visaStatus: '',
+    remark: '',
   });
 
-
-  
   const [showEditor, setShowEditor] = useState(false);
-
-    const handleLogoClick = () => {
-    setShowEditor(true);
-  };
-
-  
-
   const [errors, setErrors] = useState<Partial<Lead>>({});
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
+  const [selectedSales, setSelectedSales] = useState('');
+  const [recordsPerPage, setRecordsPerPage] = useState(25);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleLogoClick = () => setShowEditor(true);
 
   useEffect(() => {
     const storedLeads = localStorage.getItem('leads');
@@ -52,14 +51,13 @@ const LeadCreation: React.FC = () => {
     localStorage.setItem('leads', JSON.stringify(leads));
   }, [leads]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const validate = (): boolean => {
     const newErrors: Partial<Lead> = {};
-    if (!formData.executiveName.trim()) newErrors.executiveName = 'Executive Name is required';
     if (!formData.candidateName.trim()) newErrors.candidateName = 'Candidate Name is required';
     if (!formData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact Number is required';
@@ -85,10 +83,9 @@ const LeadCreation: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    const updatedLeads = [...leads, formData];
+    const updatedLeads = [...leads, { ...formData }];
     setLeads(updatedLeads);
     setFormData({
-      executiveName: '',
       candidateName: '',
       contactNumber: '',
       email: '',
@@ -96,16 +93,10 @@ const LeadCreation: React.FC = () => {
       technology: '',
       country: '',
       visaStatus: '',
+      remark: '',
     });
     setErrors({});
     alert('Lead created successfully!');
-  };
-
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/Lead.xlsx';
-    link.download = 'Lead.xlsx';
-    link.click();
   };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,11 +115,41 @@ const LeadCreation: React.FC = () => {
       const workbook = XLSX.read(bstr, { type: 'binary' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<Lead>(worksheet);
-
       const updatedLeads = [...leads, ...jsonData];
       setLeads(updatedLeads);
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleCheckboxChange = (index: number) => {
+    setSelectedLeads((prevSelected) =>
+      prevSelected.includes(index)
+        ? prevSelected.filter((i) => i !== index)
+        : [...prevSelected, index]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === filteredLeads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(filteredLeads.map((_, index) => index));
+    }
+  };
+
+  const handleAssignSales = () => {
+    if (!selectedSales) {
+      alert('Please select a sales option before assigning.');
+      return;
+    }
+
+    const updatedLeads = leads.map((lead, index) =>
+      selectedLeads.includes(index) ? { ...lead, sales: selectedSales } : lead
+    );
+
+    setLeads(updatedLeads);
+    setSelectedLeads([]);
+    setSelectedSales('');
   };
 
   const filteredLeads = leads.filter(lead =>
@@ -137,9 +158,22 @@ const LeadCreation: React.FC = () => {
     lead.technology.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredLeads.length / recordsPerPage);
+  const paginatedLeads = filteredLeads.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
+
+  const changePage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   return (
     <div className="lead-container">
       <div className="lead-layout">
+        {/* Form and Upload Panel */}
         <div className="lead-left">
           <div className="title-and-button">
             <h3>Create New Lead</h3>
@@ -148,41 +182,41 @@ const LeadCreation: React.FC = () => {
           <form id="lead-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <input type="text" name="executiveName" value={formData.executiveName} onChange={handleChange} placeholder="Executive Name" />
-                {errors.executiveName && <small className="error">{errors.executiveName}</small>}
-              </div>
-              <div className="form-group">
-                <input type="text" name="candidateName" value={formData.candidateName} onChange={handleChange} placeholder="Candidate Name" />
+                <input type="text" name="candidateName" value={formData.candidateName} onChange={handleChange} placeholder="Candidate Name *" />
                 {errors.candidateName && <small className="error">{errors.candidateName}</small>}
               </div>
               <div className="form-group">
-                <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="Contact Number" />
+                <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="Contact Number *" />
                 {errors.contactNumber && <small className="error">{errors.contactNumber}</small>}
+              </div>
+              <div className="form-group">
+                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email *" />
+                {errors.email && <small className="error">{errors.email}</small>}
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" />
-                {errors.email && <small className="error">{errors.email}</small>}
-              </div>
-              <div className="form-group">
-                <input type="text" name="linkedinId" value={formData.linkedinId} onChange={handleChange} placeholder="LinkedIn ID" />
+                <input type="text" name="linkedinId" value={formData.linkedinId} onChange={handleChange} placeholder="LinkedIn ID *" />
                 {errors.linkedinId && <small className="error">{errors.linkedinId}</small>}
               </div>
               <div className="form-group">
-                <input type="text" name="technology" value={formData.technology} onChange={handleChange} placeholder="Technology" />
+                <input type="text" name="technology" value={formData.technology} onChange={handleChange} placeholder="Technology *" />
                 {errors.technology && <small className="error">{errors.technology}</small>}
               </div>
               <div className="form-group">
-                <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="Country" />
+                <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="Country *" />
                 {errors.country && <small className="error">{errors.country}</small>}
               </div>
               <div className="form-group">
-                <input type="text" name="visaStatus" value={formData.visaStatus} onChange={handleChange} placeholder="Visa Status" />
+                <select name="visaStatus" value={formData.visaStatus} onChange={handleChange} >
+                  <option value="">Select Visa Status *</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                </select>
                 {errors.visaStatus && <small className="error">{errors.visaStatus}</small>}
               </div>
               <div className="form-group">
-               
+                <input type="text" name="remark" value={formData.remark} onChange={handleChange} placeholder="Remark" />
               </div>
             </div>
           </form>
@@ -191,31 +225,28 @@ const LeadCreation: React.FC = () => {
         <div className="lead-right">
           <div className="right-card">
             <h4>Bulk Lead</h4>
-            {/* <div className="xls-logo" onClick={handleDownload} style={{ cursor: 'pointer' }}>
-              <img src={xls_logo} alt="Download Excel Template" className="logo" />
-            </div> */}
-            <div>
-      <img
-        src={xls_logo}
-        alt="XLS Logo"
-        className='logo'
-        style={{ cursor: 'pointer' }}
-        onClick={handleLogoClick}
-      />
-      {showEditor && <SpreadsheetEditor />}
-    </div>
-    <input
+            <img
+              src={xls_logo}
+              alt="XLS Logo"
+              className='logo'
+              style={{ cursor: 'pointer' }}
+            />
+            {showEditor && <SpreadsheetEditor />}
+            <input
               type="file"
               accept=".xlsx"
               onChange={handleUpload}
               style={{ marginTop: '10px' }}
             />
-        </div>
-            
+
+            <p className='p'>Download the sample file , Enter the data of leads into it and upload the bulk lead from Brouse button.</p>
+            <p>Note: Don't change the header and the filename.</p>
           </div>
           
+        </div>
       </div>
 
+      {/* Search Box */}
       <div className="search-box" style={{ margin: '20px 0', textAlign: 'center' }}>
         <input
           type="text"
@@ -226,29 +257,88 @@ const LeadCreation: React.FC = () => {
         />
       </div>
 
+      {/* Table Header with Dropdown */}
       <div className="lead-table-wrapper">
-        <h3>Submitted Leads</h3>
-          <table className="lead-table">
-            <thead>
-              <tr>
-                <th>Candidate Name</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Linkedin</th>
-                <th>Visa</th>
-                <th>Time</th>
-                <th>Country</th>
-                <th>Sales</th>
-                <th>Remarks</th>
+        <div className="lead-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h3>Submitted Leads</h3>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <select value={selectedSales} onChange={(e) => setSelectedSales(e.target.value)}>
+              <option value="">Select Sales</option>
+              <option value="Aneri"> Aneri</option>
+              <option value="Dhaval">Dhaval</option>
+              <option value="Rajdeep">Rajdeep</option>
+              <option value="Payal">Payal</option>
+            </select>
+            <button className="assign-button" onClick={handleAssignSales}>Assign</button>
+            <select value={recordsPerPage} className="value"  onChange={(e) => {
+              setRecordsPerPage(Number(e.target.value));
+              setCurrentPage(1); // Reset to first page
+            }}>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <table className="lead-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" onChange={handleSelectAll} checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0} /></th>
+              <th>Sr. No.</th>
+              <th>Date & Time</th>
+              <th>Candidate Name</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>LinkedIn</th>
+              <th>Visa</th>
+              <th>Country</th>
+              <th>Sales</th>
+              <th>Remark</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedLeads.map((lead, index) => (
+              <tr key={index}>
+                <td><input type="checkbox" checked={selectedLeads.includes(index)} onChange={() => handleCheckboxChange(index)} /></td>
+                <td>{(currentPage - 1) * recordsPerPage + index + 1}</td>
+                <td>{new Date().toLocaleString()}</td>
+                <td>{lead.candidateName}</td>
+                <td>{lead.contactNumber}</td>
+                <td>{lead.email}</td>
+                <td><a href={lead.linkedinId} target="_blank" rel="noopener noreferrer">LinkedIn</a></td>
+                <td>{lead.visaStatus}</td>
+                <td>{lead.country}</td>
+                <td>{lead.sales || '--'}</td>
+                <td>{lead.remark}</td>
+                <td>
+                  <div className="status-info-wrapper">
+ <img
+              src={iconn}
+              alt="XLS Logo"
+              className='i_btn'
+              style={{ cursor: 'pointer' }}
+            />
+                    <Badge color="primary" className='count' badgeContent={1} showZero></Badge>
+
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-            
-              
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Pagination Controls */}
+        <div className="pagination-controls" style={{ marginTop: '15px', textAlign: 'center' }}>
+          <button onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1}>Prev</button>
+          <span style={{ margin: '0 10px' }}>Page {currentPage} of {totalPages}</span>
+          <button onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages}>Next</button>
         </div>
       </div>
+    </div>
   );
 };
 
