@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminLogin.css';
-import logo from '../../assets/logo.webp'; // Optional logo
+import logo from '../../assets/OIP.jfif'; // Optional logo
 
 export const AdminLogin = () => {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export const AdminLogin = () => {
               />
             </label>
             <button type="submit">Login</button>
-            <p className="admin-login-help">
+            <p className="admin-login-help bg-red-500">
               Hey, not able to login? Contact the Admin Staff.
             </p>
           </form>
