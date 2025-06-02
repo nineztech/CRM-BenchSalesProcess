@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FaTachometerAlt, FaUserPlus, FaUsers, FaBuilding } from 'react-icons/fa';
+import { FaUserPlus, } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import './sidebar.css';
-import logoIcon from '../../assets/OIP.jfif'; // Make sure to update the path to your logo
+import logoIcon from '../../assets/logo.webp'; // Make sure to update the path to your logo
+import './usersidebar.css'
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -21,38 +21,24 @@ const Sidebar: React.FC = () => {
 
       {/* Menu List */}
       <ul>
-        <li>
+        {/* <li>
           <FaTachometerAlt />
           {isExpanded && (
             <Link to="/dashboard">
               <span>Dashboard</span>
             </Link>
           )}
-        </li>
+        </li> */}
         <li>
           <FaUserPlus />
           {isExpanded && (
-            <Link to="/adminregister">
-              <span>Add Admin</span>
+            <Link to="/leadcreation">
+              <span>Lead Creation</span>
             </Link>
           )}
         </li>
-        <li>
-          <FaUsers />
-          {isExpanded && (
-            <Link to="/adduser">
-              <span>User Creation</span>
-            </Link>
-          )}
-        </li>
-        <li>
-          <FaBuilding />
-          {isExpanded && (
-            <Link to="/adddepartment">
-              <span>Department</span>
-            </Link>
-          )}
-        </li>
+       
+       
       </ul>
     </div>
   );

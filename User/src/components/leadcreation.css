@@ -1,0 +1,328 @@
+.lead-container {
+  position: relative; /* changed from absolute */
+  padding: 20px;
+  font-family: sans-serif;
+  background-color: #fff;
+  width: 100%;
+  margin: 0 auto; /* center horizontally */
+  margin-top: -70px; /* positive top margin */
+}
+
+
+.lead-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Left Section */
+.lead-left {
+  width: 60%;
+  background-color: #fdfdfd;
+  padding: 20px;
+  border-radius: 8px;
+  margin-left: 50px;
+
+  border: 2px solid #ccc;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+
+}
+
+h3 {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  flex: 1 1 22%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full-width {
+  flex: 1 1 100%;
+}
+
+.form-group label {
+  font-size: 14px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.form-group input {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+}
+
+/* Submit Button */
+.submit-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  border: none;
+  font-size: 16px;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+/* Right Section */
+.lead-right {
+  width: 40%;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  
+
+}
+
+.p{
+ margin-top: 40px;
+}
+.right-card {
+  background-color: #fdfdfd;
+  padding: 16px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  height: 300px;
+  text-align: left;
+  font-family: 'Times New Roman', Times, serif;
+}
+/* Dropdown styling inside the form */
+select[name="visaStatus"] {
+padding: 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+}
+
+select[name="visaStatus"]:focus {
+  outline: none;
+}
+
+/* Optional: style error messages */
+.error {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Optional: add a down arrow if desired */
+select[name="visaStatus"]::-ms-expand {
+  display: none;
+}
+
+.logo{
+  width: 100px;
+  height: 100px;
+}
+
+/* Table Section */
+.lead-table-container {
+  margin-top: 40px;
+  width: 100%;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+
+}
+
+.lead-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  
+}
+
+.lead-table th,
+.lead-table td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.lead-table th {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Table Section Styling */
+.lead-table-wrapper {
+  margin-top: 40px;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #fdfdfd;
+  border: 2px solid #ccc;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  margin-left: 50px;
+
+}
+
+.lead-table-container {
+  width: 100%;
+  overflow-x: auto;
+  
+}
+
+.lead-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+.value{
+  width: 40px;
+}
+
+
+.lead-table th,
+.lead-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+  text-align: center;
+}
+
+.lead-table th {
+  background-color: white;
+  color: black;
+}
+.error {
+  color: red;
+  font-size: 12px;
+}
+.title-and-button {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 40px;
+  /* align-items: center; */
+}
+
+.inline-btn {
+  padding-top: -1px;
+  padding-bottom: -1px;
+  align-content: center;
+  border-radius: 80px;
+
+
+}
+/* Search box wrapper */
+.search-box {
+  display: flex;
+  /* justify-content: center; */
+  /* margin: 20px 0; */
+
+}
+
+/* Search input */
+.search-box input {
+
+  width: 60%;
+  max-width: 500px;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: 1.5px solid #ccc;
+  border-radius: 8px;
+  margin-left: 50px;
+
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  outline: none;
+}
+
+.search-box input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+@media screen and (max-width: 768px) {
+  .lead-layout {
+    flex-direction: column;
+  }
+
+  .lead-left,
+  .lead-right {
+    width: 100%;
+  }
+
+  .right-card {
+    height: auto; /* allow it to grow based on content */
+  }
+
+  .title-and-button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+}
+
+/* Style for the sales dropdown, assign button, and records per page dropdown */
+.lead-table-header select,
+.lead-table-header .assign-button,
+.lead-table-header .value {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background-color: #f9f9f9;
+}
+
+/* Sales dropdown */
+.lead-table-header select {
+  width: 150px;
+}
+
+/* Assign button */
+.lead-table-header .assign-button {
+  background-color: #007bff;
+  color: white;
+  font-weight: 500;  
+  border: none;
+  cursor: pointer;
+}
+
+.lead-table-header .assign-button:hover {
+  background-color: #0056b3;
+}
+
+/* Records per page dropdown */
+.lead-table-header .value {
+  width: 70px;
+}
+
+/* Add spacing between dropdowns and button */
+.lead-table-header select,
+.lead-table-header .assign-button {
+  margin-right: 1px;
+}
+.info-icon{
+  background-color: white;
+}
+.i_btn{
+  height: 20px;
+}
+.count{
+  height: 20px;
+}
+
+
+
+
