@@ -1,8 +1,8 @@
 .form-container {
-    width: 1200px;
+    width: 90%;
     margin: 40px auto;
-    margin-top: -4px;
-    margin-left: 70px;
+    margin-top: 44px;
+    margin-left: 40px;
     border: 2px solid #ccc;
     padding: 20px;
     border-radius: 8px;
@@ -16,29 +16,73 @@
     position: absolute;
 }
 
+.form-title-2 {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+     text-align: left;
+}
 .user-form {
     display: flex;
     flex-direction: column;
 }
 
+ 
 .form-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     margin-bottom: 15px;
+    width: 100%;
+}
+
+.form-row-2 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    width: 49.5%;
+}
+
+.form-row-3 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    width: 67.5%;
 }
 
 .form-group {
-    flex: 1 1 23%;
+    flex: 1 1 20%;
     margin-right: 10px;
     min-width: 200px;
+}
+.form-group-2 {
+   
+    margin-right: 10px;
+    min-width: 10%;
+}
+
+.form-group-2,
+.form-group{
+    color: rgb(92, 91, 91);
+  font-size: 12px;
+  text-align: left;
+  margin-left:0;
 }
 
 .form-group:last-child {
     margin-right: 0;
 }
-
+.form-group-2:last-child {
+    margin-right: 0;
+}
 .form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.form-group-2 label {
     display: block;
     font-weight: bold;
     margin-bottom: 5px;
@@ -51,6 +95,17 @@
     border-radius: 5px;
     border: 1px solid #ccc;
     outline: none;
+}
+
+.form-group-2 input,
+.form-group-2 select {
+    width: 132%;
+    margin-left: 5px;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    outline: none;
+    align-self: flex-start;
 }
 
 .form-group .error {
@@ -89,10 +144,10 @@
 .search-container {
     /* margin: 20px 70px 0; */
     display: flex;
-    margin-left: 70px;
-    margin-bottom: -30px;
-    margin-top: -20px;
-    justify-content: flex-start;
+    margin-left: -40px;
+    margin-bottom: 40px;
+    margin-top: 20px;
+    
 }
 
 .search-container input {
@@ -117,80 +172,68 @@
         margin-bottom: 10px;
     }
 }
-
 .table-container {
-    /* width: 1200px; */
-    margin: 40px auto;
-    /* margin-left: 70px; */
-    border: 2px solid #ccc;
-    padding: 200px;
-    border-radius: 8px;
-    /* box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); */
+  width: 80%;
+  margin: 40px auto 0 70px;
+  border: 2px solid #ccc;
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+   
 }
 
+/* Table Base Styling */
 table {
-    /* margin-top: 20px; */
-    /* width: 100%; */
-    border: 1px solid #ccc;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto; /* Allow columns to size based on content */
 }
 
-th,
-td {
-    padding: 10px;
-    text-align: center;
-    /* border-bottom: 1px solid #ccc; */
+th, td {
+  padding: 10px 12px;
+  text-align: center;
+  border: 1px solid #ccc;
+  white-space: nowrap; /* Prevent text wrap */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Show ellipsis for long content */
+  max-width: 250px;
 }
 
+/* Optional: Add a minimum width to prevent content squishing */
+th {
+  background-color: #f0f0f0;
+  font-weight: 600;
+}
+
+/* Specific column widths for ID and Action */
+th:nth-child(1), td:nth-child(1) {
+  width: 50px;
+}
+
+th:last-child, td:last-child {
+  width: 80px;
+}
+
+/* Action Buttons - Clean, No Borders */
 .edit-btn,
 .delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    /* margin-right: -30px; */
-    font-size: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  margin: 0 5px;
 }
 
 .edit-btn {
-    color: #212933;
-
+  color: #007bff;
 }
 
 .delete-btn {
-    color: #dc3545;
-    margin-left: -30px;
+  color: #dc3545;
 }
 
+/* Icons sizing */
 .edit-btn svg,
 .delete-btn svg {
-  font-size: 14px;
+  font-size: 16px;
 }
-table {
-    margin-top: 20px;
-    width: 100%;
-    border: 1px solid #ccc;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-th,
-td {
-    padding: 10px;
-    text-align: center;
-    border-bottom: 1px solid #ccc;
-}
-
-th:nth-child(1),
-td:nth-child(1) {
-    width: 60px !important;
-    white-space: nowrap;
-    text-align: center;
-}
-
-th:nth-last-child(1),
-td:nth-last-child(1) {
-    width: 80px !important;
-    white-space: nowrap;
-}
-
-
-

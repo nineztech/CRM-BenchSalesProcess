@@ -1,13 +1,14 @@
-.admin-wrapper {
+.form-container {
   width: 95%;
-  /* max-width: 1200px; */
   margin: 40px auto;
+  margin-left: 30px;
   display: flex;
   flex-direction: column;
   gap: 30px;
 }
 
 .admin-card {
+
   border: 2px solid #ccc;
   border-radius: 8px;
   padding: 20px;
@@ -24,6 +25,7 @@
 .admin-form {
   display: flex;
   flex-direction: column;
+
 }
 
 .form-buttons {
@@ -37,7 +39,6 @@
 .form-buttons button {
   padding: 10px 20px;
   width: 100px;
-
   border: none;
   cursor: pointer;
   border-radius: 30px;
@@ -66,44 +67,32 @@
   color: red;
   font-size: 12px;
 }
+.form-group label {
+  color: rgb(98, 97, 97);
+  font-size: 12px;
+  text-align: left;
+  margin-left: 0;
+}
+
 .search-container {
-    /* margin: 20px 70px 0; */
-    display: flex;
-    margin-left: 70px;
-    margin-bottom: -30px;
-    margin-top: -20px;
-    justify-content: flex-start;
+  display: flex;
+  margin-left: 30px;
+  margin-bottom: -30px;
+  margin-top: -20px;
+  justify-content: flex-start;
 }
 
 .search-container input {
-    padding: 10px;
-    width: 300px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    outline: none;
-    font-size: 14px;
+  padding: 10px;
+  width: 300px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 14px;
 }
 
 .table-responsive {
   overflow-x: auto;
-}
-
-.admin-table {
-  width: 100%;
-  min-width: 800px;
-  border-collapse: collapse;
-  margin-left: 300px;
-}
-
-.admin-table th,
-.admin-table td {
-  padding: 12px;
-  border: 1px solid #ccc;
-  text-align: center;
-}
-
-.admin-table thead {
-  background-color: #f0f0f0;
 }
 
 .edit-btn,
@@ -123,34 +112,12 @@
   color: #dc3545;
 }
 
-@media (max-width: 768px) {
-  .form-buttons {
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .form-buttons button {
-    width: 100%;
-  }
-
-  .grid-form {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-}
-/* Table Container */
-
-/* Heading */
-
-
-/* Table Styling */
-/* === Matching Table Style === */
 .table-container {
-  /* width: 95%; */
-  /* margin: 0 auto 40px auto; */
-  margin-left: 70px;
+  width: 91%;
+  padding: 40px;
+  margin-left: 30px;
   background: #fff;
   border-radius: 8px;
-  padding: 20px;
   box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
 }
@@ -162,11 +129,8 @@
   text-align: left;
 }
 
-/* Table Style */
 .table-container table {
-  width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
 }
 
 .table-container th,
@@ -187,19 +151,10 @@
   background-color: #f9f9f9;
 }
 
-/* Button Icons */
 .action-buttons {
   display: flex;
   gap: 8px;
   justify-content: center;
-}
-
-.edit-btn, .delete-btn {
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  color: #555;
 }
 
 .edit-btn:hover {
@@ -210,36 +165,68 @@
   color: #dc3545;
 }
 
+/* ------------------- MEDIA QUERIES ------------------- */
 
-/* Responsive Table */
-@media screen and (max-width: 768px) {
+@media (max-width: 1024px) {
+  .grid-form {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .search-container {
+    margin-left: 20px;
+  }
+
+  .table-container {
+    padding: 30px;
+    margin-left: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-buttons {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .form-buttons button {
+    width: 100%;
+  }
+
+  .grid-form {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
   .table-container {
     padding: 15px;
-
+    margin-left: 20px;
     overflow-x: auto;
   }
 
   .table-container h3 {
-      font-size: 1.5rem;
-  margin-bottom: 20px;
-  color: #333;
-  text-align: center;
+    text-align: center;
   }
 
   .table-container table {
-    width: 100%;
-  border-collapse: collapse;
-  min-width: 800px;
-  table-layout: fixed;
+    min-width: 800px;
+    table-layout: fixed;
   }
 
-  .table-container th,
-  .table-container td {
-    padding: 10px;
+  .search-container input {
+    width: 100%;
+    max-width: 90%;
+  }
+
+  .search-container {
+    margin: 10px auto;
+    justify-content: center;
   }
 }
 
-@media screen and (max-width: 480px) {
+@media (max-width: 480px) {
+  .form-title {
+    font-size: 1.2rem;
+  }
+
   .table-container h3 {
     font-size: 1.2rem;
   }
@@ -253,5 +240,17 @@
   .edit-btn,
   .delete-btn {
     font-size: 0.9rem;
+  }
+
+  .search-container {
+    margin: 10px auto;
+  }
+
+  .admin-card {
+    padding: 15px;
+  }
+
+  .form-buttons button {
+    font-size: 14px;
   }
 }

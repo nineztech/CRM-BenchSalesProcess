@@ -3,11 +3,12 @@ import './adduser.css';
 import Sidebar from '../../Components/Sidebar/Sidebar';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 
-const AddUser: React.FC = () => {
+const UserRegister: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     department: "",
+    designation: "",
     mobileNumber: "",
     username: "",
     email: "",
@@ -16,25 +17,40 @@ const AddUser: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [users, setUsers] = useState<any[]>(() => {
-    const savedUsers = localStorage.getItem("users");
-    return savedUsers ? JSON.parse(savedUsers) : [];
-  });
-  const [editIndex, setEditIndex] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const departments = [
-    "Lead Generation", "Sales", "Resume Making", "Training", "Marketing", "Onboarding BGC"
-  ];
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const fetchUsers = async () => {
+  try {
+    const response = await fetch('http://localhost:5000/api/user');
+    const data = await response.json();
+
+    if (response.ok) {
+      setUsers(data); // or whatever state holds the list
+    } else {
+      console.error('Failed to fetch users:', data.message);
+      alert('Failed to load users');
+    }
+  } catch (err) {
+    console.error('Fetch error:', err);
+    alert('Error fetching users');
+  }
+};
+
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
     let errorMsg = "";
     if (!value.trim()) {
       errorMsg = "This field is required";
-    } else if (name === "mobileNumber" && (!/^\d{10}$/.test(value))) {
+    } else if (name === "mobileNumber" && !/^\d{10}$/.test(value)) {
       errorMsg = "Enter a valid 10-digit mobile number";
     } else if (name === "confirmPassword" && value !== formData.password) {
       errorMsg = "Passwords do not match";
@@ -43,7 +59,7 @@ const AddUser: React.FC = () => {
     setErrors({ ...errors, [name]: errorMsg });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: { [key: string]: string } = {};
@@ -60,50 +76,30 @@ const AddUser: React.FC = () => {
       return;
     }
 
-    const currentDateTime = new Date().toLocaleString();
+    try {
+      const method = editingUserId ? 'PUT' : 'POST';
+      const url = editingUserId
+        ? `http://localhost:5000/api/user/${editingUserId}`
+        : 'http://localhost:5000/api/user/create';
 
-    if (editIndex !== null) {
-      const updatedUsers = [...users];
-      updatedUsers[editIndex] = {
-        ...formData,
-        id: updatedUsers[editIndex].id,
-        dateTime: currentDateTime,
-      };
-      setUsers(updatedUsers);
-      setEditIndex(null);
-    } else {
-      const newUser = {
-        ...formData,
-        id: users.length + 1,
-        dateTime: currentDateTime,
-      };
-      setUsers([...users, newUser]);
-    }
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    handleReset();
-  };
+      const result = await response.json();
 
-  const handleEdit = (index: number) => {
-    const user = users[index];
-    setFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      department: user.department,
-      mobileNumber: user.mobileNumber,
-      username: user.username,
-      email: user.email,
-      password: user.password,
-      confirmPassword: user.password,
-    });
-    setEditIndex(index);
-  };
-
-  const handleDelete = (id: number) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this user?");
-    if (confirmDelete) {
-      const filteredUsers = users.filter(user => user.id !== id);
-      const reindexedUsers = filteredUsers.map((user, i) => ({ ...user, id: i + 1 }));
-      setUsers(reindexedUsers);
+      if (response.ok) {
+        alert(editingUserId ? "✅ User updated successfully!" : "✅ User created successfully!");
+        handleReset();
+        fetchUsers();
+      } else {
+        alert(`❌ Failed: ${result.message}`);
+      }
+    } catch (err) {
+      alert("❌ Error connecting to server.");
+      console.error(err);
     }
   };
 
@@ -112,6 +108,7 @@ const AddUser: React.FC = () => {
       firstName: "",
       lastName: "",
       department: "",
+      designation: "",
       mobileNumber: "",
       username: "",
       email: "",
@@ -119,133 +116,245 @@ const AddUser: React.FC = () => {
       confirmPassword: "",
     });
     setErrors({});
-    setEditIndex(null);
+    setEditingUserId(null);
   };
 
-  useEffect(() => {
-    localStorage.setItem("users", JSON.stringify(users));
-  }, [users]);
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value.toLowerCase());
+    try {
+      const response = await fetch(`http://localhost:5000/api/user/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.message);
+        fetchUsers();
+      } else {
+        alert(`❌ Failed: ${result.message}`);
+      }
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      alert("❌ Server error");
+    }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.firstName.toLowerCase().includes(searchQuery) ||
-    user.lastName.toLowerCase().includes(searchQuery) ||
-    user.department.toLowerCase().includes(searchQuery) ||
-    user.email.toLowerCase().includes(searchQuery) ||
-    user.username.toLowerCase().includes(searchQuery)
-  );
+  const handleEdit = (user: any) => {
+    setFormData({
+      firstName: user.first_name,
+      lastName: user.last_name,
+      department: user.department,
+      designation: user.designation,
+      mobileNumber: user.mobile_number,
+      username: user.username,
+      email: user.email,
+      password: user.password,
+      confirmPassword: user.password,
+    });
+    setEditingUserId(user.id);
+    setErrors({});
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      user.first_name.toLowerCase().includes(search) ||
+      user.last_name.toLowerCase().includes(search) ||
+      user.department.toLowerCase().includes(search) ||
+      user.designation.toLowerCase().includes(search) ||
+      user.mobile_number.toLowerCase().includes(search) ||
+      user.username.toLowerCase().includes(search) ||
+      user.email.toLowerCase().includes(search)
+    );
+  });
 
   return (
     <>
       <Sidebar />
-
       <div className="form-container">
-        <h2 className="form-title">User Creation</h2>
-
+        <h2 className="form-title">{editingUserId ? "Edit User" : "User Registration"}</h2>
         <form className="user-form" onSubmit={handleSubmit} onReset={handleReset}>
           <div className="form-buttons">
-            <button type="submit">{editIndex !== null ? "Update" : "Save"}</button>
+            <button type="submit">{editingUserId ? "Update" : "Save"}</button>
             <button type="reset">Discard</button>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <input type="text" name="firstName" placeholder="First Name *" value={formData.firstName} onChange={handleChange} />
+              <label>First Name</label>
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First Name *"
+                value={formData.firstName}
+                onChange={handleChange}
+              />
               {errors.firstName && <div className="error">{errors.firstName}</div>}
             </div>
             <div className="form-group">
-              <input type="text" name="lastName" placeholder="Last Name *" value={formData.lastName} onChange={handleChange} />
+              <label>Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                placeholder="Last Name *"
+                value={formData.lastName}
+                onChange={handleChange}
+              />
               {errors.lastName && <div className="error">{errors.lastName}</div>}
             </div>
             <div className="form-group">
-              <select name="department" value={formData.department} onChange={handleChange}>
-                <option value="">Select Department *</option>
-                {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-              </select>
+              <label>Department</label>
+              <input
+                type="text"
+                name="department"
+                placeholder="Department *"
+                value={formData.department}
+                onChange={handleChange}
+              />
               {errors.department && <div className="error">{errors.department}</div>}
             </div>
             <div className="form-group">
-              <input type="text" name="mobileNumber" placeholder="Mobile Number *" value={formData.mobileNumber} onChange={handleChange} maxLength={10} />
-              {errors.mobileNumber && <div className="error">{errors.mobileNumber}</div>}
+              <label>Designation (Role)</label>
+              <input
+                type="text"
+                name="designation"
+                placeholder="Designation *"
+                value={formData.designation}
+                onChange={handleChange}
+              />
+              {errors.designation && <div className="error">{errors.designation}</div>}
             </div>
           </div>
 
-          <div className="form-row">
+          <div className="form-row-2">
             <div className="form-group">
-              <input type="text" name="username" placeholder="Username *" value={formData.username} onChange={handleChange} />
+              <label>Mobile Number</label>
+              <input
+                type="text"
+                name="mobileNumber"
+                placeholder="Mobile Number *"
+                value={formData.mobileNumber}
+                onChange={handleChange}
+                maxLength={10}
+              />
+              {errors.mobileNumber && <div className="error">{errors.mobileNumber}</div>}
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                placeholder="Email ID *"
+                value={formData.email}
+                onChange={handleChange}
+              />
+              {errors.email && <div className="error">{errors.email}</div>}
+            </div>
+            
+             
+          </div>
+
+          <h2 className="form-title-2">User Credinsical's</h2>
+          <div className="form-row-3">
+
+             <div className="form-group">
+              <label>User Name</label>
+              <input
+                type="text"
+                name="username"
+                placeholder="Username *"
+                disabled={editingUserId !== null}
+                value={formData.username}
+                onChange={handleChange}
+              />
               {errors.username && <div className="error">{errors.username}</div>}
             </div>
             <div className="form-group">
-              <input type="email" name="email" placeholder="Email ID *" value={formData.email} onChange={handleChange} />
-              {errors.email && <div className="error">{errors.email}</div>}
-            </div>
-            <div className="form-group">
-              <input type="password" name="password" placeholder="Password *" value={formData.password} onChange={handleChange} />
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                placeholder="Password *"
+                value={formData.password}
+                onChange={handleChange}
+              />
               {errors.password && <div className="error">{errors.password}</div>}
             </div>
-            <div className="form-group">
-              <input type="password" name="confirmPassword" placeholder="Confirm Password *" value={formData.confirmPassword} onChange={handleChange} />
+
+              <div className="form-group-2">
+                <label>Confirm Password</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password *"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
               {errors.confirmPassword && <div className="error">{errors.confirmPassword}</div>}
             </div>
-          </div>
+            </div>
         </form>
       </div>
 
-      {/* 🔍 Search Bar */}
       <div className="search-container">
         <input
           type="text"
           placeholder="Search Here..."
-          value={searchQuery}
-          onChange={handleSearchChange}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       <div className="table-container">
-        <h3>Submitted Users</h3>
+        <h3>Registered Users</h3>
         {filteredUsers.length > 0 ? (
           <table>
             <thead>
               <tr>
-                <th>Sr.No</th>
+                <th>ID</th>
                 <th>First Name</th>
                 <th>Last Name</th>
                 <th>Department</th>
-                <th>Mobile Number</th>
+                <th>Designation</th>
+                <th>Mobile</th>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Date & Time</th>
-                <th style={{ width: '80px' }}>Actions</th>
+                <th>Created At</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user, index) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td>{user.id}</td>
-                  <td>{user.firstName}</td>
-                  <td>{user.lastName}</td>
+                  <td>{user.first_name}</td>
+                  <td>{user.last_name}</td>
                   <td>{user.department}</td>
-                  <td>{user.mobileNumber}</td>
+                  <td>{user.designation}</td>
+                  <td>{user.mobile_number}</td>
                   <td>{user.username}</td>
                   <td>{user.email}</td>
-                  <td>{user.dateTime}</td>
+                  <td>{user.created_at}</td>
                   <td>
-                    <button className="edit-btn" onClick={() => handleEdit(index)}><FaEdit /></button>
-                    <button className="delete-btn" onClick={() => handleDelete(user.id)}><FaTrash /></button>
+                    <button className="action-btn edit-btn" onClick={() => handleEdit(user)}>
+                      <FaEdit />
+                    </button>
+                    <button className="action-btn delete-btn" onClick={() => handleDelete(user.id)}>
+                      <FaTrash />
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p>No users found</p>
+          <p>No users found.</p>
         )}
       </div>
     </>
   );
 };
 
-export default AddUser;
+export default UserRegister;
