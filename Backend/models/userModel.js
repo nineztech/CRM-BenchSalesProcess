@@ -1,67 +1,57 @@
 const db = require('../db');
 
-const createDepartmentTable = () => {
+const createUserTable = () => {
   const sql = `
-    CREATE TABLE IF NOT EXISTS adddepartment (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      department_name VARCHAR(100),
-      sequence_number INT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
+    CREATE TABLE usercreation (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  department VARCHAR(100),
+  designation VARCHAR(100),
+  mobile_number VARCHAR(20),
+  username VARCHAR(100) UNIQUE,
+  email VARCHAR(100),
+  password VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+); `;
   db.query(sql, (err) => {
     if (err) console.error('❌ Error creating table:', err.message);
     else console.log('✅ adddepartment table ready');
   });
 };
 
-const Department = {
-  getAll: (callback) => {
-    db.query('SELECT * FROM adddepartment ORDER BY sequence_number ASC', callback);
-  },
+ 
 
-  create: (name, callback) => {
-    db.query('SELECT MAX(sequence_number) AS maxSeq FROM adddepartment', (err, result) => {
-      if (err) return callback(err);
-      const nextSeq = (result[0].maxSeq || 0) + 1;
-      db.query(
-        'INSERT INTO adddepartment (department_name, sequence_number) VALUES (?, ?)',
-        [name, nextSeq],
-        callback
-      );
-    });
-  },
+// Insert new user
+function insertUser(userData, callback) {
+  const sql = `
+    INSERT INTO usercreation (
+      first_name, last_name, department, designation, 
+      mobile_number, username, email, password
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [
+    userData.firstName,
+    userData.lastName,
+    userData.department,
+    userData.designation,
+    userData.mobileNumber,
+    userData.username,
+    userData.email,
+    userData.password
+  ];
 
-  deleteById: (id, callback) => {
-    db.query('DELETE FROM adddepartment WHERE id = ?', [id], callback);
-  },
+  db.query(sql, values, callback);
+}
 
-  reorder: (orderedIds, callback) => {
-    const queries = orderedIds.map((id, index) => {
-      return new Promise((resolve, reject) => {
-        db.query(
-          'UPDATE adddepartment SET sequence_number = ? WHERE id = ?',
-          [index + 1, id],
-          (err) => {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-    });
+// Find user by username (for login)
+function findUserByUsername(username, callback) {
+  const sql = 'SELECT * FROM usercreation WHERE username = ?';
+  db.query(sql, [username], callback);
+}
 
-    Promise.all(queries)
-      .then(() => callback(null))
-      .catch(callback);
-  },
-
-  update: (id, name, callback) => {
-    db.query(
-      'UPDATE adddepartment SET department_name = ? WHERE id = ?',
-      [name, id],
-      callback
-    );
-  },
+module.exports = {
+  insertUser,
+  findUserByUsername,
+  createUserTable
 };
-
-module.exports = { Department, createDepartmentTable };

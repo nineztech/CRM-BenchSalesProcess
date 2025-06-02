@@ -70,7 +70,7 @@ export const AdminLogin = () => {
                 />
               </label>
               <button type="submit">Login</button>
-              <p className="admin-login-help">
+              <p className="admin-login-help bg-red-100">
                 Hey, not able to login? Contact the Admin Staff.
               </p>
             </form>
