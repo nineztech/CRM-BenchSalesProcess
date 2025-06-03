@@ -6,6 +6,7 @@ import AddUser from "./Pages/User/AddUser";
 import AddDepartment from "./Pages/Department/AddDepartment";
 import AdminRegister from "./Components/AdminRegister/AdminRegister";
 import "./App.css"; // For layout styling
+import AdminRoles from "./Components/AdminRoles/AdminRoles"
 
 // Separate component to use `useLocation` hook
 function AppContent() {
@@ -30,6 +31,7 @@ function AppContent() {
             <Route path="/adduser" element={<AddUser />} />
             <Route path="/adddepartment" element={<AddDepartment />} />
             <Route path="/adminregister" element={<AdminRegister />} />
+            <Route path="/adminroles" element={<AdminRoles />} />
           </Routes>
         </main>
       </div>
