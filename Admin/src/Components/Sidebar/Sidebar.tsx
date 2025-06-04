@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaTachometerAlt, FaUserPlus, FaUsers, FaBuilding } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import './sidebar.css';
-import logoIcon from '../../assets/OIP.jfif'; // Make sure to update the path to your logo
+import logoIcon from '../../assets/Logo.webp'; // Make sure to update the path to your logo
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);

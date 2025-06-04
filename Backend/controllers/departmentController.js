@@ -1,83 +1,204 @@
-const db = require('../db');
+const { Department } = require('../models/departmentModel');
 
-// Get all departments sorted by sequence_number
-exports.getAllDepartments = async (req, res) => {
+// Get all departments
+const getAllDepartments = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM adddepartment ORDER BY sequence_number ASC');
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    const departments = await Department.getAll();
+    res.status(200).json(departments);
+  } catch (error) {
+    console.error('Error in getAllDepartments:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };
 
-// Create a new department with correct sequence_number
-exports.createDepartment = async (req, res) => {
-  try {
-    const { department_name } = req.body;
-    if (!department_name) return res.status(400).json({ error: 'Department name required' });
-
-    const [maxRows] = await db.query('SELECT MAX(sequence_number) as maxSeq FROM adddepartment');
-    const newSeq = (maxRows[0].maxSeq || 0) + 1;
-
-    const [result] = await db.query(
-      'INSERT INTO adddepartment (department_name, sequence_number) VALUES (?, ?)',
-      [department_name, newSeq]
-    );
-
-    const [newDept] = await db.query('SELECT * FROM adddepartment WHERE id = ?', [result.insertId]);
-    res.status(201).json(newDept[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-};
-// Update department name
-exports.updateDepartment = async (req, res) => {
+// Get department by ID
+const getDepartmentById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-
-    // check duplicate
-    const [existing] = await db.query(
-      'SELECT * FROM adddepartment WHERE LOWER(department_name) = LOWER(?) AND id != ?',
-      [name, id]
-    );
-    if (existing.length > 0) {
-      return res.status(400).json({ error: 'Department already exists.' });
+    
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid department ID' });
     }
 
-    await db.query('UPDATE adddepartment SET department_name = ? WHERE id = ?', [name, id]);
-    res.json({ message: 'Department updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    const department = await Department.getById(parseInt(id));
+    
+    if (!department) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+
+    res.status(200).json(department);
+  } catch (error) {
+    console.error('Error in getDepartmentById:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
+  }
+};
+
+// Create new department
+const createDepartment = async (req, res) => {
+  try {
+    const { department_name } = req.body;
+
+    // Validation
+    if (!department_name || department_name.trim().length === 0) {
+      return res.status(400).json({ error: 'Department name is required' });
+    }
+
+    if (department_name.trim().length > 100) {
+      return res.status(400).json({ error: 'Department name must be less than 100 characters' });
+    }
+
+    // Check for duplicate name
+    const isDuplicate = await Department.checkDuplicateName(department_name.trim());
+    if (isDuplicate) {
+      return res.status(400).json({ error: 'Department name already exists' });
+    }
+
+    const newDepartment = await Department.create({
+      department_name: department_name.trim()
+    });
+
+    res.status(201).json({
+      message: 'Department created successfully',
+      department: newDepartment
+    });
+  } catch (error) {
+    console.error('Error in createDepartment:', error);
+    
+    if (error.message.includes('already exists')) {
+      return res.status(400).json({ error: 'Department name already exists' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
+  }
+};
+
+// Update department
+const updateDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { department_name } = req.body;
+
+    // Validation
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid department ID' });
+    }
+
+    if (!department_name || department_name.trim().length === 0) {
+      return res.status(400).json({ error: 'Department name is required' });
+    }
+
+    if (department_name.trim().length > 100) {
+      return res.status(400).json({ error: 'Department name must be less than 100 characters' });
+    }
+
+    // Check for duplicate name (excluding current department)
+    const isDuplicate = await Department.checkDuplicateName(department_name.trim(), parseInt(id));
+    if (isDuplicate) {
+      return res.status(400).json({ error: 'Department name already exists' });
+    }
+
+    const updatedDepartment = await Department.update(parseInt(id), {
+      department_name: department_name.trim()
+    });
+
+    res.status(200).json({
+      message: 'Department updated successfully',
+      department: updatedDepartment
+    });
+  } catch (error) {
+    console.error('Error in updateDepartment:', error);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+    
+    if (error.message.includes('already exists')) {
+      return res.status(400).json({ error: 'Department name already exists' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };
 
 // Delete department
-exports.deleteDepartment = async (req, res) => {
+const deleteDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    await db.query('DELETE FROM adddepartment WHERE id = ?', [id]);
-    res.json({ message: 'Department deleted' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid department ID' });
+    }
+
+    const result = await Department.delete(parseInt(id));
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error in deleteDepartment:', error);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 };
 
-// Update sequence order
-exports.updateSequence = async (req, res) => {
+// Update department sequence/order
+const updateDepartmentSequence = async (req, res) => {
   try {
-    const { order } = req.body; // array of ids
-    const queries = order.map((id, index) =>
-      db.query('UPDATE adddepartment SET sequence_number = ? WHERE id = ?', [index + 1, id])
-    );
-    await Promise.all(queries);
-    res.json({ message: 'Sequence updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    const { order } = req.body;
+
+    // Validation
+    if (!order || !Array.isArray(order) || order.length === 0) {
+      return res.status(400).json({ error: 'Order array is required and cannot be empty' });
+    }
+
+    // Validate each item in the order array
+    for (const item of order) {
+      if (!item.id || !item.sequence_number || isNaN(item.id) || isNaN(item.sequence_number)) {
+        return res.status(400).json({ 
+          error: 'Invalid order data format. Each item must have valid id and sequence_number' 
+        });
+      }
+    }
+
+    // Check for duplicate sequence numbers
+    const sequenceNumbers = order.map(item => item.sequence_number);
+    const uniqueSequences = [...new Set(sequenceNumbers)];
+    if (sequenceNumbers.length !== uniqueSequences.length) {
+      return res.status(400).json({ error: 'Duplicate sequence numbers found' });
+    }
+
+    const result = await Department.updateSequence(order);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error in updateDepartmentSequence:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
+};
+
+module.exports = {
+  getAllDepartments,
+  getDepartmentById,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  updateDepartmentSequence
 };

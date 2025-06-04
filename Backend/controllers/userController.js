@@ -89,7 +89,14 @@ exports.loginUser = (req, res) => {
 
 // Get all users
 exports.getAllUsers = (req, res) => {
-  const sql = 'SELECT * FROM usercreation';
+  const sql = `
+  SELECT 
+    id, first_name, last_name, email,username, mobile_number,department,
+    designation, 
+    DATE_FORMAT(created_at, '%d/%m/%y %H:%i:%s') AS created_at 
+  FROM usercreation 
+  LIMIT 0, 25
+`;
   db.query(sql, (err, results) => {
     if (err) {
       return res.status(500).json({ message: 'Database error while fetching users' });

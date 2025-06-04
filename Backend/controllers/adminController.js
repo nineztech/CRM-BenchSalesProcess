@@ -67,7 +67,16 @@ exports.loginAdmin = (req, res) => {
 
 // Get all admins (for frontend to list)
 exports.getAllAdmins = (req, res) => {
-  const sql = 'SELECT * FROM admincreation';
+
+ const sql = `
+  SELECT 
+    id, first_name, last_name, email,username, mobile_number, 
+    DATE_FORMAT(created_at, '%d/%m/%y %H:%i:%s') AS created_at 
+  FROM admincreation 
+  
+`;
+
+
   connection.query(sql, (err, results) => {
     if (err) {
       console.error('DB error:', err);
