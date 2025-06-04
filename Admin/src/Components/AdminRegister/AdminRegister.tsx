@@ -190,7 +190,7 @@ const AdminRegister: React.FC = () => {
                 {editingAdminId ? "Edit Admin" : "Admin Registration"}
               </h2>
               
-              <div className="flex gap-2.5">
+              <div className="flex gap-2.5">  
                 <button 
                   type="submit"
                   onClick={handleSubmit}

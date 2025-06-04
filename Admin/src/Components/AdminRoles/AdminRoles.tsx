@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import './adminroles.css';
 import Sidebar from '../Sidebar/Sidebar';
 import { FaEdit } from 'react-icons/fa';
 
@@ -81,10 +80,14 @@ const AdminRoles: React.FC = () => {
     <>
       <Sidebar />
 
-      <div className="roles-header-container">
-        <h2 className="roles-header-title">Roles & Rights</h2>
-        <div className="dropdown-actions">
-          <select value={selectedDepartment} onChange={(e) => setSelectedDepartment(e.target.value)}>
+      <div className="flex border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg  mt-10 ">
+        <h2 className="flex text-2xl text-gray-800 m-0 ">Roles & Rights</h2>
+        <div className="flex gap-2.5  ">
+          <select 
+            value={selectedDepartment} 
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-3 py-2 min-w-[180px] border border-gray-300 rounded text-sm outline-none"
+          >
             <option value="" disabled hidden>Select Department *</option>
             <option value="lead">Lead Generation</option>
             <option value="sales">Sales</option>
@@ -94,99 +97,80 @@ const AdminRoles: React.FC = () => {
             <option value="onboarding">Onboarding BGC</option>
           </select>
 
-          <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
+          <select 
+            value={selectedRole} 
+            onChange={(e) => setSelectedRole(e.target.value)}
+            className="px-3 py-2 min-w-[180px] border border-gray-300 rounded text-sm outline-none"
+          >
             <option value="" disabled hidden>Select Role *</option>
             <option value="manager">Manager</option>
             <option value="executive">Executive</option>
           </select>
 
-          <button onClick={() => setShowNewRoleForm(true)}>+ New Role</button>
+          <button 
+            onClick={() => setShowNewRoleForm(true)}
+            className="px-5 py-2 bg-slate-700 text-white border-none rounded-full text-sm cursor-pointer transition-colors duration-300 hover:bg-slate-800"
+          >
+            + New Role
+          </button>
         </div>
       </div>
 
       {showNewRoleForm && (
-        <div className="modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', zIndex: 1000
-        }}>
-          <div
-            className="modal-content"
-            style={{
-              position: 'relative', // Important for positioning the close icon
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '20px',
-              maxWidth: '600px',
-              margin: '80px auto',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
-            }}
-          >
-            {/* Close icon inside the modal-content, top right corner */}
+        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-[999]">
+          <div className="relative bg-white py-5 px-8 rounded-lg w-[500px] max-h-[90vh] overflow-y-auto shadow-2xl">
             <span
               onClick={() => {
                 setShowNewRoleForm(false);
                 setNewRoleName('');
                 setEditIndex(null);
               }}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '15px',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: '#333',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
+              className="absolute top-2.5 right-4 text-2xl font-bold text-gray-800 cursor-pointer select-none"
               title="Close"
             >
               &times;
             </span>
 
-            <h3>Add New Role</h3>
+            <h3 className="mb-4">Add New Role</h3>
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <div className="flex gap-2.5 mb-4">
               <input
                 type="text"
                 placeholder="Enter new role name"
                 value={newRoleName}
                 onChange={(e) => setNewRoleName(e.target.value)}
-                  style={{
-  height:"35px",  // reduced height
-  fontSize: '14px',     // smaller text
-  width: '300px',
-  borderRadius: '5px',
-  border: '1px solid #ccc',
-}}
-
+                className="h-9 text-sm w-[300px] rounded border border-gray-300 px-2"
               />
-              <button className="close-button" onClick={handleAddNewRole}>
+              <button 
+                className="px-6 py-2.5 bg-slate-700 text-white border-none rounded-full text-base cursor-pointer block ml-auto transition-colors duration-300"
+                onClick={handleAddNewRole}
+              >
                 {editIndex !== null ? 'Update Role' : 'Add Role'}
               </button>
             </div>
 
             {roleList.length > 0 && (
-              <table>
+              <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th>Sr. No.</th>
-                    <th>Created At</th>
-
-                    <th>Role Name</th>
-                    <th>Action</th>
+                    <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Sr. No.</th>
+                    <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Created At</th>
+                    <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Role Name</th>
+                    <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {roleList.map((item, index) => (
-                    <tr key={index}>
-
-                      <td>{index + 1}</td>
-                      <td>{item.createdAt}</td>
-
-                      <td>{item.role}</td>
-                      <td>
-                        <button className="edit-btn" onClick={() => handleEditRole(index)}>
-                          <FaEdit />
+                    <tr key={index} className="even:bg-gray-50">
+                      <td className="p-3 border border-gray-300 text-center text-sm">{index + 1}</td>
+                      <td className="p-3 border border-gray-300 text-center text-sm">{item.createdAt}</td>
+                      <td className="p-3 border border-gray-300 text-center text-sm">{item.role}</td>
+                      <td className="p-3 border border-gray-300 text-center text-sm">
+                        <button 
+                          className="bg-transparent border-none cursor-pointer text-base text-gray-800"
+                          onClick={() => handleEditRole(index)}
+                        >
+                          <FaEdit className="text-sm bg-transparent border-none cursor-pointer text-base" />
                         </button>
                       </td>
                     </tr>
@@ -199,26 +183,27 @@ const AdminRoles: React.FC = () => {
       )}
 
       {activities.length > 0 && (
-        <div className="rights-table">
-          <table>
+        <div className=" border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg  mt-10">
+          <table className="w-full border-collapse min-w-[600px]">
             <thead>
               <tr>
-                <th>Activity</th>
+                <th className="p-3 border border-gray-300 text-left text-sm bg-gray-100 font-semibold text-gray-800 w-[35%] text-left">Activity</th>
                 {permissions.map((perm) => (
-                  <th key={perm}>{perm}</th>
+                  <th key={perm} className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800 w-[16.25%]">{perm}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {activities.map((activity) => (
-                <tr key={activity}>
-                  <td>{activity}</td>
+                <tr key={activity} className="even:bg-gray-50">
+                  <td className="p-3 border border-gray-300 text-left text-sm w-[35%] text-left">{activity}</td>
                   {permissions.map((perm) => (
-                    <td key={perm}>
+                    <td key={perm} className="p-3 border border-gray-300 text-center text-sm w-[16.25%]">
                       <input
                         type="checkbox"
                         checked={rights[activity]?.[perm] || false}
                         onChange={() => handlePermissionChange(activity, perm)}
+                        className="w-4 h-4 cursor-pointer"
                       />
                     </td>
                   ))}
@@ -227,7 +212,12 @@ const AdminRoles: React.FC = () => {
             </tbody>
           </table>
 
-          <button className="assign-button" onClick={handleAssign}>Assign</button>
+          <button 
+            className="mt-5 px-6 py-2.5 bg-slate-700 text-white border-none rounded-full text-base cursor-pointer block ml-auto transition-colors duration-300 hover:bg-slate-800 md:w-30"
+            onClick={handleAssign}
+          >
+            Assign
+          </button>
         </div>
       )}
     </>

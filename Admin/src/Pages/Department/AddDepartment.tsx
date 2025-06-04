@@ -113,7 +113,7 @@ const AddDepartment: React.FC = () => {
       <div className="-ml-[260px]">
         {/* Title and Form Container */}
         <div className="w-3/5 mx-auto mt-10 border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
-          <div className="flex justify-between items-center gap-5 md:flex-row flex-col md:items-center items-stretch md:gap-5 gap-2.5">
+          <div className="flex justify-between gap-5 md:flex-row flex-col md:items-center items-stretch md:gap-5 gap-2.5">
             <h2 className="text-2xl font-bold pb-20 md:pb-0">Add Department</h2>
             
             <form 
