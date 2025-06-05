@@ -1,70 +1,54 @@
 import React, { useState } from 'react';
 import { FaTachometerAlt, FaUserPlus, FaUsers, FaBuilding } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import './sidebar.css';
-import logoIcon from '../../assets/logo.webp'; // Make sure to update the path to your logo
+import logoIcon from '../../assets/logo.webp'; // Ensure the path is correct
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div
-      className={`sidebar ${isExpanded ? 'expanded' : ''}`}
+      className={`fixed rounded-xl  top-0 left-0 h-full bg-gray-800 text-white z-50 transition-all duration-300 ${
+        isExpanded ? 'w-48' : 'w-16'
+      }`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       {/* Logo Section */}
-      <div className="sidebar-logo">
-        <img src={logoIcon} alt="Logo" className="logo-icon" />
-        {isExpanded && <span className="logo-text">NinezTech</span>}
+      <div className="flex items-center p-4 space-x-3">
+        <img src={logoIcon} alt="Logo" className="w-8 h-8 object-contain" />
+        {isExpanded && <span className="text-lg font-bold">NinezTech</span>}
       </div>
 
       {/* Menu List */}
-      <ul>
-        <li>
-          <FaTachometerAlt />
-          {isExpanded && (
-            <Link to="/dashboard">
-              <span>Dashboard</span>
-            </Link>
-          )}
-        </li>
-        <li>
-          <FaUserPlus />
-          {isExpanded && (
-            <Link to="/adminregister">
-              <span>Add Admin</span>
-            </Link>
-          )}
-        </li>
-        <li>
-          <FaUserPlus />
-
-          {isExpanded && (
-            <Link to="/adminroles">
-              <span> Roles & Rights</span>
-            </Link>
-          )}
-        </li>
-        <li>
-          <FaUsers />
-          {isExpanded && (
-            <Link to="/adduser">
-              <span>User Creation</span>
-            </Link>
-          )}
-        </li>
-        <li>
-          <FaBuilding />
-          {isExpanded && (
-            <Link to="/adddepartment">
-              <span>Department</span>
-            </Link>
-          )}
-        </li>
+      <ul className="mt-2 space-y-2">
+        <SidebarItem icon={<FaTachometerAlt />} to="/dashboard" text="Dashboard" isExpanded={isExpanded} />
+        <SidebarItem icon={<FaUserPlus />} to="/adminregister" text="Add Admin" isExpanded={isExpanded} />
+        <SidebarItem icon={<FaUserPlus />} to="/adminroles" text="Roles & Rights" isExpanded={isExpanded} />
+        <SidebarItem icon={<FaUsers />} to="/adduser" text="User Creation" isExpanded={isExpanded} />
+        <SidebarItem icon={<FaBuilding />} to="/adddepartment" text="Department" isExpanded={isExpanded} />
       </ul>
     </div>
   );
 };
+
+// Sidebar Item Component
+type SidebarItemProps = {
+  icon: React.ReactNode;
+  to: string;
+  text: string;
+  isExpanded: boolean;
+};
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, to, text, isExpanded }) => (
+  <li className="flex items-center p-3 cursor-pointer hover:bg-gray-700 transition-colors">
+    {icon}
+    {isExpanded && (
+      <Link to={to} className="ml-3 text-white whitespace-nowrap">
+        {text}
+      </Link>
+    )}
+  </li>
+);
 
 export default Sidebar;

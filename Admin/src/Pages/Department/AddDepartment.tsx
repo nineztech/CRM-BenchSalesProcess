@@ -16,7 +16,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { FaEdit, FaGripVertical, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
-import './adddepartment.css';
 
 interface Department {
   id: number;
@@ -31,20 +30,18 @@ const AddDepartment: React.FC = () => {
 
   const sensors = useSensors(useSensor(PointerSensor));
 
- useEffect(() => {
-  fetchDepartments();
-}, []);
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
 
-const fetchDepartments = async () => {
-  try {
-    const response = await axios.get<Department[]>('http://localhost:5000/api/departments');
-    setDepartments(response.data);
-  } catch (error) {
-    console.error('Error fetching departments:', error);
-  }
-   
-};
-
+  const fetchDepartments = async () => {
+    try {
+      const response = await axios.get<Department[]>('http://localhost:5000/api/departments');
+      setDepartments(response.data);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,15 +53,15 @@ const fetchDepartments = async () => {
 
     try {
       if (editId) {
-  await axios.put(`http://localhost:5000/api/departments/${editId}`, {
-    name: trimmed,
-  });
-  setEditId(null);
-} else {
-  await axios.post('http://localhost:5000/api/departments', {
-    department_name: trimmed,
-  });
-}
+        await axios.put(`http://localhost:5000/api/departments/${editId}`, {
+          name: trimmed,
+        });
+        setEditId(null);
+      } else {
+        await axios.post('http://localhost:5000/api/departments', {
+          department_name: trimmed,
+        });
+      }
 
       setDepartmentName('');
       fetchDepartments();
@@ -102,9 +99,8 @@ const fetchDepartments = async () => {
 
       try {
         await axios.post('http://localhost:5000/api/departments/reorder', {
-  order: newOrder.map((d) => d.id),
-});
-
+          order: newOrder.map((d) => d.id),
+        });
       } catch (error) {
         console.error('Error saving new order:', error);
       }
@@ -114,26 +110,36 @@ const fetchDepartments = async () => {
   return (
     <>
       <Sidebar />
-      <div className="add-department-wrapper">
-        <div className="add-department-container">
-          <div className="title-form-row">
-            <h2 className="form-title">Add Department</h2>
-            <form className="inline-form" onSubmit={handleSubmit}>
+      <div className="-ml-[260px]">
+        {/* Title and Form Container */}
+        <div className="w-3/5 mx-auto mt-10 border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
+          <div className="flex justify-between gap-5 md:flex-row flex-col md:items-center items-stretch md:gap-5 gap-2.5">
+            <h2 className="text-2xl font-bold pb-20 md:pb-0">Add Department</h2>
+            
+            <form 
+              className="flex items-center gap-2.5 mt-7 md:mt-0 flex-1 min-w-[200px] md:w-auto w-full" 
+              onSubmit={handleSubmit}
+            >
               <input
                 type="text"
                 placeholder="Enter department name"
                 value={departmentName}
                 onChange={(e) => setDepartmentName(e.target.value)}
                 required
+                className="flex-grow p-2.5 text-base rounded border border-gray-300 md:w-auto w-full"
               />
-              <button type="submit" className="btn">
+              <button 
+                type="submit" 
+                className="px-5 py-2.5 bg-[#3e5f80] text-white border-none rounded-[30px] text-base cursor-pointer hover:bg-[#2f4e6a] md:w-auto w-full"
+              >
                 {editId ? 'Update' : 'Add'}
               </button>
             </form>
           </div>
         </div>
 
-        <div className="add-department-container">
+        {/* Departments Table Container */}
+        <div className="w-3/5 mx-auto mt-10 border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
           {departments.length > 0 && (
             <DndContext
               sensors={sensors}
@@ -144,14 +150,14 @@ const fetchDepartments = async () => {
                 items={departments.map((d) => d.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <table className="department-table">
+                <table className="w-full border-collapse mt-7 table-fixed md:text-base text-sm">
                   <thead>
                     <tr>
-                      <th className="drag-handle-column"></th>
-                      <th className="sr-no">Sr.No</th>
-                      <th className="department">Department</th>
-                      <th className="date-time">Date & Time</th>
-                      <th className="action-column">Actions</th>
+                      <th className="w-2.5 text-center cursor-grab select-none border border-gray-300 p-2.5 bg-gray-100 overflow-hidden text-ellipsis whitespace-nowrap"></th>
+                      <th className="w-10 text-center whitespace-nowrap border border-gray-300 p-2.5 bg-gray-100 overflow-hidden text-ellipsis">Sr.No</th>
+                      <th className="w-75 whitespace-nowrap overflow-hidden text-ellipsis text-left border border-gray-300 p-2.5 bg-gray-100">Department</th>
+                      <th className="w-40 whitespace-nowrap text-left overflow-hidden text-ellipsis border border-gray-300 p-2.5 bg-gray-100">Date & Time</th>
+                      <th className="w-20 text-center whitespace-nowrap border border-gray-300 p-2.5 bg-gray-100 overflow-hidden text-ellipsis">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,17 +208,35 @@ const DraggableRow: React.FC<RowProps> = ({
 
   return (
     <tr ref={setNodeRef} style={style}>
-      <td {...attributes} {...listeners} className="drag-handle-column" style={{ cursor: 'grab', textAlign: 'center' }}>
+      <td 
+        {...attributes} 
+        {...listeners} 
+        className="cursor-grab text-center border border-gray-300 p-2.5 overflow-hidden text-ellipsis whitespace-nowrap"
+      >
         <FaGripVertical />
       </td>
-      <td className="sr-no" style={{ textAlign: 'center' }}>{index + 1}</td>
-      <td className="department">{department_name}</td>
-      <td className="date-time">{created_at}</td>
-      <td className="action-column">
-        <button onClick={() => onEdit(id)} className="edit-btn" title="Edit">
+      <td className="text-center border border-gray-300 p-2.5 overflow-hidden text-ellipsis whitespace-nowrap">
+        {index + 1}
+      </td>
+      <td className="border border-gray-300 p-2.5 whitespace-nowrap overflow-hidden text-ellipsis text-left">
+        {department_name}
+      </td>
+      <td className="border border-gray-300 p-2.5 whitespace-nowrap text-left overflow-hidden text-ellipsis">
+        {created_at}
+      </td>
+      <td className="border border-gray-300 p-2.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+        <button 
+          onClick={() => onEdit(id)} 
+          className="bg-transparent border-none cursor-pointer text-lg text-blue-600 hover:text-blue-800 mr-2" 
+          title="Edit"
+        >
           <FaEdit />
         </button>
-        <button onClick={() => onDelete(id)} className="delete-btn" title="Delete">
+        <button 
+          onClick={() => onDelete(id)} 
+          className="bg-transparent border-none cursor-pointer text-lg text-red-600 hover:text-red-800" 
+          title="Delete"
+        >
           <FaTrash />
         </button>
       </td>
@@ -221,4 +245,3 @@ const DraggableRow: React.FC<RowProps> = ({
 };
 
 export default AddDepartment;
- 

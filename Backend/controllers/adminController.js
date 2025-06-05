@@ -124,3 +124,39 @@ export const loginAdmin = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+export const getAllAdmins = async (req, res) => {
+  try {
+    // Default pagination values
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Count total admins
+    const { count, rows: admins } = await User.findAndCountAll({
+      where: { role: 'admin' },
+      attributes: { exclude: ['password'] },
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']] // Optional: newest first
+    });
+
+    const totalPages = Math.ceil(count / limit);
+
+    res.status(200).json({
+      success: true,
+      message: 'Admins fetched successfully',
+      currentPage: page,
+      totalPages,
+      totalAdmins: count,
+      data: admins
+    });
+  } catch (error) {
+    console.error('Get Admins Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+

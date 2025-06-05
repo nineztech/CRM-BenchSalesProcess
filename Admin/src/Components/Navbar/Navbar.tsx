@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa"; // Import an admin icon
-import "./navbar.css";
 
 export const Navbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -29,27 +28,34 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-      <div className="navbar-container">
-        {/* Left: Logo */}
-        <div className="navbar-left">
-          
+    <nav
+      className={`fixed top-0 left-0 w-full h-16 z-50 transition-all duration-300 ${
+        scrolled ? "bg-white shadow-lg" : "bg-white/90 backdrop-blur-md"
+      }`}
+    >
+      <div className="flex items-center justify-between max-w-screen-xl mx-auto px-6">
+        {/* Left: Logo Placeholder */}
+        <div className="flex items-center space-x-3">
+          {/* Add your logo here if needed */}
         </div>
 
         {/* Center: Project Name */}
-        <div className="navbar-center">
-          <h1>CRM - Customer Requirement Management</h1>
+        <div className="text-lg font-bold text-center">
+          CRM - Customer Requirement Management
         </div>
 
         {/* Right: Admin Icon with Upload Image */}
-        <div className="navbar-right">
-          {/* If the profile image exists, show it; otherwise, show the default icon */}
+        <div className="relative flex items-center cursor-pointer">
           <label htmlFor="profile-upload">
-            <div className="admin-icon-container">
+            <div className="w-10 h-10 flex justify-center items-center rounded-full bg-gray-200 hover:bg-gray-300 transition-all">
               {profileImage ? (
-                <img src={profileImage} alt="Admin" className="admin-profile-image" />
+                <img
+                  src={profileImage}
+                  alt="Admin"
+                  className="w-full h-full rounded-full object-cover"
+                />
               ) : (
-                <FaUserCircle className="admin-icon" />
+                <FaUserCircle className="text-gray-700 text-2xl" />
               )}
             </div>
           </label>
@@ -57,7 +63,7 @@ export const Navbar: React.FC = () => {
             type="file"
             id="profile-upload"
             accept="image/*"
-            style={{ display: "none" }}
+            className="hidden"
             onChange={handleImageUpload}
           />
         </div>
