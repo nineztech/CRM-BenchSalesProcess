@@ -49,7 +49,7 @@ const startServer = async () => {
     await connectDB();
     
     // Sync Database with Models
-    await sequelize.sync({force:true});
+    await sequelize.sync();
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
     
     // Start server

@@ -1,15 +1,10 @@
 import User from '../models/userModel.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Admin Registration
 export const registerAdmin = async (req, res) => {
-  try {
-    console.log("admin api call");
-    console.log("Request body:", req.body);
-    
+  try {  
     const { 
       email, 
       password, 
@@ -19,7 +14,6 @@ export const registerAdmin = async (req, res) => {
       username 
     } = req.body;
 
-    // Validate required fields
     if (!email || !password || !firstname || !lastname || !phoneNumber || !username) {
       return res.status(400).json({ 
         message: 'All fields are required', 
@@ -50,7 +44,6 @@ export const registerAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Username already taken' });
     }
 
-    // ✅ Create admin with empty department & designation
     const newAdmin = await User.create({ 
       email, 
       password, 
@@ -104,25 +97,21 @@ export const registerAdmin = async (req, res) => {
   }
 };
 
-// Admin Login
 export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find admin
     const admin = await User.findOne({ where: { username, role: 'admin' } });
 
     if (!admin) {
       return res.status(404).json({ message: 'Admin not found' });
     }
 
-    // Check password
     const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: admin.id, role: admin.role },
       JWT_SECRET,
