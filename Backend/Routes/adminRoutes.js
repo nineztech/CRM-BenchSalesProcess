@@ -1,7 +1,10 @@
-const express = require('express');
+import express from 'express';
+import * as adminController from '../controllers/adminController.js';
+
 const router = express.Router();
-const { createAdmin } = require('../controllers/adminController');
 
-router.post('/create', createAdmin);
+// Routes
+router.post("/login",adminController.loginAdmin)
+router.post("/register",adminController.registerAdmin)
 
-module.exports = router;
+export default router;

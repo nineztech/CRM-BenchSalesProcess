@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { createDepartment } = require('../controllers/departmentController');
+const departmentController = require('../controllers/departmentController');
 
-router.post('/create', createDepartment);
+// Remove the extra 'departments' prefix from routes
+router.get('/', departmentController.getAllDepartments);
+router.post('/', departmentController.createDepartment);
+router.put('/:id', departmentController.updateDepartment);
+router.delete('/:id', departmentController.deleteDepartment);
+router.post('/reorder', departmentController.updateSequence);
+
 
 module.exports = router;

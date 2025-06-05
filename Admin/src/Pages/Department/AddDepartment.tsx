@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../../Components/Sidebar/Sidebar';
 import {
   DndContext,
@@ -14,28 +14,39 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FaEdit, FaGripVertical } from 'react-icons/fa';
+import { FaEdit, FaGripVertical, FaTrash } from 'react-icons/fa';
+import axios from 'axios';
 import './adddepartment.css';
 
 interface Department {
-  id: string;
-  name: string;
-  dateTime: string;
+  id: number;
+  department_name: string;
+  created_at: string;
 }
-
-const LOCAL_STORAGE_KEY = 'departments';
 
 const AddDepartment: React.FC = () => {
   const [departmentName, setDepartmentName] = useState('');
-  const [departments, setDepartments] = useState<Department[]>(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
-  const [editId, setEditId] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [editId, setEditId] = useState<number | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  const handleSubmit = (e: React.FormEvent) => {
+ useEffect(() => {
+  fetchDepartments();
+}, []);
+
+const fetchDepartments = async () => {
+  try {
+    const response = await axios.get<Department[]>('http://localhost:5000/api/departments');
+    setDepartments(response.data);
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+  }
+   
+};
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = departmentName.trim();
     if (!trimmed) {
@@ -43,62 +54,60 @@ const AddDepartment: React.FC = () => {
       return;
     }
 
-    const duplicate = departments.find(
-      (d) => d.name.toLowerCase() === trimmed.toLowerCase() && d.id !== editId
-    );
-    if (duplicate) {
-      alert('This department already exists.');
-      return;
-    }
+    try {
+      if (editId) {
+  await axios.put(`http://localhost:5000/api/departments/${editId}`, {
+    name: trimmed,
+  });
+  setEditId(null);
+} else {
+  await axios.post('http://localhost:5000/api/departments', {
+    department_name: trimmed,
+  });
+}
 
-    if (editId) {
-      const updated = departments.map((dept) =>
-        dept.id === editId ? { ...dept, name: trimmed } : dept
-      );
-      setDepartments(updated);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      setEditId(null);
-    } else {
-      const newDepartment: Department = {
-        id: crypto.randomUUID(),
-        name: trimmed,
-        dateTime: new Date().toLocaleString(),
-      };
-      const updated = [...departments, newDepartment];
-      setDepartments(updated);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      setDepartmentName('');
+      fetchDepartments();
+    } catch (error) {
+      console.error('Error submitting department:', error);
     }
-    setDepartmentName('');
   };
 
-  const handleEdit = (id: string) => {
+  const handleEdit = (id: number) => {
     const dept = departments.find((d) => d.id === id);
     if (dept) {
-      setDepartmentName(dept.name);
+      setDepartmentName(dept.department_name);
       setEditId(id);
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this department?')) {
-      const updated = departments.filter((d) => d.id !== id);
-      setDepartments(updated);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      if (editId === id) {
-        setEditId(null);
-        setDepartmentName('');
+      try {
+        await axios.delete(`http://localhost:5000/api/departments/${id}`);
+        fetchDepartments();
+      } catch (error) {
+        console.error('Error deleting department:', error);
       }
     }
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
       const oldIndex = departments.findIndex((d) => d.id === active.id);
       const newIndex = departments.findIndex((d) => d.id === over.id);
       const newOrder = arrayMove(departments, oldIndex, newIndex);
       setDepartments(newOrder);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newOrder));
+
+      try {
+        await axios.post('http://localhost:5000/api/departments/reorder', {
+  order: newOrder.map((d) => d.id),
+});
+
+      } catch (error) {
+        console.error('Error saving new order:', error);
+      }
     }
   };
 
@@ -106,27 +115,23 @@ const AddDepartment: React.FC = () => {
     <>
       <Sidebar />
       <div className="add-department-wrapper">
-       <div className="add-department-container">
-  <div className="title-form-row">
-    <h2 className="form-title">Add Department</h2>
-
-    <form className="inline-form" onSubmit={handleSubmit}>
-      <input
-        type="text"
-        placeholder="Enter department name"
-        value={departmentName}
-        onChange={(e) => setDepartmentName(e.target.value)}
-        required
-      />
-      <button type="submit" className="btn">
-        Add
-      </button>
-    </form>
-  </div>
-
-  {/* The department table would go here, but you said no change needed */}
-</div>
-
+        <div className="add-department-container">
+          <div className="title-form-row">
+            <h2 className="form-title">Add Department</h2>
+            <form className="inline-form" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                placeholder="Enter department name"
+                value={departmentName}
+                onChange={(e) => setDepartmentName(e.target.value)}
+                required
+              />
+              <button type="submit" className="btn">
+                {editId ? 'Update' : 'Add'}
+              </button>
+            </form>
+          </div>
+        </div>
 
         <div className="add-department-container">
           {departments.length > 0 && (
@@ -155,8 +160,8 @@ const AddDepartment: React.FC = () => {
                         key={dept.id}
                         id={dept.id}
                         index={index}
-                        name={dept.name}
-                        dateTime={dept.dateTime}
+                        department_name={dept.department_name}
+                        created_at={dept.created_at}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                       />
@@ -173,19 +178,19 @@ const AddDepartment: React.FC = () => {
 };
 
 interface RowProps {
-  id: string;
+  id: number;
   index: number;
-  name: string;
-  dateTime: string;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  department_name: string;
+  created_at: string;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
 }
 
 const DraggableRow: React.FC<RowProps> = ({
   id,
   index,
-  name,
-  dateTime,
+  department_name,
+  created_at,
   onEdit,
   onDelete,
 }) => {
@@ -201,11 +206,14 @@ const DraggableRow: React.FC<RowProps> = ({
         <FaGripVertical />
       </td>
       <td className="sr-no" style={{ textAlign: 'center' }}>{index + 1}</td>
-      <td className="department">{name}</td>
-      <td className="date-time">{dateTime}</td>
+      <td className="department">{department_name}</td>
+      <td className="date-time">{created_at}</td>
       <td className="action-column">
         <button onClick={() => onEdit(id)} className="edit-btn" title="Edit">
           <FaEdit />
+        </button>
+        <button onClick={() => onDelete(id)} className="delete-btn" title="Delete">
+          <FaTrash />
         </button>
       </td>
     </tr>
@@ -213,3 +221,4 @@ const DraggableRow: React.FC<RowProps> = ({
 };
 
 export default AddDepartment;
+ 

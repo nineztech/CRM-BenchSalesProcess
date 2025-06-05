@@ -1,7 +1,19 @@
-const express = require('express');
+import express from 'express';
+import {
+  register,
+  login,
+  getProfile,
+  logout
+} from '../controllers/userController.js';
+
 const router = express.Router();
-const { createUser } = require('../controllers/userController');
 
-router.post('/create', createUser);
+// User routes
+router.post('/register', register);
+router.post('/login', login);
 
-module.exports = router;
+// Protected routes — should be behind authentication middleware
+router.get('/profile', getProfile);
+router.post('/logout', logout);
+
+export default router;

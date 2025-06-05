@@ -1,9 +1,137 @@
-const { insertAdmin } = require('../models/adminModel');
+import User from '../models/userModel.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
-exports.createAdmin = (req, res) => {
-  const { firstName, lastName, mobileNumber, username, email, password,confirmPassword } = req.body;
-  insertAdmin(firstName, lastName, mobileNumber, username, email, password,confirmPassword, (err, result) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    res.status(201).json({ message: 'Admin created successfully', id: result.insertId });
-  });
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Admin Registration
+export const registerAdmin = async (req, res) => {
+  try {
+    console.log("admin api call");
+    console.log("Request body:", req.body);
+    
+    const { 
+      email, 
+      password, 
+      firstname, 
+      lastname, 
+      phoneNumber, 
+      username 
+    } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !firstname || !lastname || !phoneNumber || !username) {
+      return res.status(400).json({ 
+        message: 'All fields are required', 
+        required: ['email', 'password', 'firstname', 'lastname', 'phoneNumber', 'username']
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    if (isNaN(phoneNumber) || phoneNumber.toString().length < 10) {
+      return res.status(400).json({ message: 'Invalid phone number' });
+    }
+
+    const existingAdminByEmail = await User.findOne({ where: { email } });
+    if (existingAdminByEmail) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    const existingAdminByUsername = await User.findOne({ where: { username } });
+    if (existingAdminByUsername) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+
+    // ✅ Create admin with empty department & designation
+    const newAdmin = await User.create({ 
+      email, 
+      password, 
+      firstname, 
+      lastname, 
+      phoneNumber, 
+      username,
+      role: 'admin',
+      department: null,
+      designation: null
+    });
+
+    const adminResponse = {
+      id: newAdmin.id,
+      email: newAdmin.email,
+      firstname: newAdmin.firstname,
+      lastname: newAdmin.lastname,
+      phoneNumber: newAdmin.phoneNumber,
+      username: newAdmin.username,
+      role: newAdmin.role,
+      createdAt: newAdmin.createdAt
+    };
+
+    res.status(201).json({ 
+      message: 'Admin registered successfully', 
+      admin: adminResponse 
+    });
+
+  } catch (error) {
+    console.error('Admin Register Error:', error);
+    
+    if (error.name === 'SequelizeValidationError') {
+      const validationErrors = error.errors.map(err => ({
+        field: err.path,
+        message: err.message
+      }));
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: validationErrors 
+      });
+    }
+
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors[0].path;
+      return res.status(400).json({ 
+        message: `${field} already exists` 
+      });
+    }
+
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Admin Login
+export const loginAdmin = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find admin
+    const admin = await User.findOne({ where: { username, role: 'admin' } });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Check password
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: admin.id, role: admin.role },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({ message: 'Login successful', token });
+  } catch (error) {
+    console.error('Admin Login Error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };

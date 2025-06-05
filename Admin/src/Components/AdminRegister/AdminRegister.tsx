@@ -1,5 +1,6 @@
+// src/Pages/AdminRegister/AdminRegister.tsx
 import React, { useState, useEffect } from 'react';
-import './adminregister.css';
+import './adminregister.css'
 import Sidebar from '../../Components/Sidebar/Sidebar';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 
@@ -15,17 +16,24 @@ const AdminRegister: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [admins, setAdmins] = useState<any[]>(() => {
-    const saved = localStorage.getItem("admins");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPassword] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("admins", JSON.stringify(admins));
-  }, [admins]);
+    fetchAdmins();
+  }, []);
+
+  const fetchAdmins = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/all');
+      const data = await response.json();
+      setAdmins(data);
+    } catch (err) {
+      console.error("Failed to fetch admins", err);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,7 +42,7 @@ const AdminRegister: React.FC = () => {
     let errorMsg = "";
     if (!value.trim()) {
       errorMsg = "This field is required";
-    } else if (name === "mobileNumber" && (!/^\d{10}$/.test(value))) {
+    } else if (name === "mobileNumber" && !/^\d{10}$/.test(value)) {
       errorMsg = "Enter a valid 10-digit mobile number";
     } else if (name === "confirmPassword" && value !== formData.password) {
       errorMsg = "Passwords do not match";
@@ -43,7 +51,7 @@ const AdminRegister: React.FC = () => {
     setErrors({ ...errors, [name]: errorMsg });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: { [key: string]: string } = {};
@@ -60,27 +68,31 @@ const AdminRegister: React.FC = () => {
       return;
     }
 
-    const currentDateTime = new Date().toLocaleString();
+    try {
+      const method = editingAdminId ? 'PUT' : 'POST';
+      const url = editingAdminId
+        ? `http://localhost:5000/api/admin/${editingAdminId}`
+        : 'http://localhost:5000/api/admin/register';
 
-    if (editIndex !== null) {
-      const updatedAdmins = [...admins];
-      updatedAdmins[editIndex] = {
-        ...formData,
-        id: updatedAdmins[editIndex].id,
-        dateTime: currentDateTime,
-      };
-      setAdmins(updatedAdmins);
-      setEditIndex(null);
-    } else {
-      const newAdmin = {
-        ...formData,
-        id: admins.length > 0 ? admins[admins.length - 1].id + 1 : 1,
-        dateTime: currentDateTime,
-      };
-      setAdmins([...admins, newAdmin]);
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(editingAdminId ? "✅ Admin updated successfully!" : "✅ Admin registered successfully!");
+        handleReset();
+        fetchAdmins();
+      } else {
+        alert(`❌ Failed: ${result.message}`);
+      }
+    } catch (err) {
+      alert("❌ Error connecting to server.");
+      console.error(err);
     }
-
-    handleReset();
   };
 
   const handleReset = () => {
@@ -94,36 +106,51 @@ const AdminRegister: React.FC = () => {
       confirmPassword: "",
     });
     setErrors({});
-    setEditIndex(null);
+    setEditingAdminId(null);
   };
 
-  const handleEdit = (index: number) => {
-    const admin = admins[index];
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this admin?")) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.message);
+        fetchAdmins();
+      } else {
+        alert(`❌ Failed: ${result.message}`);
+      }
+    } catch (err) {
+      console.error("Error deleting admin:", err);
+      alert("❌ Server error");
+    }
+  };
+
+  const handleEdit = (admin: any) => {
     setFormData({
-      firstName: admin.firstName,
-      lastName: admin.lastName,
-      mobileNumber: admin.mobileNumber,
+      firstName: admin.first_name,
+      lastName: admin.last_name,
+      mobileNumber: admin.mobile_number,
       username: admin.username,
       email: admin.email,
-      password: admin.password,
+      password: admin.password, // Show actual value in edit mode
       confirmPassword: admin.password,
     });
-    setEditIndex(index);
-  };
-
-  const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this admin?")) {
-      const filtered = admins.filter(admin => admin.id !== id);
-      setAdmins(filtered);
-    }
+    setEditingAdminId(admin.id);
+    setErrors({});
   };
 
   const filteredAdmins = admins.filter((admin) => {
     const search = searchTerm.toLowerCase();
     return (
-      admin.firstName.toLowerCase().includes(search) ||
-      admin.lastName.toLowerCase().includes(search) ||
-      admin.mobileNumber.toLowerCase().includes(search) ||
+      admin.first_name.toLowerCase().includes(search) ||
+      admin.last_name.toLowerCase().includes(search) ||
+      admin.mobile_number.toLowerCase().includes(search) ||
       admin.username.toLowerCase().includes(search) ||
       admin.email.toLowerCase().includes(search)
     );
@@ -133,51 +160,104 @@ const AdminRegister: React.FC = () => {
     <>
       <Sidebar />
       <div className="form-container">
-        <h2 className="form-title">Admin Registration</h2>
+        <h2 className="form-title">{editingAdminId ? "Edit Admin" : "Admin Registration"}</h2>
         <form className="user-form" onSubmit={handleSubmit} onReset={handleReset}>
           <div className="form-buttons">
-            <button type="submit">{editIndex !== null ? "Update" : "Save"}</button>
+            <button type="submit">{editingAdminId ? "Update" : "Save"}</button>
             <button type="reset">Discard</button>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <input type="text" name="firstName" placeholder="First Name *" value={formData.firstName} onChange={handleChange} />
+              <label>First Name</label>
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First Name *"
+                value={formData.firstName}
+                onChange={handleChange}
+              />
               {errors.firstName && <div className="error">{errors.firstName}</div>}
             </div>
             <div className="form-group">
-              <input type="text" name="lastName" placeholder="Last Name *" value={formData.lastName} onChange={handleChange} />
+              <label>Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                placeholder="Last Name *"
+                value={formData.lastName}
+                onChange={handleChange}
+              />
               {errors.lastName && <div className="error">{errors.lastName}</div>}
             </div>
             <div className="form-group">
-              <input type="text" name="mobileNumber" placeholder="Mobile Number *" value={formData.mobileNumber} onChange={handleChange} maxLength={10} />
+              <label>Mobile Number</label>
+              <input
+                type="text"
+                name="mobileNumber"
+                placeholder="Mobile Number *"
+                value={formData.mobileNumber}
+                onChange={handleChange}
+                maxLength={10}
+              />
               {errors.mobileNumber && <div className="error">{errors.mobileNumber}</div>}
             </div>
             <div className="form-group">
-              <input type="text" name="username" placeholder="Username *" value={formData.username} onChange={handleChange} />
-              {errors.username && <div className="error">{errors.username}</div>}
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                placeholder="Email ID *"
+                value={formData.email}
+                onChange={handleChange}
+              />
+              {errors.email && <div className="error">{errors.email}</div>}
             </div>
           </div>
 
+          <h2 className="form-title-2">Admin Credentials</h2>
           <div className="form-row">
             <div className="form-group">
-              <input type="email" name="email" placeholder="Email ID *" value={formData.email} onChange={handleChange} />
-              {errors.email && <div className="error">{errors.email}</div>}
+              <label>User Name</label>
+              <input
+                type="text"
+                name="username"
+                placeholder="Username *"
+                value={formData.username}
+                onChange={handleChange}
+                disabled={editingAdminId !== null}
+              />
+              {errors.username && <div className="error">{errors.username}</div>}
             </div>
             <div className="form-group">
-              <input type="password" name="password" placeholder="Password *" value={formData.password} onChange={handleChange} />
+              <label>Password</label>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password *"
+                value={formData.password}
+                onChange={handleChange}
+              />
               {errors.password && <div className="error">{errors.password}</div>}
             </div>
             <div className="form-group">
-              <input type="password" name="confirmPassword" placeholder="Confirm Password *" value={formData.confirmPassword} onChange={handleChange} />
+              <label>Confirm Password</label>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm Password *"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
               {errors.confirmPassword && <div className="error">{errors.confirmPassword}</div>}
             </div>
-            <div className="form-group empty"></div>
+             <div className="form-group">
+ 
+            </div>
           </div>
         </form>
       </div>
 
-      {/* Search bar between form and table */}
       <div className="search-container">
         <input
           type="text"
@@ -189,7 +269,6 @@ const AdminRegister: React.FC = () => {
 
       <div className="table-container">
         <h3>Registered Admins</h3>
-
         {filteredAdmins.length > 0 ? (
           <table>
             <thead>
@@ -200,25 +279,27 @@ const AdminRegister: React.FC = () => {
                 <th>Mobile</th>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Date & Time</th>
+                <th>Created At</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredAdmins.map((admin, index) => (
+              {filteredAdmins.map((admin) => (
                 <tr key={admin.id}>
                   <td>{admin.id}</td>
-                  <td>{admin.firstName}</td>
-                  <td>{admin.lastName}</td>
-                  <td>{admin.mobileNumber}</td>
+                  <td>{admin.first_name}</td>
+                  <td>{admin.last_name}</td>
+                  <td>{admin.mobile_number}</td>
                   <td>{admin.username}</td>
                   <td>{admin.email}</td>
-                  <td>{admin.dateTime}</td>
+                  <td>{admin.created_at}</td>
                   <td>
-                    <div className="action-buttons">
-                      <button className="edit-btn" onClick={() => handleEdit(index)}><FaEdit /></button>
-                      <button className="delete-btn" onClick={() => handleDelete(admin.id)}><FaTrash /></button>
-                    </div>
+                    <button className="action-btn edit-btn" onClick={() => handleEdit(admin)}>
+                      <FaEdit />
+                    </button>
+                    <button className="action-btn delete-btn" onClick={() => handleDelete(admin.id)}>
+                      <FaTrash />
+                    </button>
                   </td>
                 </tr>
               ))}
