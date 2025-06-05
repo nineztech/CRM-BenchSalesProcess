@@ -1,5 +1,5 @@
 .form-container {
-    width: 90%;
+    width: 100%;
     margin: 40px auto;
     margin-top: 44px;
     margin-left: 40px;
@@ -173,7 +173,7 @@
     }
 }
 .table-container {
-  width: 80%;
+  width: 95%;
   margin: 40px auto 0 70px;
   border: 2px solid #ccc;
   padding: 20px;
@@ -187,6 +187,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   table-layout: auto; /* Allow columns to size based on content */
+  font-size: 11px;
 }
 
 th, td {
@@ -197,6 +198,8 @@ th, td {
   overflow: hidden;
   text-overflow: ellipsis; /* Show ellipsis for long content */
   max-width: 250px;
+   font-family: Verdana, Geneva, Tahoma, sans-serif;
+   
 }
 
 /* Optional: Add a minimum width to prevent content squishing */

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FaEdit, FaGripVertical, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaGripVertical } from 'react-icons/fa';
 import axios from 'axios';
 import './adddepartment.css';
 
@@ -126,35 +126,7 @@ const AddDepartment: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const dept = departments.find((d) => d.id === id);
-    if (!dept) return;
-
-    if (window.confirm(`Are you sure you want to delete "${dept.department_name}"?`)) {
-      try {
-        setLoading(true);
-        setError(null);
-        setSuccess(null);
-        
-        await axios.delete(`http://localhost:5000/api/departments/${id}`);
-        setSuccess('Department deleted successfully!');
-        await fetchDepartments();
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
-      } catch (error) {
-        console.error('Error deleting department:', error);
-        if (axios.isAxiosError(error)) {
-          const apiError = error.response?.data as ApiError;
-          setError(apiError?.error || 'Failed to delete department. Please try again.');
-        } else {
-          setError('Network error. Please check your connection.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+   
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -286,7 +258,7 @@ const AddDepartment: React.FC = () => {
                         department_name={dept.department_name}
                         created_at={dept.created_at}
                         onEdit={handleEdit}
-                        onDelete={handleDelete}
+                        
                         isEditing={editId === dept.id}
                       />
                     ))}
@@ -311,7 +283,6 @@ interface RowProps {
   department_name: string;
   created_at: string;
   onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
   isEditing: boolean;
 }
 
@@ -321,7 +292,6 @@ const DraggableRow: React.FC<RowProps> = ({
   department_name,
   created_at,
   onEdit,
-  onDelete,
   isEditing,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -380,13 +350,7 @@ const DraggableRow: React.FC<RowProps> = ({
         >
           <FaEdit />
         </button>
-        <button 
-          onClick={() => onDelete(id)} 
-          className="delete-btn" 
-          title="Delete"
-        >
-          <FaTrash />
-        </button>
+         
       </td>
     </tr>
   );

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './adduser.css';
 import Sidebar from '../../Components/Sidebar/Sidebar';
-import { FaEdit, FaTrash } from 'react-icons/fa';
-
+ 
+import { FaEdit, FaUserSlash, FaUserCheck } from 'react-icons/fa';
 const UserRegister: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -26,22 +26,21 @@ const UserRegister: React.FC = () => {
   }, []);
 
   const fetchUsers = async () => {
-  try {
-    const response = await fetch('http://localhost:5000/api/user');
-    const data = await response.json();
+    try {
+      const response = await fetch('http://localhost:5000/api/user');
+      const data = await response.json();
 
-    if (response.ok) {
-      setUsers(data); // or whatever state holds the list
-    } else {
-      console.error('Failed to fetch users:', data.message);
-      alert('Failed to load users');
+      if (response.ok) {
+        setUsers(data);
+      } else {
+        console.error('Failed to fetch users:', data.message);
+        alert('Failed to load users');
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+      alert('Error fetching users');
     }
-  } catch (err) {
-    console.error('Fetch error:', err);
-    alert('Error fetching users');
-  }
-};
-
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -119,12 +118,18 @@ const UserRegister: React.FC = () => {
     setEditingUserId(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+  // Toggle user status (disable/enable)
+  const handleToggleStatus = async (id: number, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+    const action = newStatus === 'disabled' ? 'disable' : 'enable';
+    
+    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/user/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`http://localhost:5000/api/user/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
       });
 
       const result = await response.json();
@@ -136,11 +141,13 @@ const UserRegister: React.FC = () => {
         alert(`❌ Failed: ${result.message}`);
       }
     } catch (err) {
-      console.error("Error deleting user:", err);
+      console.error("Error toggling user status:", err);
       alert("❌ Server error");
     }
   };
 
+   
+//Hendle Edit
   const handleEdit = (user: any) => {
     setFormData({
       firstName: user.first_name,
@@ -150,8 +157,8 @@ const UserRegister: React.FC = () => {
       mobileNumber: user.mobile_number,
       username: user.username,
       email: user.email,
-      password: user.password,
-      confirmPassword: user.password,
+      password: "",
+      confirmPassword: "",
     });
     setEditingUserId(user.id);
     setErrors({});
@@ -252,14 +259,11 @@ const UserRegister: React.FC = () => {
               />
               {errors.email && <div className="error">{errors.email}</div>}
             </div>
-            
-             
           </div>
 
-          <h2 className="form-title-2">User Credinsical's</h2>
+          <h2 className="form-title-2">User Credentials</h2>
           <div className="form-row-3">
-
-             <div className="form-group">
+            <div className="form-group">
               <label>User Name</label>
               <input
                 type="text"
@@ -272,29 +276,28 @@ const UserRegister: React.FC = () => {
               {errors.username && <div className="error">{errors.username}</div>}
             </div>
             <div className="form-group">
-              <label>Password</label>
+<label>Password {editingUserId && "(Leave empty to keep current)"}</label>
               <input
                 type="password"
                 name="password"
-                placeholder="Password *"
+                placeholder={editingUserId ? "New Password (optional)" : "Password *"}
                 value={formData.password}
                 onChange={handleChange}
               />
               {errors.password && <div className="error">{errors.password}</div>}
             </div>
-
-              <div className="form-group-2">
-                <label>Confirm Password</label>
+            <div className="form-group-2">
+              <label>Confirm Password</label>
               <input
                 type="password"
                 name="confirmPassword"
-                placeholder="Confirm Password *"
+                placeholder={editingUserId ? "Confirm new password" : "Confirm Password *"}
                 value={formData.confirmPassword}
                 onChange={handleChange}
               />
               {errors.confirmPassword && <div className="error">{errors.confirmPassword}</div>}
             </div>
-            </div>
+          </div>
         </form>
       </div>
 
@@ -321,13 +324,14 @@ const UserRegister: React.FC = () => {
                 <th>Mobile</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Status</th>
                 <th>Created At</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.id}>
+                <tr key={user.id} className={user.status === 'disabled' ? 'disabled-user' : ''}>
                   <td>{user.id}</td>
                   <td>{user.first_name}</td>
                   <td>{user.last_name}</td>
@@ -336,14 +340,25 @@ const UserRegister: React.FC = () => {
                   <td>{user.mobile_number}</td>
                   <td>{user.username}</td>
                   <td>{user.email}</td>
+                  <td>
+                    <span className={`status ${user.status}`}>
+                      {user.status === 'active' ? '🟢 Active' : '🔴 Disabled'}
+                    </span>
+                  </td>
                   <td>{user.created_at}</td>
                   <td>
                     <button className="action-btn edit-btn" onClick={() => handleEdit(user)}>
                       <FaEdit />
                     </button>
-                    <button className="action-btn delete-btn" onClick={() => handleDelete(user.id)}>
-                      <FaTrash />
+                    <button 
+                      className={`action-btn edit-btn ${user.status === 'active' ? 'disable-btn' : 'enable-btn'}`}
+                      onClick={() => handleToggleStatus(user.id, user.status)}
+                      title={user.status === 'active' ? 'Disable User' : 'Enable User'}
+                    >
+                      {user.status === 'active' ? <FaUserCheck /> :<FaUserSlash />}
                     </button>
+                    
+                     
                   </td>
                 </tr>
               ))}

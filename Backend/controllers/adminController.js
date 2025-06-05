@@ -54,6 +54,11 @@ exports.loginAdmin = (req, res) => {
 
     const admin = results[0];
 
+    // Check if admin is disabled
+    if (admin.is_disabled) {
+      return res.status(401).json({ error: "Account is disabled" });
+    }
+
     // Compare password with hashed password stored
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
@@ -61,21 +66,27 @@ exports.loginAdmin = (req, res) => {
     }
 
     // Login successful
-    res.status(200).json({ message: "Login successful", admin: { id: admin.id, username: admin.username, email: admin.email } });
+    res.status(200).json({ 
+      message: "Login successful", 
+      admin: { 
+        id: admin.id, 
+        username: admin.username, 
+        email: admin.email 
+      } 
+    });
   });
 };
 
 // Get all admins (for frontend to list)
 exports.getAllAdmins = (req, res) => {
-
- const sql = `
-  SELECT 
-    id, first_name, last_name, email,username, mobile_number, 
-    DATE_FORMAT(created_at, '%d/%m/%y %H:%i:%s') AS created_at 
-  FROM admincreation 
-  
-`;
-
+  const sql = `
+    SELECT 
+      id, first_name, last_name, email, username, mobile_number, 
+      is_disabled,
+      DATE_FORMAT(created_at, '%d/%m/%y %H:%i:%s') AS created_at 
+    FROM admincreation 
+    ORDER BY created_at DESC
+  `;
 
   connection.query(sql, (err, results) => {
     if (err) {
@@ -86,10 +97,8 @@ exports.getAllAdmins = (req, res) => {
   });
 };
 
-
-// Use `connection` instead of `db` throughout
-
-exports.updateAdmin = (req, res) => {
+// Update admin - FIXED VERSION
+exports.updateAdmin = async (req, res) => {
   const id = req.params.id;
   const {
     firstName,
@@ -100,46 +109,83 @@ exports.updateAdmin = (req, res) => {
     password
   } = req.body;
 
-  const updateFields = [
-    firstName, lastName, mobileNumber, username, email
-  ];
+  try {
+    let sql, values;
 
-  const sql = `
-    UPDATE usercreation SET 
-      first_name = ?, last_name = ?, 
-      mobile_number = ?, username = ?, email = ?
-    ${password ? ', password = ?' : ''}
-    WHERE id = ?
-  `;
+    if (password && password.trim() !== '') {
+      // Hash new password if provided
+      const hashedPassword = await bcrypt.hash(password, 10);
+      sql = `
+        UPDATE admincreation SET 
+          first_name = ?, last_name = ?, 
+          mobile_number = ?, email = ?, password = ?
+        WHERE id = ?
+      `;
+      values = [firstName, lastName, mobileNumber, email, hashedPassword, id];
+    } else {
+      // Update without password
+      sql = `
+        UPDATE admincreation SET 
+          first_name = ?, last_name = ?, 
+          mobile_number = ?, email = ?
+        WHERE id = ?
+      `;
+      values = [firstName, lastName, mobileNumber, email, id];
+    }
 
-  if (password) {
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-      if (err) return res.status(500).json({ message: "Error hashing password" });
-      db.query(sql, [...updateFields, hashedPassword, id], (err) => {
-        if (err) return res.status(500).json({ message: "Error updating user" });
-        res.status(200).json({ message: "User updated successfully" });
-      });
+    connection.query(sql, values, (err, result) => {
+      if (err) {
+        console.error("Error updating admin:", err);
+        return res.status(500).json({ message: "Error updating admin" });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+      res.status(200).json({ message: "Admin updated successfully" });
     });
-  } else {
-    db.query(sql, [...updateFields, id], (err) => {
-      if (err) return res.status(500).json({ message: "Error updating user" });
-      res.status(200).json({ message: "User updated successfully" });
-    });
+
+  } catch (error) {
+    console.error("Error in updateAdmin:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-exports.deleteAdmin = (req, res) => {
+// Toggle admin status (disable/enable instead of delete)
+exports.toggleAdminStatus = (req, res) => {
   const id = req.params.id;
-  const sql = 'DELETE FROM admincreation WHERE id = ?';
-
-  connection.query(sql, [id], (err, result) => {
+  
+  // First get current status
+  const getCurrentStatusSql = 'SELECT is_disabled FROM admincreation WHERE id = ?';
+  
+  connection.query(getCurrentStatusSql, [id], (err, results) => {
     if (err) {
-      console.error("Error deleting admin:", err);
-      return res.status(500).json({ message: "Error deleting admin" });
+      console.error("Error getting admin status:", err);
+      return res.status(500).json({ message: "Error getting admin status" });
     }
-    if (result.affectedRows === 0) {
+    
+    if (results.length === 0) {
       return res.status(404).json({ message: "Admin not found" });
     }
-    res.status(200).json({ message: "Admin deleted successfully" });
+    
+    const currentStatus = results[0].is_disabled;
+    const newStatus = !currentStatus;
+    
+    // Update the status
+    const updateSql = 'UPDATE admincreation SET is_disabled = ? WHERE id = ?';
+    
+    connection.query(updateSql, [newStatus, id], (err, result) => {
+      if (err) {
+        console.error("Error updating admin status:", err);
+        return res.status(500).json({ message: "Error updating admin status" });
+      }
+      
+      const statusText = newStatus ? "disabled" : "enabled";
+      res.status(200).json({ 
+        message: `Admin ${statusText} successfully`,
+        is_disabled: newStatus
+      });
+    });
   });
 };
+
+ 

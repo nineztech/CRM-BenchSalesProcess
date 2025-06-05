@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { insertUser, findUserByUsername } = require('../models/userModel');
+const { insertUser, findUserByUsername, toggleUserStatus } = require('../models/userModel');
 const db = require('../db');
 
 // Create user
@@ -50,7 +50,11 @@ exports.createUser = (req, res) => {
           return res.status(500).json({ message: "Database error while creating user" });
         }
 
-        res.status(201).json({ message: "User created successfully", id: result.insertId });
+        res.status(201).json({ 
+          message: "User created successfully and is now active", 
+          id: result.insertId,
+          status: "active"
+        });
       }
     );
   });
@@ -66,7 +70,7 @@ exports.loginUser = (req, res) => {
     }
 
     if (results.length === 0) {
-      return res.status(401).json({ message: "Invalid username or password" });
+      return res.status(401).json({ message: "Invalid username or password or account is disabled" });
     }
 
     const user = results[0];
@@ -87,14 +91,15 @@ exports.loginUser = (req, res) => {
   });
 };
 
-// Get all users
+// Get all users (including disabled ones for admin view)
 exports.getAllUsers = (req, res) => {
   const sql = `
   SELECT 
-    id, first_name, last_name, email,username, mobile_number,department,
-    designation, 
+    id, first_name, last_name, email, username, mobile_number, department,
+    designation, status,
     DATE_FORMAT(created_at, '%d/%m/%y %H:%i:%s') AS created_at 
   FROM usercreation 
+  ORDER BY created_at DESC
   LIMIT 0, 25
 `;
   db.query(sql, (err, results) => {
@@ -147,13 +152,26 @@ exports.updateUser = (req, res) => {
   }
 };
 
-// Delete user
-exports.deleteUser = (req, res) => {
+// Toggle user status (disable/enable instead of delete)
+exports.toggleUserStatus = (req, res) => {
   const id = req.params.id;
-  const sql = 'DELETE FROM usercreation WHERE id = ?';
-  db.query(sql, [id], (err, result) => {
-    if (err) return res.status(500).json({ message: "Error deleting user" });
-    if (result.affectedRows === 0) return res.status(404).json({ message: "User not found" });
-    res.status(200).json({ message: "User deleted successfully" });
+  const { status } = req.body; // 'active' or 'disabled'
+  
+  if (!status || !['active', 'disabled'].includes(status)) {
+    return res.status(400).json({ message: "Invalid status. Use 'active' or 'disabled'" });
+  }
+  
+  toggleUserStatus(id, status, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error updating user status" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const action = status === 'disabled' ? 'disabled' : 'enabled';
+    res.status(200).json({ message: `User ${action} successfully` });
   });
 };
+
+ 

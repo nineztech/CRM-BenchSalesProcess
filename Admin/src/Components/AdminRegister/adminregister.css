@@ -200,6 +200,7 @@
     padding: 15px;
     margin-left: 20px;
     overflow-x: auto;
+    width: 95%;
   }
 
   .table-container h3 {
@@ -207,7 +208,8 @@
   }
 
   .table-container table {
-    min-width: 800px;
+    /* min-width: 800px; */
+    width: 100%;
     table-layout: fixed;
   }
 
@@ -235,6 +237,7 @@
   .table-container td {
     font-size: 0.85rem;
     padding: 8px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
   }
 
   .edit-btn,

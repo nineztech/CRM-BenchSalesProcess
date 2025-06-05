@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import './adminregister.css'
 import Sidebar from '../../Components/Sidebar/Sidebar';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaUserSlash, FaUserCheck } from 'react-icons/fa';
 
 const AdminRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -55,11 +55,18 @@ const AdminRegister: React.FC = () => {
     e.preventDefault();
 
     const newErrors: { [key: string]: string } = {};
+    
+    // Validation for required fields
     Object.entries(formData).forEach(([key, value]) => {
+      // Skip password validation in edit mode if password is empty
+      if (editingAdminId && (key === 'password' || key === 'confirmPassword') && !value.trim()) {
+        return; // Allow empty passwords in edit mode
+      }
       if (!value.trim()) newErrors[key] = "This field is required";
     });
 
-    if (formData.password !== formData.confirmPassword) {
+    // Only check password match if passwords are provided
+    if (formData.password && formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
@@ -74,10 +81,20 @@ const AdminRegister: React.FC = () => {
         ? `http://localhost:5000/api/admin/${editingAdminId}`
         : 'http://localhost:5000/api/admin/register';
 
+      // For edit mode, only send password if it's not empty
+      let submitData;
+      if (editingAdminId && !formData.password.trim()) {
+        // Destructure to exclude password fields
+        const { password: _, confirmPassword: __, ...dataWithoutPassword } = formData;
+        submitData = dataWithoutPassword;
+      } else {
+        submitData = { ...formData };
+      }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const result = await response.json();
@@ -109,24 +126,26 @@ const AdminRegister: React.FC = () => {
     setEditingAdminId(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this admin?")) return;
+  // Toggle admin status (disable/enable)
+  const handleToggleStatus = async (id: number, currentStatus: boolean) => {
+    const action = currentStatus ? "enable" : "disable";
+    if (!window.confirm(`Are you sure you want to ${action} this admin?`)) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`http://localhost:5000/api/admin/${id}/toggle-status`, {
+        method: 'PATCH',
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        alert(result.message);
+        alert(`✅ ${result.message}`);
         fetchAdmins();
       } else {
         alert(`❌ Failed: ${result.message}`);
       }
     } catch (err) {
-      console.error("Error deleting admin:", err);
+      console.error("Error toggling admin status:", err);
       alert("❌ Server error");
     }
   };
@@ -138,8 +157,8 @@ const AdminRegister: React.FC = () => {
       mobileNumber: admin.mobile_number,
       username: admin.username,
       email: admin.email,
-      password: admin.password, // Show actual value in edit mode
-      confirmPassword: admin.password,
+      password: "", // Always empty for security
+      confirmPassword: "",
     });
     setEditingAdminId(admin.id);
     setErrors({});
@@ -230,11 +249,11 @@ const AdminRegister: React.FC = () => {
               {errors.username && <div className="error">{errors.username}</div>}
             </div>
             <div className="form-group">
-              <label>Password</label>
+              <label>Password {editingAdminId && "(Leave empty to keep current)"}</label>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                placeholder="Password *"
+                placeholder={editingAdminId ? "New Password (optional)" : "Password *"}
                 value={formData.password}
                 onChange={handleChange}
               />
@@ -245,14 +264,13 @@ const AdminRegister: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 name="confirmPassword"
-                placeholder="Confirm Password *"
+                placeholder={editingAdminId ? "Confirm New Password" : "Confirm Password *"}
                 value={formData.confirmPassword}
                 onChange={handleChange}
               />
               {errors.confirmPassword && <div className="error">{errors.confirmPassword}</div>}
             </div>
-             <div className="form-group">
- 
+            <div className="form-group">
             </div>
           </div>
         </form>
@@ -279,26 +297,39 @@ const AdminRegister: React.FC = () => {
                 <th>Mobile</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Status</th>
                 <th>Created At</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredAdmins.map((admin) => (
-                <tr key={admin.id}>
+                <tr key={admin.id} className={admin.is_disabled ? 'disabled-row' : ''}>
                   <td>{admin.id}</td>
                   <td>{admin.first_name}</td>
                   <td>{admin.last_name}</td>
                   <td>{admin.mobile_number}</td>
                   <td>{admin.username}</td>
                   <td>{admin.email}</td>
+                  <td>
+                    <span className={`status-badge ${admin.is_disabled ? 'disabled' : 'active'}`}>
+                      {admin.is_disabled ? '🔴 Disabled' : '🟢 Active'}
+                    </span>
+                  </td>
                   <td>{admin.created_at}</td>
                   <td>
-                    <button className="action-btn edit-btn" onClick={() => handleEdit(admin)}>
+                    <button 
+                      className="action-btn edit-btn" 
+                      onClick={() => handleEdit(admin)}
+                      disabled={admin.is_disabled}
+                    >
                       <FaEdit />
                     </button>
-                    <button className="action-btn delete-btn" onClick={() => handleDelete(admin.id)}>
-                      <FaTrash />
+                    <button 
+                      className={`action-btn edit-btn ${admin.is_disabled ? 'enable-btn' : 'disable-btn'}`}
+                      onClick={() => handleToggleStatus(admin.id, admin.is_disabled)}
+                    >
+                      {admin.is_disabled ? <FaUserSlash /> :<FaUserCheck />}
                     </button>
                   </td>
                 </tr>

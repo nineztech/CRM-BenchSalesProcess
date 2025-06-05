@@ -12,23 +12,22 @@ const createUserTable = () => {
   username VARCHAR(100) UNIQUE,
   email VARCHAR(100),
   password VARCHAR(255),
+  status ENUM('active', 'disabled') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ); `;
   db.query(sql, (err) => {
     if (err) console.error('❌ Error creating table:', err.message);
-    else console.log('✅ adddepartment table ready');
+    else console.log('✅ usercreation table ready');
   });
 };
-
- 
 
 // Insert new user
 function insertUser(userData, callback) {
   const sql = `
     INSERT INTO usercreation (
       first_name, last_name, department, designation, 
-      mobile_number, username, email, password
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      mobile_number, username, email, password, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
   `;
   const values = [
     userData.firstName,
@@ -44,14 +43,21 @@ function insertUser(userData, callback) {
   db.query(sql, values, callback);
 }
 
-// Find user by username (for login)
+// Find user by username (for login) - only active users
 function findUserByUsername(username, callback) {
-  const sql = 'SELECT * FROM usercreation WHERE username = ?';
+  const sql = 'SELECT * FROM usercreation WHERE username = ? AND status = "active"';
   db.query(sql, [username], callback);
+}
+
+// Toggle user status (disable/enable)
+function toggleUserStatus(userId, newStatus, callback) {
+  const sql = 'UPDATE usercreation SET status = ? WHERE id = ?';
+  db.query(sql, [newStatus, userId], callback);
 }
 
 module.exports = {
   insertUser,
   findUserByUsername,
+  toggleUserStatus,
   createUserTable
 };
