@@ -1,5 +1,7 @@
 import User from '../models/userModel.js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { Op } from 'sequelize';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -124,34 +126,32 @@ export const loginAdmin = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 export const getAllAdmins = async (req, res) => {
   try {
-    // Default pagination values
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    // Count total admins
-    const { count, rows: admins } = await User.findAndCountAll({
+    const admins = await User.findAll({
       where: { role: 'admin' },
-      attributes: { exclude: ['password'] },
-      limit,
       offset,
-      order: [['createdAt', 'DESC']] // Optional: newest first
+      limit,
+      order: [['createdAt', 'DESC']]
     });
 
-    const totalPages = Math.ceil(count / limit);
+    const totalAdmins = await User.count({ where: { role: 'admin' } });
+    const totalPages = Math.ceil(totalAdmins / limit);
 
     res.status(200).json({
       success: true,
       message: 'Admins fetched successfully',
-      currentPage: page,
+      currentPage: parseInt(page),
       totalPages,
-      totalAdmins: count,
+      totalAdmins,
       data: admins
     });
   } catch (error) {
-    console.error('Get Admins Error:', error);
+    console.error('Error fetching admins:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -159,4 +159,137 @@ export const getAllAdmins = async (req, res) => {
   }
 };
 
+export const editAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if request body exists
+    if (!req.body) {
+      return res.status(400).json({ message: 'Request body is required' });
+    }
 
+    // Get the fields from request body
+    const updateFields = {};
+    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword'];
+
+    // Add only the allowed fields that exist in the request
+    Object.keys(req.body).forEach(field => {
+      if (allowedFields.includes(field)) {
+        updateFields[field] = req.body[field];
+      }
+    });
+
+    // If no valid fields were provided
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
+    // Check if admin exists and get current admin
+    const currentAdmin = await User.findByPk(id);
+    if (!currentAdmin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Handle password update if both password fields are provided
+    if (updateFields.password && updateFields.confirmPassword) {
+      // Validate password requirements
+      if (!updateFields.password || updateFields.password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      }
+
+      // Check if confirmPassword exists and matches
+      if (!updateFields.confirmPassword || updateFields.password !== updateFields.confirmPassword) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+      }
+
+      // Hash the new password
+      try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(updateFields.password, saltRounds);
+        updateFields.password = hashedPassword;
+        // Remove confirmPassword from update fields
+        delete updateFields.confirmPassword;
+      } catch (hashError) {
+        console.error('Error hashing password:', hashError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Error hashing password' 
+        });
+      }
+    } else {
+      // If no password update, remove password fields from update
+      delete updateFields.password;
+      delete updateFields.confirmPassword;
+    }
+
+    // Validate and update each field that exists in updateFields
+    for (const field of Object.keys(updateFields)) {
+      const value = updateFields[field];
+      
+      switch (field) {
+        case 'email':
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+          }
+
+          const existingAdminByEmail = await User.findOne({
+            where: { 
+              email: value, 
+              id: { [Op.ne]: id } 
+            }
+          });
+          if (existingAdminByEmail) {
+            return res.status(400).json({ message: 'Email already exists' });
+          }
+          break;
+
+        case 'phoneNumber':
+          if (isNaN(value) || value.toString().length < 10) {
+            return res.status(400).json({ message: 'Invalid phone number' });
+          }
+          break;
+
+        case 'username':
+          const existingAdminByUsername = await User.findOne({
+            where: { 
+              username: value, 
+              id: { [Op.ne]: id } 
+            }
+          });
+          if (existingAdminByUsername) {
+            return res.status(400).json({ message: 'Username already exists' });
+          }
+          break;
+      }
+    }
+
+    // Update admin data with the validated fields
+    await currentAdmin.update(updateFields);
+
+    // Prepare response data
+    const updatedAdmin = {
+      id: currentAdmin.id,
+      email: currentAdmin.email,
+      firstname: currentAdmin.firstname,
+      lastname: currentAdmin.lastname,
+      phoneNumber: currentAdmin.phoneNumber,
+      username: currentAdmin.username,
+      role: currentAdmin.role,
+      createdAt: currentAdmin.createdAt,
+      updatedAt: currentAdmin.updatedAt
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Admin updated successfully',
+      admin: updatedAdmin
+    });
+  } catch (error) {
+    console.error('Error updating admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
