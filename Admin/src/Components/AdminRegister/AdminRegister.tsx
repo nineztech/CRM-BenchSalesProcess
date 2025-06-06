@@ -15,35 +15,19 @@ const AdminRegister: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [admins, setAdmins] = useState<any[]>([
-    // Sample data for demonstration
-    {
-      id: 1,
-      first_name: "John",
-      last_name: "Doe",
-      mobile_number: "1234567890",
-      username: "johndoe",
-      email: "john@example.com",
-      created_at: "2025-01-15"
-    },
-    {
-      id: 2,
-      first_name: "Jane",
-      last_name: "Smith",
-      mobile_number: "0987654321",
-      username: "janesmith",
-      email: "jane@example.com",
-      created_at: "2025-01-16"
-    }
-  ]);
-  const [editingAdminId, setEditingAdminId] = useState<number | null>(null);
+  const [admins, setAdmins] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Base URLs for API endpoints
-  const API_BASE_URL = 'http://localhost:5000/api/admin';
-  const REGISTER_API_URL = 'http://localhost:5006/api/admin/register';
+  const API_BASE_URL = 'http://localhost:5006/api/admin';
+  const API_URL = `${API_BASE_URL}/all`;
+  const REGISTER_API_URL = `${API_BASE_URL}/register`;
+  const UPDATE_API_URL = `${API_BASE_URL}/edit`;
+
+  // Store the admin being edited
+  const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
 
   useEffect(() => {
     fetchAdmins();
@@ -52,11 +36,14 @@ const AdminRegister: React.FC = () => {
   const fetchAdmins = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/all`);
-      setAdmins(response.data);
+      const response = await axios.get(API_URL);
+      if (response.data.success) {
+        setAdmins(response.data.data);
+      } else {
+        console.error("Failed to fetch admins", response.data.message);
+      }
     } catch (err) {
-      console.error("Failed to fetch admins", err);
-      // Keep sample data if API fails
+      console.error("API Error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -83,132 +70,88 @@ const AdminRegister: React.FC = () => {
   };
 
   const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-    
-    // Check required fields
-    Object.entries(formData).forEach(([key, value]) => {
-      if (!value.trim()) {
-        newErrors[key] = "This field is required";
+    const errors: { [key: string]: string } = {};
+
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
+    }
+
+    if (!formData.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    }
+
+    if (!formData.mobileNumber.trim()) {
+      errors.mobileNumber = 'Mobile number is required';
+    }
+
+    if (!formData.username.trim()) {
+      errors.username = 'Username is required';
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    }
+
+    // Only validate password fields if they are being updated
+    if (formData.password.trim() || formData.confirmPassword.trim()) {
+      if (!formData.password.trim()) {
+        errors.password = 'Password is required';
       }
-    });
 
-    // Validate mobile number (matching backend validation)
-    if (formData.mobileNumber && (!/^\d{10,}$/.test(formData.mobileNumber) || formData.mobileNumber.length < 10)) {
-      newErrors.mobileNumber = "Phone number must be at least 10 digits";
+      if (!formData.confirmPassword.trim()) {
+        errors.confirmPassword = 'Confirm password is required';
+      }
+
+      if (formData.password.trim() && formData.password.trim() !== formData.confirmPassword.trim()) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
     }
 
-    // Validate email
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Enter a valid email address";
-    }
-
-    // Validate password
-    if (formData.password && formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
-    }
-
-    // Check password match
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    return newErrors;
+    return errors;
   };
 
-  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     const validationErrors = validateForm();
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+    setErrors(validationErrors);
 
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      // Prepare data for API (matching backend field names)
-      const apiData = {
-        firstname: formData.firstName,
-        lastname: formData.lastName,
-        phoneNumber: formData.mobileNumber,
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-      };
-
-      let response;
-      
-      if (editingAdminId) {
+    if (Object.keys(validationErrors).length === 0) {
+      if (editingAdmin) {
         // Update existing admin
-        response = await axios.put(`${API_BASE_URL}/${editingAdminId}`, apiData, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        updateAdmin();
       } else {
-        // Register new admin
-        response = await axios.post(REGISTER_API_URL, apiData, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-
-      // Success handling
-      if (response.status === 200 || response.status === 201) {
-        alert(editingAdminId ? "✅ Admin updated successfully!" : "✅ Admin registered successfully!");
-        handleReset();
-        await fetchAdmins(); // Refresh the admin list
-      }
-
-    } catch (error: any) {
-      console.error('API Error:', error);
-      
-      let errorMessage = "❌ An error occurred. Please try again.";
-      
-      if (error.response) {
-        // Server responded with error status
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 400) {
-          // Handle validation errors from backend
-          if (data.errors && Array.isArray(data.errors)) {
-            // Sequelize validation errors
-            const backendErrors: { [key: string]: string } = {};
-            data.errors.forEach((err: any) => {
-              // Map backend field names to frontend field names
-              const fieldMap: { [key: string]: string } = {
-                'firstname': 'firstName',
-                'lastname': 'lastName', 
-                'phoneNumber': 'mobileNumber'
-              };
-              const frontendField = fieldMap[err.field] || err.field;
-              backendErrors[frontendField] = err.message;
+        // Create new admin
+        try {
+          setIsLoading(true);
+          const response = await axios.post(REGISTER_API_URL, formData);
+          if (response.data.success) {
+            // Reset form
+            setFormData({
+              firstName: "",
+              lastName: "",
+              mobileNumber: "",
+              username: "",
+              email: "",
+              password: "",
+              confirmPassword: ""
             });
-            setErrors(backendErrors);
-            return; // Don't show alert for validation errors
+            setErrors({});
+            
+            // Refresh admins list
+            fetchAdmins();
+            
+            // Show success message
+            alert('Admin registered successfully');
           } else {
-            errorMessage = `❌ ${data.message || 'Invalid data provided'}`;
+            alert(response.data.message);
           }
-        } else if (status === 409) {
-          errorMessage = `❌ ${data.message || 'Username or email already exists'}`;
-        } else if (status === 500) {
-          errorMessage = "❌ Server error. Please try again later.";
-        } else {
-          errorMessage = `❌ ${data.message || 'Something went wrong'}`;
+        } catch (error) {
+          console.error('Registration Error:', error);
+          alert('Error registering admin');
+        } finally {
+          setIsLoading(false);
         }
-      } else if (error.request) {
-        // Network error
-        errorMessage = "❌ Network error. Please check your connection and try again.";
       }
-      
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -223,7 +166,7 @@ const AdminRegister: React.FC = () => {
       confirmPassword: "",
     });
     setErrors({});
-    setEditingAdminId(null);
+    setEditingAdmin(null);
   };
 
   const handleDelete = async (id: number) => {
@@ -235,15 +178,15 @@ const AdminRegister: React.FC = () => {
       const response = await axios.delete(`${API_BASE_URL}/${id}`);
       
       if (response.status === 200) {
-        alert("✅ Admin deleted successfully!");
+        alert("Admin deleted successfully!");
         await fetchAdmins(); // Refresh the admin list
       }
     } catch (error: any) {
       console.error("Error deleting admin:", error);
       
-      let errorMessage = "❌ Failed to delete admin.";
+      let errorMessage = "Failed to delete admin.";
       if (error.response?.data?.message) {
-        errorMessage = `❌ ${error.response.data.message}`;
+        errorMessage = `${error.response.data.message}`;
       }
       
       alert(errorMessage);
@@ -253,27 +196,89 @@ const AdminRegister: React.FC = () => {
   };
 
   const handleEdit = (admin: any) => {
+    setEditingAdmin(admin);
     setFormData({
-      firstName: admin.first_name || admin.firstname,
-      lastName: admin.last_name || admin.lastname,
-      mobileNumber: admin.mobile_number || admin.phoneNumber,
+      firstName: admin.firstname,
+      lastName: admin.lastname,
+      mobileNumber: admin.phoneNumber,
       username: admin.username,
       email: admin.email,
-      password: "", // Don't pre-fill password for security
-      confirmPassword: "",
+      password: '',
+      confirmPassword: ''
     });
-    setEditingAdminId(admin.id);
-    setErrors({});
+  };
+
+  const updateAdmin = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Prepare update data - exclude empty fields
+      const updateData = {
+        firstname: formData.firstName.trim() || undefined,
+        lastname: formData.lastName.trim() || undefined,
+        phoneNumber: formData.mobileNumber.trim() || undefined,
+        username: formData.username.trim() || undefined,
+        email: formData.email.trim() || undefined,
+        password: formData.password.trim() || undefined,
+        confirmPassword: formData.confirmPassword.trim() || undefined
+      };
+      
+      // Remove undefined values
+      const filteredData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      );
+
+      // Only make API call if there's data to update
+      if (Object.keys(filteredData).length > 0) {
+        const response = await axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.data.success) {
+          // Update local state
+          setAdmins(prevAdmins => 
+            prevAdmins.map(admin => 
+              admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
+            )
+          );
+          
+          // Reset form and editing state
+          setEditingAdmin(null);
+          setFormData({
+            firstName: "",
+            lastName: "",
+            mobileNumber: "",
+            username: "",
+            email: "",
+            password: "",
+            confirmPassword: ""
+          });
+          
+          // Show success message
+          alert('Admin updated successfully');
+        } else {
+          alert('Failed to update admin');
+        }
+      } else {
+        alert('No changes made to update');
+      }
+    } catch (error) {
+      console.error('Error updating admin:', error);
+      alert('Error updating admin');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredAdmins = admins.filter((admin) => {
     const search = searchTerm.toLowerCase();
     return (
-      admin.first_name.toLowerCase().includes(search) ||
-      admin.last_name.toLowerCase().includes(search) ||
-      admin.mobile_number.toLowerCase().includes(search) ||
-      admin.username.toLowerCase().includes(search) ||
-      admin.email.toLowerCase().includes(search)
+      (admin.firstname?.toLowerCase() || '').includes(search) ||
+      (admin.lastname?.toLowerCase() || '').includes(search) ||
+      (admin.phoneNumber?.toLowerCase() || '').includes(search) ||
+      (admin.username?.toLowerCase() || '').includes(search) ||
+      (admin.email?.toLowerCase() || '').includes(search)
     );
   });
 
@@ -290,7 +295,7 @@ const AdminRegister: React.FC = () => {
             {/* Title and Buttons in one row */}
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-2xl">
-                {editingAdminId ? "Edit Admin" : "Admin Registration"}
+                {editingAdmin ? "Edit Admin" : "Admin Registration"}
               </h2>
               
               <div className="flex gap-2.5">  
@@ -304,7 +309,7 @@ const AdminRegister: React.FC = () => {
                       : 'bg-slate-600 hover:bg-slate-700'
                   }`}
                 >
-                  {isLoading ? "Processing..." : (editingAdminId ? "Update" : "Save")}
+                  {isLoading ? "Processing..." : (editingAdmin ? "Update" : "Save")}
                 </button>
                 <button 
                   type="reset"
@@ -393,7 +398,7 @@ const AdminRegister: React.FC = () => {
                     placeholder="Username *"
                     value={formData.username}
                     onChange={handleChange}
-                    disabled={editingAdminId !== null || isLoading}
+                    disabled={!!editingAdmin || isLoading}
                     className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                   {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
@@ -472,12 +477,12 @@ const AdminRegister: React.FC = () => {
                 {filteredAdmins.map((admin, index) => (
                   <tr key={admin.id} className={index % 2 === 1 ? "bg-gray-50" : ""}>
                     <td className="p-3 border border-gray-300 text-center text-sm">{admin.id}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.first_name}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.last_name}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.mobile_number}</td>
+                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.firstname}</td>
+                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.lastname}</td>
+                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.phoneNumber}</td>
                     <td className="p-3 border border-gray-300 text-center text-sm">{admin.username}</td>
                     <td className="p-3 border border-gray-300 text-center text-sm">{admin.email}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.created_at}</td>
+                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.createdAt}</td>
                     <td className="p-3 border border-gray-300 text-center text-sm">
                       <div className="flex gap-2 justify-center">
                         <button 
