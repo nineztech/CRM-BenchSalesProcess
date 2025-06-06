@@ -80,7 +80,7 @@ const AdminRoles: React.FC = () => {
     <>
       <Sidebar />
 
-      <div className="flex border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg  mt-10 ">
+      <div className="flex border-2 border-gray-100 rounded-lg p-5 bg-white shadow-lg  mt-10 ">
         <h2 className="flex text-2xl text-gray-800 m-0 ">Roles & Rights</h2>
         <div className="flex gap-2.5  ">
           <select 
@@ -183,7 +183,7 @@ const AdminRoles: React.FC = () => {
       )}
 
       {activities.length > 0 && (
-        <div className=" border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg  mt-10">
+        <div className=" border-2 border-gray-100 rounded-lg p-5 bg-white shadow-lg  mt-10">
           <table className="w-full border-collapse min-w-[600px]">
             <thead>
               <tr>
