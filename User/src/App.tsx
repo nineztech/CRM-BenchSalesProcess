@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import NavbarUser from "./components/navbar/NavbarUser";
+import NavbarUser from "./components/Navbar/Navbar.tsx";
 import "./App.css"; // For layout styling
 import LeadCreation from "./components/lead_creation/LeadCreation";
-import Sidebar from "./components/sidebar/UserSidebar";
+import Sidebar from "./components/Sidebar/Sidebar.tsx";
 
 // Separate component to use `useLocation` hook
 function AppContent() {
