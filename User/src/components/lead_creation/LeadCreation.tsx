@@ -1,6 +1,6 @@
 import React, { useState, } from 'react';
 import * as XLSX from 'xlsx';
-import Sidebar from '../Sidebar/Sidebar';
+import Sidebar from '../Sidebar/Sidebar.tsx';
 import LogoIcon from "../../assets/xls_logo.webp"
 
 interface Lead {
