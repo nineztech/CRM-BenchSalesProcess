@@ -1,89 +1,57 @@
-import { Sequelize, DataTypes } from "sequelize";
-import { sequelize } from "../config/dbConnection.js";
-import bcrypt from "bcrypt";
+const db = require('../db');
 
-const User = sequelize.define(
-  "User",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true
-    },
-    email: {
-      type: DataTypes.STRING,
-      unique: true,
-      allowNull: false,
-      validate: {
-        isEmail: true,
-        notEmpty: true,
-      }
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: true,
-        len: [6, 100],
-      }
-    },
-    firstname: {
-      type: DataTypes.STRING,
-      allowNull: false,
-
-    },
-    lastname: {
-      type: DataTypes.STRING,
-      allowNull: false,
-
-    },
-    department: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    designation: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    phoneNumber: {
-      type: DataTypes.STRING,
-      allowNull: false,
-
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-
-    },
-    role: {
-      type: DataTypes.ENUM('admin', 'user', 'superadmin', 'masteradmin'),
-      allowNull: false,
-      defaultValue: 'user',
-    },
-  },
-  {
-    timestamps: true,
-
-    hooks: {
-      beforeCreate: async (user) => {
-        if (user.password) {
-          const saltRounds = 10;
-          user.password = await bcrypt.hash(user.password, saltRounds);
-        }
-      },
-      beforeUpdate: async (user) => {
-        if (user.changed('password')) {
-          const saltRounds = 10;
-          user.password = await bcrypt.hash(user.password, saltRounds);
-        }
-      },
-    }
-  }
-);
-
-// Compare password instance method
-User.prototype.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+const createUserTable = () => {
+  const sql = `
+    CREATE TABLE usercreation (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  department VARCHAR(100),
+  designation VARCHAR(100),
+  mobile_number VARCHAR(20),
+  username VARCHAR(100) UNIQUE,
+  email VARCHAR(100),
+  password VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+); `;
+  db.query(sql, (err) => {
+    if (err) console.error('❌ Error creating table:', err.message);
+    else console.log('✅ adddepartment table ready');
+  });
 };
 
-export default User;
+ 
+
+// Insert new user
+function insertUser(userData, callback) {
+  const sql = `
+    INSERT INTO usercreation (
+      first_name, last_name, department, designation, 
+      mobile_number, username, email, password
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [
+    userData.firstName,
+    userData.lastName,
+    userData.department,
+    userData.designation,
+    userData.mobileNumber,
+    userData.username,
+    userData.email,
+    userData.password
+  ];
+
+  db.query(sql, values, callback);
+}
+
+// Find user by username (for login)
+function findUserByUsername(username, callback) {
+  const sql = 'SELECT * FROM usercreation WHERE username = ?';
+  db.query(sql, [username], callback);
+}
+
+module.exports = {
+  insertUser,
+  findUserByUsername,
+  createUserTable
+};

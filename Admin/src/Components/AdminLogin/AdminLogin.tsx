@@ -6,18 +6,16 @@ import { CgOverflow } from 'react-icons/cg';
 
 export const AdminLogin = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(''); // renamed adminName to username
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5006/api/admin/login', {
+      const response = await fetch('http://localhost:5000/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -26,19 +24,15 @@ export const AdminLogin = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store JWT token in localStorage
-        localStorage.setItem('token', data.token);
-        // Login success - redirect to dashboard
+        // Login success - redirect to dashboard or wherever you want
         navigate('/dashboard');
       } else {
         // Login failed - show error message from backend
-        setError(data.message || 'Invalid username or password');
+        setError(data.error || 'Invalid username or password');
       }
     } catch (err) {
       setError('Server error. Please try again later.');
       console.error('Login error:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

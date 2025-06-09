@@ -1,12 +1,13 @@
-import express from 'express';
-import * as adminController from '../controllers/adminController.js';
-
+const express = require('express');
 const router = express.Router();
 
-// Routes
-router.post("/login",adminController.loginAdmin)
-router.post("/register",adminController.registerAdmin)
-router.get("/all",adminController.getAllAdmins)
-router.put("/edit/:id",adminController.editAdmin)
+const adminController = require('../controllers/adminController');
 
-export default router;
+// Routes
+router.get('/all', adminController.getAllAdmins);
+router.post('/register', adminController.createAdmin);
+router.post('/login', adminController.loginAdmin);
+router.put('/:id', adminController.updateAdmin);
+router.delete('/:id', adminController.deleteAdmin);
+
+module.exports = router;

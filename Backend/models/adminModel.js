@@ -1,81 +1,41 @@
-// import { Sequelize, DataTypes } from "sequelize";
-// import { sequelize } from "../config/dbConnection.js";
-// import bcrypt from "bcrypt";
+const db = require('../db');
 
-// const User = sequelize.define(
-//   "User",
-//   {
-//     id: {
-//       type: DataTypes.INTEGER,
-//       primaryKey: true,
-//       autoIncrement: true
-//     },
-//     email: {
-//       type: DataTypes.STRING,
-//       unique: true,
-//       allowNull: false,
-//       validate: {
-//         isEmail: true,
-//         notEmpty: true,
-//       }
-//     },
-//     password: {
-//       type: DataTypes.STRING,
-//       allowNull: false,
-//       validate: {
-//         notEmpty: true,
-//         len: [6, 100],
-//       }
-//     },
-//     firstname: {
-//       type: DataTypes.STRING,
-//       allowNull: false,
+// Table creation logic
+const createAdminTable = () => {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS admincreation (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      first_name VARCHAR(50),
+      last_name VARCHAR(50),
+      mobile_number VARCHAR(20),
+      username VARCHAR(50) UNIQUE,
+      email VARCHAR(100) UNIQUE,
+      password VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  db.query(sql, (err) => {
+    if (err) console.error('❌ Error creating admincreation table:', err.message);
+    else console.log('✅ admincreation table ready');
+  });
+};
 
-//     },
-//     lastname: {
-//       type: DataTypes.STRING,
-//       allowNull: false,
+// Insert admin - accepts individual params (consistent with controller)
+const insertAdmin = (firstName, lastName, mobileNumber, username, email, hashedPassword, callback) => {
+  const sql = `
+    INSERT INTO admincreation 
+    (first_name, last_name, mobile_number, username, email, password)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const values = [firstName, lastName, mobileNumber, username, email, hashedPassword];
 
-//     },
-//     phoneNumber: {
-//       type: DataTypes.STRING,
-//       allowNull: false,
+  db.query(sql, values, callback);
+};
 
-//     },
-//     username: {
-//       type: DataTypes.STRING,
-//       allowNull: false,
+// Find admin by username for login
+const findAdminByUsername = (username, callback) => {
+  const sql = `SELECT * FROM admincreation WHERE username = ? LIMIT 1`;
+  db.query(sql, [username], callback);
+};
 
-//     },
-//     role: {
-//       type: DataTypes.ENUM('admin', 'user', 'superadmin', 'masteradmin'),
-//       allowNull: false,
-//       defaultValue: 'admin',
-//     },
-//   },
-//   {
-//     timestamps: true,
-
-//     hooks: {
-//       beforeCreate: async (user) => {
-//         if (user.password) {
-//           const saltRounds = 10;
-//           user.password = await bcrypt.hash(user.password, saltRounds);
-//         }
-//       },
-//       beforeUpdate: async (user) => {
-//         if (user.changed('password')) {
-//           const saltRounds = 10;
-//           user.password = await bcrypt.hash(user.password, saltRounds);
-//         }
-//       },
-//     }
-//   }
-// );
-
-// // Compare password instance method
-// User.prototype.comparePassword = async function (candidatePassword) {
-//   return await bcrypt.compare(candidatePassword, this.password);
-// };
-
-// export default User;
+module.exports = { createAdminTable, insertAdmin, findAdminByUsername };
