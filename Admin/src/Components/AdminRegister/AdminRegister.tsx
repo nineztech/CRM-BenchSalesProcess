@@ -123,7 +123,17 @@ const AdminRegister: React.FC = () => {
         // Create new admin
         try {
           setIsLoading(true);
-          const response = await axios.post(REGISTER_API_URL, formData);
+          // Map frontend field names to backend format
+          const mappedFormData = {
+            firstname: formData.firstName,
+            lastname: formData.lastName,
+            phoneNumber: formData.mobileNumber,
+            username: formData.username,
+            email: formData.email,
+            password: formData.password
+          };
+          
+          const response = await axios.post(REGISTER_API_URL, mappedFormData);
           if (response.data.success) {
             // Reset form
             setFormData({
@@ -371,13 +381,14 @@ const AdminRegister: React.FC = () => {
                   />
                   {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
                 </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Email</label>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
                   <input
                     type="email"
+                    id="email"
                     name="email"
-                    placeholder="Email ID *"
                     value={formData.email}
                     onChange={handleChange}
                     disabled={isLoading}
