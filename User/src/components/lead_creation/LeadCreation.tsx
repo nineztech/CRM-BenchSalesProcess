@@ -1,6 +1,6 @@
 import React, { useState, } from 'react';
 import * as XLSX from 'xlsx';
-import Sidebar from '../Sidebar/Sidebar.tsx';
+import Sidebar from '../sidebar/Sidebar';
 import LogoIcon from "../../assets/xls_logo.webp"
 
 interface Lead {
@@ -387,7 +387,7 @@ const LeadCreationComponent: React.FC = () => {
 
   return (
     <>
-      <Sidebar />
+      {/* <Sidebar /> */}
 
       <div className="max-w-[1350px] mx-auto mt-12">
         <div className="flex flex-row gap-5 mb-5 ml-28">
