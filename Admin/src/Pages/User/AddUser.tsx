@@ -178,7 +178,7 @@ const UserRegister: React.FC = () => {
       <div className="mr-28">
         {/* Form Container */}
         <div className="w-[120%] mx-auto mt-10 ml-[10] flex flex-col gap-8">
-          <div className="border-2 border-gray-100 rounded-lg p-5 bg-white shadow-lg">
+          <div className="border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
             {/* Title and Buttons in one row */}
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-2xl">
@@ -207,53 +207,53 @@ const UserRegister: React.FC = () => {
               {/* Form Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">First Name *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">First Name</label>
                   <input
                     type="text"
                     name="firstName"
-                    placeholder="First Name "
+                    placeholder="First Name *"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Last Name *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Last Name</label>
                   <input
                     type="text"
-                    name="lastName "
-                    placeholder="Last Name "
+                    name="lastName"
+                    placeholder="Last Name *"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Department *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Department</label>
                   <input
                     type="text"
-                    name="department *"
+                    name="department"
                     placeholder="Select Department *"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.department && <div className="text-red-500 text-xs mt-1">{errors.department}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Designation (Role) *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Designation (Role)</label>
                   <input
                     type="text"
                     name="designation"
-                    placeholder="Designation "
+                    placeholder="Designation *"
                     value={formData.designation}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
                 </div>
@@ -261,28 +261,28 @@ const UserRegister: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Mobile Number *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Mobile Number</label>
                   <input
                     type="text"
                     name="mobileNumber"
-                    placeholder="Mobile Number "
+                    placeholder="Mobile Number *"
                     value={formData.mobileNumber}
                     onChange={handleChange}
                     maxLength={10}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Email *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Email</label>
                   <input
                     type="email"
                     name="email"
-                    placeholder="Email ID "
+                    placeholder="Email ID *"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                 </div>
@@ -300,41 +300,41 @@ const UserRegister: React.FC = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">User Name *</label>
+                  <label className="text-gray-600 text-xs ml-3  text-left block mb-1">User Name</label>
                   <input
                     type="text"
                     name="username"
-                    placeholder="Username "
+                    placeholder="Username *"
                     value={formData.username}
                     onChange={handleChange}
                     disabled={editingUserId !== null}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                   {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Password *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Password</label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
-                    placeholder="Password "
+                    placeholder="Password *"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 font-medium text-left ml-3 block mb-1">Confirm Password *</label>
+                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Confirm Password</label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="confirmPassword"
-                    placeholder="Confirm Password "
+                    placeholder="Confirm Password *"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
                   />
                   {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
                 </div>
@@ -359,7 +359,7 @@ const UserRegister: React.FC = () => {
         </div>
 
         {/* Table Container */}
-        <div className="w-[120%] border-2 border-gray-100 rounded-lg p-5 bg-white shadow-lg">
+        <div className="w-[120%] border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
           <h3 className="text-2xl mb-5 text-gray-800 text-left">Registered Users</h3>
           {filteredUsers.length > 0 ? (
             <table className="w-full border-collapse">
