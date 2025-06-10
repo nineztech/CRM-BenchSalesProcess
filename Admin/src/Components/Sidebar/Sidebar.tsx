@@ -1,34 +1,95 @@
 import React, { useState } from 'react';
 import { FaTachometerAlt, FaUserPlus, FaUsers, FaBuilding } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
-import logoIcon from '../../assets/logo.webp'; // Ensure the path is correct
+import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import logoIcon from '../../assets/logo.webp';
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const location = useLocation();
 
   return (
-    <div
-      className={`fixed rounded-xl  top-0 left-0 h-full bg-gray-800 text-white z-50 transition-all duration-300 ${
-        isExpanded ? 'w-48' : 'w-16'
-      }`}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-    >
-      {/* Logo Section */}
-      <div className="flex items-center p-4 space-x-3">
-        <img src={logoIcon} alt="Logo" className="w-8 h-8 object-contain" />
-        {isExpanded && <span className="text-lg font-bold">NinezTech</span>}
-      </div>
+    <>
+      <motion.div
+        className="fixed top-0 left-0 h-full bg-white border-r border-gray-200 shadow-sm z-50"
+        animate={{
+          width: isExpanded ? 256 : 56,
+          transition: { duration: 0.3, ease: "easeOut" }
+        }}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+      >
+        {/* Logo Section */}
+        <div className="flex items-center h-16 px-3 border-b border-gray-200">
+          <img src={logoIcon} alt="Logo" className="w-7 h-7 object-contain" />
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
+                className="ml-3 text-base font-semibold text-gray-700"
+              >
+                NinezTech
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {/* Menu List */}
-      <ul className="mt-2 space-y-2">
-        <SidebarItem icon={<FaTachometerAlt />} to="/dashboard" text="Dashboard" isExpanded={isExpanded} />
-        <SidebarItem icon={<FaUserPlus />} to="/adminregister" text="Add Admin" isExpanded={isExpanded} />
-        <SidebarItem icon={<FaUserPlus />} to="/adminroles" text="Roles & Rights" isExpanded={isExpanded} />
-        <SidebarItem icon={<FaUsers />} to="/adduser" text="User Creation" isExpanded={isExpanded} />
-        <SidebarItem icon={<FaBuilding />} to="/adddepartment" text="Department" isExpanded={isExpanded} />
-      </ul>
-    </div>
+        {/* Menu List */}
+        <ul className="mt-4">
+          <SidebarItem 
+            icon={<FaTachometerAlt />} 
+            to="/dashboard" 
+            text="Dashboard" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/dashboard'}
+          />
+          <SidebarItem 
+            icon={<FaUserPlus />} 
+            to="/adminregister" 
+            text="Add Admin" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/adminregister'}
+          />
+          <SidebarItem 
+            icon={<FaUserPlus />} 
+            to="/adminroles" 
+            text="Roles & Rights" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/adminroles'}
+          />
+          <SidebarItem 
+            icon={<FaUsers />} 
+            to="/adduser" 
+            text="User Creation" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/adduser'}
+          />
+          <SidebarItem 
+            icon={<FaBuilding />} 
+            to="/adddepartment" 
+            text="Department" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/adddepartment'}
+          />
+        </ul>
+      </motion.div>
+
+      {/* Overlay when sidebar is expanded */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-gray-900/25 z-40"
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -38,16 +99,41 @@ type SidebarItemProps = {
   to: string;
   text: string;
   isExpanded: boolean;
+  isActive: boolean;
 };
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ icon, to, text, isExpanded }) => (
-  <li className="flex items-center p-3 cursor-pointer hover:bg-gray-700 transition-colors">
-    {icon}
-    {isExpanded && (
-      <Link to={to} className="ml-3 text-white whitespace-nowrap">
-        {text}
-      </Link>
-    )}
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, to, text, isExpanded, isActive }) => (
+  <li>
+    <Link
+      to={to}
+      className={`flex items-center h-12 px-3 text-sm transition-colors relative ${
+        isActive
+          ? 'bg-blue-50 text-blue-600'
+          : 'text-gray-600 hover:bg-gray-50'
+      }`}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="activeIndicator"
+          className="absolute left-0 top-0 h-full w-1 bg-blue-600"
+          transition={{ duration: 0.2 }}
+        />
+      )}
+      <span className={`text-lg ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>{icon}</span>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.span
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
+            className="ml-3 whitespace-nowrap font-medium"
+          >
+            {text}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </Link>
   </li>
 );
 

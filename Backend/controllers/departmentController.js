@@ -5,9 +5,8 @@ import User from "../models/userModel.js";
 export const addDepartment = async (req, res) => {
   try {
     const { departmentName, roles } = req.body;
-    const userId = req.user?.id; // Assuming you have user info from auth middleware
+    const userId = req.user?.id;
 
-    // Validation
     if (!departmentName) {
       return res.status(400).json({
         success: false,
@@ -22,7 +21,6 @@ export const addDepartment = async (req, res) => {
       });
     }
 
-    // Check if department already exists
     const existingDepartment = await Department.findOne({
       where: { departmentName: departmentName.trim() }
     });
@@ -34,7 +32,6 @@ export const addDepartment = async (req, res) => {
       });
     }
 
-    // Prepare roles array
     let rolesArray = [];
     if (roles) {
       if (Array.isArray(roles)) {
@@ -44,7 +41,6 @@ export const addDepartment = async (req, res) => {
       }
     }
 
-    // Create department
     const newDepartment = await Department.create({
       departmentName: departmentName.trim(),
       roles: rolesArray,
@@ -52,7 +48,6 @@ export const addDepartment = async (req, res) => {
       status: 'active'
     });
 
-    // Fetch the created department with user details
     const departmentWithUser = await Department.findByPk(newDepartment.id, {
       include: [
         {
@@ -71,28 +66,165 @@ export const addDepartment = async (req, res) => {
 
   } catch (error) {
     console.error("Error creating department:", error);
+    handleError(error, res);
+  }
+};
 
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({
+// Get All Departments
+export const getAllDepartments = async (req, res) => {
+  try {
+    const departments = await Department.findAll({
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: departments
+    });
+  } catch (error) {
+    console.error("Error fetching departments:", error);
+    handleError(error, res);
+  }
+};
+
+// Get Department by ID
+export const getDepartmentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const department = await Department.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
+    if (!department) {
+      return res.status(404).json({
         success: false,
-        message: "Validation error",
-        errors: error.errors.map(err => ({
-          field: err.path,
-          message: err.message
-        }))
+        message: "Department not found"
       });
     }
 
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({
+    res.status(200).json({
+      success: true,
+      data: department
+    });
+  } catch (error) {
+    console.error("Error fetching department:", error);
+    handleError(error, res);
+  }
+};
+
+// Update Department
+export const updateDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { departmentName, roles, status } = req.body;
+    const userId = req.user?.id;
+
+    const department = await Department.findByPk(id);
+    if (!department) {
+      return res.status(404).json({
         success: false,
-        message: "Department name must be unique"
+        message: "Department not found"
       });
     }
 
-    res.status(500).json({
+    let rolesArray = department.roles;
+    if (roles) {
+      if (Array.isArray(roles)) {
+        rolesArray = roles.filter(r => r && r.trim() !== '').map(r => r.trim());
+      } else if (typeof roles === 'string') {
+        rolesArray = [roles.trim()];
+      }
+    }
+
+    await department.update({
+      departmentName: departmentName?.trim() || department.departmentName,
+      roles: rolesArray,
+      status: status || department.status,
+      updatedBy: userId
+    });
+
+    const updatedDepartment = await Department.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Department updated successfully",
+      data: updatedDepartment
+    });
+  } catch (error) {
+    console.error("Error updating department:", error);
+    handleError(error, res);
+  }
+};
+
+// Delete Department
+export const deleteDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const department = await Department.findByPk(id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found"
+      });
+    }
+
+    await department.destroy();
+
+    res.status(200).json({
+      success: true,
+      message: "Department deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting department:", error);
+    handleError(error, res);
+  }
+};
+
+// Helper function to handle errors
+const handleError = (error, res) => {
+  if (error.name === 'SequelizeValidationError') {
+    return res.status(400).json({
       success: false,
-      message: "Internal server error"
+      message: "Validation error",
+      errors: error.errors.map(err => ({
+        field: err.path,
+        message: err.message
+      }))
     });
   }
+
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    return res.status(409).json({
+      success: false,
+      message: "Department name must be unique"
+    });
+  }
+
+  res.status(500).json({
+    success: false,
+    message: "Internal server error"
+  });
 };
