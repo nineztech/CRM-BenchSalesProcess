@@ -293,3 +293,62 @@ export const editAdmin = async (req, res) => {
     });
   }
 };
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    console.log('Received request - ID:', id);
+    console.log('Received status:', status);
+    console.log('Params:', req.params);
+
+    // Validate status value
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either 'active' or 'inactive'"
+      });
+    }
+
+    // Find the user
+    const user = await User.findByPk(id);
+    console.log('Found user:', user ? 'Yes' : 'No');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if the user is an admin
+    // if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'masteradmin') {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: 'Cannot update status of admin users'
+    //   });
+    // }
+
+    // Update the status
+    await user.update({ status });
+
+    res.status(200).json({
+      success: true,
+      message: `User status updated to ${status} successfully`,
+      data: {
+        id: user.id,
+        email: user.email,
+        status: user.status,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Update user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};

@@ -143,6 +143,14 @@ export const login = async (req, res) => {
       });
     }
 
+    // Check if user is inactive
+    if (user.status === 'inactive') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive. Please contact administrator.'
+      });
+    }
+
     // Compare password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
@@ -167,6 +175,7 @@ export const login = async (req, res) => {
         user: {
           id: user.id,
           email: user.email,
+          status: user.status,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         },
@@ -227,6 +236,95 @@ export const logout = async (req, res) => {
 
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const updateOwnStatus = async (req, res) => {
+  try {
+    const userId = req.user.userId; // Get user ID from authenticated request
+    const { status } = req.body;
+
+    // Only allow deactivation (users cannot reactivate themselves)
+    if (status !== 'inactive') {
+      return res.status(400).json({
+        success: false,
+        message: 'Users can only deactivate their account. Contact an administrator for reactivation.'
+      });
+    }
+
+    // Find the user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent admin users from deactivating themselves through this endpoint
+    if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'masteradmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin users cannot deactivate their account through this endpoint'
+      });
+    }
+
+    // Update the status
+    await user.update({ status: 'inactive' });
+
+    res.status(200).json({
+      success: true,
+      message: 'Your account has been deactivated successfully',
+      data: {
+        id: user.id,
+        email: user.email,
+        status: user.status,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Update own status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get user status
+export const getOwnStatus = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'email', 'status', 'createdAt', 'updatedAt']
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        status: user.status,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Get status error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

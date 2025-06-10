@@ -4,7 +4,7 @@ import {
   login,
   getProfile,
   logout,
-//   getAllUsers
+  updateOwnStatus
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -15,5 +15,6 @@ router.post('/login', login);
 // router.get("getAll",getAllUsers)
 router.get('/profile', getProfile);
 router.post('/logout', logout);
+router.patch("/status/:id",updateOwnStatus)
 
 export default router;
