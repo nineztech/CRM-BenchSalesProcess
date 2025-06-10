@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
-import Sidebar from '../Sidebar/Sidebar';
+import Layout from '../Layout/Layout';
+import { motion } from 'framer-motion';
 
 const AdminRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -283,238 +284,254 @@ const AdminRegister: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen ">
-      {/* Sidebar placeholder */}
-      <div className=" left-0 top-10 mt-10 bg-slate-800"><Sidebar/></div>
-      
-      {/* Main content with left margin for sidebar */}
-      <div className="mr-28">
+    <Layout>
+      <div className="flex flex-col gap-5 max-w-[98%]">
         {/* Form Container */}
-        <div className="w-[120%] mx-auto mt-10 ml-[10] flex flex-col gap-8">
-          <div className="border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
-            {/* Title and Buttons in one row */}
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl">
-                {editingAdmin ? "Edit Admin" : "Admin Registration"}
-              </h2>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+        >
+          {/* Title and Buttons in one row */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-medium text-gray-800">
+              {editingAdmin ? "Edit Admin" : "Admin Registration"}
+            </h2>
+            
+            <div className="flex gap-3">  
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                  isLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isLoading ? "Processing..." : (editingAdmin ? "Update" : "Save")}
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="reset"
+                onClick={handleReset}
+                disabled={isLoading}
+                className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                  isLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                Discard
+              </motion.button>
+            </div>
+          </div>
+          
+          <div className="flex flex-col space-y-6">
+            {/* Form Fields Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">First Name</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  placeholder="First Name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
+              </div>
               
-              <div className="flex gap-2.5">  
-                <button 
-                  type="submit"
-                  onClick={handleSubmit}
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={formData.lastName}
+                  onChange={handleChange}
                   disabled={isLoading}
-                  className={`px-5 py-2.5 w-25 border-none cursor-pointer rounded-full text-white ${
-                    isLoading 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-slate-600 hover:bg-slate-700'
-                  }`}
-                >
-                  {isLoading ? "Processing..." : (editingAdmin ? "Update" : "Save")}
-                </button>
-                <button 
-                  type="reset"
-                  onClick={handleReset}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
+              </div>
+              
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Mobile Number</label>
+                <input
+                  type="text"
+                  name="mobileNumber"
+                  placeholder="Mobile Number"
+                  value={formData.mobileNumber}
+                  onChange={handleChange}
+                  minLength={10}
                   disabled={isLoading}
-                  className={`px-5 py-2.5 w-25 border-none cursor-pointer rounded-full text-white ${
-                    isLoading 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-red-600 hover:bg-red-700'
-                  }`}
-                >
-                  Discard
-                </button>
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
+              </div>
+              
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email ID"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
               </div>
             </div>
-            
-            <div className="flex flex-col">
-              {/* Form Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">First Name</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name *"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last Name *"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Mobile Number</label>
-                  <input
-                    type="text"
-                    name="mobileNumber"
-                    placeholder="Mobile Number *"
-                    value={formData.mobileNumber}
-                    onChange={handleChange}
-                    minLength={10}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email ID *"
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                </div>
-              </div>
 
-              <h2 className="text-2xl mb-5 text-left">Admin Credentials</h2>
+            <h3 className="text-lg font-medium text-gray-800 pt-2">Admin Credentials</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  placeholder="Username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  disabled={!!editingAdmin || isLoading}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
+              </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1 ">User Name</label>
-                  <input
-                    type="text"
-                    name="username"
-                    placeholder="Username *"
-                    value={formData.username}
-                    onChange={handleChange}
-                    disabled={!!editingAdmin || isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Password</label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    placeholder="Password *"
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Confirm Password</label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    placeholder="Confirm Password *"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
-                </div>
-                
-                <div className="form-group">
-                  {/* Empty div for grid alignment */}
-                </div>
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
+              </div>
+              
+              <div className="form-group">
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Confirm Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                />
+                {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Search Container */}
-        <div className="flex  mb-10  mt-5 justify-start">
-          <input
+        <div className="flex mb-4">
+          <motion.input
+            whileFocus={{ scale: 1.01 }}
             type="text"
-            placeholder="Search Here..."
+            placeholder="Search admins..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            disabled={isLoading}
-            className="p-2.5 w-60 rounded-lg border border-gray-300 outline-none text-sm focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="p-2 w-64 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
           />
         </div>
 
         {/* Table Container */}
-        <div className="w-[120%] border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
-          <h3 className="text-2xl mb-5 text-gray-800 text-left">Registered Admins</h3>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm"
+        >
+          <h3 className="text-lg font-medium text-gray-800 mb-4">Registered Admins</h3>
           {isLoading ? (
             <div className="text-center py-4">
-              <p className="text-gray-600">Loading...</p>
+              <p className="text-sm text-gray-600">Loading...</p>
             </div>
           ) : filteredAdmins.length > 0 ? (
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">ID</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">First Name</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Last Name</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Mobile</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Username</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Email</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Created At</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAdmins.map((admin, index) => (
-                  <tr key={admin.id} className={index % 2 === 1 ? "bg-gray-50" : ""}>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.id}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.firstname}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.lastname}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.phoneNumber}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.username}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.email}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{admin.createdAt}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">
-                      <div className="flex gap-2 justify-center">
-                        <button 
-                          className={`bg-transparent border-none cursor-pointer text-base mr-1 ${
-                            isLoading ? 'text-gray-400 cursor-not-allowed' : 'text-gray-800 hover:text-blue-600'
-                          }`}
-                          onClick={() => handleEdit(admin)}
-                          disabled={isLoading}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          className={`bg-transparent border-none cursor-pointer text-base mr-1 ${
-                            isLoading ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-800'
-                          }`}
-                          onClick={() => handleDelete(admin.id)}
-                          disabled={isLoading}
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">ID</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredAdmins.map((admin, index) => (
+                    <motion.tr 
+                      key={admin.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`hover:bg-gray-50 transition-colors duration-150`}
+                    >
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.id}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.firstname}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.lastname}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.phoneNumber}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.username}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.email}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.createdAt}</td>
+                      <td className="p-2.5 text-sm border-b border-gray-100">
+                        <div className="flex gap-3 justify-center">
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`text-blue-600 hover:text-blue-700 transition-colors duration-200 ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            onClick={() => handleEdit(admin)}
+                            disabled={isLoading}
+                          >
+                            <FaEdit size={16} />
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`text-red-500 hover:text-red-600 transition-colors duration-200 ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            onClick={() => handleDelete(admin.id)}
+                            disabled={isLoading}
+                          >
+                            <FaTrash size={16} />
+                          </motion.button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <p className="text-gray-600">No admins found.</p>
+            <p className="text-sm text-gray-600 text-center py-4">No admins found.</p>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

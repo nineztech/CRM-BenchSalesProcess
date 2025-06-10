@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import Sidebar from '../../Components/Sidebar/Sidebar';
+import Layout from '../../Components/Layout/Layout';
+import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const UserRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +22,7 @@ const UserRegister: React.FC = () => {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -27,18 +30,14 @@ const UserRegister: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/user');
-      const data = await response.json();
-
-      if (response.ok) {
-        setUsers(data);
-      } else {
-        console.error('Failed to fetch users:', data.message);
-        alert('Failed to load users');
-      }
+      setIsLoading(true);
+      const response = await axios.get('http://localhost:5003/api/user');
+      setUsers(response.data);
     } catch (err) {
       console.error('Fetch error:', err);
       alert('Error fetching users');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,47 +57,22 @@ const UserRegister: React.FC = () => {
     setErrors({ ...errors, [name]: errorMsg });
   };
 
-  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
-
-    const newErrors: { [key: string]: string } = {};
-    Object.entries(formData).forEach(([key, value]) => {
-      if (!value.trim()) newErrors[key] = "This field is required";
-    });
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
+  const handleSubmit = async () => {
     try {
-      const method = editingUserId ? 'PUT' : 'POST';
-      const url = editingUserId
-        ? `http://localhost:5000/api/user/${editingUserId}`
-        : 'http://localhost:5000/api/user/create';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(editingUserId ? "✅ User updated successfully!" : "✅ User created successfully!");
-        handleReset();
-        fetchUsers();
+      setIsLoading(true);
+      if (editingUserId) {
+        await axios.put(`http://localhost:5003/api/user/${editingUserId}`, formData);
       } else {
-        alert(`❌ Failed: ${result.message}`);
+        await axios.post('http://localhost:5003/api/user/create', formData);
       }
+      handleReset();
+      fetchUsers();
+      alert(editingUserId ? 'User updated successfully!' : 'User created successfully!');
     } catch (err) {
-      alert("❌ Error connecting to server.");
-      console.error(err);
+      console.error('Error:', err);
+      alert('Operation failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -119,24 +93,17 @@ const UserRegister: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/user/${id}`, {
-        method: 'DELETE',
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(result.message);
+      setIsLoading(true);
+      await axios.delete(`http://localhost:5003/api/user/${id}`);
         fetchUsers();
-      } else {
-        alert(`❌ Failed: ${result.message}`);
-      }
+      alert('User deleted successfully!');
     } catch (err) {
-      console.error("Error deleting user:", err);
-      alert("❌ Server error");
+      console.error('Error:', err);
+      alert('Delete operation failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -170,251 +137,276 @@ const UserRegister: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen">
-      {/* Sidebar placeholder */}
-      <div className="left-0 top-10 mt-10 bg-slate-800"><Sidebar/></div>
-      
-      {/* Main content with left margin for sidebar */}
-      <div className="mr-28">
+    <Layout>
+      <div className="flex flex-col gap-5 max-w-[98%]">
         {/* Form Container */}
-        <div className="w-[120%] mx-auto mt-10 ml-[10] flex flex-col gap-8">
-          <div className="border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+        >
             {/* Title and Buttons in one row */}
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-medium text-gray-800">
                 {editingUserId ? "Edit User" : "User Registration"}
               </h2>
               
-              <div className="flex gap-2.5">
-                <button 
+            <div className="flex gap-3">
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                   type="submit"
                   onClick={handleSubmit}
-                  className="px-5 py-2.5 w-25 border-none cursor-pointer rounded-full bg-slate-600 text-white hover:bg-slate-700"
+                disabled={isLoading}
+                className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                  isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
                 >
                   {editingUserId ? "Update" : "Save"}
-                </button>
-                <button 
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                   type="reset"
                   onClick={handleReset}
-                  className="px-5 py-2.5 w-25 border-none cursor-pointer rounded-full bg-red-600 text-white hover:bg-red-700"
+                disabled={isLoading}
+                className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                  isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
+                }`}
                 >
                   Discard
-                </button>
+              </motion.button>
               </div>
             </div>
             
-            <div className="flex flex-col">
+          <div className="flex flex-col space-y-6">
               {/* Form Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">First Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">First Name</label>
                   <input
                     type="text"
                     name="firstName"
-                    placeholder="First Name *"
+                  placeholder="First Name"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Last Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Last Name</label>
                   <input
                     type="text"
                     name="lastName"
-                    placeholder="Last Name *"
+                  placeholder="Last Name"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Department</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Department</label>
                   <input
                     type="text"
                     name="department"
-                    placeholder="Select Department *"
+                  placeholder="Select Department"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.department && <div className="text-red-500 text-xs mt-1">{errors.department}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Designation (Role)</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Designation</label>
                   <input
                     type="text"
                     name="designation"
-                    placeholder="Designation *"
+                  placeholder="Designation"
                     value={formData.designation}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Mobile Number</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Mobile Number</label>
                   <input
                     type="text"
                     name="mobileNumber"
-                    placeholder="Mobile Number *"
+                  placeholder="Mobile Number"
                     value={formData.mobileNumber}
                     onChange={handleChange}
                     maxLength={10}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Email</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Email</label>
                   <input
                     type="email"
                     name="email"
-                    placeholder="Email ID *"
+                  placeholder="Email ID"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                 </div>
-
-                <div className="form-group">
-                  {/* Empty div for grid alignment */}
                 </div>
 
-                <div className="form-group">
-                  {/* Empty div for grid alignment */}
-                </div>
-              </div>
-
-              <h2 className="text-2xl mb-5 text-left">User Credentials</h2>
+            <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs ml-3  text-left block mb-1">User Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Username</label>
                   <input
                     type="text"
                     name="username"
-                    placeholder="Username *"
+                  placeholder="Username"
                     value={formData.username}
                     onChange={handleChange}
                     disabled={editingUserId !== null}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                   {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Password</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Password</label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
-                    placeholder="Password *"
+                  placeholder="Password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                 </div>
                 
                 <div className="form-group">
-                  <label className="text-gray-600 text-xs text-left ml-3 block mb-1">Confirm Password</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Confirm Password</label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="confirmPassword"
-                    placeholder="Confirm Password *"
+                  placeholder="Confirm Password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-[90%] p-2 rounded border border-gray-300 focus:outline-none focus:border-slate-500"
+                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
-                </div>
-                
-                <div className="form-group">
-                  {/* Empty div for grid alignment */}
-                </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Search Container */}
-        <div className="flex mb-10 mt-5 justify-start">
-          <input
+        <div className="flex mb-4">
+          <motion.input
+            whileFocus={{ scale: 1.01 }}
             type="text"
-            placeholder="Search Here..."
+            placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="p-2.5 w-60 rounded-lg border border-gray-300 outline-none text-sm focus:border-slate-500"
+            className="p-2 w-64 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
           />
         </div>
 
         {/* Table Container */}
-        <div className="w-[120%] border-2 border-gray-300 rounded-lg p-5 bg-white shadow-lg">
-          <h3 className="text-2xl mb-5 text-gray-800 text-left">Registered Users</h3>
-          {filteredUsers.length > 0 ? (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm"
+        >
+          <h3 className="text-lg font-medium text-gray-800 mb-4">Registered Users</h3>
+          {isLoading ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-600">Loading...</p>
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">ID</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">First Name</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Last Name</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Department</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Designation</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Mobile</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Username</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Email</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Created At</th>
-                  <th className="p-3 border border-gray-300 text-center text-sm bg-gray-100 font-semibold text-gray-800">Actions</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">ID</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user, index) => (
-                  <tr key={user.id} className={index % 2 === 1 ? "bg-gray-50" : ""}>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.id}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.first_name}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.last_name}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.department}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.designation}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.mobile_number}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.username}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.email}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">{user.created_at}</td>
-                    <td className="p-3 border border-gray-300 text-center text-sm">
-                      <div className="flex gap-2 justify-center">
-                        <button 
-                          className="bg-transparent border-none cursor-pointer text-base mr-1 text-gray-800 hover:text-blue-600"
+                    <motion.tr 
+                      key={user.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`hover:bg-gray-50 transition-colors duration-150`}
+                    >
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.id}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.first_name}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.last_name}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.department}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.mobile_number}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.created_at}</td>
+                      <td className="p-2.5 text-sm border-b border-gray-100">
+                        <div className="flex gap-3 justify-center">
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`text-blue-600 hover:text-blue-700 transition-colors duration-200 ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           onClick={() => handleEdit(user)}
+                            disabled={isLoading}
                         >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          className="bg-transparent border-none cursor-pointer text-base mr-1 text-red-600 hover:text-red-800"
+                            <FaEdit size={16} />
+                          </motion.button>
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`text-red-500 hover:text-red-600 transition-colors duration-200 ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           onClick={() => handleDelete(user.id)}
+                            disabled={isLoading}
                         >
-                          <FaTrash />
-                        </button>
+                            <FaTrash size={16} />
+                          </motion.button>
                       </div>
                     </td>
-                  </tr>
+                    </motion.tr>
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
-            <p className="text-gray-600">No users found.</p>
+            <p className="text-sm text-gray-600 text-center py-4">No users found.</p>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </Layout>
   );
 };
 

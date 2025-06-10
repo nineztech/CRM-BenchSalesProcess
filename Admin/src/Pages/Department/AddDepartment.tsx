@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../../Components/Sidebar/Sidebar';
+import Layout from '../../Components/Layout/Layout';
 import {
   DndContext,
   closestCenter,
@@ -108,11 +108,10 @@ const AddDepartment: React.FC = () => {
   };
 
   return (
-    <>
-      <Sidebar />
-      <div className="-ml-[260px]">
+    <Layout>
+      <div className="flex flex-col gap-6 max-w-[98%]">
         {/* Title and Form Container */}
-        <div className="w-3/5 mx-auto mt-10 border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
+        <div className="border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
           <div className="flex justify-between gap-5 md:flex-row flex-col md:items-center items-stretch md:gap-5 gap-2.5">
             <h2 className="text-2xl font-bold pb-20 md:pb-0">Add Department</h2>
             
@@ -139,7 +138,7 @@ const AddDepartment: React.FC = () => {
         </div>
 
         {/* Departments Table Container */}
-        <div className="w-3/5 mx-auto mt-10 border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
+        <div className="border-2 border-gray-300 p-10 rounded-lg shadow-lg font-['Poppins']">
           {departments.length > 0 && (
             <DndContext
               sensors={sensors}
@@ -179,7 +178,7 @@ const AddDepartment: React.FC = () => {
           )}
         </div>
       </div>
-    </>
+    </Layout>
   );
 };
 
