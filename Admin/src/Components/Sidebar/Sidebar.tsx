@@ -48,31 +48,31 @@ const Sidebar: React.FC = () => {
           />
           <SidebarItem 
             icon={<FaUserPlus />} 
-            to="/adminregister" 
+            to="/admins" 
             text="Add Admin" 
             isExpanded={isExpanded}
-            isActive={location.pathname === '/adminregister'}
+            isActive={location.pathname === '/admins'}
           />
           <SidebarItem 
             icon={<FaUserPlus />} 
-            to="/adminroles" 
+            to="/roles" 
             text="Roles & Rights" 
             isExpanded={isExpanded}
-            isActive={location.pathname === '/adminroles'}
+            isActive={location.pathname === '/roles'}
           />
           <SidebarItem 
             icon={<FaUsers />} 
-            to="/adduser" 
+            to="/users" 
             text="User Creation" 
             isExpanded={isExpanded}
-            isActive={location.pathname === '/adduser'}
+            isActive={location.pathname === '/users'}
           />
           <SidebarItem 
             icon={<FaBuilding />} 
-            to="/adddepartment" 
+            to="/departments" 
             text="Department" 
             isExpanded={isExpanded}
-            isActive={location.pathname === '/adddepartment'}
+            isActive={location.pathname === '/departments'}
           />
         </ul>
       </motion.div>

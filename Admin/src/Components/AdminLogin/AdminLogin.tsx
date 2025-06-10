@@ -1,15 +1,28 @@
 // src/Components/AdminLogin/AdminLogin.tsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../../assets/logo.webp'; // Optional logo
 import { CgOverflow } from 'react-icons/cg';
 
+interface LocationState {
+  from?: string;
+}
+
 export const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +41,13 @@ export const AdminLogin = () => {
       if (response.ok) {
         // Store JWT token in localStorage
         localStorage.setItem('token', data.token);
-        // Login success - redirect to dashboard
-        navigate('/dashboard');
+        
+        // Get the redirect path from location state or default to dashboard
+        const state = location.state as LocationState;
+        const from = state?.from || '/dashboard';
+        
+        console.log('Login successful, redirecting to:', from); // Debug log
+        navigate(from);
       } else {
         // Login failed - show error message from backend
         setError(data.message || 'Invalid username or password');
@@ -89,9 +107,14 @@ export const AdminLogin = () => {
               
               <button
                 type="submit"
-                className="mt-4 bg-blue-600 text-white p-3 rounded-md font-bold cursor-pointer transition-colors duration-300 hover:bg-teal-500"
+                disabled={loading}
+                className={`mt-4 text-white p-3 rounded-md font-bold cursor-pointer transition-colors duration-300 ${
+                  loading 
+                    ? 'bg-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </button>
               
               <p className="text-center mt-4 text-xs text-black bg-red-100 p-2 rounded">

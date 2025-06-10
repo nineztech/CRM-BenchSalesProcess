@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../Components/Layout/Layout';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 interface Department {
   id: number;
@@ -18,6 +19,7 @@ interface Department {
 }
 
 const AddDepartment: React.FC = () => {
+  const navigate = useNavigate();
   const [departmentName, setDepartmentName] = useState('');
   const [roles, setRoles] = useState<string[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -28,20 +30,63 @@ const AddDepartment: React.FC = () => {
 
   const API_BASE_URL = 'http://localhost:5006/api/department';
 
+  // Create axios instance with default config
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  // Add request interceptor to add token
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Add response interceptor to handle 401 errors
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error: unknown) => {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/');
+      }
+      return Promise.reject(error);
+    }
+  );
+
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
     fetchDepartments();
-  }, []);
+  }, [navigate]);
 
   const fetchDepartments = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/all`);
+      const response = await axiosInstance.get('/all');
       if (response.data.success) {
         setDepartments(response.data.data);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching departments:', error);
-      alert('Failed to fetch departments');
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== 401) {
+        alert('Failed to fetch departments');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -73,9 +118,9 @@ const AddDepartment: React.FC = () => {
       };
 
       if (editingDepartment) {
-        await axios.put(`${API_BASE_URL}/${editingDepartment.id}`, payload);
+        await axiosInstance.put(`/${editingDepartment.id}`, payload);
       } else {
-        await axios.post(`${API_BASE_URL}/add`, payload);
+        await axiosInstance.post('/add', payload);
       }
 
       setDepartmentName('');
@@ -102,7 +147,7 @@ const AddDepartment: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await axios.delete(`${API_BASE_URL}/${id}`);
+      await axiosInstance.delete(`/${id}`);
       fetchDepartments();
       alert('Department deleted successfully');
     } catch (error) {
