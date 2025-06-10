@@ -12,8 +12,8 @@
   text-align: center;
   background:  #ffff /* replace with your primary-blue, primary-orange */
   
-  -webkit-text-fill-color: transparent;
-  margin-top: 2rem;
+  /* -webkit-text-fill-color: transparent; */
+  /* margin-top: 2rem; */
 }
 
 .footer-map-container {

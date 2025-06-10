@@ -23,16 +23,19 @@ const UserRegister: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
+    fetchDepartments();
   }, []);
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get('http://localhost:5003/api/user');
-      setUsers(response.data);
+      const response = await axios.get('http://localhost:5006/api/user/all');
+      setUsers(response.data.data.users || []);
     } catch (err) {
       console.error('Fetch error:', err);
       alert('Error fetching users');
@@ -41,9 +44,46 @@ const UserRegister: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fetchDepartments = async () => {
+    try {
+      const response = await axios.get('http://localhost:5006/api/department/all');
+      if (response.data.success) {
+        setDepartments(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+    }
+  };
+
+  const fetchRoles = async (departmentId: number) => {
+    try {
+      const response = await axios.get(`http://localhost:5006/api/department/${departmentId}/roles`);
+      if (response.data.success) {
+        setRoles(response.data.data.roles || []);
+      }
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+      setRoles([]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+
+    // If department is changed, fetch roles
+    if (name === 'department') {
+      const selectedDepartment = departments.find(dept => dept.departmentName === value);
+      if (selectedDepartment) {
+        fetchRoles(selectedDepartment.id);
+      } else {
+        setRoles([]);
+      }
+      // Reset designation when department changes
+      setFormData(prev => ({ ...prev, [name]: value, designation: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
 
     let errorMsg = "";
     if (!value.trim()) {
@@ -60,17 +100,28 @@ const UserRegister: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
+      const userData = {
+        email: formData.email,
+        password: formData.password,
+        firstname: formData.firstName,
+        lastname: formData.lastName,
+        department: formData.department,
+        designation: formData.designation,
+        phoneNumber: formData.mobileNumber,
+        username: formData.username
+      };
+
       if (editingUserId) {
-        await axios.put(`http://localhost:5003/api/user/${editingUserId}`, formData);
+        await axios.put(`http://localhost:5006/api/user/${editingUserId}`, userData);
       } else {
-        await axios.post('http://localhost:5003/api/user/create', formData);
+        await axios.post('http://localhost:5006/api/user/register', userData);
       }
       handleReset();
       fetchUsers();
       alert(editingUserId ? 'User updated successfully!' : 'User created successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error:', err);
-      alert('Operation failed');
+      alert(err.response?.data?.message || 'Operation failed');
     } finally {
       setIsLoading(false);
     }
@@ -109,32 +160,32 @@ const UserRegister: React.FC = () => {
 
   const handleEdit = (user: any) => {
     setFormData({
-      firstName: user.first_name,
-      lastName: user.last_name,
-      department: user.department,
-      designation: user.designation,
-      mobileNumber: user.mobile_number,
-      username: user.username,
-      email: user.email,
-      password: user.password || "password123",
-      confirmPassword: user.password || "password123",
+      firstName: user.firstname || "",
+      lastName: user.lastname || "",
+      department: user.department || "",
+      designation: user.designation || "",
+      mobileNumber: user.phoneNumber || "",
+      username: user.username || "",
+      email: user.email || "",
+      password: "",
+      confirmPassword: "",
     });
     setEditingUserId(user.id);
     setErrors({});
   };
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = Array.isArray(users) ? users.filter((user) => {
     const search = searchTerm.toLowerCase();
     return (
-      user.first_name.toLowerCase().includes(search) ||
-      user.last_name.toLowerCase().includes(search) ||
-      user.department.toLowerCase().includes(search) ||
-      user.designation.toLowerCase().includes(search) ||
-      user.mobile_number.toLowerCase().includes(search) ||
-      user.username.toLowerCase().includes(search) ||
-      user.email.toLowerCase().includes(search)
+      user.firstname?.toLowerCase().includes(search) ||
+      user.lastname?.toLowerCase().includes(search) ||
+      user.department?.toLowerCase().includes(search) ||
+      user.designation?.toLowerCase().includes(search) ||
+      user.phoneNumber?.toLowerCase().includes(search) ||
+      user.username?.toLowerCase().includes(search) ||
+      user.email?.toLowerCase().includes(search)
     );
-  });
+  }) : [];
 
   return (
     <Layout>
@@ -211,27 +262,37 @@ const UserRegister: React.FC = () => {
                 
                 <div className="form-group">
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">Department</label>
-                  <input
-                    type="text"
+                  <select
                     name="department"
-                  placeholder="Select Department"
                     value={formData.department}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.departmentName}>
+                        {dept.departmentName}
+                      </option>
+                    ))}
+                  </select>
                   {errors.department && <div className="text-red-500 text-xs mt-1">{errors.department}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Designation</label>
-                  <input
-                    type="text"
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Roles</label>
+                  <select
                     name="designation"
-                  placeholder="Designation"
                     value={formData.designation}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                  >
+                    <option value="">Select Roles</option>
+                    {roles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
                   {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
                 </div>
               </div>
@@ -344,7 +405,7 @@ const UserRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
@@ -362,11 +423,11 @@ const UserRegister: React.FC = () => {
                       className={`hover:bg-gray-50 transition-colors duration-150`}
                     >
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.id}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.first_name}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.last_name}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.firstname}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.lastname}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.department}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.mobile_number}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.created_at}</td>

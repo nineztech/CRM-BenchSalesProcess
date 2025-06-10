@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js'; // Adjust path to your User model
+import { Op } from 'sequelize';
 
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -325,6 +326,89 @@ export const getOwnStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Get status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      status
+    } = req.query;
+
+    // Build where clause
+    const whereClause = {
+      role: 'user'  // Only get users with role 'user'
+    };
+
+    // Add status filter if provided
+    if (status && ['active', 'inactive'].includes(status)) {
+      whereClause.status = status;
+    }
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { email: { [Op.like]: `%${search}%` } },
+        { firstname: { [Op.like]: `%${search}%` } },
+        { lastname: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { department: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Calculate offset
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get users with pagination
+    const users = await User.findAndCountAll({
+      where: whereClause,
+      attributes: [
+        'id', 
+        'email', 
+        'firstname', 
+        'lastname', 
+        'username',
+        'department',
+        'designation',
+        'phoneNumber',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ],
+      order: [[sortBy, sortOrder]],
+      offset: offset,
+      limit: parseInt(limit)
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(users.count / parseInt(limit));
+    const currentPage = parseInt(page);
+
+    res.status(200).json({
+      success: true,
+      message: 'Users fetched successfully',
+      data: {
+        users: users.rows,
+        pagination: {
+          total: users.count,
+          totalPages,
+          currentPage,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all users error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

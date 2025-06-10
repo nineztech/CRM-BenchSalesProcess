@@ -4,7 +4,8 @@ import {
   login,
   getProfile,
   logout,
-  updateOwnStatus
+  updateOwnStatus,
+  getAllUsers
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -13,9 +14,10 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/all', getAllUsers);
-router.delete('/:id', deleteUser);
+// router.delete('/:id', deleteUser);
 router.get('/profile', getProfile);
 router.post('/logout', logout);
 router.patch("/status/:id",updateOwnStatus)
+
 
 export default router;

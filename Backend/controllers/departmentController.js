@@ -203,6 +203,43 @@ export const deleteDepartment = async (req, res) => {
   }
 };
 
+// Get Department Roles by ID
+export const getDepartmentRoles = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const department = await Department.findByPk(id);
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found"
+      });
+    }
+
+    // Check if department is active
+    if (department.status === 'inactive') {
+      return res.status(400).json({
+        success: false,
+        message: "Department is inactive"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        departmentId: department.id,
+        departmentName: department.departmentName,
+        roles: department.roles || []
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching department roles:", error);
+    handleError(error, res);
+  }
+};
+
 // Helper function to handle errors
 const handleError = (error, res) => {
   if (error.name === 'SequelizeValidationError') {
