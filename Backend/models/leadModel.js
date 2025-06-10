@@ -66,6 +66,35 @@ const Lead = sequelize.define(
         notEmpty: true
       }
     },
+    status: {
+      type: DataTypes.ENUM('open', 'converted', 'archive'),
+      allowNull: false,
+      defaultValue: 'open',
+      validate: {
+        notEmpty: true
+      }
+    },
+    assignTo: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    previousAssign: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    totalAssign: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
     remarks: {
       type: DataTypes.TEXT,
       allowNull: true
@@ -85,6 +114,12 @@ const Lead = sequelize.define(
       },
       {
         fields: ['visaStatus']
+      },
+      {
+        fields: ['status']
+      },
+      {
+        fields: ['assignTo']
       }
     ]
   }

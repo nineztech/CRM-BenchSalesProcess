@@ -12,7 +12,9 @@ export const createLead = async (req, res) => {
       technology,
       country,
       visaStatus,
-      remarks
+      remarks,
+      assignTo,
+      status
     } = req.body;
 
     // Validate required fields
@@ -43,6 +45,18 @@ export const createLead = async (req, res) => {
       });
     }
 
+    // Validate status if provided
+    if (status && !['open', 'converted', 'archive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status',
+        errors: [{
+          field: 'status',
+          message: 'Status must be one of: open, converted, archive'
+        }]
+      });
+    }
+
     // Create lead data object
     const leadData = {
       candidateName: candidateName.trim(),
@@ -51,12 +65,24 @@ export const createLead = async (req, res) => {
       technology: technology.trim(),
       country: country.trim(),
       visaStatus,
+      status: status || 'open', // Default to 'open' if not provided
       remarks: remarks ? remarks.trim() : null
     };
 
-    // Add linkedinId if provided
+    // Add optional fields if provided
     if (linkedinId && linkedinId.trim()) {
       leadData.linkedinId = linkedinId.trim();
+    }
+
+    // Handle assignment
+    if (assignTo) {
+      leadData.assignTo = assignTo;
+      leadData.previousAssign = null; // Initially no previous assignment
+      leadData.totalAssign = 1; // First assignment
+    } else {
+      leadData.assignTo = null;
+      leadData.previousAssign = null;
+      leadData.totalAssign = 0;
     }
 
     // Create the lead
@@ -75,6 +101,10 @@ export const createLead = async (req, res) => {
         technology: newLead.technology,
         country: newLead.country,
         visaStatus: newLead.visaStatus,
+        status: newLead.status,
+        assignTo: newLead.assignTo,
+        previousAssign: newLead.previousAssign,
+        totalAssign: newLead.totalAssign,
         remarks: newLead.remarks,
         createdAt: newLead.createdAt,
         updatedAt: newLead.updatedAt
