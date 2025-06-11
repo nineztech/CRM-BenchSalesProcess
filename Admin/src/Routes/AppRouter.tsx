@@ -8,6 +8,7 @@ import AdminRegister from '../Components/AdminRegister/AdminRegister';
 import AdminRoles from '../Components/AdminRoles/AdminRoles';
 import { Navbar } from '../Components/Navbar/Navbar';
 import Dashboard from '../Components/AdminDashboard/Dashboard';
+import PackagesPage from '../Pages/Packages';
 // Import other admin components as needed
 
 // Layout component that includes Navbar
@@ -79,6 +80,14 @@ const AppRouter: React.FC = () => {
           <ProtectedRoute>
             <AdminLayout>
               <AdminRoles />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/packages" element={
+          <ProtectedRoute>
+            <AdminLayout>
+              <PackagesPage />
             </AdminLayout>
           </ProtectedRoute>
         } />
