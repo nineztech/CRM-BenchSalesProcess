@@ -9,30 +9,69 @@ const Lead = sequelize.define(
       primaryKey: true,
       autoIncrement: true
     },
-    candidateName: {
+    firstName: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [2, 100]
+        len: [2, 50]
       }
     },
-    contactNumber: {
+    lastName: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        is: /^[\+]?[1-9][\d]{0,15}$/
+        len: [2, 50]
       }
     },
-    email: {
+    contactNumbers: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+      validate: {
+        isValidContacts(value) {
+          if (!Array.isArray(value)) {
+            throw new Error('Contact numbers must be an array');
+          }
+          if (value.length === 0 || value.length > 2) {
+            throw new Error('Must provide 1-2 contact numbers');
+          }
+          if (value.some(num => !(/^[\+]?[1-9][\d]{0,15}$/.test(num)))) {
+            throw new Error('Invalid contact number format');
+          }
+        }
+      }
+    },
+    primaryContact: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        const numbers = this.getDataValue('contactNumbers');
+        return Array.isArray(numbers) && numbers.length > 0 ? numbers[0] : null;
+      }
+    },
+    emails: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+      validate: {
+        isValidEmails(value) {
+          if (!Array.isArray(value)) {
+            throw new Error('Emails must be an array');
+          }
+          if (value.length === 0 || value.length > 2) {
+            throw new Error('Must provide 1-2 email addresses');
+          }
+          if (value.some(email => !(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))) {
+            throw new Error('Invalid email format');
+          }
+        }
+      }
+    },
+    primaryEmail: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
-        notEmpty: true
-      }
+      unique: true
     },
     linkedinId: {
       type: DataTypes.STRING,
@@ -56,7 +95,15 @@ const Lead = sequelize.define(
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [2, 50]
+        len: [2, 100]
+      }
+    },
+    countryCode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [2, 3]
       }
     },
     visaStatus: {
@@ -67,11 +114,67 @@ const Lead = sequelize.define(
       }
     },
     status: {
-      type: DataTypes.ENUM('open', 'converted', 'archive'),
+      type: DataTypes.ENUM(
+        'interested',
+        'notinterested',
+        'DNR1',
+        'DNR2',
+        'DNR3',
+        'Dead',
+        'Numb',
+        'not working',
+        'wrong no',
+        'closed',
+        'call again later'
+      ),
       allowNull: false,
-      defaultValue: 'open',
+      defaultValue: 'Numb',
       validate: {
         notEmpty: true
+      }
+    },
+    leadSource: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
+    },
+    reference: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    remarks: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      validate: {
+        isValidRemarks(value) {
+          if (!Array.isArray(value)) {
+            throw new Error('Remarks must be an array');
+          }
+        }
+      }
+    },
+    statusGroup: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        const status = this.getDataValue('status');
+        if (!status) return 'open';
+        
+        const statusGroups = {
+          open: ['Numb'],
+          converted: ['closed'],
+          archived: ['Dead', 'notinterested'],
+          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+        };
+
+        for (const [group, statuses] of Object.entries(statusGroups)) {
+          if (statuses.includes(status)) {
+            return group;
+          }
+        }
+        return 'open';
       }
     },
     assignTo: {
@@ -94,17 +197,14 @@ const Lead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0
-    },
-    remarks: {
-      type: DataTypes.TEXT,
-      allowNull: true
     }
   },
   {
     timestamps: true,
     indexes: [
       {
-        fields: ['email']
+        fields: ['primaryEmail'],
+        unique: true
       },
       {
         fields: ['technology']
@@ -120,8 +220,19 @@ const Lead = sequelize.define(
       },
       {
         fields: ['assignTo']
+      },
+      {
+        fields: ['leadSource']
       }
-    ]
+    ],
+    hooks: {
+      beforeValidate: (lead) => {
+        // Set primaryEmail from emails array
+        if (Array.isArray(lead.emails) && lead.emails.length > 0) {
+          lead.primaryEmail = lead.emails[0].toLowerCase();
+        }
+      }
+    }
   }
 );
 

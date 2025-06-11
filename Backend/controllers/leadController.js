@@ -6,20 +6,34 @@ export const createLead = async (req, res) => {
   try {
     // Extract data from request body
     const {
-      candidateName,
-      contactNumber,
-      email,
+      firstName,
+      lastName,
+      contactNumbers,
+      emails,
       linkedinId,
       technology,
       country,
+      countryCode,
       visaStatus,
       remarks,
       assignTo,
-      status
+      status,
+      leadSource,
+      reference
     } = req.body;
 
     // Validate required fields
-    const requiredFields = ['candidateName', 'contactNumber', 'email', 'technology', 'country', 'visaStatus'];
+    const requiredFields = [
+      'firstName',
+      'lastName',
+      'contactNumbers',
+      'emails',
+      'technology',
+      'country',
+      'countryCode',
+      'visaStatus',
+      'leadSource'
+    ];
     const missingFields = requiredFields.filter(field => !req.body[field]);
     
     if (missingFields.length > 0) {
@@ -30,6 +44,46 @@ export const createLead = async (req, res) => {
           field,
           message: `${field} is required`
         }))
+      });
+    }
+
+    // Validate contact numbers and emails
+    if (!Array.isArray(contactNumbers) || contactNumbers.length === 0 || contactNumbers.length > 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid contact numbers',
+        errors: [{
+          field: 'contactNumbers',
+          message: 'Must provide 1-2 contact numbers'
+        }]
+      });
+    }
+
+    if (!Array.isArray(emails) || emails.length === 0 || emails.length > 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid emails',
+        errors: [{
+          field: 'emails',
+          message: 'Must provide 1-2 email addresses'
+        }]
+      });
+    }
+
+    // Check if primary email already exists
+    const primaryEmail = emails[0].toLowerCase();
+    const existingLead = await Lead.findOne({
+      where: { primaryEmail }
+    });
+
+    if (existingLead) {
+      return res.status(409).json({
+        success: false,
+        message: 'Lead with this primary email already exists',
+        errors: [{
+          field: 'emails',
+          message: 'Primary email address is already registered'
+        }]
       });
     }
 
@@ -47,27 +101,47 @@ export const createLead = async (req, res) => {
     }
 
     // Validate status if provided
-    if (status && !['open', 'converted', 'archive'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status',
-        errors: [{
-          field: 'status',
-          message: 'Status must be one of: open, converted, archive'
-        }]
-      });
+    if (status) {
+      const validStatuses = [
+        'interested',
+        'notinterested',
+        'DNR1',
+        'DNR2',
+        'DNR3',
+        'Dead',
+        'Numb',
+        'not working',
+        'wrong no',
+        'closed',
+        'call again later'
+      ];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status',
+          errors: [{
+            field: 'status',
+            message: `Status must be one of: ${validStatuses.join(', ')}`
+          }]
+        });
+      }
     }
 
     // Create lead data object
     const leadData = {
-      candidateName: candidateName.trim(),
-      contactNumber: contactNumber.trim(),
-      email: email.trim().toLowerCase(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      contactNumbers,
+      emails: emails.map(email => email.toLowerCase()),
+      primaryEmail, // This will be set automatically by the beforeValidate hook
       technology: technology.trim(),
       country: country.trim(),
+      countryCode: countryCode.trim(),
       visaStatus,
-      status: status || 'open', // Default to 'open' if not provided
-      remarks: remarks ? remarks.trim() : null
+      status: status || 'Numb',
+      leadSource: leadSource.trim(),
+      remarks: Array.isArray(remarks) ? remarks : remarks ? [remarks] : [],
+      reference: reference ? reference.trim() : null
     };
 
     // Add optional fields if provided
@@ -78,12 +152,8 @@ export const createLead = async (req, res) => {
     // Handle assignment
     if (assignTo) {
       leadData.assignTo = assignTo;
-      leadData.previousAssign = null; // Initially no previous assignment
-      leadData.totalAssign = 1; // First assignment
-    } else {
-      leadData.assignTo = null;
       leadData.previousAssign = null;
-      leadData.totalAssign = 0;
+      leadData.totalAssign = 1;
     }
 
     // Create the lead
@@ -93,30 +163,13 @@ export const createLead = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Lead created successfully',
-      data: {
-        id: newLead.id,
-        candidateName: newLead.candidateName,
-        contactNumber: newLead.contactNumber,
-        email: newLead.email,
-        linkedinId: newLead.linkedinId,
-        technology: newLead.technology,
-        country: newLead.country,
-        visaStatus: newLead.visaStatus,
-        status: newLead.status,
-        assignTo: newLead.assignTo,
-        previousAssign: newLead.previousAssign,
-        totalAssign: newLead.totalAssign,
-        remarks: newLead.remarks,
-        createdAt: newLead.createdAt,
-        updatedAt: newLead.updatedAt
-      }
+      data: newLead
     });
 
   } catch (error) {
     console.error('Error creating lead:', error);
 
-    // Handle Sequelize validation errors
-    if (error instanceof ValidationError) {
+    if (error.name === 'SequelizeValidationError') {
       const validationErrors = error.errors.map(err => ({
         field: err.path,
         message: err.message,
@@ -130,19 +183,17 @@ export const createLead = async (req, res) => {
       });
     }
 
-    // Handle unique constraint errors (duplicate email)
-    if (error instanceof UniqueConstraintError) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({
         success: false,
         message: 'Lead with this email already exists',
         errors: [{
-          field: 'email',
-          message: 'Email address is already registered'
+          field: 'emails',
+          message: 'Primary email address is already registered'
         }]
       });
     }
 
-    // Handle other errors
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while creating lead',
@@ -283,6 +334,79 @@ export const getLeadsByStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching leads by status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while fetching leads'
+    });
+  }
+};
+
+// Get Leads by Status Group
+export const getLeadsByStatusGroup = async (req, res) => {
+  try {
+    const { statusGroup } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    // Validate status group
+    const validStatusGroups = ['open', 'converted', 'archived', 'inProcess'];
+    if (!validStatusGroups.includes(statusGroup)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status group parameter'
+      });
+    }
+
+    // Define status mappings
+    const statusMappings = {
+      open: ['Numb'],
+      converted: ['closed'],
+      archived: ['Dead', 'notinterested'],
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+    };
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const leads = await Lead.findAndCountAll({
+      where: {
+        status: {
+          [Op.in]: statusMappings[statusGroup]
+        }
+      },
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'previouslyAssignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: offset
+    });
+
+    const totalPages = Math.ceil(leads.count / parseInt(limit));
+
+    return res.status(200).json({
+      success: true,
+      message: `Leads in status group '${statusGroup}' fetched successfully`,
+      data: {
+        leads: leads.rows,
+        pagination: {
+          total: leads.count,
+          totalPages,
+          currentPage: parseInt(page),
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching leads by status group:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while fetching leads'
