@@ -45,11 +45,32 @@ interface Lead {
   totalAssign?: number;
   createdAt?: string;
   updatedAt?: string;
-  salesPerson?: string;
-  assignmentDate?: string;
+  assignedUser?: string | null;
+  previouslyAssignedUser?: string | null;
+  assignTo?: string | null;
+  previousAssign?: string | null;
+  createdBy?: number;
+  updatedBy?: number;
+  creator?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    designation: string | null;
+    department: string | null;
+  };
+  updater?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    designation: string | null;
+    department: string | null;
+  };
 }
 
 const LeadCreationComponent: React.FC = () => {
+  // Form and error states
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
     lastName: '',
@@ -64,73 +85,22 @@ const LeadCreationComponent: React.FC = () => {
     leadSource: '',
     remarks: [''],
     linkedinId: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   });
 
   const [errors, setErrors] = useState<Partial<Lead>>({});
   const [countries] = useState(countryList().getData());
-  const [leads, setLeads] = useState<Lead[]>([
-    {
-      firstName: 'John',
-      lastName: 'Doe',
-      contactNumbers: ['+1234567890'],
-      emails: ['john@example.com'],
-      primaryEmail: 'john@example.com',
-      primaryContact: '+1234567890',
-      technology: 'React',
-      country: 'USA',
-      countryCode: 'US',
-      visaStatus: 'H1B',
-      remarks: ['Senior Developer'],
-      leadSource: 'LinkedIn',
-      linkedinId: 'https://linkedin.com/in/john',
-      salesPerson: 'Aneri'
-    },
-    {
-      firstName: 'Jane',
-      lastName: 'Smith',
-      contactNumbers: ['+0987654321'],
-      emails: ['jane@example.com'],
-      primaryEmail: 'jane@example.com',
-      primaryContact: '+0987654321',
-      technology: 'Node.js',
-      country: 'Canada',
-      countryCode: 'CA',
-      visaStatus: 'L1',
-      remarks: ['Full Stack Developer'],
-      leadSource: 'Indeed',
-      linkedinId: 'https://linkedin.com/in/jane',
-      salesPerson: 'Dhaval'
-    }
-  ]);
 
-  const exportToExcel = () => {
-    const date = new Date().toISOString().split('T')[0];
-    const filename = `leads_${date}`;
-    
-    // Format the leads data for Excel
-    const excelData = leads.map(lead => ({
-      'Candidate Name': lead.firstName + ' ' + lead.lastName,
-      'Contact Number': lead.contactNumbers[0],
-      'Email': lead.emails[0],
-      'LinkedIn': lead.linkedinId,
-      'Technology': lead.technology,
-      'Country': lead.country,
-      'Visa Status': lead.visaStatus,
-      'Remarks': lead.remarks.join(', '),
-      'Sales Person': lead.salesPerson || ''
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
-    
-    XLSX.writeFile(wb, `${filename}.xlsx`);
-  };
+  // Table states
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25); // Def size of 25 items
+  const [pageSize, setPageSize] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Edit states
   const [editingLead, setEditingLead] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<Lead>({
     firstName: '',
@@ -146,34 +116,116 @@ const LeadCreationComponent: React.FC = () => {
     leadSource: '',
     remarks: [''],
     linkedinId: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   });
+
+  // Dialog states
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedSalesPerson, setSelectedSalesPerson] = useState<string>('');
   const [currentSalesPerson, setCurrentSalesPerson] = useState<string>('');
 
-  // Info dialog state
-  const [showInfoDialog, setShowInfoDialog] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-
-  // New state variables for tabs and API integration
+  // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
   const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'archived' | 'inProcess'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // File upload states
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // Fetch leads
+  const fetchLeads = async () => {
+    try {
+      setIsLoading(true);
+      setApiError(null);
+      const response = await axios.get('http://localhost:5006/api/lead');
+      setLeads(response.data.data.leads);
+      // Update pagination info from API response if available
+      if (response.data.data.pagination) {
+        const { total, totalPages } = response.data.data.pagination;
+        setTotalPages(totalPages);
+      }
+    } catch (error) {
+      setApiError('Failed to fetch leads. Please try again.');
+      console.error('Error fetching leads:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Effect to fetch leads when component mounts
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  // Filter leads based on status
+  const getLeadsByStatus = (status: string) => {
+    return leads.filter(lead => lead.statusGroup === status);
+  };
+
+  // Get leads count by status
+  const getLeadsCountByStatus = (status: string) => {
+    return leads.filter(lead => lead.statusGroup === status).length;
+  };
+
+  // Filter leads based on active status tab and search term
+  const filteredLeads = leads.filter((lead: Lead) => {
+    const matchesStatus = lead.statusGroup === activeStatusTab;
+    const matchesSearch = searchTerm === '' || 
+      lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.technology.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  const paginatedLeads = filteredLeads.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  // Export to Excel function
+  const exportToExcel = () => {
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `leads_${date}`;
+    
+    // Format the leads data for Excel
+    const excelData = leads.map(lead => ({
+      'Candidate Name': lead.firstName + ' ' + lead.lastName,
+      'Contact Number': lead.primaryContact,
+      'Email': lead.primaryEmail,
+      'LinkedIn': lead.linkedinId,
+      'Technology': lead.technology,
+      'Country': lead.country,
+      'Visa Status': lead.visaStatus,
+      'Remarks': lead.remarks.join(', '),
+      'Status': lead.status,
+      'Assigned To': lead.assignedUser || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+    
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+  };
+
   const handleAssignSalesPerson = () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
     const currentDate = new Date().toISOString();
-    const isReassigning = selectedLeads.some(index => leads[index].salesPerson);
+    const isReassigning = selectedLeads.some(index => leads[index].assignedUser);
 
     setLeads(prevLeads => 
       prevLeads.map((lead, index) => {
         if (selectedLeads.includes(index)) {
           return { 
             ...lead, 
-            salesPerson: selectedSalesPerson, 
+            assignedUser: selectedSalesPerson, 
             assignmentDate: currentDate,
-            previousSalesPerson: lead.salesPerson // Store previous sales person for history
+            previousSalesPerson: lead.assignedUser // Store previous sales person for history
           };
         }
         return lead;
@@ -189,7 +241,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leads[firstSelectedLead]?.salesPerson || '';
+    return leads[firstSelectedLead]?.assignedUser || '';
   };
 
   React.useEffect(() => {
@@ -203,7 +255,7 @@ const LeadCreationComponent: React.FC = () => {
   const getButtonProps = () => {
     if (selectedLeads.length === 0) return { text: 'Assign', color: 'bg-indigo-600' };
     
-    const hasSalesPerson = selectedLeads.some(index => leads[index].salesPerson);
+    const hasSalesPerson = selectedLeads.some(index => leads[index].assignedUser);
     
     if (hasSalesPerson) {
       return { 
@@ -265,6 +317,8 @@ const LeadCreationComponent: React.FC = () => {
         leadSource: '',
         remarks: [''],
         linkedinId: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
       alert('Lead updated successfully!');
     }
@@ -286,6 +340,8 @@ const LeadCreationComponent: React.FC = () => {
       leadSource: '',
       remarks: [''],
       linkedinId: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
   };
 
@@ -293,9 +349,6 @@ const LeadCreationComponent: React.FC = () => {
     const { name, value } = e.target;
     setEditFormData(prev => ({ ...prev, [name]: value }));
   };
-
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const handleFileUpload = async () => {
     if (!file) return;
@@ -342,6 +395,45 @@ const LeadCreationComponent: React.FC = () => {
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field if it exists
+    if (errors[name as keyof Lead]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      primaryContact: value,
+      contactNumbers: [value]
+    }));
+    if (errors.primaryContact) {
+      setErrors(prev => ({ ...prev, primaryContact: undefined }));
+    }
+  };
+
+  const handleEmailChange = (value: string, index: number) => {
+    if (index === 0) {
+      setFormData(prev => ({
+        ...prev,
+        primaryEmail: value,
+        emails: [value, prev.emails[1]]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        emails: [prev.primaryEmail, value]
+      }));
+    }
+  };
+
+  const handleRemarkChange = (content: string) => {
+    const newRemarks = [...formData.remarks];
+    newRemarks[formData.remarks.length - 1] = content;
+    setFormData(prev => ({
+      ...prev,
+      remarks: newRemarks
+    }));
   };
 
   const handleCheckboxChange = (index: number) => {
@@ -349,6 +441,17 @@ const LeadCreationComponent: React.FC = () => {
     setSelectedLeads(prev =>
       prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
     );
+  };
+
+  const handleCountryChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const selected = countries.find(c => c.value === e.target.value);
+    if (selected) {
+      setFormData(prev => ({
+        ...prev,
+        country: selected.label,
+        countryCode: selected.value
+      }));
+    }
   };
 
   const validate = (): boolean => {
@@ -393,68 +496,100 @@ const LeadCreationComponent: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Fetch leads based on status group
-  const fetchLeads = async (statusGroup: string) => {
-    try {
-      setIsLoading(true);
-      setApiError(null);
-      const response = await axios.get(`/api/leads/group/${statusGroup}?page=${currentPage}&limit=${pageSize}`);
-      setLeads(response.data.data.leads);
-      // Update pagination info from API response
-      const { total, totalPages } = response.data.data.pagination;
-      setTotalPages(totalPages);
-    } catch (error) {
-      setApiError('Failed to fetch leads. Please try again.');
-      console.error('Error fetching leads:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Effect to fetch leads when status tab changes
-  useEffect(() => {
-    fetchLeads(activeStatusTab);
-  }, [activeStatusTab, currentPage, pageSize]);
-
   // Handle lead creation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-    
+    console.log('Form submitted'); // Debug log
+    console.log('Current form data:', formData); // Debug log
+
+    if (!validate()) {
+      console.log('Validation failed', errors); // Debug log
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const response = await axios.post('http://localhost:5006/api/lead/add', formData);
+      setApiError(null);
+
+      // Prepare the data for API
+      const leadData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        contactNumbers: [formData.primaryContact].filter(Boolean),
+        emails: [formData.primaryEmail, formData.emails[1]].filter(Boolean),
+        linkedinId: formData.linkedinId,
+        technology: formData.technology,
+        country: formData.country,
+        countryCode: formData.countryCode,
+        visaStatus: formData.visaStatus,
+        status: '',
+        leadSource: formData.leadSource,
+        remarks: formData.remarks.filter(Boolean)
+      };
+
+      console.log('Sending lead data to API:', leadData); // Debug log
+
+      const response = await axios.post('http://localhost:5006/api/lead/add', leadData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       
+      console.log('API Response:', response.data); // Debug log
+
       if (response.data.success) {
-        // Update leads list with new lead
+        // Add the new lead to the leads list
         setLeads(prev => [response.data.data, ...prev]);
         
         // Reset form
-    setFormData({
+        setFormData({
           firstName: '',
           lastName: '',
           contactNumbers: [''],
           emails: ['', ''],
           primaryEmail: '',
           primaryContact: '',
-      technology: '',
-      country: '',
+          technology: '',
+          country: '',
           countryCode: '',
-      visaStatus: '',
+          visaStatus: '',
           leadSource: '',
           remarks: [''],
           linkedinId: '',
-    });
-    setErrors({});
-    alert('Lead created successfully!');
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        setErrors({});
+
+        // Show success message
+        alert('Lead created successfully!');
+
+        // Refresh the leads list
+        fetchLeads();
+      } else {
+        const errorMessage = response.data.message || 'Failed to create lead. Please try again.';
+        console.error('API Error:', errorMessage); // Debug log
+        setApiError(errorMessage);
+        alert(errorMessage);
       }
-    } catch (error) {
-      setApiError('Failed to create lead. Please try again.');
-      console.error('Error creating lead:', error);
+    } catch (error: any) {
+      console.error('Error creating lead:', error.response || error); // Debug log
+      const errorMessage = error.response?.data?.message || 'Failed to create lead. Please try again.';
+      setApiError(errorMessage);
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Display API error if exists
+  useEffect(() => {
+    if (apiError) {
+      alert(apiError);
+      setApiError(null);
+    }
+  }, [apiError]);
 
   // Tab styling
   const getTabStyle = (isActive: boolean) => `
@@ -471,16 +606,11 @@ const LeadCreationComponent: React.FC = () => {
       'text-gray-500 hover:text-gray-700'}
   `;
 
-  const filteredLeads = leads.filter((lead: Lead) =>
-    lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.technology.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const paginatedLeads = filteredLeads.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Handle status tab change
+  const handleStatusTabChange = (status: 'open' | 'converted' | 'archived' | 'inProcess') => {
+    setActiveStatusTab(status);
+    setCurrentPage(1); // Reset to first page when changing status
+  };
 
   return (
     <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
@@ -531,7 +661,14 @@ const LeadCreationComponent: React.FC = () => {
           >
             {activeMainTab === 'create' ? (
               // Create Lead Form
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  console.log('Form submitted'); // Debug log
+                  handleSubmit(e);
+                }} 
+                className="space-y-6"
+              >
                 <div className="grid grid-cols-3 gap-6">
                   <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
@@ -568,11 +705,28 @@ const LeadCreationComponent: React.FC = () => {
                   </div>
                   
                   <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL *</label>
+                    <input 
+                      type="url" 
+                      name="linkedinId" 
+                      value={formData.linkedinId} 
+                      onChange={handleChange} 
+                      placeholder="https://linkedin.com/in/username" 
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.linkedinId ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.linkedinId && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.linkedinId}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Primary Contact *</label>
                     <PhoneInput
                       country={'us'}
                       value={formData.primaryContact}
-                      onChange={(phone) => setFormData(prev => ({ ...prev, primaryContact: phone }))}
+                      onChange={handlePhoneChange}
                       containerClass="w-full"
                       inputClass={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                         errors.primaryContact ? 'border-red-500' : 'border-gray-300'
@@ -589,7 +743,7 @@ const LeadCreationComponent: React.FC = () => {
                       type="email" 
                       name="primaryEmail" 
                       value={formData.primaryEmail} 
-                      onChange={handleChange} 
+                      onChange={(e) => handleEmailChange(e.target.value, 0)}
                       placeholder="Enter primary email" 
                       className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                         errors.primaryEmail ? 'border-red-500' : 'border-gray-300'
@@ -606,11 +760,7 @@ const LeadCreationComponent: React.FC = () => {
                       type="email" 
                       name="secondaryEmail" 
                       value={formData.emails[1] || ''} 
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        emails: [prev.primaryEmail, e.target.value],
-                        primaryEmail: prev.primaryEmail || prev.emails[0]
-                      }))} 
+                      onChange={(e) => handleEmailChange(e.target.value, 1)}
                       placeholder="Enter secondary email" 
                       className="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
                     />
@@ -638,16 +788,7 @@ const LeadCreationComponent: React.FC = () => {
                     <select
                       name="country"
                       value={formData.countryCode}
-                      onChange={(e) => {
-                        const selected = countries.find(c => c.value === e.target.value);
-                        if (selected) {
-                          setFormData(prev => ({
-                            ...prev,
-                            country: selected.label,
-                            countryCode: selected.value
-                          }));
-                        }
-                      }}
+                      onChange={handleCountryChange}
                       className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                         errors.country ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -746,14 +887,7 @@ const LeadCreationComponent: React.FC = () => {
                           'removeformat | help',
                       }}
                       value={formData.remarks[formData.remarks.length - 1]}
-                      onEditorChange={(content: string) => {
-                        const newRemarks = [...formData.remarks];
-                        newRemarks[formData.remarks.length - 1] = content;
-                        setFormData(prev => ({
-                          ...prev,
-                          remarks: newRemarks
-                        }));
-                      }}
+                      onEditorChange={handleRemarkChange}
                     />
                   </div>
 
@@ -924,11 +1058,11 @@ const LeadCreationComponent: React.FC = () => {
                   <button
                     key={tab}
                     className={getStatusTabStyle(activeStatusTab === tab)}
-                    onClick={() => setActiveStatusTab(tab)}
+                    onClick={() => handleStatusTabChange(tab)}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
-                      {leads.filter(lead => lead.status === tab).length}
+                      {getLeadsCountByStatus(tab)}
                     </span>
                   </button>
                 ))}
@@ -948,7 +1082,7 @@ const LeadCreationComponent: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="px-8 py-4 border-b">
+                    <th className="px-6 py-4 border-b">
                       <input 
                         type="checkbox" 
                         checked={selectedLeads.length === paginatedLeads.length}
@@ -956,23 +1090,26 @@ const LeadCreationComponent: React.FC = () => {
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
                     </th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Date & time</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedLeads.map((lead: Lead, index: number) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-8 py-4 border-b">
+                    <tr key={lead.id || index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 border-b">
                         <input
                           type="checkbox"
                           checked={selectedLeads.includes(index)}
@@ -980,23 +1117,22 @@ const LeadCreationComponent: React.FC = () => {
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                       </td>
-                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                         {(currentPage - 1) * pageSize + index + 1}
                       </td>
-                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {new Date().toLocaleString('en-IN', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.firstName} {lead.lastName}
                       </td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.firstName} {lead.lastName}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.contactNumbers[0]}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.emails[0]}</td>
-                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.primaryEmail}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.primaryContact}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.technology}
+                      </td>
+                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                         <a 
                           href={lead.linkedinId} 
                           target="_blank" 
@@ -1006,75 +1142,55 @@ const LeadCreationComponent: React.FC = () => {
                           LinkedIn
                         </a>
                       </td>
-                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
-                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.country}</td>
-                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.salesPerson || '--'}
-                        {lead.salesPerson && (
-                          <span className="ml-2 inline-flex items-center">
-                            <button
-                              className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-all duration-200"
-                              title={lead.assignmentDate ? new Date(lead.assignmentDate).toLocaleString() : ''}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                          </span>
-                        )}
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.visaStatus}
                       </td>
-                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
-                        <div className="relative inline-block group cursor-pointer">
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.country}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.assignedUser || '--'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.status || '--'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {new Date(lead.createdAt || '').toLocaleString('en-IN', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
+                      </td>
+                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
                           <button 
                             onClick={() => handleInfoClick(lead)}
-                            className="p-1 rounded-full bg-gray-100 relative"
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            title="View details"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                             </svg>
-                            <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-full w-5 h-5 flex items-center justify-center">
-                              {index + 1}
-                            </span>
                           </button>
-                          {showInfoDialog && selectedLead && selectedLead === lead && (
-                            <div className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-w-md mx-auto top-20 transform -translate-x-1/2 p-6">
-                              <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                  <h3 className="text-lg font-medium text-gray-900">Remarks</h3>
-                                  <button 
-                                    onClick={handleCloseInfoDialog}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-                                <div className="space-y-4">
-                                  <div>
-                                    <p className="font-medium text-gray-900">Candidate name:</p>
-                                        <p className="text-gray-600">{selectedLead.firstName} {selectedLead.lastName}</p>
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-gray-900">Remarks:</p>
-                                        <p className="text-gray-600">{selectedLead.remarks.join(', ')}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          <button 
+                            onClick={() => handleEdit(index)}
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            title="Edit lead"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
                         </div>
-                      </td>
-                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
-                        <button 
-                          onClick={() => handleEdit(index)}
-                          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                          title="Edit lead"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </button>
                       </td>
                     </tr>
                   ))}

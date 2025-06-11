@@ -197,6 +197,22 @@ const Lead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0
+    },
+    createdBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    updatedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
     }
   },
   {

@@ -6,11 +6,12 @@ import {
   updateLead
 } from '../controllers/leadController.js'
 import express from 'express'
+import authenticate from '../middleware/auth.js'
 
 const leadRoute = express.Router()
 
 // Create new lead
-leadRoute.post("/add", createLead)
+leadRoute.post("/add",authenticate, createLead)
 
 // Get all leads with filtering and pagination
 leadRoute.get("/", getAllLeads)

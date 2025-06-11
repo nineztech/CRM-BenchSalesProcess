@@ -141,7 +141,9 @@ export const createLead = async (req, res) => {
       status: status || 'Numb',
       leadSource: leadSource.trim(),
       remarks: Array.isArray(remarks) ? remarks : remarks ? [remarks] : [],
-      reference: reference ? reference.trim() : null
+      reference: reference ? reference.trim() : null,
+      createdBy: req.user.id, // Add the user who created the lead
+      updatedBy: req.user.id  // Initially same as createdBy
     };
 
     // Add optional fields if provided
@@ -159,11 +161,27 @@ export const createLead = async (req, res) => {
     // Create the lead
     const newLead = await Lead.create(leadData);
 
+    // Fetch the created lead with associations to get full user details
+    const leadWithAssociations = await Lead.findByPk(newLead.id, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        }
+      ]
+    });
+
     // Return success response
     return res.status(201).json({
       success: true,
       message: 'Lead created successfully',
-      data: newLead
+      data: leadWithAssociations
     });
 
   } catch (error) {
@@ -242,12 +260,22 @@ export const getAllLeads = async (req, res) => {
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         }
       ],
       order: [[sortBy, sortOrder]],
@@ -303,12 +331,22 @@ export const getLeadsByStatus = async (req, res) => {
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -376,12 +414,22 @@ export const getLeadsByStatusGroup = async (req, res) => {
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -443,6 +491,9 @@ export const updateLead = async (req, res) => {
       updateData.totalAssign = (lead.totalAssign || 0) + 1;
     }
 
+    // Add updatedBy field
+    updateData.updatedBy = req.user.id;
+
     // Update the lead
     await lead.update(updateData);
 
@@ -452,12 +503,22 @@ export const updateLead = async (req, res) => {
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
         }
       ]
     });

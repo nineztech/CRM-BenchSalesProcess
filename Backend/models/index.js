@@ -32,6 +32,29 @@ User.hasMany(Lead, {
   as: 'previouslyAssignedLeads'
 });
 
+// Add createdBy and updatedBy associations for Lead
+Lead.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator',
+  onDelete: 'RESTRICT'
+});
+
+Lead.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater',
+  onDelete: 'RESTRICT'
+});
+
+User.hasMany(Lead, {
+  foreignKey: 'createdBy',
+  as: 'createdLeads'
+});
+
+User.hasMany(Lead, {
+  foreignKey: 'updatedBy',
+  as: 'updatedLeads'
+});
+
 export {
   User,
   Department,
