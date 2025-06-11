@@ -1,59 +1,104 @@
 import React, { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
 import Sidebar from '../sidebar/Sidebar';
 import LogoIcon from "../../assets/xls_logo.webp"
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Editor } from '@tinymce/tinymce-react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+
+// Type definitions for country list
+type Country = {
+  label: string;
+  value: string;
+};
+
+type CountryList = {
+  getData: () => Country[];
+  getLabel: (value: string) => string;
+  getValue: (label: string) => string;
+};
+
+// Using dynamic import for country list
+import countryList from 'react-select-country-list';
 
 interface Lead {
   id?: number;
-  candidateName: string;
-  contactNumber: string;
-  email: string;
-  linkedinId: string;
+  firstName: string;
+  lastName: string;
+  contactNumbers: string[];
+  emails: string[];
+  primaryEmail: string;
+  primaryContact: string;
   technology: string;
   country: string;
+  countryCode: string;
   visaStatus: string;
-  remarks: string;
+  status?: string;
+  statusGroup?: string;
+  leadSource: string;
+  remarks: string[];
+  reference?: string | null;
+  linkedinId: string;
+  totalAssign?: number;
+  createdAt?: string;
+  updatedAt?: string;
   salesPerson?: string;
   assignmentDate?: string;
-  status?: string;
 }
 
 const LeadCreationComponent: React.FC = () => {
   const [formData, setFormData] = useState<Lead>({
-    candidateName: '',
-    contactNumber: '',
-    email: '',
-    linkedinId: '',
+    firstName: '',
+    lastName: '',
+    contactNumbers: [''],
+    emails: ['', ''],
+    primaryEmail: '',
+    primaryContact: '',
     technology: '',
     country: '',
+    countryCode: '',
     visaStatus: '',
-    remarks: '',
+    leadSource: '',
+    remarks: [''],
+    linkedinId: '',
   });
 
   const [errors, setErrors] = useState<Partial<Lead>>({});
+  const [countries] = useState(countryList().getData());
   const [leads, setLeads] = useState<Lead[]>([
     {
-      candidateName: 'John Doe',
-      contactNumber: '1234567890',
-      email: 'john@example.com',
-      linkedinId: 'https://linkedin.com/in/john',
+      firstName: 'John',
+      lastName: 'Doe',
+      contactNumbers: ['+1234567890'],
+      emails: ['john@example.com'],
+      primaryEmail: 'john@example.com',
+      primaryContact: '+1234567890',
       technology: 'React',
       country: 'USA',
+      countryCode: 'US',
       visaStatus: 'H1B',
-      remarks: 'Senior Developer',
+      remarks: ['Senior Developer'],
+      leadSource: 'LinkedIn',
+      linkedinId: 'https://linkedin.com/in/john',
       salesPerson: 'Aneri'
     },
     {
-      candidateName: 'Jane Smith',
-      contactNumber: '0987654321',
-      email: 'jane@example.com',
-      linkedinId: 'https://linkedin.com/in/jane',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      contactNumbers: ['+0987654321'],
+      emails: ['jane@example.com'],
+      primaryEmail: 'jane@example.com',
+      primaryContact: '+0987654321',
       technology: 'Node.js',
       country: 'Canada',
+      countryCode: 'CA',
       visaStatus: 'L1',
-      remarks: 'Full Stack Developer',
+      remarks: ['Full Stack Developer'],
+      leadSource: 'Indeed',
+      linkedinId: 'https://linkedin.com/in/jane',
       salesPerson: 'Dhaval'
     }
   ]);
@@ -64,14 +109,14 @@ const LeadCreationComponent: React.FC = () => {
     
     // Format the leads data for Excel
     const excelData = leads.map(lead => ({
-      'Candidate Name': lead.candidateName,
-      'Contact Number': lead.contactNumber,
-      'Email': lead.email,
+      'Candidate Name': lead.firstName + ' ' + lead.lastName,
+      'Contact Number': lead.contactNumbers[0],
+      'Email': lead.emails[0],
       'LinkedIn': lead.linkedinId,
       'Technology': lead.technology,
       'Country': lead.country,
       'Visa Status': lead.visaStatus,
-      'Remarks': lead.remarks,
+      'Remarks': lead.remarks.join(', '),
       'Sales Person': lead.salesPerson || ''
     }));
 
@@ -88,14 +133,19 @@ const LeadCreationComponent: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [editingLead, setEditingLead] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<Lead>({
-    candidateName: '',
-    contactNumber: '',
-    email: '',
-    linkedinId: '',
+    firstName: '',
+    lastName: '',
+    contactNumbers: [''],
+    emails: ['', ''],
+    primaryEmail: '',
+    primaryContact: '',
     technology: '',
     country: '',
+    countryCode: '',
     visaStatus: '',
-    remarks: '',
+    leadSource: '',
+    remarks: [''],
+    linkedinId: '',
   });
   const [selectedSalesPerson, setSelectedSalesPerson] = useState<string>('');
   const [currentSalesPerson, setCurrentSalesPerson] = useState<string>('');
@@ -202,14 +252,19 @@ const LeadCreationComponent: React.FC = () => {
       setLeads(updatedLeads);
       setEditingLead(null);
       setEditFormData({
-        candidateName: '',
-        contactNumber: '',
-        email: '',
-        linkedinId: '',
+        firstName: '',
+        lastName: '',
+        contactNumbers: [''],
+        emails: ['', ''],
+        primaryEmail: '',
+        primaryContact: '',
         technology: '',
         country: '',
+        countryCode: '',
         visaStatus: '',
-        remarks: '',
+        leadSource: '',
+        remarks: [''],
+        linkedinId: '',
       });
       alert('Lead updated successfully!');
     }
@@ -218,14 +273,19 @@ const LeadCreationComponent: React.FC = () => {
   const handleEditCancel = () => {
     setEditingLead(null);
     setEditFormData({
-      candidateName: '',
-      contactNumber: '',
-      email: '',
-      linkedinId: '',
+      firstName: '',
+      lastName: '',
+      contactNumbers: [''],
+      emails: ['', ''],
+      primaryEmail: '',
+      primaryContact: '',
       technology: '',
       country: '',
+      countryCode: '',
       visaStatus: '',
-      remarks: '',
+      leadSource: '',
+      remarks: [''],
+      linkedinId: '',
     });
   };
 
@@ -252,14 +312,19 @@ const LeadCreationComponent: React.FC = () => {
           
           // Process the data and update leads
           const newLeads = jsonData.map((row: any) => ({
-            candidateName: row['Candidate Name'],
-            contactNumber: row['Contact Number'],
-            email: row['Email'],
-            linkedinId: row['LinkedIn'],
+            firstName: row['Candidate Name'].split(' ')[0],
+            lastName: row['Candidate Name'].split(' ')[1],
+            contactNumbers: [row['Contact Number']],
+            emails: [row['Email']],
+            primaryEmail: row['Email'],
+            primaryContact: row['Contact Number'],
             technology: row['Technology'],
             country: row['Country'],
+            countryCode: row['Country Code'],
             visaStatus: row['Visa Status'],
-            remarks: row['Remarks'] || '',
+            remarks: row['Remarks'] || [],
+            leadSource: row['Lead Source'],
+            linkedinId: row['LinkedIn'],
           }));
           
           setLeads(prev => [...prev, ...newLeads]);
@@ -274,8 +339,7 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Using React state instead of localStorage for artifact compatibility
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -290,50 +354,39 @@ const LeadCreationComponent: React.FC = () => {
   const validate = (): boolean => {
     const newErrors: Partial<Lead> = {};
     
-    // Candidate Name
-    if (!formData.candidateName.trim()) {
-      newErrors.candidateName = 'Candidate Name is required';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First Name is required';
     }
-
-    // Contact Number
-    if (!formData.contactNumber.trim()) {
-      newErrors.contactNumber = 'Contact Number is required';
-    } else if (!/^[0-9]{10}$/.test(formData.contactNumber)) {
-      newErrors.contactNumber = 'Contact Number must be 10 digits';
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last Name is required';
     }
-
-    // Email
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email is not valid';
+    if (!formData.primaryContact.trim()) {
+      newErrors.primaryContact = 'Primary Contact is required';
     }
-
-    // LinkedIn
+    if (!formData.primaryEmail.trim()) {
+      newErrors.primaryEmail = 'Primary Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.primaryEmail)) {
+      newErrors.primaryEmail = 'Primary Email is not valid';
+    }
     if (!formData.linkedinId.trim()) {
       newErrors.linkedinId = 'LinkedIn URL is required';
     } else if (!/^https?:\/\/(www\.)?linkedin\.com/.test(formData.linkedinId)) {
       newErrors.linkedinId = 'LinkedIn URL is not valid';
     }
-
-    // Technology
     if (!formData.technology.trim()) {
       newErrors.technology = 'Technology is required';
     }
-
-    // Country
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
     }
-
-    // Visa Status
     if (!formData.visaStatus.trim()) {
       newErrors.visaStatus = 'Visa Status is required';
     }
-
-    // Remarks
-    if (!formData.remarks.trim()) {
-      newErrors.remarks = 'Remarks are required';
+    if (!formData.leadSource.trim()) {
+      newErrors.leadSource = 'Lead Source is required';
+    }
+    if (formData.remarks.length === 0 || !formData.remarks[0].trim()) {
+      newErrors.remarks = ['At least one remark is required'];
     }
 
     setErrors(newErrors);
@@ -370,27 +423,31 @@ const LeadCreationComponent: React.FC = () => {
     
     try {
       setIsLoading(true);
-      const response = await axios.post('/api/leads/add', {
-        ...formData,
-        status: 'Numb' // Default status for new leads
-      });
+      const response = await axios.post('http://localhost:5006/api/lead/add', formData);
       
-      // Update leads list with new lead
-      setLeads(prev => [response.data.data, ...prev]);
-      
-      // Reset form
-      setFormData({
-        candidateName: '',
-        contactNumber: '',
-        email: '',
-        linkedinId: '',
-        technology: '',
-        country: '',
-        visaStatus: '',
-        remarks: '',
-      });
-      setErrors({});
-      alert('Lead created successfully!');
+      if (response.data.success) {
+        // Update leads list with new lead
+        setLeads(prev => [response.data.data, ...prev]);
+        
+        // Reset form
+    setFormData({
+          firstName: '',
+          lastName: '',
+          contactNumbers: [''],
+          emails: ['', ''],
+          primaryEmail: '',
+          primaryContact: '',
+      technology: '',
+      country: '',
+          countryCode: '',
+      visaStatus: '',
+          leadSource: '',
+          remarks: [''],
+          linkedinId: '',
+    });
+    setErrors({});
+    alert('Lead created successfully!');
+      }
     } catch (error) {
       setApiError('Failed to create lead. Please try again.');
       console.error('Error creating lead:', error);
@@ -415,8 +472,8 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   const filteredLeads = leads.filter((lead: Lead) =>
-    lead.candidateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.technology.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -426,8 +483,8 @@ const LeadCreationComponent: React.FC = () => {
   );
 
   return (
-    <div className="ml-16 mt-16 p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-[1350px] mx-auto">
+    <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
+        <div className="max-w-[1350px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
@@ -435,8 +492,8 @@ const LeadCreationComponent: React.FC = () => {
         </div>
 
         {/* Main Tabs */}
-        <div className="bg-white rounded-t-xl border-b border-gray-200">
-          <div className="flex">
+        <div className="bg-white mb-10 rounded-t-xl border-b border-gray-200">
+            <div className="flex">
             <button
               className={getTabStyle(activeMainTab === 'create')}
               onClick={() => setActiveMainTab('create')}
@@ -460,8 +517,8 @@ const LeadCreationComponent: React.FC = () => {
               </span>
             </button>
           </div>
-        </div>
-
+                </div>
+                
         {/* Form Sections */}
         <AnimatePresence mode="wait">
           <motion.div
@@ -474,175 +531,294 @@ const LeadCreationComponent: React.FC = () => {
           >
             {activeMainTab === 'create' ? (
               // Create Lead Form
-              <div className="grid grid-cols-3 gap-6">
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Candidate Name *</label>
-                  <input 
-                    type="text" 
-                    name="candidateName" 
-                    value={editingLead !== null ? editFormData.candidateName : formData.candidateName} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter candidate's full name" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.candidateName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.candidateName ? 'true' : 'false'}
-                    aria-describedby={errors.candidateName ? 'candidateName-error' : undefined}
-                  />
-                  {errors.candidateName && (
-                    <p id="candidateName-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.candidateName}
-                    </p>
-                  )}
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                    <input 
+                      type="text" 
+                      name="firstName" 
+                      value={formData.firstName} 
+                      onChange={handleChange} 
+                      placeholder="Enter first name" 
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.firstName ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.firstName && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.firstName}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                    <input 
+                      type="text" 
+                      name="lastName" 
+                      value={formData.lastName} 
+                      onChange={handleChange} 
+                      placeholder="Enter last name" 
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.lastName ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.lastName && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.lastName}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Contact *</label>
+                    <PhoneInput
+                      country={'us'}
+                      value={formData.primaryContact}
+                      onChange={(phone) => setFormData(prev => ({ ...prev, primaryContact: phone }))}
+                      containerClass="w-full"
+                      inputClass={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.primaryContact ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.primaryContact && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.primaryContact}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Email *</label>
+                    <input 
+                      type="email" 
+                      name="primaryEmail" 
+                      value={formData.primaryEmail} 
+                      onChange={handleChange} 
+                      placeholder="Enter primary email" 
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.primaryEmail ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.primaryEmail && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.primaryEmail}</p>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Email</label>
+                    <input 
+                      type="email" 
+                      name="secondaryEmail" 
+                      value={formData.emails[1] || ''} 
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        emails: [prev.primaryEmail, e.target.value],
+                        primaryEmail: prev.primaryEmail || prev.emails[0]
+                      }))} 
+                      placeholder="Enter secondary email" 
+                      className="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                    />
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Technology *</label>
+                    <input 
+                      type="text" 
+                      name="technology" 
+                      value={formData.technology} 
+                      onChange={handleChange} 
+                      placeholder="Enter technologies (e.g., Java, Spring Boot)" 
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.technology ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.technology && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.technology}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                    <select
+                      name="country"
+                      value={formData.countryCode}
+                      onChange={(e) => {
+                        const selected = countries.find(c => c.value === e.target.value);
+                        if (selected) {
+                          setFormData(prev => ({
+                            ...prev,
+                            country: selected.label,
+                            countryCode: selected.value
+                          }));
+                        }
+                      }}
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.country ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select a country</option>
+                      {countries.map(country => (
+                        <option key={country.value} value={country.value}>
+                          {country.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.country && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.country}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Visa Status *</label>
+                    <select
+                      name="visaStatus"
+                      value={formData.visaStatus}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.visaStatus ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select visa status</option>
+                      <option value="H1B">H1B</option>
+                      <option value="L1">L1</option>
+                      <option value="H4">H4</option>
+                      <option value="F1">F1</option>
+                      <option value="B2">B2</option>
+                    </select>
+                    {errors.visaStatus && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.visaStatus}</p>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lead Source *</label>
+                    <select
+                      name="leadSource"
+                      value={formData.leadSource}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.leadSource ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Select lead source</option>
+                      <option value="Indeed">Indeed</option>
+                      <option value="LinkedIn">LinkedIn</option>
+                      <option value="Referral">Referral</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {errors.leadSource && (
+                      <p className="mt-1.5 text-sm text-red-600">{errors.leadSource}</p>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
-                  <input 
-                    type="text" 
-                    name="contactNumber" 
-                    value={editingLead !== null ? editFormData.contactNumber : formData.contactNumber} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter 10-digit contact number" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.contactNumber ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.contactNumber ? 'true' : 'false'}
-                    aria-describedby={errors.contactNumber ? 'contactNumber-error' : undefined}
-                  />
-                  {errors.contactNumber && (
-                    <p id="contactNumber-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.contactNumber}
-                    </p>
+
+                {/* Remarks Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Remarks *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.remarks[formData.remarks.length - 1].trim()) {
+                          setFormData(prev => ({
+                            ...prev,
+                            remarks: [...prev.remarks, '']
+                          }));
+                        }
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
+                    >
+                      + Add Remark
+                    </button>
+                  </div>
+                  
+                  {/* Current Editor */}
+                  <div className="relative">
+                    <Editor
+                      apiKey="n1jupubcidq4bqvv01vznzpbcj43hg297pgftp78jszal918"
+                      init={{
+                        height: 200,
+                        menubar: false,
+                        plugins: [
+                          'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
+                          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                        ],
+                        toolbar: 'undo redo | blocks | ' +
+                          'bold italic forecolor | alignleft aligncenter ' +
+                          'alignright alignjustify | bullist numlist outdent indent | ' +
+                          'removeformat | help',
+                      }}
+                      value={formData.remarks[formData.remarks.length - 1]}
+                      onEditorChange={(content: string) => {
+                        const newRemarks = [...formData.remarks];
+                        newRemarks[formData.remarks.length - 1] = content;
+                        setFormData(prev => ({
+                          ...prev,
+                          remarks: newRemarks
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  {/* Previous Remarks List */}
+                  {formData.remarks.length > 1 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Previous Remarks</h4>
+                      <div className="space-y-3">
+                        {formData.remarks.slice(0, -1).reverse().map((remark, idx) => (
+                          <div key={idx} className="relative group">
+                            <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                              <div dangerouslySetInnerHTML={{ __html: remark }} />
+                              <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+                                Remark #{formData.remarks.length - 1 - idx}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newRemarks = formData.remarks.filter((_, i) => i !== (formData.remarks.length - 2 - idx));
+                                setFormData(prev => ({
+                                  ...prev,
+                                  remarks: newRemarks
+                                }));
+                              }}
+                              className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-gray-600"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-                
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                  <input 
-                    type="email" 
-                    name="email" 
-                    value={editingLead !== null ? editFormData.email : formData.email} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter email address" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.email ? 'true' : 'false'}
-                    aria-describedby={errors.email ? 'email-error' : undefined}
-                  />
-                  {errors.email && (
-                    <p id="email-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.email}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL *</label>
-                  <input 
-                    type="text" 
-                    name="linkedinId" 
-                    value={editingLead !== null ? editFormData.linkedinId : formData.linkedinId} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter LinkedIn profile URL" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.linkedinId ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.linkedinId ? 'true' : 'false'}
-                    aria-describedby={errors.linkedinId ? 'linkedinId-error' : undefined}
-                  />
-                  {errors.linkedinId && (
-                    <p id="linkedinId-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.linkedinId}
-                    </p>
+
+                  {errors.remarks && (
+                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0]}</p>
                   )}
                 </div>
 
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Technology *</label>
-                  <input 
-                    type="text" 
-                    name="technology" 
-                    value={editingLead !== null ? editFormData.technology : formData.technology} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter technology stack" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.technology ? 'border-red-500' : 'border-gray-300'
+                {/* Submit Button */}
+                <div className="flex justify-end mt-6">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                    aria-invalid={errors.technology ? 'true' : 'false'}
-                    aria-describedby={errors.technology ? 'technology-error' : undefined}
-                  />
-                  {errors.technology && (
-                    <p id="technology-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.technology}
-                    </p>
-                  )}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creating Lead...
+                      </span>
+                    ) : (
+                      'Create Lead'
+                    )}
+                  </button>
                 </div>
-                
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
-                  <input 
-                    type="text" 
-                    name="country" 
-                    value={editingLead !== null ? editFormData.country : formData.country} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter country name" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.country ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.country ? 'true' : 'false'}
-                    aria-describedby={errors.country ? 'country-error' : undefined}
-                  />
-                  {errors.country && (
-                    <p id="country-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.country}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Visa Status *</label>
-                  <input 
-                    type="text" 
-                    name="visaStatus" 
-                    value={editingLead !== null ? editFormData.visaStatus : formData.visaStatus} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter visa status" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.visaStatus ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    aria-invalid={errors.visaStatus ? 'true' : 'false'}
-                    aria-describedby={errors.visaStatus ? 'visaStatus-error' : undefined}
-                  />
-                  {errors.visaStatus && (
-                    <p id="visaStatus-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.visaStatus}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="relative col-span-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Remarks *</label>
-                  <textarea 
-                    name="remarks" 
-                    value={editingLead !== null ? editFormData.remarks : formData.remarks} 
-                    onChange={editingLead !== null ? handleEditChange : handleChange} 
-                    placeholder="Enter any additional remarks" 
-                    className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
-                      errors.remarks ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    rows={4}
-                    aria-invalid={errors.remarks ? 'true' : 'false'}
-                    aria-describedby={errors.remarks ? 'remarks-error' : undefined}
-                  />
-                  {errors.remarks && (
-                    <p id="remarks-error" className="mt-1.5 text-sm text-red-600">
-                      {errors.remarks}
-                    </p>
-                  )}
-                </div>
-              </div>
+              </form>
             ) : (
               // Bulk Upload Form
               <div className="max-w-xl mx-auto">
@@ -770,144 +946,144 @@ const LeadCreationComponent: React.FC = () => {
               <div className="overflow-x-auto">
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-8 py-4 border-b">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedLeads.length === paginatedLeads.length}
-                            onChange={handleSelectAll}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                        </th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Date & time</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                        <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedLeads.map((lead: Lead, index: number) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-8 py-4 border-b">
-                            <input
-                              type="checkbox"
-                              checked={selectedLeads.includes(index)}
-                              onChange={() => handleCheckboxChange(index)}
-                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                            {(currentPage - 1) * pageSize + index + 1}
-                          </td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                            {new Date().toLocaleString('en-IN', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.candidateName}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.contactNumber}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.email}</td>
-                          <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
-                            <a 
-                              href={lead.linkedinId} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-8 py-4 border-b">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedLeads.length === paginatedLeads.length}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Date & time</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLeads.map((lead: Lead, index: number) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-8 py-4 border-b">
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.includes(index)}
+                          onChange={() => handleCheckboxChange(index)}
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </td>
+                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + index + 1}
+                      </td>
+                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {new Date().toLocaleString('en-IN', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </td>
+                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.firstName} {lead.lastName}</td>
+                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.contactNumbers[0]}</td>
+                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.emails[0]}</td>
+                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
+                        <a 
+                          href={lead.linkedinId} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                        >
+                          LinkedIn
+                        </a>
+                      </td>
+                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
+                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.country}</td>
+                      <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        {lead.salesPerson || '--'}
+                        {lead.salesPerson && (
+                          <span className="ml-2 inline-flex items-center">
+                            <button
+                              className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-all duration-200"
+                              title={lead.assignmentDate ? new Date(lead.assignmentDate).toLocaleString() : ''}
                             >
-                              LinkedIn
-                            </a>
-                          </td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">{lead.country}</td>
-                          <td className="px-8 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                            {lead.salesPerson || '--'}
-                            {lead.salesPerson && (
-                              <span className="ml-2 inline-flex items-center">
-                                <button
-                                  className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-all duration-200"
-                                  title={lead.assignmentDate ? new Date(lead.assignmentDate).toLocaleString() : ''}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                </button>
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
-                            <div className="relative inline-block group cursor-pointer">
-                              <button 
-                                onClick={() => handleInfoClick(lead)}
-                                className="p-1 rounded-full bg-gray-100 relative"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-full w-5 h-5 flex items-center justify-center">
-                                  {index + 1}
-                                </span>
-                              </button>
-                              {showInfoDialog && selectedLead && selectedLead === lead && (
-                                <div className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-w-md mx-auto top-20 transform -translate-x-1/2 p-6">
-                                  <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                      <h3 className="text-lg font-medium text-gray-900">Remarks</h3>
-                                      <button 
-                                        onClick={handleCloseInfoDialog}
-                                        className="text-gray-500 hover:text-gray-700"
-                                      >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <p className="font-medium text-gray-900">Candidate name:</p>
-                                        <p className="text-gray-600">{selectedLead.candidateName}</p>
-                                      </div>
-                                      <div>
-                                        <p className="font-medium text-gray-900">Remarks:</p>
-                                        <p className="text-gray-600">{selectedLead.remarks || 'No remarks added'}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
-                            <button 
-                              onClick={() => handleEdit(index)}
-                              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                              title="Edit lead"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
+                        <div className="relative inline-block group cursor-pointer">
+                          <button 
+                            onClick={() => handleInfoClick(lead)}
+                            className="p-1 rounded-full bg-gray-100 relative"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-full w-5 h-5 flex items-center justify-center">
+                              {index + 1}
+                            </span>
+                          </button>
+                          {showInfoDialog && selectedLead && selectedLead === lead && (
+                            <div className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-w-md mx-auto top-20 transform -translate-x-1/2 p-6">
+                              <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                  <h3 className="text-lg font-medium text-gray-900">Remarks</h3>
+                                  <button 
+                                    onClick={handleCloseInfoDialog}
+                                    className="text-gray-500 hover:text-gray-700"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                                <div className="space-y-4">
+                                  <div>
+                                    <p className="font-medium text-gray-900">Candidate name:</p>
+                                        <p className="text-gray-600">{selectedLead.firstName} {selectedLead.lastName}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-900">Remarks:</p>
+                                        <p className="text-gray-600">{selectedLead.remarks.join(', ')}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-4 text-sm border-b whitespace-nowrap">
+                        <button 
+                          onClick={() => handleEdit(index)}
+                          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                          title="Edit lead"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
                 </div>
               </div>
             )}
-          </div>
+            </div>
 
           {/* Pagination */}
           <div className="flex justify-between items-center px-8 py-5 border-t">
