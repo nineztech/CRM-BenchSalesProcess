@@ -1,6 +1,7 @@
 import User  from './userModel.js';
 import Department  from './departmentModel.js';
 import Lead from './leadModel.js';
+import Packages from './packagesModel.js';
 
 // Department associations
 Department.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
@@ -32,8 +33,16 @@ User.hasMany(Lead, {
   as: 'previouslyAssignedLeads'
 });
 
+// Packages associations
+Packages.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Packages.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
+
+User.hasMany(Packages, { foreignKey: 'createdBy', as: 'createdPackages' });
+User.hasMany(Packages, { foreignKey: 'updatedBy', as: 'updatedPackages' });
+
 export {
   User,
   Department,
-  Lead
+  Lead,
+  Packages
 };

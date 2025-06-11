@@ -50,7 +50,7 @@ const startServer = async () => {
     await connectDB();
 
     // Ensure models and associations are synced
-    await sequelize.sync({force:true}); // optionally: { force: false, alter: true }
+    await sequelize.sync({alter:true}); // optionally: { force: false, alter: true }
 
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
 
