@@ -5,7 +5,6 @@ import Sidebar from '../sidebar/Sidebar';
 import LogoIcon from "../../assets/xls_logo.webp"
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Editor } from '@tinymce/tinymce-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 
@@ -427,9 +426,9 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  const handleRemarkChange = (content: string) => {
+  const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newRemarks = [...formData.remarks];
-    newRemarks[formData.remarks.length - 1] = content;
+    newRemarks[formData.remarks.length - 1] = e.target.value;
     setFormData(prev => ({
       ...prev,
       remarks: newRemarks
@@ -851,7 +850,7 @@ const LeadCreationComponent: React.FC = () => {
 
                 {/* Remarks Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
                     <label className="block text-sm font-medium text-gray-700">Remarks *</label>
                     <button
                       type="button"
@@ -863,31 +862,19 @@ const LeadCreationComponent: React.FC = () => {
                           }));
                         }
                       }}
-                      className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
                     >
-                      + Add Remark
+                      <span className="mr-1">+</span> Add Remark
                     </button>
                   </div>
                   
-                  {/* Current Editor */}
-                  <div className="relative">
-                    <Editor
-                      apiKey="n1jupubcidq4bqvv01vznzpbcj43hg297pgftp78jszal918"
-                      init={{
-                        height: 200,
-                        menubar: false,
-                        plugins: [
-                          'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
-                          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-                        ],
-                        toolbar: 'undo redo | blocks | ' +
-                          'bold italic forecolor | alignleft aligncenter ' +
-                          'alignright alignjustify | bullist numlist outdent indent | ' +
-                          'removeformat | help',
-                      }}
+                  {/* Current Textarea */}
+                  <div className="relative w-full">
+                    <textarea
                       value={formData.remarks[formData.remarks.length - 1]}
-                      onEditorChange={handleRemarkChange}
+                      onChange={handleRemarkChange}
+                      className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
+                      placeholder="Enter your remark here..."
                     />
                   </div>
 
@@ -898,8 +885,8 @@ const LeadCreationComponent: React.FC = () => {
                       <div className="space-y-3">
                         {formData.remarks.slice(0, -1).reverse().map((remark, idx) => (
                           <div key={idx} className="relative group">
-                            <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
-                              <div dangerouslySetInnerHTML={{ __html: remark }} />
+                            <div className="p-3 sm:p-4 bg-gray-50 rounded-md border border-gray-200">
+                              <pre className="whitespace-pre-wrap text-sm break-words">{remark}</pre>
                               <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                                 Remark #{formData.remarks.length - 1 - idx}
                               </div>
