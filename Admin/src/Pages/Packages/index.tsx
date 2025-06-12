@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck, FaStar } from 'react-icons/fa';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../../Components/Layout/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
+import Countdown from 'react-countdown';
 
 interface Package {
   id: number;
   planName: string;
   enrollmentCharge: number;
   offerLetterCharge: number;
+  firstYearSalaryPercentage: number;
   features: string[];
   discounts: {
-    type: string;
-    description: string;
-    percentage?: number;
-    conditions?: string;
-    installments?: {
-      stage: string;
-      amount: number;
-    }[];
+    planName: string;
+    name: string;
+    percentage: number;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
   }[];
   status: string;
   createdAt: string;
@@ -28,20 +30,100 @@ interface FormData {
   planName: string;
   enrollmentCharge: number;
   offerLetterCharge: number;
+  firstYearSalaryPercentage: number;
   features: string[];
   discounts: {
-    type: string;
-    description: string;
-    percentage?: number;
-    conditions?: string;
-    installments?: {
-      stage: string;
-      amount: number;
-    }[];
+    planName: string;
+    name: string;
+    percentage: number;
   }[];
 }
 
+interface DiscountFormData {
+  planName: string;
+  name: string;
+  percentage: number;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+}
+
+// Add new interface for countdown renderer
+interface CountdownRendererProps {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  completed: boolean;
+}
+
+// Countdown renderer component
+const countdownRenderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+  if (completed) {
+    return <span className="text-red-600 font-medium">Expired</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-red-600 font-medium">
+      {days > 0 && <span>{days}d</span>}
+      {hours > 0 && <span>{hours}h</span>}
+      <span>{minutes}m</span>
+      <span>{seconds}s</span>
+    </div>
+  );
+};
+
+// Function to get the nearest discount end date
+const getNearestDiscountEndDate = (discounts: Package['discounts']) => {
+  if (!discounts || discounts.length === 0) return null;
+
+  const now = new Date();
+  let nearestEndDate: Date | null = null;
+  let minDifference = Infinity;
+
+  discounts.forEach(discount => {
+    const endDate = new Date(`${discount.endDate}T${discount.endTime}`);
+    const difference = endDate.getTime() - now.getTime();
+    
+    if (difference > 0 && difference < minDifference) {
+      minDifference = difference;
+      nearestEndDate = endDate;
+    }
+  });
+
+  return nearestEndDate;
+};
+
+const CountdownTimer: React.FC<{ endDate: string; endTime: string }> = ({ endDate, endTime }) => {
+  const endDateTime = new Date(`${endDate}T${endTime}`);
+  
+  const renderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+    if (completed) {
+      return <span className="text-xs font-medium text-orange-600">Expired</span>;
+    }
+
+    if (days > 0) {
+      return <span className="text-xs font-medium text-orange-600">{days}d {hours}h</span>;
+    }
+    
+    if (hours > 0) {
+      return <span className="text-xs font-medium text-orange-600">{hours}h {minutes}m</span>;
+    }
+    
+    return <span className="text-xs font-medium text-orange-600">{minutes}m {seconds}s</span>;
+  };
+
+  return (
+    <Countdown
+      date={endDateTime}
+      renderer={renderer}
+    />
+  );
+};
+
 const PackagesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
@@ -49,17 +131,71 @@ const PackagesPage: React.FC = () => {
     planName: '',
     enrollmentCharge: 0,
     offerLetterCharge: 0,
+    firstYearSalaryPercentage: 0,
     features: [],
     discounts: []
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [featureInput, setFeatureInput] = useState('');
-  const [discountType, setDiscountType] = useState('refund_policy');
-  const [discountPercentage, setDiscountPercentage] = useState('');
-  const [discountConditions, setDiscountConditions] = useState('');
-  const [discountDescription, setDiscountDescription] = useState('');
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const [discountFormData, setDiscountFormData] = useState<DiscountFormData>({
+    planName: '',
+    name: '',
+    percentage: 0,
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: ''
+  });
+  const [isAnyCardHovered, setIsAnyCardHovered] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
 
   const API_BASE_URL = 'http://localhost:5006/api/packages';
+
+  // Create axios instance with default config
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+
+  // Add request interceptor to add token
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Add response interceptor to handle 401 errors
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error: unknown) => {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401 || axiosError.response?.status === 400) {
+        localStorage.removeItem('token');
+        navigate('/');
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
+    fetchPackages();
+  }, [navigate]);
 
   // Color themes for different cards
   const colorThemes = [
@@ -89,19 +225,19 @@ const PackagesPage: React.FC = () => {
     }
   ];
 
-  useEffect(() => {
-    fetchPackages();
-  }, []);
-
   const fetchPackages = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/all`);
+      const response = await axiosInstance.get('/all');
       if (response.data.success) {
         setPackages(response.data.data);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching packages:', error);
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== 401) {
+        alert('Failed to fetch packages');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -111,9 +247,36 @@ const PackagesPage: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name.includes('Charge') || name === 'firstYearSalaryPercentage' ? Number(value) : value
     }));
     setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!formData.planName.trim()) {
+      newErrors.planName = 'Plan name is required';
+    }
+    
+    if (!formData.enrollmentCharge || formData.enrollmentCharge <= 0) {
+      newErrors.enrollmentCharge = 'Valid enrollment charge is required';
+    }
+    
+    if (!formData.offerLetterCharge || formData.offerLetterCharge <= 0) {
+      newErrors.offerLetterCharge = 'Valid offer letter charge is required';
+    }
+
+    if (!formData.firstYearSalaryPercentage || formData.firstYearSalaryPercentage < 0 || formData.firstYearSalaryPercentage > 100) {
+      newErrors.firstYearSalaryPercentage = 'First year salary percentage must be between 0 and 100';
+    }
+    
+    if (formData.features.length === 0) {
+      newErrors.features = 'At least one feature is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const addFeature = () => {
@@ -135,17 +298,65 @@ const PackagesPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      console.log('Validation errors:', errors);
+      return;
+    }
+
     try {
       setIsLoading(true);
+      
+      const packageData = {
+        ...formData,
+        enrollmentCharge: Number(formData.enrollmentCharge),
+        offerLetterCharge: Number(formData.offerLetterCharge),
+        features: formData.features.map(feature => feature.trim()).filter(Boolean),
+        discounts: formData.discounts.map(discount => ({
+          ...discount,
+          percentage: Number(discount.percentage)
+        }))
+      };
+
       if (editingPackage) {
-        await axios.put(`${API_BASE_URL}/${editingPackage.id}`, formData);
+        const response = await axiosInstance.put(`/${editingPackage.id}`, packageData);
+        if (response.data.success) {
+          console.log('Package updated successfully:', response.data);
+          await fetchPackages();
+          resetForm();
+          alert('Package updated successfully');
+        }
       } else {
-        await axios.post(`${API_BASE_URL}/add`, formData);
+        const response = await axiosInstance.post('/add', packageData);
+        if (response.data.success) {
+          console.log('Package created successfully:', response.data);
+          await fetchPackages();
+          resetForm();
+          alert('Package created successfully');
+        }
       }
-      fetchPackages();
-      resetForm();
     } catch (error) {
       console.error('Error submitting package:', error);
+      if (axios.isAxiosError(error) && error.response?.data) {
+        // Handle validation errors from the server
+        if (error.response.data.errors) {
+          const serverErrors = error.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
+            acc[curr.field] = curr.message;
+            return acc;
+          }, {});
+          setErrors(serverErrors);
+        } else {
+          setErrors({
+            submit: error.response.data.message || 'Failed to submit package'
+          });
+          alert(error.response.data.message || 'Operation failed');
+        }
+      } else {
+        setErrors({
+          submit: 'An unexpected error occurred'
+        });
+        alert('Operation failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -157,6 +368,7 @@ const PackagesPage: React.FC = () => {
       planName: pkg.planName,
       enrollmentCharge: pkg.enrollmentCharge,
       offerLetterCharge: pkg.offerLetterCharge,
+      firstYearSalaryPercentage: pkg.firstYearSalaryPercentage,
       features: pkg.features,
       discounts: pkg.discounts
     });
@@ -166,7 +378,7 @@ const PackagesPage: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this package?')) return;
     try {
       setIsLoading(true);
-      await axios.delete(`${API_BASE_URL}/${id}`);
+      await axiosInstance.delete(`/${id}`);
       fetchPackages();
     } catch (error) {
       console.error('Error deleting package:', error);
@@ -180,11 +392,73 @@ const PackagesPage: React.FC = () => {
       planName: '',
       enrollmentCharge: 0,
       offerLetterCharge: 0,
+      firstYearSalaryPercentage: 0,
       features: [],
       discounts: []
     });
     setEditingPackage(null);
     setErrors({});
+    setFeatureInput('');
+    setDiscountFormData({
+      planName: '',
+      name: '',
+      percentage: 0,
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: ''
+    });
+    setShowDiscountForm(false);
+  };
+
+  const handleAddDiscount = async () => {
+    if (!discountFormData.planName || !discountFormData.name || discountFormData.percentage <= 0 || 
+        !discountFormData.startDate || !discountFormData.startTime || 
+        !discountFormData.endDate || !discountFormData.endTime) {
+      setErrors({ submit: 'Please fill all discount fields' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      // Get the package ID from the selected plan name
+      const selectedPackage = packages.find(p => p.planName === discountFormData.planName);
+      
+      if (!selectedPackage) {
+        setErrors({ submit: 'Selected package not found' });
+        return;
+      }
+
+      const response = await axiosInstance.post(`/${selectedPackage.id}/discounts`, discountFormData);
+      
+      if (response.data.success) {
+        await fetchPackages();
+        setDiscountFormData({
+          planName: '',
+          name: '',
+          percentage: 0,
+          startDate: '',
+          startTime: '',
+          endDate: '',
+          endTime: ''
+        });
+        setShowDiscountForm(false);
+        alert('Discount added successfully');
+      }
+    } catch (error) {
+      console.error('Error adding discount:', error);
+      if (axios.isAxiosError(error) && error.response?.data) {
+        setErrors({
+          submit: error.response.data.message || 'Failed to add discount'
+        });
+      } else {
+        setErrors({
+          submit: 'An unexpected error occurred'
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -205,7 +479,7 @@ const PackagesPage: React.FC = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSubmit}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl font-medium disabled:opacity-50"
                 disabled={isLoading}
               >
                 {isLoading ? 'Processing...' : editingPackage ? 'Update Package' : 'Save Package'}
@@ -221,6 +495,13 @@ const PackagesPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Display any submit error */}
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {errors.submit}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="form-group">
               <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name</label>
@@ -229,9 +510,12 @@ const PackagesPage: React.FC = () => {
                 name="planName"
                 value={formData.planName}
                 onChange={handleInputChange}
-                className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                className={`w-full p-2.5 text-sm border ${errors.planName ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
                 placeholder="Enter plan name"
               />
+              {errors.planName && (
+                <p className="mt-1 text-xs text-red-500">{errors.planName}</p>
+              )}
             </div>
 
             <div className="form-group">
@@ -241,9 +525,13 @@ const PackagesPage: React.FC = () => {
                 name="enrollmentCharge"
                 value={formData.enrollmentCharge}
                 onChange={handleInputChange}
-                className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                className={`w-full p-2.5 text-sm border ${errors.enrollmentCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
                 placeholder="Enter enrollment charge"
+                min="0"
               />
+              {errors.enrollmentCharge && (
+                <p className="mt-1 text-xs text-red-500">{errors.enrollmentCharge}</p>
+              )}
             </div>
 
             <div className="form-group">
@@ -253,15 +541,44 @@ const PackagesPage: React.FC = () => {
                 name="offerLetterCharge"
                 value={formData.offerLetterCharge}
                 onChange={handleInputChange}
-                className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                className={`w-full p-2.5 text-sm border ${errors.offerLetterCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
                 placeholder="Enter offer letter charge"
+                min="0"
               />
+              {errors.offerLetterCharge && (
+                <p className="mt-1 text-xs text-red-500">{errors.offerLetterCharge}</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
+              <input
+                type="number"
+                name="firstYearSalaryPercentage"
+                value={formData.firstYearSalaryPercentage}
+                onChange={handleInputChange}
+                className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                placeholder="Enter first year salary percentage"
+                min="0"
+                max="100"
+                step="0.01"
+              />
+              {errors.firstYearSalaryPercentage && (
+                <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
+              )}
             </div>
           </div>
 
-          {/* Features Section */}
+          {/* Features error message */}
+          {errors.features && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {errors.features}
+            </div>
+          )}
+
+          {/* Features and Discount Buttons Section */}
           <div className="mt-6">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Features & Discounts</label>
             <div className="flex gap-3 mb-4">
               <input
                 type="text"
@@ -274,11 +591,23 @@ const PackagesPage: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={addFeature}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg"
+                className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
               >
+                <FaCheck size={14} />
                 Add Feature
               </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowDiscountForm(!showDiscountForm)}
+                className="px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2"
+              >
+                <FaGift size={14} />
+                {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
+              </motion.button>
             </div>
+
+            {/* Features Display */}
             <div className="flex flex-wrap gap-3">
               {formData.features.map((feature, index) => (
                 <motion.div
@@ -298,105 +627,164 @@ const PackagesPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </motion.div>
 
-          {/* Discounts Section */}
-          <div className="mt-6">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Discounts</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Discount Form */}
+        <AnimatePresence>
+          {showDiscountForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-6 bg-purple-50 rounded-xl p-6 border border-purple-100"
+            >
+              <h3 className="text-lg font-semibold text-purple-800 mb-4">Add New Discount</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Select Package</label>
                 <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value)}
-                  className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="refund_policy">Refund Policy</option>
-                  <option value="payment_schedule">Payment Schedule</option>
+                    value={selectedPackageId || ''}
+                    onChange={(e) => {
+                      const packageId = Number(e.target.value);
+                      setSelectedPackageId(packageId);
+                      const selectedPackage = packages.find(p => p.id === packageId);
+                      if (selectedPackage) {
+                        setDiscountFormData(prev => ({
+                          ...prev,
+                          planName: selectedPackage.planName
+                        }));
+                      }
+                    }}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select a package</option>
+                    {packages.map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.planName}
+                      </option>
+                    ))}
                 </select>
               </div>
 
-              {discountType === 'refund_policy' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Percentage</label>
-                    <input
-                      type="number"
-                      value={discountPercentage}
-                      onChange={(e) => setDiscountPercentage(e.target.value)}
-                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter percentage"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Conditions</label>
-                    <input
-                      type="text"
-                      value={discountConditions}
-                      onChange={(e) => setDiscountConditions(e.target.value)}
-                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter conditions"
-                    />
-                  </div>
-                </>
-              )}
-              
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                <div className="flex gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Discount Name</label>
                   <input
                     type="text"
-                    value={discountDescription}
-                    onChange={(e) => setDiscountDescription(e.target.value)}
-                    className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter discount description"
+                    value={discountFormData.name}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter discount name"
+                    required
                   />
+                </div>
+
+                  <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Percentage (%)</label>
+                    <input
+                      type="number"
+                    min="0"
+                    max="100"
+                    value={discountFormData.percentage}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, percentage: Number(e.target.value) }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Enter percentage"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={discountFormData.startDate}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={discountFormData.startTime}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                    />
+                  </div>
+
+                <div className="form-group">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">End Date</label>
+                    <input
+                    type="date"
+                    value={discountFormData.endDate}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                    />
+                  </div>
+              
+                <div className="form-group">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={discountFormData.endTime}
+                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex justify-end">
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      if (discountDescription.trim()) {
-                        const newDiscount = {
-                          type: discountType,
-                          description: discountDescription,
-                          ...(discountType === 'refund_policy' && {
-                            percentage: Number(discountPercentage),
-                            conditions: discountConditions
-                          })
-                        };
-                        setFormData(prev => ({
-                          ...prev,
-                          discounts: [...prev.discounts, newDiscount]
-                        }));
-                        setDiscountDescription('');
-                        setDiscountPercentage('');
-                        setDiscountConditions('');
-                      }
-                    }}
-                    className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg"
+                    type="submit"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleAddDiscount}
+                    disabled={isLoading}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg flex items-center gap-2"
                   >
+                    {isLoading ? (
+                      'Adding Discount...'
+                    ) : (
+                      <>
+                        <FaCheck size={14} />
                     Add Discount
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </div>
-            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Discounts Display */}
+        {formData.discounts.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">Added Discounts</h4>
             <div className="flex flex-wrap gap-3">
               {formData.discounts.map((discount, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-full"
+                  className="flex items-center gap-2 bg-purple-50 border border-purple-200 px-4 py-2 rounded-full"
                 >
-                  <span className="text-sm font-medium text-green-800">{discount.description}</span>
+                  <span className="text-sm font-medium text-purple-800">
+                    {discount.name} ({discount.percentage}%) - {discount.planName}
+                  </span>
                   <button
                     onClick={() => {
-                      const newDiscounts = formData.discounts.filter((d) => d.description !== discount.description);
                       setFormData(prev => ({
                         ...prev,
-                        discounts: newDiscounts
+                        discounts: prev.discounts.filter((_, i) => i !== index)
                       }));
                     }}
-                    className="text-green-600 hover:text-green-800 font-bold text-lg leading-none"
+                    className="text-purple-600 hover:text-purple-800 font-bold text-lg leading-none"
                   >
                     ×
                   </button>
@@ -404,13 +792,15 @@ const PackagesPage: React.FC = () => {
               ))}
             </div>
           </div>
-        </motion.div>
+        )}
 
         {/* Packages Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence>
             {packages.map((pkg, index) => {
               const theme = colorThemes[index % colorThemes.length];
+              const nearestEndDate = getNearestDiscountEndDate(pkg.discounts);
+              
               return (
                 <motion.div
                   key={pkg.id}
@@ -418,10 +808,25 @@ const PackagesPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: index * 0.1 }}
-                  className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out opacity-0 group-hover:opacity-100`}
+                  onHoverStart={() => setIsAnyCardHovered(true)}
+                  onHoverEnd={() => setIsAnyCardHovered(false)}
+                  className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
                 >
-                  {/* Card Header - Always Visible */}
-                  <div className="p-5">
+                  {/* Countdown Timer - Only show if there are active discounts */}
+                  {nearestEndDate && (
+                    <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-center gap-2">
+                      <FaClock className="text-red-500" size={14} />
+                      <Countdown
+                        date={nearestEndDate}
+                        renderer={countdownRenderer}
+                        className="text-sm"
+                      />
+                      <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
+                    </div>
+                  )}
+
+                  {/* Add margin top to card content if countdown is present */}
+                  <div className={`p-5 ${nearestEndDate ? 'mt-12' : ''}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
@@ -473,36 +878,63 @@ const PackagesPage: React.FC = () => {
                         </div>
                         <span className={`font-bold ${theme.accent} text-sm`}>${pkg.offerLetterCharge}</span>
                       </div>
+
+                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                            <FaMoneyBillWave size={12} />
+                          </div>
+                          <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
+                        </div>
+                        <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
+                      </div>
                     </div>
 
-                    {/* Expand Indicator */}
-                    <div className="text-center">
-                      <motion.div
-                        animate={{ y: [0, 3, 0] }}
-                        transition={{ repeat: Infinity, duration: 1.5 }}
-                        className={`${theme.accent} text-xs font-medium opacity-60 group-hover:opacity-0 transition-opacity duration-300`}
-                      >
-                        View Details ↓
-                      </motion.div>
-                    </div>
+                    {/* Special Offers Section - Always Visible */}
+                    {pkg.discounts.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                          <FaClock size={12} />
+                          Special Offers
+                        </h4>
+                        <div className="space-y-1.5">
+                          {pkg.discounts.map((discount, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                                  <FaCheck size={10} />
+                                </div>
+                                <span className="text-xs font-medium text-gray-700">
+                                  {discount.name} ({discount.percentage}%)
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <FaClock size={10} className="text-orange-500" />
+                                <CountdownTimer endDate={discount.endDate} endTime={discount.endTime} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Expandable Content - Shows on Hover */}
+                  {/* Expandable Content - Shows on Any Card Hover */}
                   <div 
                     style={{
                       transition: 'all 600ms cubic-bezier(0.4, 0, 0.2, 1)',
                       willChange: 'transform, opacity, max-height'
                     }}
-                    className="overflow-hidden origin-top transform-gpu
-                      max-h-0 group-hover:max-h-[2000px] 
-                      opacity-0 group-hover:opacity-100
-                      translate-y-[-10%] group-hover:translate-y-0
-                      scale-98 group-hover:scale-100"
+                    className={`overflow-hidden origin-top transform-gpu
+                      max-h-0 ${isAnyCardHovered ? 'max-h-[2000px] opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-[-10%] scale-98'}`}
                   >
                     <div className={`p-5 bg-white/90 backdrop-blur-sm border-t ${theme.border}`}>
                       {/* Features Section */}
                       {pkg.features.length > 0 && (
-                        <div className="mb-4">
+                        <div>
                           <h4 className={`text-xs font-bold ${theme.accent} mb-3 flex items-center gap-2`}>
                             <FaUserGraduate size={12} />
                             Package Features
@@ -520,32 +952,6 @@ const PackagesPage: React.FC = () => {
                                   <FaCheck size={10} />
                                 </div>
                                 <span className="text-xs font-medium text-gray-700">{feature}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Discounts Section */}
-                      {pkg.discounts.length > 0 && (
-                        <div>
-                          <h4 className={`text-xs font-bold ${theme.accent} mb-3 flex items-center gap-2`}>
-                            <FaClock size={12} />
-                            Special Offers
-                          </h4>
-                          <div className="space-y-2">
-                            {pkg.discounts.map((discount, idx) => (
-                              <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className={`flex items-center gap-2 p-2 rounded-lg hover:bg-white/80 transition-colors duration-300`}
-                              >
-                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                                  <FaCheck size={10} />
-                                </div>
-                                <span className="text-xs font-medium text-gray-700">{discount.description}</span>
                               </motion.div>
                             ))}
                           </div>

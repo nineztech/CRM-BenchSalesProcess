@@ -32,6 +32,15 @@ const Packages = sequelize.define(
         min: 0
       }
     },
+    firstYearSalaryPercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+        max: 100
+      }
+    },
     features: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -56,8 +65,20 @@ const Packages = sequelize.define(
           if (value && !Array.isArray(value)) {
             throw new Error('Discounts must be an array');
           }
-          if (value && value.some(item => typeof item !== 'object')) {
-            throw new Error('All discounts must be objects');
+          if (value && value.some(item => {
+            return typeof item !== 'object' || 
+                   !item.planName || 
+                   !item.name || 
+                   typeof item.percentage !== 'number' ||
+                   item.percentage < 0 || 
+                   item.percentage > 100 ||
+                   !item.startDate ||
+                   !item.startTime ||
+                   !item.endDate ||
+                   !item.endTime ||
+                   new Date(item.startDate) > new Date(item.endDate);
+          })) {
+            throw new Error('All discounts must be valid objects with planName, name, percentage (0-100), and valid date/time ranges');
           }
         }
       }
