@@ -10,6 +10,7 @@ interface Package {
   id: number;
   planName: string;
   enrollmentCharge: number;
+  initialPrice:number;
   offerLetterCharge: number;
   firstYearSalaryPercentage: number;
   features: string[];
@@ -24,6 +25,7 @@ interface Package {
   }[];
   status: string;
   createdAt: string;
+  discountedPrice?: number;
 }
 
 interface FormData {
@@ -47,6 +49,7 @@ interface DiscountFormData {
   startTime: string;
   endDate: string;
   endTime: string;
+  discountIndex?: number;
 }
 
 // Add new interface for countdown renderer
@@ -75,7 +78,7 @@ const countdownRenderer = ({ days, hours, minutes, seconds, completed }: Countdo
 };
 
 // Function to get the nearest discount end date
-const getNearestDiscountEndDate = (discounts: Package['discounts']) => {
+const getNearestDiscountEndDate = (discounts: Package['discounts']): Date | null => {
   if (!discounts || discounts.length === 0) return null;
 
   const now = new Date();
@@ -83,7 +86,11 @@ const getNearestDiscountEndDate = (discounts: Package['discounts']) => {
   let minDifference = Infinity;
 
   discounts.forEach(discount => {
+    if (!discount.endDate || !discount.endTime) return;
+    
     const endDate = new Date(`${discount.endDate}T${discount.endTime}`);
+    if (isNaN(endDate.getTime())) return;
+    
     const difference = endDate.getTime() - now.getTime();
     
     if (difference > 0 && difference < minDifference) {
@@ -149,6 +156,7 @@ const PackagesPage: React.FC = () => {
   });
   const [isAnyCardHovered, setIsAnyCardHovered] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
+  const [isEditingDiscount, setIsEditingDiscount] = useState(false);
 
   const API_BASE_URL = 'http://localhost:5006/api/packages';
 
@@ -231,6 +239,7 @@ const PackagesPage: React.FC = () => {
       const response = await axiosInstance.get('/all');
       if (response.data.success) {
         setPackages(response.data.data);
+        console.log(packages)
       }
     } catch (error: unknown) {
       console.error('Error fetching packages:', error);
@@ -372,6 +381,30 @@ const PackagesPage: React.FC = () => {
       features: pkg.features,
       discounts: pkg.discounts
     });
+    setSelectedPackageId(pkg.id);
+    
+    if (pkg.discounts && pkg.discounts.length > 0) {
+      const firstDiscount = pkg.discounts[0];
+      setDiscountFormData({
+        planName: pkg.planName,
+        name: '',
+        percentage: 0,
+        startDate: firstDiscount.startDate,
+        startTime: firstDiscount.startTime,
+        endDate: firstDiscount.endDate,
+        endTime: firstDiscount.endTime
+      });
+    } else {
+      setDiscountFormData({
+        planName: pkg.planName,
+        name: '',
+        percentage: 0,
+        startDate: '',
+        startTime: '',
+        endDate: '',
+        endTime: ''
+      });
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -409,6 +442,24 @@ const PackagesPage: React.FC = () => {
       endTime: ''
     });
     setShowDiscountForm(false);
+    setSelectedPackageId(null);
+  };
+
+  const handleEditDiscount = (pkg: Package, discountIndex: number) => {
+    const discount = pkg.discounts[discountIndex];
+    setSelectedPackageId(pkg.id);
+    setShowDiscountForm(true);
+    setIsEditingDiscount(true);
+    setDiscountFormData({
+      planName: pkg.planName,
+      name: discount.name,
+      percentage: discount.percentage,
+      startDate: discount.startDate,
+      startTime: discount.startTime,
+      endDate: discount.endDate,
+      endTime: discount.endTime,
+      discountIndex
+    });
   };
 
   const handleAddDiscount = async () => {
@@ -421,7 +472,6 @@ const PackagesPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      // Get the package ID from the selected plan name
       const selectedPackage = packages.find(p => p.planName === discountFormData.planName);
       
       if (!selectedPackage) {
@@ -429,27 +479,40 @@ const PackagesPage: React.FC = () => {
         return;
       }
 
-      const response = await axiosInstance.post(`/${selectedPackage.id}/discounts`, discountFormData);
-      
-      if (response.data.success) {
-        await fetchPackages();
-        setDiscountFormData({
-          planName: '',
-          name: '',
-          percentage: 0,
-          startDate: '',
-          startTime: '',
-          endDate: '',
-          endTime: ''
+      if (isEditingDiscount && discountFormData.discountIndex !== undefined) {
+        // Update existing discount
+        const updatedDiscounts = [...selectedPackage.discounts];
+        updatedDiscounts[discountFormData.discountIndex] = {
+          ...updatedDiscounts[discountFormData.discountIndex],
+          name: discountFormData.name,
+          percentage: discountFormData.percentage
+        };
+
+        const response = await axiosInstance.put(`/${selectedPackage.id}`, {
+          ...selectedPackage,
+          discounts: updatedDiscounts
         });
-        setShowDiscountForm(false);
-        alert('Discount added successfully');
+
+        if (response.data.success) {
+          await fetchPackages();
+          resetDiscountForm();
+          alert('Discount updated successfully');
+        }
+      } else {
+        // Add new discount
+        const response = await axiosInstance.post(`/${selectedPackage.id}/discounts`, discountFormData);
+        
+        if (response.data.success) {
+          await fetchPackages();
+          resetDiscountForm();
+          alert('Discount added successfully');
+        }
       }
     } catch (error) {
-      console.error('Error adding discount:', error);
+      console.error('Error handling discount:', error);
       if (axios.isAxiosError(error) && error.response?.data) {
         setErrors({
-          submit: error.response.data.message || 'Failed to add discount'
+          submit: error.response.data.message || 'Failed to handle discount'
         });
       } else {
         setErrors({
@@ -459,6 +522,56 @@ const PackagesPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetDiscountForm = () => {
+    setDiscountFormData({
+      planName: '',
+      name: '',
+      percentage: 0,
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: ''
+    });
+    setShowDiscountForm(false);
+    setIsEditingDiscount(false);
+    setSelectedPackageId(null);
+  };
+
+  // Add back the package selection handler
+  const handlePackageSelect = (packageId: number) => {
+    setSelectedPackageId(packageId);
+    const selectedPackage = packages.find(p => p.id === packageId);
+    if (selectedPackage) {
+      if (selectedPackage.discounts && selectedPackage.discounts.length > 0) {
+        const firstDiscount = selectedPackage.discounts[0];
+        setDiscountFormData(prev => ({
+          ...prev,
+          planName: selectedPackage.planName,
+          startDate: firstDiscount.startDate,
+          startTime: firstDiscount.startTime,
+          endDate: firstDiscount.endDate,
+          endTime: firstDiscount.endTime
+        }));
+      } else {
+        setDiscountFormData(prev => ({
+          ...prev,
+          planName: selectedPackage.planName,
+          startDate: '',
+          startTime: '',
+          endDate: '',
+          endTime: ''
+        }));
+      }
+    }
+  };
+
+  // Add back the helper function for date/time fields
+  const shouldDisableDateTimeFields = (packageId: number | null): boolean => {
+    if (!packageId) return false;
+    const selectedPackage = packages.find(p => p.id === packageId);
+    return Boolean(selectedPackage?.discounts && selectedPackage.discounts.length > 0);
   };
 
   return (
@@ -502,7 +615,7 @@ const PackagesPage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-4 gap-6">
             <div className="form-group">
               <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name</label>
               <input
@@ -600,7 +713,8 @@ const PackagesPage: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowDiscountForm(!showDiscountForm)}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2"
+                disabled={!editingPackage && !selectedPackageId}
+                className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <FaGift size={14} />
                 {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
@@ -640,105 +754,111 @@ const PackagesPage: React.FC = () => {
               className="mt-6 bg-purple-50 rounded-xl p-6 border border-purple-100"
             >
               <h3 className="text-lg font-semibold text-purple-800 mb-4">Add New Discount</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Select Package</label>
-                <select
-                    value={selectedPackageId || ''}
-                    onChange={(e) => {
-                      const packageId = Number(e.target.value);
-                      setSelectedPackageId(packageId);
-                      const selectedPackage = packages.find(p => p.id === packageId);
-                      if (selectedPackage) {
-                        setDiscountFormData(prev => ({
-                          ...prev,
-                          planName: selectedPackage.planName
-                        }));
-                      }
-                    }}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select a package</option>
-                    {packages.map((pkg) => (
-                      <option key={pkg.id} value={pkg.id}>
-                        {pkg.planName}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Discount Name</label>
-                  <input
-                    type="text"
-                    value={discountFormData.name}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter discount name"
-                    required
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Select Package</label>
+                    <select
+                      value={editingPackage ? editingPackage.id : selectedPackageId || ''}
+                      onChange={(e) => {
+                        if (editingPackage) return; // Prevent changes in edit mode
+                        handlePackageSelect(Number(e.target.value));
+                      }}
+                      className={`w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${editingPackage ? 'bg-gray-100' : ''}`}
+                      required
+                      disabled={editingPackage !== null}
+                    >
+                      <option value="">Select a package</option>
+                      {packages.map((pkg) => (
+                        <option 
+                          key={pkg.id} 
+                          value={pkg.id}
+                          disabled={editingPackage !== null && pkg.id !== editingPackage.id}
+                        >
+                          {pkg.planName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Percentage (%)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Discount Name</label>
+                    <input
+                      type="text"
+                      value={discountFormData.name}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Enter discount name"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Percentage (%)</label>
                     <input
                       type="number"
-                    min="0"
-                    max="100"
-                    value={discountFormData.percentage}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, percentage: Number(e.target.value) }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      min="0"
+                      max="100"
+                      value={discountFormData.percentage}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, percentage: Number(e.target.value) }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="Enter percentage"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={discountFormData.startDate}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Start Time</label>
-                  <input
-                    type="time"
-                    value={discountFormData.startTime}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
+                      required
                     />
                   </div>
+                </div>
 
-                <div className="form-group">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">End Date</label>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="form-group">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Start Date</label>
                     <input
-                    type="date"
-                    value={discountFormData.endDate}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
+                      type="date"
+                      value={discountFormData.startDate}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                      disabled={shouldDisableDateTimeFields(selectedPackageId)}
                     />
                   </div>
-              
-                <div className="form-group">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">End Time</label>
-                  <input
-                    type="time"
-                    value={discountFormData.endTime}
-                    onChange={(e) => setDiscountFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  />
+
+                  <div className="form-group">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={discountFormData.startTime}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                      disabled={shouldDisableDateTimeFields(selectedPackageId)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={discountFormData.endDate}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                      disabled={shouldDisableDateTimeFields(selectedPackageId)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={discountFormData.endTime}
+                      onChange={(e) => setDiscountFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                      className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                      disabled={shouldDisableDateTimeFields(selectedPackageId)}
+                    />
+                  </div>
                 </div>
 
-                <div className="md:col-span-2 flex justify-end">
+                <div className="flex justify-end">
                   <motion.button
                     type="submit"
                     whileHover={{ scale: 1.02 }}
@@ -748,11 +868,11 @@ const PackagesPage: React.FC = () => {
                     className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg flex items-center gap-2"
                   >
                     {isLoading ? (
-                      'Adding Discount...'
+                      'Processing...'
                     ) : (
                       <>
                         <FaCheck size={14} />
-                    Add Discount
+                        {isEditingDiscount ? 'Update Discount' : 'Add Discount'}
                       </>
                     )}
                   </motion.button>
@@ -762,44 +882,13 @@ const PackagesPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Discounts Display */}
-        {formData.discounts.length > 0 && (
-          <div className="mt-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Added Discounts</h4>
-            <div className="flex flex-wrap gap-3">
-              {formData.discounts.map((discount, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 bg-purple-50 border border-purple-200 px-4 py-2 rounded-full"
-                >
-                  <span className="text-sm font-medium text-purple-800">
-                    {discount.name} ({discount.percentage}%) - {discount.planName}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        discounts: prev.discounts.filter((_, i) => i !== index)
-                      }));
-                    }}
-                    className="text-purple-600 hover:text-purple-800 font-bold text-lg leading-none"
-                  >
-                    ×
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Packages Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence>
             {packages.map((pkg, index) => {
               const theme = colorThemes[index % colorThemes.length];
               const nearestEndDate = getNearestDiscountEndDate(pkg.discounts);
+              const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
               
               return (
                 <motion.div
@@ -813,20 +902,24 @@ const PackagesPage: React.FC = () => {
                   className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
                 >
                   {/* Countdown Timer - Only show if there are active discounts */}
-                  {nearestEndDate && (
-                    <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-center gap-2">
-                      <FaClock className="text-red-500" size={14} />
-                      <Countdown
-                        date={nearestEndDate}
-                        renderer={countdownRenderer}
-                        className="text-sm"
-                      />
-                      <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
+                  {hasActiveDiscount && nearestEndDate && (
+                    <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FaClock className="text-red-500" size={14} />
+                        <Countdown
+                          date={nearestEndDate}
+                          renderer={countdownRenderer}
+                        />
+                        <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
+                      </div>
+                      {pkg.discountedPrice && (
+                        <span className="text-sm font-bold text-red-600">${pkg.discountedPrice}</span>
+                      )}
                     </div>
                   )}
 
                   {/* Add margin top to card content if countdown is present */}
-                  <div className={`p-5 ${nearestEndDate ? 'mt-12' : ''}`}>
+                  <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
@@ -866,7 +959,10 @@ const PackagesPage: React.FC = () => {
                           </div>
                           <span className="font-medium text-gray-700 text-xs">Enrollment</span>
                         </div>
-                        <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 line-through">${pkg.initialPrice}</span>
+                          <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
+                        </div>
                       </div>
                       
                       <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
@@ -890,6 +986,26 @@ const PackagesPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Features Section - Always Visible */}
+                    {pkg.features && pkg.features.length > 0 && (
+                      <div className="space-y-2 mb-4">
+                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                          <FaUserGraduate size={12} />
+                          Package Features
+                        </h4>
+                        <div className="space-y-1.5">
+                          {pkg.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-white/80">
+                              <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                                <FaCheck size={10} />
+                              </div>
+                              <span className="text-xs font-medium text-gray-700">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Special Offers Section - Always Visible */}
                     {pkg.discounts.length > 0 && (
                       <div className="space-y-2">
@@ -903,61 +1019,22 @@ const PackagesPage: React.FC = () => {
                               key={idx}
                               className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
                             >
-                              <div className="flex items-center gap-2">
-                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                                  <FaCheck size={10} />
-                                </div>
-                                <span className="text-xs font-medium text-gray-700">
-                                  {discount.name} ({discount.percentage}%)
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <FaClock size={10} className="text-orange-500" />
-                                <CountdownTimer endDate={discount.endDate} endTime={discount.endTime} />
-                              </div>
+                              <span className="text-sm font-medium text-gray-700">
+                                {discount.name} ({discount.percentage}%) - {discount.planName}
+                              </span>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleEditDiscount(pkg, idx)}
+                                className="p-1.5 text-blue-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                              >
+                                <FaEdit size={14} />
+                              </motion.button>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Expandable Content - Shows on Any Card Hover */}
-                  <div 
-                    style={{
-                      transition: 'all 600ms cubic-bezier(0.4, 0, 0.2, 1)',
-                      willChange: 'transform, opacity, max-height'
-                    }}
-                    className={`overflow-hidden origin-top transform-gpu
-                      max-h-0 ${isAnyCardHovered ? 'max-h-[2000px] opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-[-10%] scale-98'}`}
-                  >
-                    <div className={`p-5 bg-white/90 backdrop-blur-sm border-t ${theme.border}`}>
-                      {/* Features Section */}
-                      {pkg.features.length > 0 && (
-                        <div>
-                          <h4 className={`text-xs font-bold ${theme.accent} mb-3 flex items-center gap-2`}>
-                            <FaUserGraduate size={12} />
-                            Package Features
-                          </h4>
-                          <div className="space-y-2">
-                            {pkg.features.map((feature, idx) => (
-                              <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className={`flex items-center gap-2 p-2 rounded-lg hover:bg-white/80 transition-colors duration-300`}
-                              >
-                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                                  <FaCheck size={10} />
-                                </div>
-                                <span className="text-xs font-medium text-gray-700">{feature}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </motion.div>
               );
