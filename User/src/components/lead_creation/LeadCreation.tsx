@@ -477,6 +477,7 @@ const LeadCreationComponent: React.FC = () => {
     }
     if (!formData.technology.trim()) {
       newErrors.technology = 'Technology is required';
+
     }
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
