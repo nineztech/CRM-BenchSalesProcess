@@ -84,10 +84,21 @@ const Lead = sequelize.define(
       }
     },
     technology: {
-      type: DataTypes.STRING,
+      type: DataTypes.JSON,
       allowNull: false,
+      defaultValue: [],
       validate: {
-        notEmpty: true
+        isValidTechnologies(value) {
+          if (!Array.isArray(value)) {
+            throw new Error('Technologies must be an array');
+          }
+          if (value.length === 0) {
+            throw new Error('At least one technology must be provided');
+          }
+          if (value.some(tech => typeof tech !== 'string' || !tech.trim())) {
+            throw new Error('Invalid technology format');
+          }
+        }
       }
     },
     country: {
@@ -121,14 +132,14 @@ const Lead = sequelize.define(
         'DNR2',
         'DNR3',
         'Dead',
-        'Numb',
+        'open',
         'not working',
         'wrong no',
         'closed',
         'call again later'
       ),
       allowNull: false,
-      defaultValue: 'Numb',
+      defaultValue: 'open',
       validate: {
         notEmpty: true
       }
@@ -163,7 +174,7 @@ const Lead = sequelize.define(
         if (!status) return 'open';
         
         const statusGroups = {
-          open: ['Numb'],
+          open: ['open'],
           converted: ['closed'],
           archived: ['Dead', 'notinterested'],
           inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
@@ -208,7 +219,7 @@ const Lead = sequelize.define(
     },
     updatedBy: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'Users',
         key: 'id'
@@ -221,9 +232,6 @@ const Lead = sequelize.define(
       {
         fields: ['primaryEmail'],
         unique: true
-      },
-      {
-        fields: ['technology']
       },
       {
         fields: ['country']
@@ -251,5 +259,20 @@ const Lead = sequelize.define(
     }
   }
 );
+
+// Add a virtual field for technology search
+Lead.addHook('afterSync', async () => {
+  try {
+    await sequelize.query(`
+      ALTER TABLE Leads 
+      ADD COLUMN technology_search VARCHAR(255) GENERATED ALWAYS AS (
+        JSON_UNQUOTE(JSON_EXTRACT(technology, '$[0]'))
+      ) STORED,
+      ADD INDEX idx_technology_search (technology_search)
+    `);
+  } catch (error) {
+    console.log('Technology search column might already exist:', error.message);
+  }
+});
 
 export default Lead;

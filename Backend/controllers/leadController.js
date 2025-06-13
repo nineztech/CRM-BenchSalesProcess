@@ -4,6 +4,31 @@ import User from "../models/userModel.js";
 
 export const createLead = async (req, res) => {
   try {
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        errors: [{
+          field: 'authentication',
+          message: 'User must be authenticated to create a lead'
+        }]
+      });
+    }
+
+    // Verify that the user exists
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid user',
+        errors: [{
+          field: 'authentication',
+          message: 'User not found'
+        }]
+      });
+    }
+
     // Extract data from request body
     const {
       firstName,
@@ -134,16 +159,16 @@ export const createLead = async (req, res) => {
       contactNumbers,
       emails: emails.map(email => email.toLowerCase()),
       primaryEmail, // This will be set automatically by the beforeValidate hook
-      technology: technology.trim(),
+      technology: Array.isArray(technology) ? technology.map(tech => tech.trim()) : [technology.trim()],
       country: country.trim(),
       countryCode: countryCode.trim(),
       visaStatus,
-      status: status || 'Numb',
+      status: 'open', // Set default status to 'open'
       leadSource: leadSource.trim(),
-      remarks: Array.isArray(remarks) ? remarks : remarks ? [remarks] : [],
+      remarks: [], // Initialize empty remarks array
       reference: reference ? reference.trim() : null,
       createdBy: req.user.id, // Add the user who created the lead
-      updatedBy: req.user.id  // Initially same as createdBy
+      updatedBy: null  // Initially null, will be set on update
     };
 
     // Add optional fields if provided
@@ -160,6 +185,32 @@ export const createLead = async (req, res) => {
 
     // Create the lead
     const newLead = await Lead.create(leadData);
+
+    // If there are initial remarks, add them with creator details
+    if (remarks && (Array.isArray(remarks) ? remarks.length > 0 : remarks.trim())) {
+      const creator = await User.findByPk(req.user.id, {
+        attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+      });
+
+      if (creator) {
+        const remarkObjects = Array.isArray(remarks) ? remarks : [remarks];
+        const formattedRemarks = remarkObjects.map(remark => ({
+          text: remark.trim(),
+          createdAt: new Date().toISOString(),
+          createdBy: creator.id,
+          creator: {
+            id: creator.id,
+            firstname: creator.firstname,
+            lastname: creator.lastname,
+            email: creator.email,
+            designation: creator.designation,
+            department: creator.department
+          }
+        }));
+
+        await newLead.update({ remarks: formattedRemarks });
+      }
+    }
 
     // Fetch the created lead with associations to get full user details
     const leadWithAssociations = await Lead.findByPk(newLead.id, {
@@ -477,6 +528,13 @@ export const updateLead = async (req, res) => {
       });
     }
 
+    // Handle technology array if provided
+    if (updateData.technology) {
+      updateData.technology = Array.isArray(updateData.technology) 
+        ? updateData.technology.map(tech => tech.trim())
+        : [updateData.technology.trim()];
+    }
+
     // Validate status if provided
     if (updateData.status && !['open', 'converted', 'archive'].includes(updateData.status)) {
       return res.status(400).json({
@@ -546,6 +604,142 @@ export const updateLead = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while updating lead'
+    });
+  }
+};
+
+// Update Lead Status
+export const updateLeadStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remark } = req.body;
+
+    // Validate status
+    const validStatuses = [
+      'interested',
+      'notinterested',
+      'DNR1',
+      'DNR2',
+      'DNR3',
+      'Dead',
+      'open',
+      'not working',
+      'wrong no',
+      'closed',
+      'call again later'
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value'
+      });
+    }
+
+    // Validate remark
+    if (!remark || typeof remark !== 'string' || !remark.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Remark is required for status change'
+      });
+    }
+
+    // Find the lead
+    const lead = await Lead.findByPk(id);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found'
+      });
+    }
+
+    // Get creator details
+    const creator = await User.findByPk(req.user.id, {
+      attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+    });
+
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: 'Creator not found'
+      });
+    }
+
+    // Parse the remark if it's a string
+    let remarkData;
+    try {
+      remarkData = typeof remark === 'string' ? JSON.parse(remark) : remark;
+    } catch (e) {
+      remarkData = { text: remark };
+    }
+
+    // Create remark object with metadata and creator details
+    const remarkObject = {
+      text: remarkData.text || remarkData.trim(),
+      createdAt: new Date().toISOString(),
+      createdBy: creator.id,
+      creator: {
+        id: creator.id,
+        firstname: creator.firstname,
+        lastname: creator.lastname,
+        email: creator.email,
+        designation: creator.designation,
+        department: creator.department
+      },
+      statusChange: {
+        from: lead.status,
+        to: status
+      }
+    };
+
+    // Get current remarks array and append new remark
+    const currentRemarks = Array.isArray(lead.remarks) ? lead.remarks : [];
+    const updatedRemarks = [...currentRemarks, remarkObject];
+
+    // Update status and remarks
+    await lead.update({
+      status,
+      remarks: updatedRemarks,
+      updatedBy: req.user.id
+    });
+
+    // Fetch updated lead with associations
+    const updatedLead = await Lead.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'previouslyAssignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'designation', 'department']
+        }
+      ]
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Lead status updated successfully',
+      data: updatedLead
+    });
+
+  } catch (error) {
+    console.error('Error updating lead status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while updating lead status'
     });
   }
 };
