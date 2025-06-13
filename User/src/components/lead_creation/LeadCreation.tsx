@@ -7,6 +7,8 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
+import LeadDetailsModal from './LeadDetailsModal';
+import StatusRemarkModal from './StatusRemarkModal';
 
 // Type definitions for country list
 type Country = {
@@ -31,7 +33,7 @@ interface Lead {
   emails: string[];
   primaryEmail: string;
   primaryContact: string;
-  technology: string;
+  technology: string[];
   country: string;
   countryCode: string;
   visaStatus: string;
@@ -73,11 +75,11 @@ const LeadCreationComponent: React.FC = () => {
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
     lastName: '',
-    contactNumbers: [''],
+    contactNumbers: ['', ''],
     emails: ['', ''],
     primaryEmail: '',
     primaryContact: '',
-    technology: '',
+    technology: [''],
     country: '',
     countryCode: '',
     visaStatus: '',
@@ -108,7 +110,7 @@ const LeadCreationComponent: React.FC = () => {
     emails: ['', ''],
     primaryEmail: '',
     primaryContact: '',
-    technology: '',
+    technology: [''],
     country: '',
     countryCode: '',
     visaStatus: '',
@@ -134,6 +136,11 @@ const LeadCreationComponent: React.FC = () => {
   // File upload states
   const [file, setFile] = useState<File | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // New states for StatusRemarkModal
+  const [showStatusRemarkModal, setShowStatusRemarkModal] = useState(false);
+  const [selectedLeadForStatus, setSelectedLeadForStatus] = useState<Lead | null>(null);
+  const [newStatus, setNewStatus] = useState('');
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -176,7 +183,7 @@ const LeadCreationComponent: React.FC = () => {
     const matchesSearch = searchTerm === '' || 
       lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.technology.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.technology.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesStatus && matchesSearch;
   });
 
@@ -196,7 +203,7 @@ const LeadCreationComponent: React.FC = () => {
       'Contact Number': lead.primaryContact,
       'Email': lead.primaryEmail,
       'LinkedIn': lead.linkedinId,
-      'Technology': lead.technology,
+      'Technology': lead.technology.join(', '),
       'Country': lead.country,
       'Visa Status': lead.visaStatus,
       'Remarks': lead.remarks.join(', '),
@@ -291,63 +298,63 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  const handleEdit = (leadIndex: number) => {
-    setEditingLead(leadIndex);
-    setEditFormData(leads[leadIndex]);
-  };
+  // const handleEdit = (leadIndex: number) => {
+  //   setEditingLead(leadIndex);
+  //   setEditFormData(leads[leadIndex]);
+  // };
 
-  const handleEditSubmit = () => {
-    if (editingLead !== null) {
-      const updatedLeads = [...leads];
-      updatedLeads[editingLead] = editFormData;
-      setLeads(updatedLeads);
-      setEditingLead(null);
-      setEditFormData({
-        firstName: '',
-        lastName: '',
-        contactNumbers: [''],
-        emails: ['', ''],
-        primaryEmail: '',
-        primaryContact: '',
-        technology: '',
-        country: '',
-        countryCode: '',
-        visaStatus: '',
-        leadSource: '',
-        remarks: [''],
-        linkedinId: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      alert('Lead updated successfully!');
-    }
-  };
+  // const handleEditSubmit = () => {
+  //   if (editingLead !== null) {
+  //     const updatedLeads = [...leads];
+  //     updatedLeads[editingLead] = editFormData;
+  //     setLeads(updatedLeads);
+  //     setEditingLead(null);
+  //     setEditFormData({
+  //       firstName: '',
+  //       lastName: '',
+  //       contactNumbers: [''],
+  //       emails: ['', ''],
+  //       primaryEmail: '',
+  //       primaryContact: '',
+  //       technology: [''],
+  //       country: '',
+  //       countryCode: '',
+  //       visaStatus: '',
+  //       leadSource: '',
+  //       remarks: [''],
+  //       linkedinId: '',
+  //       createdAt: new Date().toISOString(),
+  //       updatedAt: new Date().toISOString()
+  //     });
+  //     alert('Lead updated successfully!');
+  //   }
+  // };
 
-  const handleEditCancel = () => {
-    setEditingLead(null);
-    setEditFormData({
-      firstName: '',
-      lastName: '',
-      contactNumbers: [''],
-      emails: ['', ''],
-      primaryEmail: '',
-      primaryContact: '',
-      technology: '',
-      country: '',
-      countryCode: '',
-      visaStatus: '',
-      leadSource: '',
-      remarks: [''],
-      linkedinId: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-  };
+  // const handleEditCancel = () => {
+  //   setEditingLead(null);
+  //   setEditFormData({
+  //     firstName: '',
+  //     lastName: '',
+  //     contactNumbers: [''],
+  //     emails: ['', ''],
+  //     primaryEmail: '',
+  //     primaryContact: '',
+  //     technology: [''],
+  //     country: '',
+  //     countryCode: '',
+  //     visaStatus: '',
+  //     leadSource: '',
+  //     remarks: [''],
+  //     linkedinId: '',
+  //     createdAt: new Date().toISOString(),
+  //     updatedAt: new Date().toISOString()
+  //   });
+  // };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setEditFormData(prev => ({ ...prev, [name]: value }));
-  };
+  // const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  //   const { name, value } = e.target;
+  //   setEditFormData(prev => ({ ...prev, [name]: value }));
+  // };
 
   const handleFileUpload = async () => {
     if (!file) return;
@@ -370,7 +377,7 @@ const LeadCreationComponent: React.FC = () => {
             emails: [row['Email']],
             primaryEmail: row['Email'],
             primaryContact: row['Contact Number'],
-            technology: row['Technology'],
+            technology: Array.isArray(row['Technology']) ? row['Technology'] : [row['Technology']],
             country: row['Country'],
             countryCode: row['Country Code'],
             visaStatus: row['Visa Status'],
@@ -404,11 +411,18 @@ const LeadCreationComponent: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       primaryContact: value,
-      contactNumbers: [value]
+      contactNumbers: [value, prev.contactNumbers[1]]
     }));
     if (errors.primaryContact) {
       setErrors(prev => ({ ...prev, primaryContact: undefined }));
     }
+  };
+
+  const handleSecondaryContactChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contactNumbers: [prev.contactNumbers[0], value]
+    }));
   };
 
   const handleEmailChange = (value: string, index: number) => {
@@ -453,6 +467,15 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  const handleTechnologyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newTechnologies = [...formData.technology];
+    newTechnologies[formData.technology.length - 1] = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      technology: newTechnologies
+    }));
+  };
+
   const validate = (): boolean => {
     const newErrors: Partial<Lead> = {};
     
@@ -475,9 +498,8 @@ const LeadCreationComponent: React.FC = () => {
     } else if (!/^https?:\/\/(www\.)?linkedin\.com/.test(formData.linkedinId)) {
       newErrors.linkedinId = 'LinkedIn URL is not valid';
     }
-    if (!formData.technology.trim()) {
-      newErrors.technology = 'Technology is required';
-
+    if (!formData.technology[0]?.trim()) {
+      newErrors.technology = 'At least one technology is required';
     }
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
@@ -499,11 +521,11 @@ const LeadCreationComponent: React.FC = () => {
   // Handle lead creation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted'); // Debug log
-    console.log('Current form data:', formData); // Debug log
+    console.log('Form submitted');
+    console.log('Current form data:', formData);
 
     if (!validate()) {
-      console.log('Validation failed', errors); // Debug log
+      console.log('Validation failed', errors);
       return;
     }
 
@@ -511,46 +533,58 @@ const LeadCreationComponent: React.FC = () => {
       setIsLoading(true);
       setApiError(null);
 
-      // Prepare the data for API
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
       const leadData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        contactNumbers: [formData.primaryContact].filter(Boolean),
+        contactNumbers: [formData.primaryContact, formData.contactNumbers[1]].filter(Boolean),
         emails: [formData.primaryEmail, formData.emails[1]].filter(Boolean),
         linkedinId: formData.linkedinId,
-        technology: formData.technology,
+        technology: formData.technology.filter(Boolean),
         country: formData.country,
         countryCode: formData.countryCode,
         visaStatus: formData.visaStatus,
-        status: '',
         leadSource: formData.leadSource,
-        remarks: formData.remarks.filter(Boolean)
+        remarks: formData.remarks.filter(Boolean),
+        reference: null
       };
 
-      console.log('Sending lead data to API:', leadData); // Debug log
+      console.log('Sending lead data to API:', leadData);
 
       const response = await axios.post('http://localhost:5006/api/lead/add', leadData, {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('API Response:', response.data); // Debug log
+      console.log('API Response:', response.data);
 
       if (response.data.success) {
-        // Add the new lead to the leads list
-        setLeads(prev => [response.data.data, ...prev]);
+        // Add the new lead to the leads list with all fields from response
+        const newLead = {
+          ...response.data.data,
+          primaryContact: response.data.data.contactNumbers[0],
+          statusGroup: response.data.data.statusGroup
+        };
+        
+        setLeads(prev => [newLead, ...prev]);
         
         // Reset form
         setFormData({
           firstName: '',
           lastName: '',
-          contactNumbers: [''],
+          contactNumbers: ['', ''],
           emails: ['', ''],
           primaryEmail: '',
           primaryContact: '',
-          technology: '',
+          technology: [''],
           country: '',
           countryCode: '',
           visaStatus: '',
@@ -569,12 +603,12 @@ const LeadCreationComponent: React.FC = () => {
         fetchLeads();
       } else {
         const errorMessage = response.data.message || 'Failed to create lead. Please try again.';
-        console.error('API Error:', errorMessage); // Debug log
+        console.error('API Error:', errorMessage);
         setApiError(errorMessage);
         alert(errorMessage);
       }
     } catch (error: any) {
-      console.error('Error creating lead:', error.response || error); // Debug log
+      console.error('Error creating lead:', error.response || error);
       const errorMessage = error.response?.data?.message || 'Failed to create lead. Please try again.';
       setApiError(errorMessage);
       alert(errorMessage);
@@ -612,9 +646,79 @@ const LeadCreationComponent: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing status
   };
 
+  // Update the handleStatusChange function
+  const handleStatusChange = async (leadId: number, newStatus: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    setSelectedLeadForStatus(lead);
+    setNewStatus(newStatus);
+    setShowStatusRemarkModal(true);
+  };
+
+  // Add new function to handle remark submission
+  const handleStatusRemarkSubmit = async (remark: string) => {
+    if (!selectedLeadForStatus) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const response = await axios.patch(
+        `http://localhost:5006/api/lead/${selectedLeadForStatus.id}/status`,
+        { 
+          status: newStatus,
+          remark 
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Update the leads list with the new data
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === selectedLeadForStatus.id ? response.data.data : lead
+          )
+        );
+        setShowStatusRemarkModal(false);
+        setSelectedLeadForStatus(null);
+        setNewStatus('');
+      } else {
+        setApiError('Failed to update status. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      setApiError(error.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  // Add this function to get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'bg-green-100 text-green-800';
+      case 'inProcess':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'converted':
+        return 'bg-blue-100 text-blue-800';
+      case 'archived':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-[1350px] mx-auto">
+      <div className="max-w-[1350px] mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
@@ -664,7 +768,7 @@ const LeadCreationComponent: React.FC = () => {
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
-                  console.log('Form submitted'); // Debug log
+                  console.log('Form submitted');
                   handleSubmit(e);
                 }} 
                 className="space-y-6"
@@ -738,6 +842,17 @@ const LeadCreationComponent: React.FC = () => {
                   </div>
                   
                   <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Contact</label>
+                    <PhoneInput
+                      country={'us'}
+                      value={formData.contactNumbers[1] || ''}
+                      onChange={handleSecondaryContactChange}
+                      containerClass="w-full"
+                      inputClass="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                    />
+                  </div>
+                  
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Primary Email *</label>
                     <input 
                       type="email" 
@@ -767,17 +882,66 @@ const LeadCreationComponent: React.FC = () => {
                   </div>
                   
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Technology *</label>
-                    <input 
-                      type="text" 
-                      name="technology" 
-                      value={formData.technology} 
-                      onChange={handleChange} 
-                      placeholder="Enter technologies (e.g., Java, Spring Boot)" 
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.technology ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Technology *</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formData.technology[formData.technology.length - 1].trim()) {
+                            setFormData(prev => ({
+                              ...prev,
+                              technology: [...prev.technology, '']
+                            }));
+                          }
+                        }}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
+                      >
+                        <span className="mr-1">+</span> Add Technology
+                      </button>
+                    </div>
+                    
+                    {/* Current Technology Input */}
+                    <div className="relative w-full">
+                      <input
+                        type="text"
+                        value={formData.technology[formData.technology.length - 1]}
+                        onChange={handleTechnologyChange}
+                        placeholder="Enter technology"
+                        className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          errors.technology ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Previous Technologies List */}
+                    {formData.technology.length > 1 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Previous Technologies</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.technology.slice(0, -1).reverse().map((tech, idx) => (
+                            <div key={idx} className="relative group inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-2">
+                              <span className="text-sm mr-2">{tech}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newTechnologies = formData.technology.filter((_, i) => i !== (formData.technology.length - 2 - idx));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    technology: newTechnologies
+                                  }));
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {errors.technology && (
                       <p className="mt-1.5 text-sm text-red-600">{errors.technology}</p>
                     )}
@@ -1118,7 +1282,7 @@ const LeadCreationComponent: React.FC = () => {
                         {lead.primaryContact}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.technology}
+                        {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
                       </td>
                       <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                         <a 
@@ -1139,18 +1303,35 @@ const LeadCreationComponent: React.FC = () => {
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                         {lead.assignedUser || '--'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.status || '--'}
+                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                        <select
+                          value={lead.status || 'open'}
+                          onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        >
+                          <option value="open">Open</option>
+                          <option value="DNR1">DNR1</option>
+                          <option value="DNR2">DNR2</option>
+                          <option value="DNR3">DNR3</option>
+                          <option value="interested">Interested</option>
+                          <option value="not working">Not Working</option>
+                          <option value="wrong no">Wrong No</option>
+                          <option value="call again later">Call Again Later</option>
+                          <option value="closed">Closed</option>
+                          <option value="Dead">Dead</option>
+                          <option value="notinterested">Not Interested</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {new Date(lead.createdAt || '').toLocaleString('en-IN', {
+                        {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
+                          day: '2-digit',
+                          month: 'short',
                           year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true
-                        })}
+                          second: '2-digit',
+                          hour12: false
+                        }).replace(',', '') : '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                         {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
@@ -1169,7 +1350,7 @@ const LeadCreationComponent: React.FC = () => {
                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                             </svg>
                           </button>
-                          <button 
+                          {/* <button 
                             onClick={() => handleEdit(index)}
                             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                             title="Edit lead"
@@ -1177,7 +1358,7 @@ const LeadCreationComponent: React.FC = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
                               <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                             </svg>
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
@@ -1216,6 +1397,22 @@ const LeadCreationComponent: React.FC = () => {
           </div>
         </div>
       </div>
+      <LeadDetailsModal
+        isOpen={showInfoDialog}
+        onClose={handleCloseInfoDialog}
+        lead={selectedLead}
+      />
+      <StatusRemarkModal
+        isOpen={showStatusRemarkModal}
+        onClose={() => {
+          setShowStatusRemarkModal(false);
+          setSelectedLeadForStatus(null);
+          setNewStatus('');
+        }}
+        onSubmit={handleStatusRemarkSubmit}
+        currentStatus={selectedLeadForStatus?.status || ''}
+        newStatus={newStatus}
+      />
     </div>
   );
 };
