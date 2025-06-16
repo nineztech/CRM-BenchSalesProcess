@@ -28,7 +28,7 @@ const AddDepartment: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const API_BASE_URL = 'http://localhost:5006/api/department';
+ const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
   // Create axios instance with default config
   const axiosInstance = axios.create({

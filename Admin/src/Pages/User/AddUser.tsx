@@ -3,6 +3,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import Layout from '../../Components/Layout/Layout';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 const UserRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ const UserRegister: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get('http://localhost:5006/api/user/all');
+      const response = await axios.get(`${API_BASE_URL}/user/all`);
       setUsers(response.data.data.users || []);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -46,7 +47,7 @@ const UserRegister: React.FC = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get('http://localhost:5006/api/department/all');
+      const response = await axios.get(`${API_BASE_URL}/department/all`);
       if (response.data.success) {
         setDepartments(response.data.data);
       }
@@ -57,7 +58,7 @@ const UserRegister: React.FC = () => {
 
   const fetchRoles = async (departmentId: number) => {
     try {
-      const response = await axios.get(`http://localhost:5006/api/department/${departmentId}/roles`);
+      const response = await axios.get(`${API_BASE_URL}/department/${departmentId}/roles`);
       if (response.data.success) {
         setRoles(response.data.data.roles || []);
       }
@@ -112,9 +113,9 @@ const UserRegister: React.FC = () => {
       };
 
       if (editingUserId) {
-        await axios.put(`http://localhost:5006/api/user/${editingUserId}`, userData);
+        await axios.put(`${API_BASE_URL}/user/${editingUserId}`, userData);
       } else {
-        await axios.post('http://localhost:5006/api/user/register', userData);
+        await axios.post(`${API_BASE_URL}/user/register`, userData);
       }
       handleReset();
       fetchUsers();

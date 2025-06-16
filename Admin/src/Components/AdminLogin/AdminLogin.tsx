@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../../assets/logo.webp'; // Optional logo
 import { CgOverflow } from 'react-icons/cg';
-
+const BASE_URL=import.meta.env.VITE_API_URL || "http://localhost:5006/api"
 interface LocationState {
   from?: string;
 }
@@ -30,7 +30,7 @@ export const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5006/api/admin/login', {
+      const response = await fetch(`${BASE_URL}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

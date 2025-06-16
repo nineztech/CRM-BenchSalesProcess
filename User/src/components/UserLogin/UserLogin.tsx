@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../../assets/logo.webp';
-
+const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 interface LocationState {
   from?: string;
 }
@@ -43,7 +43,7 @@ export const UserLogin = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5006/api/user/login', {
+      const response = await fetch(`${BASE_URL}/user/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

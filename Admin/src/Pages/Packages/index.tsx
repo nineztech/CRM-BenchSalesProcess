@@ -160,7 +160,7 @@ const PackagesPage: React.FC = () => {
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [isEditingDiscount, setIsEditingDiscount] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:5006/api/packages';
+  const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
   // Create axios instance with default config
   const axiosInstance = axios.create({

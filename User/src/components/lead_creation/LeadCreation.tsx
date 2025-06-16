@@ -9,7 +9,7 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
-
+const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 type Country = {
   label: string;
@@ -204,7 +204,7 @@ const LeadCreationComponent: React.FC = () => {
     try {
       setIsLoading(true);
       setApiError(null);
-      const response = await axios.get('http://localhost:5006/api/lead');
+      const response = await axios.get(`${BASE_URL}/lead`);
       setLeads(response.data.data.leads);
       // Update pagination info from API response if available
       if (response.data.data.pagination) {
@@ -303,7 +303,7 @@ const LeadCreationComponent: React.FC = () => {
 
         // First, update the lead table
         await axios.put(
-          `http://localhost:5006/api/lead/${lead.id}`,
+          `${BASE_URL}/lead/${lead.id}`,
           {
             assignTo: selectedUser.id,
             previousAssign: lead.assignTo || null,
@@ -319,7 +319,7 @@ const LeadCreationComponent: React.FC = () => {
 
         // Then, create the lead assignment
         const response = await axios.post(
-          'http://localhost:5006/api/lead-assignments/assign',
+          `${BASE_URL}/lead-assignments/assign`,
           {
             leadId: lead.id,
             assignedToId: selectedUser.id
@@ -730,7 +730,7 @@ const LeadCreationComponent: React.FC = () => {
 
       console.log('Sending lead data to API:', leadData);
 
-      const response = await axios.post('http://localhost:5006/api/lead/add', leadData, {
+      const response = await axios.post(`${BASE_URL}/lead/add`, leadData, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -846,7 +846,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const response = await axios.patch(
-        `http://localhost:5006/api/lead/${selectedLeadForStatus.id}/status`,
+        `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
         { 
           status: newStatus,
           remark 
@@ -901,7 +901,7 @@ const LeadCreationComponent: React.FC = () => {
   // Add function to fetch sales department ID
   const fetchSalesDepartmentId = async () => {
     try {
-      const response = await axios.get('http://localhost:5006/api/department/all');
+      const response = await axios.get(`${BASE_URL}/department/all`);
       const salesDepartment = response.data.data.find(
         (dept: any) => dept.departmentName.toLowerCase() === 'sales'
       );
@@ -919,7 +919,7 @@ const LeadCreationComponent: React.FC = () => {
       const salesDeptId = await fetchSalesDepartmentId();
       
       if (salesDeptId) {
-        const response = await axios.get(`http://localhost:5006/api/user/department/${salesDeptId}`);
+        const response = await axios.get(`${BASE_URL}/user/department/${salesDeptId}`);
         const executives = response.data.data.users
         setSalesUsers(executives);
       }

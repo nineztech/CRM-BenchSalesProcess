@@ -22,7 +22,7 @@ const AdminRegister: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Base URLs for API endpoints
-  const API_BASE_URL = 'http://localhost:5006/api/admin';
+  const API_BASE_URL=import.meta.env.VITE_API_URL || "http://localhost:5006/api"
   const API_URL = `${API_BASE_URL}/all`;
   const REGISTER_API_URL = `${API_BASE_URL}/register`;
   const UPDATE_API_URL = `${API_BASE_URL}/edit`;
