@@ -164,7 +164,7 @@ const PackagesPage: React.FC = () => {
 
   // Create axios instance with default config
   const axiosInstance = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: `${API_BASE_URL}/packages`,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${localStorage.getItem('token')}`

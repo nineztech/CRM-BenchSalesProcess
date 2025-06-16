@@ -187,15 +187,14 @@ export const createLead = async (req, res) => {
     const newLead = await Lead.create(leadData);
 
     // If there are initial remarks, add them with creator details
-    if (remarks && (Array.isArray(remarks) ? remarks.length > 0 : remarks.trim())) {
+    if (remarks && Array.isArray(remarks) && remarks.length > 0) {
       const creator = await User.findByPk(req.user.id, {
         attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
       });
 
       if (creator) {
-        const remarkObjects = Array.isArray(remarks) ? remarks : [remarks];
-        const formattedRemarks = remarkObjects.map(remark => ({
-          text: remark.trim(),
+        const formattedRemarks = remarks.map(remark => ({
+          text: typeof remark === 'string' ? remark.trim() : (remark.text || '').trim(),
           createdAt: new Date().toISOString(),
           createdBy: creator.id,
           creator: {
@@ -206,7 +205,7 @@ export const createLead = async (req, res) => {
             subrole: creator.subrole,
             departmentId: creator.departmentId
           }
-        }));
+        })).filter(remark => remark.text); // Only keep remarks with non-empty text
 
         await newLead.update({ remarks: formattedRemarks });
       }

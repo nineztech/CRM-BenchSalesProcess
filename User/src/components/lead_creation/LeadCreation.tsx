@@ -720,11 +720,13 @@ const LeadCreationComponent: React.FC = () => {
         countryCode: formData.countryCode,
         visaStatus: formData.visaStatus,
         leadSource: formData.leadSource,
-        remarks: formData.remarks.filter(Boolean).map(remark => ({
-          text: remark.text,
-          createdAt: remark.createdAt,
-          createdBy: remark.createdBy
-        })),
+        remarks: formData.remarks
+          .filter(remark => remark.text && remark.text.trim())
+          .map(remark => ({
+            text: remark.text.trim(),
+            createdAt: new Date().toISOString(),
+            createdBy: remark.createdBy || 0
+          })),
         reference: null
       };
 

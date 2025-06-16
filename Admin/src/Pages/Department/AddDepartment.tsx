@@ -77,7 +77,7 @@ const AddDepartment: React.FC = () => {
   const fetchDepartments = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get('/all');
+      const response = await axiosInstance.get('/department/all');
       if (response.data.success) {
         setDepartments(response.data.data);
       }
@@ -118,9 +118,9 @@ const AddDepartment: React.FC = () => {
       };
 
       if (editingDepartment) {
-        await axiosInstance.put(`/${editingDepartment.id}`, payload);
+        await axiosInstance.put(`/department/${editingDepartment.id}`, payload);
       } else {
-        await axiosInstance.post('/add', payload);
+        await axiosInstance.post('/department/add', payload);
       }
 
       setDepartmentName('');
@@ -147,7 +147,7 @@ const AddDepartment: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await axiosInstance.delete(`/${id}`);
+      await axiosInstance.delete(`/department/${id}`);
       fetchDepartments();
       alert('Department deleted successfully');
     } catch (error) {
