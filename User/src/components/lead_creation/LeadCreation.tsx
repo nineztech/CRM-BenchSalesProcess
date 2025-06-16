@@ -40,7 +40,7 @@ interface Lead {
   status?: string;
   statusGroup?: string;
   leadSource: string;
-  remarks: string[];
+  remarks: Remark[];
   reference?: string | null;
   linkedinId: string;
   totalAssign?: number;
@@ -70,6 +70,24 @@ interface Lead {
   };
 }
 
+interface Remark {
+  text: string;
+  createdAt: string;
+  createdBy: number;
+  creator?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    designation: string | null;
+    department: string | null;
+  };
+  statusChange?: {
+    from: string;
+    to: string;
+  };
+}
+
 const LeadCreationComponent: React.FC = () => {
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
@@ -84,7 +102,11 @@ const LeadCreationComponent: React.FC = () => {
     countryCode: '',
     visaStatus: '',
     leadSource: '',
-    remarks: [''],
+    remarks: [{
+      text: '',
+      createdAt: new Date().toISOString(),
+      createdBy: 0
+    }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -115,7 +137,11 @@ const LeadCreationComponent: React.FC = () => {
     countryCode: '',
     visaStatus: '',
     leadSource: '',
-    remarks: [''],
+    remarks: [{
+      text: '',
+      createdAt: new Date().toISOString(),
+      createdBy: 0
+    }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -206,7 +232,7 @@ const LeadCreationComponent: React.FC = () => {
       'Technology': lead.technology.join(', '),
       'Country': lead.country,
       'Visa Status': lead.visaStatus,
-      'Remarks': lead.remarks.join(', '),
+      'Remarks': lead.remarks.map(remark => remark.text).join(', '),
       'Status': lead.status,
       'Assigned To': lead.assignedUser || ''
     }));
@@ -321,7 +347,11 @@ const LeadCreationComponent: React.FC = () => {
   //       countryCode: '',
   //       visaStatus: '',
   //       leadSource: '',
-  //       remarks: [''],
+  //       remarks: [{
+  //         text: '',
+  //         createdAt: new Date().toISOString(),
+  //         createdBy: 0
+  //       }],
   //       linkedinId: '',
   //       createdAt: new Date().toISOString(),
   //       updatedAt: new Date().toISOString()
@@ -344,7 +374,11 @@ const LeadCreationComponent: React.FC = () => {
   //     countryCode: '',
   //     visaStatus: '',
   //     leadSource: '',
-  //     remarks: [''],
+  //     remarks: [{
+  //       text: '',
+  //       createdAt: new Date().toISOString(),
+  //       createdBy: 0
+  //     }],
   //     linkedinId: '',
   //     createdAt: new Date().toISOString(),
   //     updatedAt: new Date().toISOString()
@@ -381,7 +415,11 @@ const LeadCreationComponent: React.FC = () => {
             country: row['Country'],
             countryCode: row['Country Code'],
             visaStatus: row['Visa Status'],
-            remarks: row['Remarks'] || [],
+            remarks: row['Remarks']?.split(', ').map((text: string) => ({
+              text,
+              createdAt: new Date().toISOString(),
+              createdBy: 0
+            })) || [],
             leadSource: row['Lead Source'],
             linkedinId: row['LinkedIn'],
           }));
@@ -440,13 +478,55 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  const handleTechnologyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newTechnologies = [...formData.technology];
+    newTechnologies[formData.technology.length - 1] = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      technology: newTechnologies
+    }));
+  };
+
+  const handleTechnologyKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentTech = formData.technology[formData.technology.length - 1].trim();
+      if (currentTech) {
+        setFormData(prev => ({
+          ...prev,
+          technology: [...prev.technology, '']
+        }));
+      }
+    }
+  };
+
   const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newRemarks = [...formData.remarks];
-    newRemarks[formData.remarks.length - 1] = e.target.value;
+    newRemarks[formData.remarks.length - 1] = {
+      ...newRemarks[formData.remarks.length - 1],
+      text: e.target.value
+    };
     setFormData(prev => ({
       ...prev,
       remarks: newRemarks
     }));
+  };
+
+  const handleRemarkKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const currentRemark = formData.remarks[formData.remarks.length - 1].text.trim();
+      if (currentRemark) {
+        setFormData(prev => ({
+          ...prev,
+          remarks: [...prev.remarks, {
+            text: '',
+            createdAt: new Date().toISOString(),
+            createdBy: 0
+          }]
+        }));
+      }
+    }
   };
 
   const handleCheckboxChange = (index: number) => {
@@ -465,15 +545,6 @@ const LeadCreationComponent: React.FC = () => {
         countryCode: selected.value
       }));
     }
-  };
-
-  const handleTechnologyChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newTechnologies = [...formData.technology];
-    newTechnologies[formData.technology.length - 1] = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      technology: newTechnologies
-    }));
   };
 
   const validate = (): boolean => {
@@ -499,7 +570,7 @@ const LeadCreationComponent: React.FC = () => {
       newErrors.linkedinId = 'LinkedIn URL is not valid';
     }
     if (!formData.technology[0]?.trim()) {
-      newErrors.technology = 'At least one technology is required';
+      newErrors.technology = ['At least one technology is required'];
     }
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
@@ -510,8 +581,8 @@ const LeadCreationComponent: React.FC = () => {
     if (!formData.leadSource.trim()) {
       newErrors.leadSource = 'Lead Source is required';
     }
-    if (formData.remarks.length === 0 || !formData.remarks[0].trim()) {
-      newErrors.remarks = ['At least one remark is required'];
+    if (formData.remarks.length === 0 || !formData.remarks[0].text.trim()) {
+      newErrors.remarks = [{ text: 'At least one remark is required', createdAt: new Date().toISOString(), createdBy: 0 }];
     }
 
     setErrors(newErrors);
@@ -550,7 +621,11 @@ const LeadCreationComponent: React.FC = () => {
         countryCode: formData.countryCode,
         visaStatus: formData.visaStatus,
         leadSource: formData.leadSource,
-        remarks: formData.remarks.filter(Boolean),
+        remarks: formData.remarks.filter(Boolean).map(remark => ({
+          text: remark.text,
+          createdAt: remark.createdAt,
+          createdBy: remark.createdBy
+        })),
         reference: null
       };
 
@@ -589,7 +664,11 @@ const LeadCreationComponent: React.FC = () => {
           countryCode: '',
           visaStatus: '',
           leadSource: '',
-          remarks: [''],
+          remarks: [{
+            text: '',
+            createdAt: new Date().toISOString(),
+            createdBy: 0
+          }],
           linkedinId: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -685,7 +764,11 @@ const LeadCreationComponent: React.FC = () => {
         // Update the leads list with the new data
         setLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === selectedLeadForStatus.id ? response.data.data : lead
+            lead.id === selectedLeadForStatus.id ? {
+              ...lead,
+              status: newStatus,
+              statusGroup: response.data.data.statusGroup
+            } : lead
           )
         );
         setShowStatusRemarkModal(false);
@@ -884,53 +967,35 @@ const LeadCreationComponent: React.FC = () => {
                   <div className="relative">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
                       <label className="block text-sm font-medium text-gray-700">Technology *</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (formData.technology[formData.technology.length - 1].trim()) {
-                            setFormData(prev => ({
-                              ...prev,
-                              technology: [...prev.technology, '']
-                            }));
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
-                      >
-                        <span className="mr-1">+</span> Add Technology
-                      </button>
                     </div>
                     
-                    {/* Current Technology Input */}
+                    {/* Technology Input */}
                     <div className="relative w-full">
                       <input
                         type="text"
                         value={formData.technology[formData.technology.length - 1]}
                         onChange={handleTechnologyChange}
-                        placeholder="Enter technology"
+                        onKeyPress={handleTechnologyKeyPress}
+                        placeholder="Enter technology (press Enter to add)"
                         className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                           errors.technology ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
-                    </div>
-
-                    {/* Previous Technologies List */}
-                    {formData.technology.length > 1 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">Previous Technologies</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {formData.technology.slice(0, -1).reverse().map((tech, idx) => (
-                            <div key={idx} className="relative group inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-2">
-                              <span className="text-sm mr-2">{tech}</span>
+                      {formData.technology.length > 1 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {formData.technology.slice(0, -1).map((tech, idx) => (
+                            <div key={idx} className="inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-1">
+                              <span className="text-sm">{tech}</span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const newTechnologies = formData.technology.filter((_, i) => i !== (formData.technology.length - 2 - idx));
+                                  const newTechnologies = formData.technology.filter((_, i) => i !== idx);
                                   setFormData(prev => ({
                                     ...prev,
                                     technology: newTechnologies
                                   }));
                                 }}
-                                className="text-gray-400 hover:text-gray-600"
+                                className="ml-2 text-gray-400 hover:text-gray-600"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -939,11 +1004,11 @@ const LeadCreationComponent: React.FC = () => {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {errors.technology && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.technology}</p>
+                      <p className="mt-1.5 text-sm text-red-600">{errors.technology[0]}</p>
                     )}
                   </div>
                   
@@ -1020,10 +1085,14 @@ const LeadCreationComponent: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        if (formData.remarks[formData.remarks.length - 1].trim()) {
+                        if (formData.remarks[formData.remarks.length - 1].text.trim()) {
                           setFormData(prev => ({
                             ...prev,
-                            remarks: [...prev.remarks, '']
+                            remarks: [...prev.remarks, {
+                              text: '',
+                              createdAt: new Date().toISOString(),
+                              createdBy: 0
+                            }]
                           }));
                         }
                       }}
@@ -1036,8 +1105,9 @@ const LeadCreationComponent: React.FC = () => {
                   {/* Current Textarea */}
                   <div className="relative w-full">
                     <textarea
-                      value={formData.remarks[formData.remarks.length - 1]}
+                      value={formData.remarks[formData.remarks.length - 1].text}
                       onChange={handleRemarkChange}
+                      onKeyPress={handleRemarkKeyPress}
                       className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
                       placeholder="Enter your remark here..."
                     />
@@ -1051,7 +1121,7 @@ const LeadCreationComponent: React.FC = () => {
                         {formData.remarks.slice(0, -1).reverse().map((remark, idx) => (
                           <div key={idx} className="relative group">
                             <div className="p-3 sm:p-4 bg-gray-50 rounded-md border border-gray-200">
-                              <pre className="whitespace-pre-wrap text-sm break-words">{remark}</pre>
+                              <pre className="whitespace-pre-wrap text-sm break-words">{remark.text}</pre>
                               <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                                 Remark #{formData.remarks.length - 1 - idx}
                               </div>
@@ -1078,7 +1148,7 @@ const LeadCreationComponent: React.FC = () => {
                   )}
 
                   {errors.remarks && (
-                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0]}</p>
+                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0].text}</p>
                   )}
                 </div>
 
