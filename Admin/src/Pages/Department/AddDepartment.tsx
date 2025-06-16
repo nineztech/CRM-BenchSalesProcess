@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 interface Department {
   id: number;
   departmentName: string;
-  roles: string[];
+  subroles: string[];
   status: string;
   createdAt: string;
   creator: {
@@ -21,7 +21,7 @@ interface Department {
 const AddDepartment: React.FC = () => {
   const navigate = useNavigate();
   const [departmentName, setDepartmentName] = useState('');
-  const [roles, setRoles] = useState<string[]>([]);
+  const [subroles, setSubroles] = useState<string[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,15 +92,15 @@ const AddDepartment: React.FC = () => {
     }
   };
 
-  const handleAddRole = () => {
+  const handleAddSubrole = () => {
     if (currentRole.trim()) {
-      setRoles([...roles, currentRole.trim()]);
+      setSubroles([...subroles, currentRole.trim()]);
       setCurrentRole('');
     }
   };
 
-  const handleRemoveRole = (index: number) => {
-    setRoles(roles.filter((_, i) => i !== index));
+  const handleRemoveSubrole = (index: number) => {
+    setSubroles(subroles.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,7 +114,7 @@ const AddDepartment: React.FC = () => {
       setIsLoading(true);
       const payload = {
         departmentName: departmentName.trim(),
-        roles: roles
+        subroles: subroles
       };
 
       if (editingDepartment) {
@@ -124,7 +124,7 @@ const AddDepartment: React.FC = () => {
       }
 
       setDepartmentName('');
-      setRoles([]);
+      setSubroles([]);
       setEditingDepartment(null);
       fetchDepartments();
       alert(editingDepartment ? 'Department updated successfully' : 'Department created successfully');
@@ -139,7 +139,7 @@ const AddDepartment: React.FC = () => {
   const handleEdit = (dept: Department) => {
     setEditingDepartment(dept);
     setDepartmentName(dept.departmentName);
-    setRoles(dept.roles || []);
+    setSubroles(dept.subroles || []);
   };
 
   const handleDelete = async (id: number) => {
@@ -201,7 +201,7 @@ const AddDepartment: React.FC = () => {
                     type="text"
                     value={currentRole}
                     onChange={(e) => setCurrentRole(e.target.value)}
-                    placeholder="Enter role"
+                    placeholder="Enter subrole"
                     className="flex-1 p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                     disabled={isLoading}
                   />
@@ -209,7 +209,7 @@ const AddDepartment: React.FC = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="button"
-                    onClick={handleAddRole}
+                    onClick={handleAddSubrole}
                     disabled={isLoading}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400"
                   >
@@ -219,17 +219,17 @@ const AddDepartment: React.FC = () => {
               </div>
             </div>
 
-            {roles.length > 0 && (
+            {subroles.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-4">
-                {roles.map((role, index) => (
+                {subroles.map((subrole, index) => (
                   <div
                     key={index}
                     className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm"
                   >
-                    <span>{role}</span>
+                    <span>{subrole}</span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveRole(index)}
+                      onClick={() => handleRemoveSubrole(index)}
                       className="text-red-500 hover:text-red-700"
                     >
                       ×
@@ -257,7 +257,7 @@ const AddDepartment: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setDepartmentName('');
-                  setRoles([]);
+                  setSubroles([]);
                   setEditingDepartment(null);
                 }}
                 disabled={isLoading}
@@ -318,9 +318,9 @@ const AddDepartment: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{dept.departmentName}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         <div className="flex flex-wrap gap-1">
-                          {dept.roles?.map((role, i) => (
+                          {dept.subroles?.map((subrole, i) => (
                             <span key={i} className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
-                              {role}
+                              {subrole}
                             </span>
                           ))}
                         </div>
