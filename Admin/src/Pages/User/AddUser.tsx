@@ -10,7 +10,7 @@ const UserRegister: React.FC = () => {
     firstName: "",
     lastName: "",
     department: "",
-    designation: "",
+    subrole: "",
     mobileNumber: "",
     username: "",
     email: "",
@@ -25,7 +25,7 @@ const UserRegister: React.FC = () => {
   const [showPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [roles, setRoles] = useState<string[]>([]);
+  const [subroles, setSubroles] = useState<string[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -60,11 +60,16 @@ const UserRegister: React.FC = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/department/${departmentId}/roles`);
       if (response.data.success) {
-        setRoles(response.data.data.roles || []);
+        const subrolesArr = response.data.data.subroles;
+        if (Array.isArray(subrolesArr)) {
+          setSubroles(subrolesArr.filter((r: any) => typeof r === 'string'));
+        } else {
+          setSubroles([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching roles:', err);
-      setRoles([]);
+      setSubroles([]);
     }
   };
 
@@ -72,16 +77,16 @@ const UserRegister: React.FC = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
-    // If department is changed, fetch roles
+    // If department is changed, fetch subroles
     if (name === 'department') {
-      const selectedDepartment = departments.find(dept => dept.departmentName === value);
+      const selectedDepartment = departments.find(dept => String(dept.id) === value);
       if (selectedDepartment) {
         fetchRoles(selectedDepartment.id);
       } else {
-        setRoles([]);
+        setSubroles([]);
       }
-      // Reset designation when department changes
-      setFormData(prev => ({ ...prev, [name]: value, designation: '' }));
+      // Reset subrole when department changes
+      setFormData(prev => ({ ...prev, [name]: value, subrole: '' }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -106,8 +111,8 @@ const UserRegister: React.FC = () => {
         password: formData.password,
         firstname: formData.firstName,
         lastname: formData.lastName,
-        department: formData.department,
-        designation: formData.designation,
+        departmentId: Number(formData.department),
+        subrole: formData.subrole,
         phoneNumber: formData.mobileNumber,
         username: formData.username
       };
@@ -133,7 +138,7 @@ const UserRegister: React.FC = () => {
       firstName: "",
       lastName: "",
       department: "",
-      designation: "",
+      subrole: "",
       mobileNumber: "",
       username: "",
       email: "",
@@ -163,8 +168,8 @@ const UserRegister: React.FC = () => {
     setFormData({
       firstName: user.firstname || "",
       lastName: user.lastname || "",
-      department: user.department || "",
-      designation: user.designation || "",
+      department: user.departmentId ? String(user.departmentId) : (typeof user.department === 'object' && user.department?.id ? String(user.department.id) : ""),
+      subrole: user.subrole || "",
       mobileNumber: user.phoneNumber || "",
       username: user.username || "",
       email: user.email || "",
@@ -181,7 +186,7 @@ const UserRegister: React.FC = () => {
       user.firstname?.toLowerCase().includes(search) ||
       user.lastname?.toLowerCase().includes(search) ||
       user.department?.toLowerCase().includes(search) ||
-      user.designation?.toLowerCase().includes(search) ||
+      user.subrole?.toLowerCase().includes(search) ||
       user.phoneNumber?.toLowerCase().includes(search) ||
       user.username?.toLowerCase().includes(search) ||
       user.email?.toLowerCase().includes(search)
@@ -271,7 +276,7 @@ const UserRegister: React.FC = () => {
                   >
                     <option value="">Select Department</option>
                     {departments.map((dept) => (
-                      <option key={dept.id} value={dept.departmentName}>
+                      <option key={dept.id} value={dept.id}>
                         {dept.departmentName}
                       </option>
                     ))}
@@ -282,19 +287,19 @@ const UserRegister: React.FC = () => {
                 <div className="form-group">
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">Roles</label>
                   <select
-                    name="designation"
-                    value={formData.designation}
+                    name="subrole"
+                    value={formData.subrole}
                     onChange={handleChange}
                     className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   >
                     <option value="">Select Roles</option>
-                    {roles.map((role) => (
+                    {subroles.filter((role) => typeof role === 'string').map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>
                     ))}
                   </select>
-                  {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
+                  {errors.subrole && <div className="text-red-500 text-xs mt-1">{errors.subrole}</div>}
                 </div>
               </div>
 
@@ -426,12 +431,18 @@ const UserRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.id}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.firstname}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.lastname}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.department}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{typeof user.department === 'string' ? user.department : user.department?.departmentName || ''}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.created_at}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }) : ''}
+                      </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
                           <motion.button 

@@ -124,9 +124,17 @@ const AdminRegister: React.FC = () => {
         // Create new admin
         try {
           setIsLoading(true);
-          const response = await axios.post(REGISTER_API_URL, formData);
-          if (response.data.success) {
-            // Reset form
+          const payload = {
+            email: formData.email,
+            password: formData.password,
+            firstname: formData.firstName,
+            lastname: formData.lastName,
+            phoneNumber: formData.mobileNumber,
+            username: formData.username
+          };
+          console.log('Sending payload:', payload); // Log payload for debugging
+          const response = await axios.post(REGISTER_API_URL, payload);
+          if (response.data.success || response.status === 201) {
             setFormData({
               firstName: "",
               lastName: "",
@@ -137,17 +145,16 @@ const AdminRegister: React.FC = () => {
               confirmPassword: ""
             });
             setErrors({});
-            
-            // Refresh admins list
             fetchAdmins();
-            
-            // Show success message
             alert('Admin registered successfully');
           } else {
             alert(response.data.message);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Registration Error:', error);
+          if (error.response) {
+            console.error('Error response:', error.response.data);
+          }
           alert('Error registering admin');
         } finally {
           setIsLoading(false);
@@ -212,24 +219,18 @@ const AdminRegister: React.FC = () => {
   const updateAdmin = async () => {
     try {
       setIsLoading(true);
-      
-      // Prepare update data - exclude empty fields
       const updateData = {
+        email: formData.email.trim() || undefined,
         firstname: formData.firstName.trim() || undefined,
         lastname: formData.lastName.trim() || undefined,
         phoneNumber: formData.mobileNumber.trim() || undefined,
         username: formData.username.trim() || undefined,
-        email: formData.email.trim() || undefined,
         password: formData.password.trim() || undefined,
         confirmPassword: formData.confirmPassword.trim() || undefined
       };
-      
-      // Remove undefined values
       const filteredData = Object.fromEntries(
         Object.entries(updateData).filter(([_, value]) => value !== undefined)
       );
-
-      // Only make API call if there's data to update
       if (Object.keys(filteredData).length > 0) {
         const response = await axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
           headers: {
@@ -237,14 +238,11 @@ const AdminRegister: React.FC = () => {
           }
         });
         if (response.data.success) {
-          // Update local state
-          setAdmins(prevAdmins => 
-            prevAdmins.map(admin => 
+          setAdmins(prevAdmins =>
+            prevAdmins.map(admin =>
               admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
             )
           );
-          
-          // Reset form and editing state
           setEditingAdmin(null);
           setFormData({
             firstName: "",
@@ -255,8 +253,6 @@ const AdminRegister: React.FC = () => {
             password: "",
             confirmPassword: ""
           });
-          
-          // Show success message
           alert('Admin updated successfully');
         } else {
           alert('Failed to update admin');
@@ -494,7 +490,13 @@ const AdminRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.email}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.createdAt}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                        {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }) : ''}
+                      </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
                           <motion.button 
