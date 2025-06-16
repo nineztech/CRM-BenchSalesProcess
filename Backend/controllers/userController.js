@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js'; // Adjust path to your User model
+import Department from '../models/departmentModel.js';
 import { Op } from 'sequelize';
 
 // JWT Secret - in production, use environment variable
@@ -13,8 +14,8 @@ export const register = async (req, res) => {
       password,
       firstname,
       lastname,
-      department,
-      designation,
+      departmentId,
+      subrole,
       phoneNumber,
       username
     } = req.body;
@@ -22,7 +23,7 @@ export const register = async (req, res) => {
     // Validate input
     if (
       !email || !password || !firstname || !lastname ||
-      !department || !designation || !phoneNumber || !username
+      !departmentId || !subrole || !phoneNumber || !username
     ) {
       return res.status(400).json({
         success: false,
@@ -55,14 +56,24 @@ export const register = async (req, res) => {
       return res.status(409).json({ success: false, message: 'Username already taken' });
     }
 
+    // Validate department and subrole
+    const department = await Department.findByPk(departmentId);
+    if (!department) {
+      return res.status(400).json({ success: false, message: 'Invalid department' });
+    }
+
+    if (!department.subroles.includes(subrole)) {
+      return res.status(400).json({ success: false, message: 'Invalid subrole for this department' });
+    }
+
     // Create user
     const newUser = await User.create({
       email,
       password,
       firstname,
       lastname,
-      department,
-      designation,
+      departmentId,
+      subrole,
       phoneNumber,
       username,
       role: 'user' // Optional, since default is already 'user'
@@ -84,8 +95,8 @@ export const register = async (req, res) => {
           username: newUser.username,
           firstname: newUser.firstname,
           lastname: newUser.lastname,
-          department: newUser.department,
-          designation: newUser.designation,
+          departmentId: newUser.departmentId,
+          subrole: newUser.subrole,
           phoneNumber: newUser.phoneNumber,
           role: newUser.role,
           createdAt: newUser.createdAt
@@ -361,7 +372,7 @@ export const getAllUsers = async (req, res) => {
         { firstname: { [Op.like]: `%${search}%` } },
         { lastname: { [Op.like]: `%${search}%` } },
         { username: { [Op.like]: `%${search}%` } },
-        { department: { [Op.like]: `%${search}%` } }
+        { subrole: { [Op.like]: `%${search}%` } }
       ];
     }
 
@@ -377,13 +388,18 @@ export const getAllUsers = async (req, res) => {
         'firstname', 
         'lastname', 
         'username',
-        'department',
-        'designation',
+        'departmentId',
+        'subrole',
         'phoneNumber',
         'status',
         'createdAt',
         'updatedAt'
       ],
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }],
       order: [[sortBy, sortOrder]],
       offset: offset,
       limit: parseInt(limit)

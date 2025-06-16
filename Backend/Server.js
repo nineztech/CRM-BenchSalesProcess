@@ -12,6 +12,9 @@ dotenv.config();
 // Import models (this triggers model definitions + associations)
 import "./models/index.js";  // ⬅️ This is IMPORTANT to register associations
 
+// Import the syncModels function
+import { syncModels } from './models/index.js';
+
 const PORT = process.env.PORT || 5000;
 const app = express();
 
@@ -49,8 +52,8 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    // Ensure models and associations are synced
-    await sequelize.sync(); // optionally: { force: false, alter: true }
+    // Use the new syncModels function instead of sequelize.sync()
+    await syncModels();
 
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
 

@@ -4,7 +4,7 @@ import {
   getDepartmentById,
   updateDepartment,
   deleteDepartment,
-  getDepartmentRoles
+  
   
 } from '../controllers/departmentController.js'
 import authentication from '../middleware/auth.js'
@@ -16,7 +16,7 @@ const router = express.Router()
 router.post("/add", authentication, addDepartment)
 router.get("/all", getAllDepartments)
 router.get("/:id", getDepartmentById)
-router.get("/:id/roles", getDepartmentRoles)
+// router.get("/:id/roles", getDepartmentRoles)
 router.put("/:id", authentication, updateDepartment)
 router.delete("/:id", authentication, deleteDepartment)
 
