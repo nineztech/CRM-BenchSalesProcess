@@ -46,10 +46,24 @@ interface Lead {
   totalAssign?: number;
   createdAt?: string;
   updatedAt?: string;
-  assignedUser?: string | null;
-  previouslyAssignedUser?: string | null;
-  assignTo?: string | null;
-  previousAssign?: string | null;
+  assignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  previouslyAssignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  assignTo?: number | null;
+  previousAssign?: number | null;
   createdBy?: number;
   updatedBy?: number;
   creator?: {
@@ -57,16 +71,16 @@ interface Lead {
     firstname: string;
     lastname: string;
     email: string;
-    designation: string | null;
-    department: string | null;
+    subrole: string | null;
+    departmentId: number | null;
   };
   updater?: {
     id: number;
     firstname: string;
     lastname: string;
     email: string;
-    designation: string | null;
-    department: string | null;
+    subrole: string | null;
+    departmentId: number | null;
   };
 }
 
@@ -85,6 +99,19 @@ interface Remark {
   statusChange?: {
     from: string;
     to: string;
+  };
+}
+
+// Add new interface for Sales User
+interface SalesUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  subrole: string;
+  departmentId: number;
+  department: {
+    departmentName: string;
   };
 }
 
@@ -168,6 +195,10 @@ const LeadCreationComponent: React.FC = () => {
   const [selectedLeadForStatus, setSelectedLeadForStatus] = useState<Lead | null>(null);
   const [newStatus, setNewStatus] = useState('');
 
+  // Add new state for sales users
+  const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
+  const [isLoadingSalesUsers, setIsLoadingSalesUsers] = useState(false);
+
   // Fetch leads
   const fetchLeads = async () => {
     try {
@@ -234,7 +265,7 @@ const LeadCreationComponent: React.FC = () => {
       'Visa Status': lead.visaStatus,
       'Remarks': lead.remarks.map(remark => remark.text).join(', '),
       'Status': lead.status,
-      'Assigned To': lead.assignedUser || ''
+      'Assigned To': lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -244,28 +275,96 @@ const LeadCreationComponent: React.FC = () => {
     XLSX.writeFile(wb, `${filename}.xlsx`);
   };
 
-  const handleAssignSalesPerson = () => {
+  const handleAssignSalesPerson = async () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
-    const currentDate = new Date().toISOString();
-    const isReassigning = selectedLeads.some(index => leads[index].assignedUser);
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
 
-    setLeads(prevLeads => 
-      prevLeads.map((lead, index) => {
-        if (selectedLeads.includes(index)) {
-          return { 
-            ...lead, 
-            assignedUser: selectedSalesPerson, 
-            assignmentDate: currentDate,
-            previousSalesPerson: lead.assignedUser // Store previous sales person for history
-          };
+      // Get the user ID from the selected sales person's name
+      const selectedUser = salesUsers.find(
+        user => `${user.firstname} ${user.lastname}` === selectedSalesPerson
+      );
+
+      if (!selectedUser) {
+        setApiError('Selected sales person not found');
+        return;
+      }
+
+      // Assign each selected lead
+      for (const leadIndex of selectedLeads) {
+        const lead = leads[leadIndex];
+        if (!lead || !lead.id) continue;
+
+        // First, update the lead table
+        await axios.put(
+          `http://localhost:5006/api/lead/${lead.id}`,
+          {
+            assignTo: selectedUser.id,
+            previousAssign: lead.assignTo || null,
+            totalAssign: (lead.totalAssign || 0) + 1
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        // Then, create the lead assignment
+        const response = await axios.post(
+          'http://localhost:5006/api/lead-assignments/assign',
+          {
+            leadId: lead.id,
+            assignedToId: selectedUser.id
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          // Update the leads list with the new assignment
+          setLeads(prevLeads => 
+            prevLeads.map((l, index) => 
+              index === leadIndex ? {
+                ...l,
+                assignedUser: selectedUser,
+                previouslyAssignedUser: l.assignedUser,
+                assignTo: selectedUser.id,
+                previousAssign: l.assignTo,
+                totalAssign: (l.totalAssign || 0) + 1
+              } : l
+            )
+          );
         }
-        return lead;
-      })
-    );
-    setSelectedSalesPerson('');
-    setSelectedLeads([]);
-    setCurrentSalesPerson(''); // Reset current sales person after assignment
+      }
+
+      // Reset selection and sales person
+      setSelectedSalesPerson('');
+      setSelectedLeads([]);
+      setCurrentSalesPerson('');
+
+      // Show success message
+      alert('Leads assigned successfully!');
+
+    } catch (error: any) {
+      console.error('Error assigning leads:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
+      setApiError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getCurrentSalesPerson = () => {
@@ -273,7 +372,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leads[firstSelectedLead]?.assignedUser || '';
+    return leads[firstSelectedLead]?.assignedUser ? `${leads[firstSelectedLead].assignedUser.firstname} ${leads[firstSelectedLead].assignedUser.lastname}` : '';
   };
 
   React.useEffect(() => {
@@ -799,6 +898,43 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  // Add function to fetch sales department ID
+  const fetchSalesDepartmentId = async () => {
+    try {
+      const response = await axios.get('http://localhost:5006/api/department/all');
+      const salesDepartment = response.data.data.find(
+        (dept: any) => dept.departmentName.toLowerCase() === 'sales'
+      );
+      return salesDepartment?.id;
+    } catch (error) {
+      console.error('Error fetching sales department:', error);
+      return null;
+    }
+  };
+
+  // Add function to fetch sales executives
+  const fetchSalesExecutives = async () => {
+    try {
+      setIsLoadingSalesUsers(true);
+      const salesDeptId = await fetchSalesDepartmentId();
+      
+      if (salesDeptId) {
+        const response = await axios.get(`http://localhost:5006/api/user/department/${salesDeptId}`);
+        const executives = response.data.data.users
+        setSalesUsers(executives);
+      }
+    } catch (error) {
+      console.error('Error fetching sales executives:', error);
+    } finally {
+      setIsLoadingSalesUsers(false);
+    }
+  };
+
+  // Add useEffect to fetch sales executives when component mounts
+  useEffect(() => {
+    fetchSalesExecutives();
+  }, []);
+
   return (
     <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
       <div className="max-w-[1350px] mx-auto">
@@ -1245,15 +1381,19 @@ const LeadCreationComponent: React.FC = () => {
                   }}
                 >
                   <option value="">Select sales person</option>
-                  {['Aneri', 'Dhaval', 'Rajdeep', 'Payal'].map((person) => (
-                    <option 
-                      key={person}
-                      value={person}
-                      disabled={person === currentSalesPerson}
-                    >
-                      {person}
-                    </option>
-                  ))}
+                  {isLoadingSalesUsers ? (
+                    <option value="" disabled>Loading sales executives...</option>
+                  ) : (
+                    salesUsers.map((user) => (
+                      <option 
+                        key={user.id}
+                        value={`${user.firstname} ${user.lastname}`}
+                        disabled={`${user.firstname} ${user.lastname}` === currentSalesPerson}
+                      >
+                        {user.firstname} {user.lastname}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <button 
                   className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow`}
@@ -1371,7 +1511,7 @@ const LeadCreationComponent: React.FC = () => {
                         {lead.country}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.assignedUser || '--'}
+                        {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                       </td>
                       <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                         <select

@@ -40,10 +40,24 @@ interface Lead {
   totalAssign?: number;
   createdAt?: string;
   updatedAt?: string;
-  assignedUser?: string | null;
-  previouslyAssignedUser?: string | null;
-  assignTo?: string | null;
-  previousAssign?: string | null;
+  assignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  previouslyAssignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  assignTo?: number | null;
+  previousAssign?: number | null;
   createdBy?: number;
   updatedBy?: number;
   creator?: {
@@ -51,16 +65,16 @@ interface Lead {
     firstname: string;
     lastname: string;
     email: string;
-    designation: string | null;
-    department: string | null;
+    subrole: string | null;
+    departmentId: number | null;
   };
   updater?: {
     id: number;
     firstname: string;
     lastname: string;
     email: string;
-    designation: string | null;
-    department: string | null;
+    subrole: string | null;
+    departmentId: number | null;
   };
 }
 

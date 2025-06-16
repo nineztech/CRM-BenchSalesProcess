@@ -2,6 +2,7 @@ import User  from './userModel.js';
 import Department  from './departmentModel.js';
 import Lead from './leadModel.js';
 import Packages from './packagesModel.js';
+import LeadAssignment from './leadAssignmentModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -76,6 +77,63 @@ User.hasMany(Lead, {
   as: 'updatedLeads'
 });
 
+// Lead Assignment associations
+LeadAssignment.belongsTo(Lead, {
+  foreignKey: 'leadId',
+  as: 'lead',
+  onDelete: 'CASCADE'
+});
+
+Lead.hasMany(LeadAssignment, {
+  foreignKey: 'leadId',
+  as: 'assignments'
+});
+
+LeadAssignment.belongsTo(User, {
+  foreignKey: 'assignedToId',
+  as: 'assignedTo',
+  onDelete: 'RESTRICT'
+});
+
+LeadAssignment.belongsTo(User, {
+  foreignKey: 'previousAssignedId',
+  as: 'previousAssigned',
+  onDelete: 'SET NULL'
+});
+
+User.hasMany(LeadAssignment, {
+  foreignKey: 'assignedToId',
+  as: 'currentAssignments'
+});
+
+User.hasMany(LeadAssignment, {
+  foreignKey: 'previousAssignedId',
+  as: 'previousAssignments'
+});
+
+// Add createdBy and updatedBy associations for LeadAssignment
+LeadAssignment.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator',
+  onDelete: 'RESTRICT'
+});
+
+LeadAssignment.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater',
+  onDelete: 'RESTRICT'
+});
+
+User.hasMany(LeadAssignment, {
+  foreignKey: 'createdBy',
+  as: 'createdAssignments'
+});
+
+User.hasMany(LeadAssignment, {
+  foreignKey: 'updatedBy',
+  as: 'updatedAssignments'
+});
+
 // Packages associations
 Packages.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 Packages.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
@@ -104,6 +162,10 @@ export const syncModels = async () => {
     await Packages.sync({ alter: true });
     console.log('Packages table synced successfully');
 
+    // Create LeadAssignment table
+    await LeadAssignment.sync({ alter: true });
+    console.log('LeadAssignment table synced successfully');
+
     // Re-enable foreign key checks
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
 
@@ -118,5 +180,6 @@ export {
   User,
   Department,
   Lead,
-  Packages
+  Packages,
+  LeadAssignment
 };

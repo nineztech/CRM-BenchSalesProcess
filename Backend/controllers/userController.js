@@ -51,7 +51,7 @@ export const register = async (req, res) => {
     }
 
     // Check for existing username
-    const existingUsername = await User.findOne({ where: { username } });
+    const existingUsername = await User.findOne({ where: { username,role:"user" } });
     if (existingUsername) {
       return res.status(409).json({ success: false, message: 'Username already taken' });
     }
@@ -425,6 +425,96 @@ export const getAllUsers = async (req, res) => {
 
   } catch (error) {
     console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const getUsersByDepartment = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+    const { 
+      page = 1, 
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      status
+    } = req.query;
+
+    // Build where clause
+    const whereClause = {
+      departmentId,
+      role: 'user'  // Only get users with role 'user'
+    };
+
+    // Add status filter if provided
+    if (status && ['active', 'inactive'].includes(status)) {
+      whereClause.status = status;
+    }
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { email: { [Op.like]: `%${search}%` } },
+        { firstname: { [Op.like]: `%${search}%` } },
+        { lastname: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { subrole: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Calculate offset
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get users with pagination
+    const users = await User.findAndCountAll({
+      where: whereClause,
+      attributes: [
+        'id', 
+        'email', 
+        'firstname', 
+        'lastname', 
+        'username',
+        'departmentId',
+        'subrole',
+        'phoneNumber',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ],
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }],
+      order: [[sortBy, sortOrder]],
+      offset: offset,
+      limit: parseInt(limit)
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(users.count / parseInt(limit));
+    const currentPage = parseInt(page);
+
+    res.status(200).json({
+      success: true,
+      message: 'Users fetched successfully',
+      data: {
+        users: users.rows,
+        pagination: {
+          total: users.count,
+          totalPages,
+          currentPage,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users by department error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
