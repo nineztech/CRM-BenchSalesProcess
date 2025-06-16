@@ -4,7 +4,7 @@ import User from "../models/userModel.js";
 // Add Department
 export const addDepartment = async (req, res) => {
   try {
-    const { departmentName, roles } = req.body;
+    const { departmentName, subroles } = req.body;
     const userId = req.user?.id;
 
     if (!departmentName) {
@@ -32,18 +32,18 @@ export const addDepartment = async (req, res) => {
       });
     }
 
-    let rolesArray = [];
-    if (roles) {
-      if (Array.isArray(roles)) {
-        rolesArray = roles.filter(r => r && r.trim() !== '').map(r => r.trim());
-      } else if (typeof roles === 'string') {
-        rolesArray = [roles.trim()];
+    let subrolesArray = [];
+    if (subroles) {
+      if (Array.isArray(subroles)) {
+        subrolesArray = subroles.filter(r => r && r.trim() !== '').map(r => r.trim());
+      } else if (typeof subroles === 'string') {
+        subrolesArray = [subroles.trim()];
       }
     }
 
     const newDepartment = await Department.create({
       departmentName: departmentName.trim(),
-      roles: rolesArray,
+      subroles: subrolesArray,
       createdBy: userId,
       status: 'active'
     });
@@ -130,7 +130,7 @@ export const getDepartmentById = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentName, roles, status } = req.body;
+    const { departmentName, subroles, status } = req.body;
     const userId = req.user?.id;
 
     const department = await Department.findByPk(id);
@@ -141,18 +141,18 @@ export const updateDepartment = async (req, res) => {
       });
     }
 
-    let rolesArray = department.roles;
-    if (roles) {
-      if (Array.isArray(roles)) {
-        rolesArray = roles.filter(r => r && r.trim() !== '').map(r => r.trim());
-      } else if (typeof roles === 'string') {
-        rolesArray = [roles.trim()];
+    let subrolesArray = department.subroles;
+    if (subroles) {
+      if (Array.isArray(subroles)) {
+        subrolesArray = subroles.filter(r => r && r.trim() !== '').map(r => r.trim());
+      } else if (typeof subroles === 'string') {
+        subrolesArray = [subroles.trim()];
       }
     }
 
     await department.update({
       departmentName: departmentName?.trim() || department.departmentName,
-      roles: rolesArray,
+      subroles: subrolesArray,
       status: status || department.status,
       updatedBy: userId
     });
@@ -203,8 +203,8 @@ export const deleteDepartment = async (req, res) => {
   }
 };
 
-// Get Department Roles by ID
-export const getDepartmentRoles = async (req, res) => {
+// Get Department Subroles by ID
+export const getDepartmentSubroles = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -230,17 +230,16 @@ export const getDepartmentRoles = async (req, res) => {
       data: {
         departmentId: department.id,
         departmentName: department.departmentName,
-        roles: department.roles || []
+        subroles: department.subroles || []
       }
     });
-
   } catch (error) {
-    console.error("Error fetching department roles:", error);
+    console.error("Error fetching department subroles:", error);
     handleError(error, res);
   }
 };
 
-// Helper function to handle errors
+// Error handler
 const handleError = (error, res) => {
   if (error.name === 'SequelizeValidationError') {
     return res.status(400).json({

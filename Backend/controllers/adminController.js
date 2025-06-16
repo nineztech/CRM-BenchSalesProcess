@@ -1,4 +1,5 @@
 import User from '../models/userModel.js';
+import Department from '../models/departmentModel.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
@@ -54,8 +55,8 @@ export const registerAdmin = async (req, res) => {
       phoneNumber, 
       username,
       role: 'admin',
-      department: null,
-      designation: null
+      departmentId: null,
+      subrole: null
     });
 
     const adminResponse = {
@@ -134,6 +135,25 @@ export const getAllAdmins = async (req, res) => {
 
     const admins = await User.findAll({
       where: { role: 'admin' },
+      attributes: [
+        'id',
+        'email',
+        'firstname',
+        'lastname',
+        'phoneNumber',
+        'username',
+        'role',
+        'departmentId',
+        'subrole',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ],
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }],
       offset,
       limit,
       order: [['createdAt', 'DESC']]
@@ -170,7 +190,7 @@ export const editAdmin = async (req, res) => {
 
     // Get the fields from request body
     const updateFields = {};
-    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword'];
+    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole'];
 
     // Add only the allowed fields that exist in the request
     Object.keys(req.body).forEach(field => {
@@ -220,6 +240,18 @@ export const editAdmin = async (req, res) => {
       // If no password update, remove password fields from update
       delete updateFields.password;
       delete updateFields.confirmPassword;
+    }
+
+    // Validate department and subrole if provided
+    if (updateFields.departmentId || updateFields.subrole) {
+      const department = await Department.findByPk(updateFields.departmentId);
+      if (!department) {
+        return res.status(400).json({ message: 'Invalid department' });
+      }
+
+      if (updateFields.subrole && !department.subroles.includes(updateFields.subrole)) {
+        return res.status(400).json({ message: 'Invalid subrole for this department' });
+      }
     }
 
     // Validate and update each field that exists in updateFields
@@ -276,6 +308,8 @@ export const editAdmin = async (req, res) => {
       phoneNumber: currentAdmin.phoneNumber,
       username: currentAdmin.username,
       role: currentAdmin.role,
+      departmentId: currentAdmin.departmentId,
+      subrole: currentAdmin.subrole,
       createdAt: currentAdmin.createdAt,
       updatedAt: currentAdmin.updatedAt
     };
@@ -321,14 +355,6 @@ export const updateUserStatus = async (req, res) => {
         message: 'User not found'
       });
     }
-
-    // Check if the user is an admin
-    // if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'masteradmin') {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: 'Cannot update status of admin users'
-    //   });
-    // }
 
     // Update the status
     await user.update({ status });

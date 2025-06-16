@@ -30,6 +30,7 @@ interface Package {
 
 interface FormData {
   planName: string;
+  initialPrice: number;
   enrollmentCharge: number;
   offerLetterCharge: number;
   firstYearSalaryPercentage: number;
@@ -136,6 +137,7 @@ const PackagesPage: React.FC = () => {
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [formData, setFormData] = useState<FormData>({
     planName: '',
+    initialPrice: 0,
     enrollmentCharge: 0,
     offerLetterCharge: 0,
     firstYearSalaryPercentage: 0,
@@ -268,6 +270,10 @@ const PackagesPage: React.FC = () => {
       newErrors.planName = 'Plan name is required';
     }
     
+    if (formData.initialPrice === undefined || formData.initialPrice === null || formData.initialPrice <= 0) {
+      newErrors.initialPrice = 'Initial price is required and must be greater than 0';
+    }
+    
     if (!formData.enrollmentCharge || formData.enrollmentCharge <= 0) {
       newErrors.enrollmentCharge = 'Valid enrollment charge is required';
     }
@@ -318,6 +324,7 @@ const PackagesPage: React.FC = () => {
       
       const packageData = {
         ...formData,
+        initialPrice: Number(formData.initialPrice),
         enrollmentCharge: Number(formData.enrollmentCharge),
         offerLetterCharge: Number(formData.offerLetterCharge),
         features: formData.features.map(feature => feature.trim()).filter(Boolean),
@@ -375,6 +382,7 @@ const PackagesPage: React.FC = () => {
     setEditingPackage(pkg);
     setFormData({
       planName: pkg.planName,
+      initialPrice: pkg.initialPrice || 0,
       enrollmentCharge: pkg.enrollmentCharge,
       offerLetterCharge: pkg.offerLetterCharge,
       firstYearSalaryPercentage: pkg.firstYearSalaryPercentage,
@@ -423,6 +431,7 @@ const PackagesPage: React.FC = () => {
   const resetForm = () => {
     setFormData({
       planName: '',
+      initialPrice: 0,
       enrollmentCharge: 0,
       offerLetterCharge: 0,
       firstYearSalaryPercentage: 0,
@@ -615,6 +624,7 @@ const PackagesPage: React.FC = () => {
             </div>
           )}
 
+          {/* Basic Fields Section */}
           <div className="grid grid-cols-4 gap-6">
             <div className="form-group">
               <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name</label>
@@ -632,11 +642,28 @@ const PackagesPage: React.FC = () => {
             </div>
 
             <div className="form-group">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Initial Price <span className="text-red-500">*</span></label>
+              <input
+                type="number"
+                name="initialPrice"
+                value={formData.initialPrice || ''}
+                onChange={handleInputChange}
+                className={`w-full p-2.5 text-sm border ${errors.initialPrice ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                placeholder="Enter initial price"
+                min="0"
+                required
+              />
+              {errors.initialPrice && (
+                <p className="mt-1 text-xs text-red-500">{errors.initialPrice}</p>
+              )}
+            </div>
+
+            <div className="form-group">
               <label className="block text-xs font-semibold text-gray-700 mb-2">Enrollment Charge</label>
               <input
                 type="number"
                 name="enrollmentCharge"
-                value={formData.enrollmentCharge}
+                value={formData.enrollmentCharge || ''}
                 onChange={handleInputChange}
                 className={`w-full p-2.5 text-sm border ${errors.enrollmentCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
                 placeholder="Enter enrollment charge"
@@ -652,7 +679,7 @@ const PackagesPage: React.FC = () => {
               <input
                 type="number"
                 name="offerLetterCharge"
-                value={formData.offerLetterCharge}
+                value={formData.offerLetterCharge || ''}
                 onChange={handleInputChange}
                 className={`w-full p-2.5 text-sm border ${errors.offerLetterCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
                 placeholder="Enter offer letter charge"
@@ -660,24 +687,6 @@ const PackagesPage: React.FC = () => {
               />
               {errors.offerLetterCharge && (
                 <p className="mt-1 text-xs text-red-500">{errors.offerLetterCharge}</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
-              <input
-                type="number"
-                name="firstYearSalaryPercentage"
-                value={formData.firstYearSalaryPercentage}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter first year salary percentage"
-                min="0"
-                max="100"
-                step="0.01"
-              />
-              {errors.firstYearSalaryPercentage && (
-                <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
               )}
             </div>
           </div>
@@ -689,57 +698,77 @@ const PackagesPage: React.FC = () => {
             </div>
           )}
 
-          {/* Features and Discount Buttons Section */}
-          <div className="mt-6">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Features & Discounts</label>
-            <div className="flex gap-3 mb-4">
+          {/* First Year Percentage and Features Section */}
+          <div className="mt-6 flex items-center gap-4">
+            <div className="form-group w-1/4">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
               <input
-                type="text"
-                value={featureInput}
-                onChange={(e) => setFeatureInput(e.target.value)}
-                className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                placeholder="Add a feature"
+                type="number"
+                name="firstYearSalaryPercentage"
+                value={formData.firstYearSalaryPercentage || ''}
+                onChange={handleInputChange}
+                className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                placeholder="Enter first year salary percentage"
+                min="0"
+                max="100"
+                step="0.01"
               />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={addFeature}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
-              >
-                <FaCheck size={14} />
-                Add Feature
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowDiscountForm(!showDiscountForm)}
-                disabled={!editingPackage && !selectedPackageId}
-                className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <FaGift size={14} />
-                {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
-              </motion.button>
+              {errors.firstYearSalaryPercentage && (
+                <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
+              )}
             </div>
 
-            {/* Features Display */}
-            <div className="flex flex-wrap gap-3">
-              {formData.features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={featureInput}
+                  onChange={(e) => setFeatureInput(e.target.value)}
+                  className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                  placeholder="Add a feature"
+                />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={addFeature}
+                  className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
                 >
-                  <span className="text-sm font-medium text-blue-800">{feature}</span>
-                  <button
-                    onClick={() => removeFeature(index)}
-                    className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
-                  >
-                    ×
-                  </button>
-                </motion.div>
-              ))}
+                  <FaCheck size={14} />
+                  Add Feature
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowDiscountForm(!showDiscountForm)}
+                  disabled={!editingPackage && !selectedPackageId}
+                  className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <FaGift size={14} />
+                  {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
+                </motion.button>
+              </div>
             </div>
+          </div>
+
+          {/* Features Display */}
+          <div className="flex flex-wrap gap-3 mt-4">
+            {formData.features.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
+              >
+                <span className="text-sm font-medium text-blue-800">{feature}</span>
+                <button
+                  onClick={() => removeFeature(index)}
+                  className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
+                >
+                  ×
+                </button>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 

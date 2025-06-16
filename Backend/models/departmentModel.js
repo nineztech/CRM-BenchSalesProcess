@@ -18,24 +18,24 @@ const Department = sequelize.define(
         len: [2, 100],
       }
     },
-    roles: {
-      type: DataTypes.JSON, // Store multiple roles as JSON array
+    subroles: {
+      type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
       validate: {
-        isValidRoles(value) {
+        isValidSubroles(value) {
           if (value && !Array.isArray(value)) {
-            throw new Error('Roles must be an array');
+            throw new Error('Subroles must be an array');
           }
           if (value && value.some(item => typeof item !== 'string' || item.trim() === '')) {
-            throw new Error('All roles must be non-empty strings');
+            throw new Error('All subroles must be non-empty strings');
           }
         }
       }
     },
     createdBy: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id'
@@ -65,23 +65,23 @@ const Department = sequelize.define(
   }
 );
 
-// ✅ Instance method to add a role
-Department.prototype.addRole = function(newRole) {
-  if (!this.roles) {
-    this.roles = [];
+// Instance method to add a subrole
+Department.prototype.addSubrole = function(newSubrole) {
+  if (!this.subroles) {
+    this.subroles = [];
   }
-  if (!this.roles.includes(newRole)) {
-    this.roles.push(newRole);
+  if (!this.subroles.includes(newSubrole)) {
+    this.subroles.push(newSubrole);
   }
-  return this.roles;
+  return this.subroles;
 };
 
-// ✅ Instance method to remove a role
-Department.prototype.removeRole = function(roleToRemove) {
-  if (this.roles) {
-    this.roles = this.roles.filter(r => r !== roleToRemove);
+// Instance method to remove a subrole
+Department.prototype.removeSubrole = function(subroleToRemove) {
+  if (this.subroles) {
+    this.subroles = this.subroles.filter(r => r !== subroleToRemove);
   }
-  return this.roles;
+  return this.subroles;
 };
 
 export default Department;

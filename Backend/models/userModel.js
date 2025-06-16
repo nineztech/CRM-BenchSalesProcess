@@ -30,30 +30,40 @@ const User = sequelize.define(
     firstname: {
       type: DataTypes.STRING,
       allowNull: false,
-
     },
     lastname: {
       type: DataTypes.STRING,
       allowNull: false,
-
-    },
-    department: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    designation: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     phoneNumber: {
       type: DataTypes.STRING,
       allowNull: false,
-
     },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-
+    },
+    departmentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'departments',
+        key: 'id'
+      }
+    },
+    subrole: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isValidSubrole(value) {
+          if (value) {
+            // This validation will be handled in the controller
+            // where we can check if the subrole exists in the department's subroles
+            return true;
+          }
+          return true; // Allow null values
+        }
+      }
     },
     role: {
       type: DataTypes.ENUM('admin', 'user', 'superadmin', 'masteradmin'),
@@ -68,7 +78,6 @@ const User = sequelize.define(
   },
   {
     timestamps: true,
-
     hooks: {
       beforeCreate: async (user) => {
         if (user.password) {
@@ -89,6 +98,16 @@ const User = sequelize.define(
 // Compare password instance method
 User.prototype.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to validate if subrole exists in department's subroles
+User.prototype.validateSubrole = async function() {
+  if (!this.subrole || !this.departmentId) return true;
+  
+  const department = await sequelize.models.Department.findByPk(this.departmentId);
+  if (!department || !department.subroles) return false;
+  
+  return department.subroles.includes(this.subrole);
 };
 
 export default User;

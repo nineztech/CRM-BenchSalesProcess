@@ -4,13 +4,29 @@ import User from "../models/userModel.js";
 // Add Package
 export const addPackage = async (req, res) => {
   try {
-    const { planName, enrollmentCharge, offerLetterCharge, features, discounts, firstYearSalaryPercentage } = req.body;
+    const { 
+      planName, 
+      initialPrice,
+      enrollmentCharge, 
+      offerLetterCharge, 
+      firstYearSalaryPercentage, 
+      features, 
+      discounts 
+    } = req.body;
     const userId = req.user?.id;
 
-    if (!planName || !enrollmentCharge || !offerLetterCharge || firstYearSalaryPercentage === undefined) {
+    // Strict validation for required fields
+    if (!planName || initialPrice === undefined || initialPrice === null || initialPrice <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Plan name, enrollment charge, offer letter charge, and first year salary percentage are required"
+        message: "Plan name and initial price (greater than 0) are required"
+      });
+    }
+
+    if (!enrollmentCharge || !offerLetterCharge) {
+      return res.status(400).json({
+        success: false,
+        message: "Enrollment charge and offer letter charge are required"
       });
     }
 
@@ -28,55 +44,18 @@ export const addPackage = async (req, res) => {
     if (existingPackage) {
       return res.status(409).json({
         success: false,
-        message: "Package already exists"
+        message: "Package with this name already exists"
       });
-    }
-
-    let featuresArray = [];
-    if (features) {
-      if (Array.isArray(features)) {
-        featuresArray = features.filter(f => f && f.trim() !== '').map(f => f.trim());
-      } else if (typeof features === 'string') {
-        featuresArray = [features.trim()];
-      }
-    }
-
-    let discountsArray = [];
-    if (discounts) {
-      if (Array.isArray(discounts)) {
-        // Validate each discount object
-        discountsArray = discounts.filter(discount => {
-          return (
-            discount &&
-            typeof discount === 'object' &&
-            typeof discount.planName === 'string' &&
-            typeof discount.name === 'string' &&
-            typeof discount.percentage === 'number' &&
-            discount.percentage >= 0 &&
-            discount.percentage <= 100
-          );
-        });
-      } else if (typeof discounts === 'object') {
-        // Single discount object validation
-        if (
-          discounts.planName &&
-          discounts.name &&
-          typeof discounts.percentage === 'number' &&
-          discounts.percentage >= 0 &&
-          discounts.percentage <= 100
-        ) {
-          discountsArray = [discounts];
-        }
-      }
     }
 
     const newPackage = await Packages.create({
       planName: planName.trim(),
-      enrollmentCharge,
-      offerLetterCharge,
-      firstYearSalaryPercentage,
-      features: featuresArray,
-      discounts: discountsArray,
+      initialPrice: Number(initialPrice),
+      enrollmentCharge: Number(enrollmentCharge),
+      offerLetterCharge: Number(offerLetterCharge),
+      firstYearSalaryPercentage: Number(firstYearSalaryPercentage) || 0,
+      features: features || [],
+      discounts: discounts || [],
       createdBy: userId,
       status: 'active'
     });
@@ -132,7 +111,7 @@ export const getPackageById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const package_ = await Packages.findByPk(id, {
+    const packageData = await Packages.findByPk(id, {
       include: [
         {
           model: User,
@@ -142,7 +121,7 @@ export const getPackageById = async (req, res) => {
       ]
     });
 
-    if (!package_) {
+    if (!packageData) {
       return res.status(404).json({
         success: false,
         message: "Package not found"
@@ -151,7 +130,7 @@ export const getPackageById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: package_
+      data: packageData
     });
   } catch (error) {
     console.error("Error fetching package:", error);
@@ -163,73 +142,57 @@ export const getPackageById = async (req, res) => {
 export const updatePackage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { planName, enrollmentCharge, offerLetterCharge, features, discounts, status, firstYearSalaryPercentage } = req.body;
+    const { 
+      planName, 
+      initialPrice,
+      enrollmentCharge, 
+      offerLetterCharge, 
+      firstYearSalaryPercentage, 
+      features, 
+      discounts,
+      status 
+    } = req.body;
     const userId = req.user?.id;
 
-    const package_ = await Packages.findByPk(id);
-    if (!package_) {
+    const packageData = await Packages.findByPk(id);
+    if (!packageData) {
       return res.status(404).json({
         success: false,
         message: "Package not found"
       });
     }
 
-    let featuresArray = package_.features;
-    if (features) {
-      if (Array.isArray(features)) {
-        featuresArray = features.filter(f => f && f.trim() !== '').map(f => f.trim());
-      } else if (typeof features === 'string') {
-        featuresArray = [features.trim()];
-      }
+    // Validate initialPrice if it's being updated
+    if (initialPrice !== undefined && (initialPrice === null || initialPrice <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: "Initial price must be greater than 0"
+      });
     }
 
-    // Handle discounts array
-    let discountsArray = package_.discounts || [];
-    if (discounts) {
-      if (Array.isArray(discounts)) {
-        // Validate each discount object
-        discountsArray = discounts.filter(discount => {
-          return (
-            discount &&
-            typeof discount === 'object' &&
-            typeof discount.name === 'string' &&
-            typeof discount.percentage === 'number' &&
-            discount.percentage >= 0 &&
-            discount.percentage <= 100
-          );
+    // Check if plan name is being changed and if it already exists
+    if (planName && planName.trim() !== packageData.planName) {
+      const existingPackage = await Packages.findOne({
+        where: { planName: planName.trim() }
+      });
+
+      if (existingPackage) {
+        return res.status(409).json({
+          success: false,
+          message: "Package with this name already exists"
         });
-      } else if (typeof discounts === 'object') {
-        // Single discount object validation
-        if (
-          discounts.name &&
-          typeof discounts.percentage === 'number' &&
-          discounts.percentage >= 0 &&
-          discounts.percentage <= 100
-        ) {
-          discountsArray = [discounts];
-        }
       }
     }
 
-    // Calculate new discounted price
-    let totalDiscountPercentage = 0;
-    discountsArray.forEach(discount => {
-      totalDiscountPercentage += discount.percentage;
-    });
-
-    const enrollmentChargeValue = parseFloat(enrollmentCharge || package_.enrollmentCharge);
-    const discountAmount = (enrollmentChargeValue * totalDiscountPercentage) / 100;
-    const newDiscountedPrice = Math.max(0, enrollmentChargeValue - discountAmount);
-
-    await package_.update({
-      planName: planName?.trim() || package_.planName,
-      enrollmentCharge: enrollmentCharge || package_.enrollmentCharge,
-      offerLetterCharge: offerLetterCharge || package_.offerLetterCharge,
-      firstYearSalaryPercentage: firstYearSalaryPercentage !== undefined ? firstYearSalaryPercentage : package_.firstYearSalaryPercentage,
-      features: featuresArray,
-      discounts: discountsArray,
-      discountedPrice: newDiscountedPrice,
-      status: status || package_.status,
+    await packageData.update({
+      planName: planName?.trim() || packageData.planName,
+      initialPrice: initialPrice !== undefined ? Number(initialPrice) : packageData.initialPrice,
+      enrollmentCharge: enrollmentCharge ? Number(enrollmentCharge) : packageData.enrollmentCharge,
+      offerLetterCharge: offerLetterCharge ? Number(offerLetterCharge) : packageData.offerLetterCharge,
+      firstYearSalaryPercentage: firstYearSalaryPercentage ? Number(firstYearSalaryPercentage) : packageData.firstYearSalaryPercentage,
+      features: features || packageData.features,
+      discounts: discounts || packageData.discounts,
+      status: status || packageData.status,
       updatedBy: userId
     });
 
@@ -259,15 +222,15 @@ export const deletePackage = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const package_ = await Packages.findByPk(id);
-    if (!package_) {
+    const packageData = await Packages.findByPk(id);
+    if (!packageData) {
       return res.status(404).json({
         success: false,
         message: "Package not found"
       });
     }
 
-    await package_.destroy();
+    await packageData.destroy();
 
     res.status(200).json({
       success: true,
