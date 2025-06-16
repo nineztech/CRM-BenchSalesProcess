@@ -40,18 +40,54 @@ interface Lead {
   status?: string;
   statusGroup?: string;
   leadSource: string;
-  remarks: string[];
+  remarks: Remark[];
   reference?: string | null;
   linkedinId: string;
   totalAssign?: number;
   createdAt?: string;
   updatedAt?: string;
-  assignedUser?: string | null;
-  previouslyAssignedUser?: string | null;
-  assignTo?: string | null;
-  previousAssign?: string | null;
+  assignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  previouslyAssignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  assignTo?: number | null;
+  previousAssign?: number | null;
   createdBy?: number;
   updatedBy?: number;
+  creator?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  };
+  updater?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  };
+}
+
+interface Remark {
+  text: string;
+  createdAt: string;
+  createdBy: number;
   creator?: {
     id: number;
     firstname: string;
@@ -60,13 +96,22 @@ interface Lead {
     designation: string | null;
     department: string | null;
   };
-  updater?: {
-    id: number;
-    firstname: string;
-    lastname: string;
-    email: string;
-    designation: string | null;
-    department: string | null;
+  statusChange?: {
+    from: string;
+    to: string;
+  };
+}
+
+// Add new interface for Sales User
+interface SalesUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  subrole: string;
+  departmentId: number;
+  department: {
+    departmentName: string;
   };
 }
 
@@ -84,7 +129,11 @@ const LeadCreationComponent: React.FC = () => {
     countryCode: '',
     visaStatus: '',
     leadSource: '',
-    remarks: [''],
+    remarks: [{
+      text: '',
+      createdAt: new Date().toISOString(),
+      createdBy: 0
+    }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -115,7 +164,11 @@ const LeadCreationComponent: React.FC = () => {
     countryCode: '',
     visaStatus: '',
     leadSource: '',
-    remarks: [''],
+    remarks: [{
+      text: '',
+      createdAt: new Date().toISOString(),
+      createdBy: 0
+    }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -141,6 +194,10 @@ const LeadCreationComponent: React.FC = () => {
   const [showStatusRemarkModal, setShowStatusRemarkModal] = useState(false);
   const [selectedLeadForStatus, setSelectedLeadForStatus] = useState<Lead | null>(null);
   const [newStatus, setNewStatus] = useState('');
+
+  // Add new state for sales users
+  const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
+  const [isLoadingSalesUsers, setIsLoadingSalesUsers] = useState(false);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -206,9 +263,9 @@ const LeadCreationComponent: React.FC = () => {
       'Technology': lead.technology.join(', '),
       'Country': lead.country,
       'Visa Status': lead.visaStatus,
-      'Remarks': lead.remarks.join(', '),
+      'Remarks': lead.remarks.map(remark => remark.text).join(', '),
       'Status': lead.status,
-      'Assigned To': lead.assignedUser || ''
+      'Assigned To': lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : ''
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -218,28 +275,96 @@ const LeadCreationComponent: React.FC = () => {
     XLSX.writeFile(wb, `${filename}.xlsx`);
   };
 
-  const handleAssignSalesPerson = () => {
+  const handleAssignSalesPerson = async () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
-    const currentDate = new Date().toISOString();
-    const isReassigning = selectedLeads.some(index => leads[index].assignedUser);
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
 
-    setLeads(prevLeads => 
-      prevLeads.map((lead, index) => {
-        if (selectedLeads.includes(index)) {
-          return { 
-            ...lead, 
-            assignedUser: selectedSalesPerson, 
-            assignmentDate: currentDate,
-            previousSalesPerson: lead.assignedUser // Store previous sales person for history
-          };
+      // Get the user ID from the selected sales person's name
+      const selectedUser = salesUsers.find(
+        user => `${user.firstname} ${user.lastname}` === selectedSalesPerson
+      );
+
+      if (!selectedUser) {
+        setApiError('Selected sales person not found');
+        return;
+      }
+
+      // Assign each selected lead
+      for (const leadIndex of selectedLeads) {
+        const lead = leads[leadIndex];
+        if (!lead || !lead.id) continue;
+
+        // First, update the lead table
+        await axios.put(
+          `http://localhost:5006/api/lead/${lead.id}`,
+          {
+            assignTo: selectedUser.id,
+            previousAssign: lead.assignTo || null,
+            totalAssign: (lead.totalAssign || 0) + 1
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        // Then, create the lead assignment
+        const response = await axios.post(
+          'http://localhost:5006/api/lead-assignments/assign',
+          {
+            leadId: lead.id,
+            assignedToId: selectedUser.id
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          // Update the leads list with the new assignment
+          setLeads(prevLeads => 
+            prevLeads.map((l, index) => 
+              index === leadIndex ? {
+                ...l,
+                assignedUser: selectedUser,
+                previouslyAssignedUser: l.assignedUser,
+                assignTo: selectedUser.id,
+                previousAssign: l.assignTo,
+                totalAssign: (l.totalAssign || 0) + 1
+              } : l
+            )
+          );
         }
-        return lead;
-      })
-    );
-    setSelectedSalesPerson('');
-    setSelectedLeads([]);
-    setCurrentSalesPerson(''); // Reset current sales person after assignment
+      }
+
+      // Reset selection and sales person
+      setSelectedSalesPerson('');
+      setSelectedLeads([]);
+      setCurrentSalesPerson('');
+
+      // Show success message
+      alert('Leads assigned successfully!');
+
+    } catch (error: any) {
+      console.error('Error assigning leads:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
+      setApiError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getCurrentSalesPerson = () => {
@@ -247,7 +372,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leads[firstSelectedLead]?.assignedUser || '';
+    return leads[firstSelectedLead]?.assignedUser ? `${leads[firstSelectedLead].assignedUser.firstname} ${leads[firstSelectedLead].assignedUser.lastname}` : '';
   };
 
   React.useEffect(() => {
@@ -321,7 +446,11 @@ const LeadCreationComponent: React.FC = () => {
   //       countryCode: '',
   //       visaStatus: '',
   //       leadSource: '',
-  //       remarks: [''],
+  //       remarks: [{
+  //         text: '',
+  //         createdAt: new Date().toISOString(),
+  //         createdBy: 0
+  //       }],
   //       linkedinId: '',
   //       createdAt: new Date().toISOString(),
   //       updatedAt: new Date().toISOString()
@@ -344,7 +473,11 @@ const LeadCreationComponent: React.FC = () => {
   //     countryCode: '',
   //     visaStatus: '',
   //     leadSource: '',
-  //     remarks: [''],
+  //     remarks: [{
+  //       text: '',
+  //       createdAt: new Date().toISOString(),
+  //       createdBy: 0
+  //     }],
   //     linkedinId: '',
   //     createdAt: new Date().toISOString(),
   //     updatedAt: new Date().toISOString()
@@ -381,7 +514,11 @@ const LeadCreationComponent: React.FC = () => {
             country: row['Country'],
             countryCode: row['Country Code'],
             visaStatus: row['Visa Status'],
-            remarks: row['Remarks'] || [],
+            remarks: row['Remarks']?.split(', ').map((text: string) => ({
+              text,
+              createdAt: new Date().toISOString(),
+              createdBy: 0
+            })) || [],
             leadSource: row['Lead Source'],
             linkedinId: row['LinkedIn'],
           }));
@@ -440,13 +577,55 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  const handleTechnologyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newTechnologies = [...formData.technology];
+    newTechnologies[formData.technology.length - 1] = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      technology: newTechnologies
+    }));
+  };
+
+  const handleTechnologyKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentTech = formData.technology[formData.technology.length - 1].trim();
+      if (currentTech) {
+        setFormData(prev => ({
+          ...prev,
+          technology: [...prev.technology, '']
+        }));
+      }
+    }
+  };
+
   const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newRemarks = [...formData.remarks];
-    newRemarks[formData.remarks.length - 1] = e.target.value;
+    newRemarks[formData.remarks.length - 1] = {
+      ...newRemarks[formData.remarks.length - 1],
+      text: e.target.value
+    };
     setFormData(prev => ({
       ...prev,
       remarks: newRemarks
     }));
+  };
+
+  const handleRemarkKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const currentRemark = formData.remarks[formData.remarks.length - 1].text.trim();
+      if (currentRemark) {
+        setFormData(prev => ({
+          ...prev,
+          remarks: [...prev.remarks, {
+            text: '',
+            createdAt: new Date().toISOString(),
+            createdBy: 0
+          }]
+        }));
+      }
+    }
   };
 
   const handleCheckboxChange = (index: number) => {
@@ -465,15 +644,6 @@ const LeadCreationComponent: React.FC = () => {
         countryCode: selected.value
       }));
     }
-  };
-
-  const handleTechnologyChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newTechnologies = [...formData.technology];
-    newTechnologies[formData.technology.length - 1] = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      technology: newTechnologies
-    }));
   };
 
   const validate = (): boolean => {
@@ -499,7 +669,7 @@ const LeadCreationComponent: React.FC = () => {
       newErrors.linkedinId = 'LinkedIn URL is not valid';
     }
     if (!formData.technology[0]?.trim()) {
-      newErrors.technology = 'At least one technology is required';
+      newErrors.technology = ['At least one technology is required'];
     }
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required';
@@ -510,8 +680,8 @@ const LeadCreationComponent: React.FC = () => {
     if (!formData.leadSource.trim()) {
       newErrors.leadSource = 'Lead Source is required';
     }
-    if (formData.remarks.length === 0 || !formData.remarks[0].trim()) {
-      newErrors.remarks = ['At least one remark is required'];
+    if (formData.remarks.length === 0 || !formData.remarks[0].text.trim()) {
+      newErrors.remarks = [{ text: 'At least one remark is required', createdAt: new Date().toISOString(), createdBy: 0 }];
     }
 
     setErrors(newErrors);
@@ -550,7 +720,11 @@ const LeadCreationComponent: React.FC = () => {
         countryCode: formData.countryCode,
         visaStatus: formData.visaStatus,
         leadSource: formData.leadSource,
-        remarks: formData.remarks.filter(Boolean),
+        remarks: formData.remarks.filter(Boolean).map(remark => ({
+          text: remark.text,
+          createdAt: remark.createdAt,
+          createdBy: remark.createdBy
+        })),
         reference: null
       };
 
@@ -589,7 +763,11 @@ const LeadCreationComponent: React.FC = () => {
           countryCode: '',
           visaStatus: '',
           leadSource: '',
-          remarks: [''],
+          remarks: [{
+            text: '',
+            createdAt: new Date().toISOString(),
+            createdBy: 0
+          }],
           linkedinId: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -685,7 +863,11 @@ const LeadCreationComponent: React.FC = () => {
         // Update the leads list with the new data
         setLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === selectedLeadForStatus.id ? response.data.data : lead
+            lead.id === selectedLeadForStatus.id ? {
+              ...lead,
+              status: newStatus,
+              statusGroup: response.data.data.statusGroup
+            } : lead
           )
         );
         setShowStatusRemarkModal(false);
@@ -715,6 +897,43 @@ const LeadCreationComponent: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Add function to fetch sales department ID
+  const fetchSalesDepartmentId = async () => {
+    try {
+      const response = await axios.get('http://localhost:5006/api/department/all');
+      const salesDepartment = response.data.data.find(
+        (dept: any) => dept.departmentName.toLowerCase() === 'sales'
+      );
+      return salesDepartment?.id;
+    } catch (error) {
+      console.error('Error fetching sales department:', error);
+      return null;
+    }
+  };
+
+  // Add function to fetch sales executives
+  const fetchSalesExecutives = async () => {
+    try {
+      setIsLoadingSalesUsers(true);
+      const salesDeptId = await fetchSalesDepartmentId();
+      
+      if (salesDeptId) {
+        const response = await axios.get(`http://localhost:5006/api/user/department/${salesDeptId}`);
+        const executives = response.data.data.users
+        setSalesUsers(executives);
+      }
+    } catch (error) {
+      console.error('Error fetching sales executives:', error);
+    } finally {
+      setIsLoadingSalesUsers(false);
+    }
+  };
+
+  // Add useEffect to fetch sales executives when component mounts
+  useEffect(() => {
+    fetchSalesExecutives();
+  }, []);
 
   return (
     <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
@@ -884,53 +1103,35 @@ const LeadCreationComponent: React.FC = () => {
                   <div className="relative">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
                       <label className="block text-sm font-medium text-gray-700">Technology *</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (formData.technology[formData.technology.length - 1].trim()) {
-                            setFormData(prev => ({
-                              ...prev,
-                              technology: [...prev.technology, '']
-                            }));
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
-                      >
-                        <span className="mr-1">+</span> Add Technology
-                      </button>
                     </div>
                     
-                    {/* Current Technology Input */}
+                    {/* Technology Input */}
                     <div className="relative w-full">
                       <input
                         type="text"
                         value={formData.technology[formData.technology.length - 1]}
                         onChange={handleTechnologyChange}
-                        placeholder="Enter technology"
+                        onKeyPress={handleTechnologyKeyPress}
+                        placeholder="Enter technology (press Enter to add)"
                         className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                           errors.technology ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
-                    </div>
-
-                    {/* Previous Technologies List */}
-                    {formData.technology.length > 1 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">Previous Technologies</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {formData.technology.slice(0, -1).reverse().map((tech, idx) => (
-                            <div key={idx} className="relative group inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-2">
-                              <span className="text-sm mr-2">{tech}</span>
+                      {formData.technology.length > 1 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {formData.technology.slice(0, -1).map((tech, idx) => (
+                            <div key={idx} className="inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-1">
+                              <span className="text-sm">{tech}</span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const newTechnologies = formData.technology.filter((_, i) => i !== (formData.technology.length - 2 - idx));
+                                  const newTechnologies = formData.technology.filter((_, i) => i !== idx);
                                   setFormData(prev => ({
                                     ...prev,
                                     technology: newTechnologies
                                   }));
                                 }}
-                                className="text-gray-400 hover:text-gray-600"
+                                className="ml-2 text-gray-400 hover:text-gray-600"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -939,11 +1140,11 @@ const LeadCreationComponent: React.FC = () => {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {errors.technology && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.technology}</p>
+                      <p className="mt-1.5 text-sm text-red-600">{errors.technology[0]}</p>
                     )}
                   </div>
                   
@@ -1020,10 +1221,14 @@ const LeadCreationComponent: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        if (formData.remarks[formData.remarks.length - 1].trim()) {
+                        if (formData.remarks[formData.remarks.length - 1].text.trim()) {
                           setFormData(prev => ({
                             ...prev,
-                            remarks: [...prev.remarks, '']
+                            remarks: [...prev.remarks, {
+                              text: '',
+                              createdAt: new Date().toISOString(),
+                              createdBy: 0
+                            }]
                           }));
                         }
                       }}
@@ -1036,8 +1241,9 @@ const LeadCreationComponent: React.FC = () => {
                   {/* Current Textarea */}
                   <div className="relative w-full">
                     <textarea
-                      value={formData.remarks[formData.remarks.length - 1]}
+                      value={formData.remarks[formData.remarks.length - 1].text}
                       onChange={handleRemarkChange}
+                      onKeyPress={handleRemarkKeyPress}
                       className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
                       placeholder="Enter your remark here..."
                     />
@@ -1051,7 +1257,7 @@ const LeadCreationComponent: React.FC = () => {
                         {formData.remarks.slice(0, -1).reverse().map((remark, idx) => (
                           <div key={idx} className="relative group">
                             <div className="p-3 sm:p-4 bg-gray-50 rounded-md border border-gray-200">
-                              <pre className="whitespace-pre-wrap text-sm break-words">{remark}</pre>
+                              <pre className="whitespace-pre-wrap text-sm break-words">{remark.text}</pre>
                               <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                                 Remark #{formData.remarks.length - 1 - idx}
                               </div>
@@ -1078,7 +1284,7 @@ const LeadCreationComponent: React.FC = () => {
                   )}
 
                   {errors.remarks && (
-                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0]}</p>
+                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0].text}</p>
                   )}
                 </div>
 
@@ -1175,15 +1381,19 @@ const LeadCreationComponent: React.FC = () => {
                   }}
                 >
                   <option value="">Select sales person</option>
-                  {['Aneri', 'Dhaval', 'Rajdeep', 'Payal'].map((person) => (
-                    <option 
-                      key={person}
-                      value={person}
-                      disabled={person === currentSalesPerson}
-                    >
-                      {person}
-                    </option>
-                  ))}
+                  {isLoadingSalesUsers ? (
+                    <option value="" disabled>Loading sales executives...</option>
+                  ) : (
+                    salesUsers.map((user) => (
+                      <option 
+                        key={user.id}
+                        value={`${user.firstname} ${user.lastname}`}
+                        disabled={`${user.firstname} ${user.lastname}` === currentSalesPerson}
+                      >
+                        {user.firstname} {user.lastname}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <button 
                   className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow`}
@@ -1301,7 +1511,7 @@ const LeadCreationComponent: React.FC = () => {
                         {lead.country}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.assignedUser || '--'}
+                        {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                       </td>
                       <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                         <select

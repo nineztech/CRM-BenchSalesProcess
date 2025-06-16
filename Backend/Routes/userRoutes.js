@@ -5,7 +5,8 @@ import {
   getProfile,
   logout,
   updateOwnStatus,
-  getAllUsers
+  getAllUsers,
+  getUsersByDepartment
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/all', getAllUsers);
+router.get('/department/:departmentId', getUsersByDepartment);
 // router.delete('/:id', deleteUser);
 router.get('/profile', getProfile);
 router.post('/logout', logout);
