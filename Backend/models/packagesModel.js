@@ -41,6 +41,22 @@ const Packages = sequelize.define(
         max: 100
       }
     },
+    initialPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0
+      }
+    },
+    discountedPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0
+      }
+    },
     features: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -67,7 +83,6 @@ const Packages = sequelize.define(
           }
           if (value && value.some(item => {
             return typeof item !== 'object' || 
-                   !item.planName || 
                    !item.name || 
                    typeof item.percentage !== 'number' ||
                    item.percentage < 0 || 
@@ -78,7 +93,7 @@ const Packages = sequelize.define(
                    !item.endTime ||
                    new Date(item.startDate) > new Date(item.endDate);
           })) {
-            throw new Error('All discounts must be valid objects with planName, name, percentage (0-100), and valid date/time ranges');
+            throw new Error('All discounts must be valid objects with name, percentage (0-100), and valid date/time ranges');
           }
         }
       }
