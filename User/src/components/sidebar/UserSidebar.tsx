@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FaUserPlus, } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import logoIcon from '../../assets/logo.webp'; // Make sure to update the path to your logo
+import logoIcon from '../../assets/Logo.webp'; // Make sure to update the path to your logo
 import './usersidebar.css'
 
 const Sidebar: React.FC = () => {
