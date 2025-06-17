@@ -9,6 +9,7 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
+import StatusChangeNotification from './StatusChangeNotification';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -198,6 +199,14 @@ const LeadCreationComponent: React.FC = () => {
   // Add new state for sales users
   const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
   const [isLoadingSalesUsers, setIsLoadingSalesUsers] = useState(false);
+
+  // New states for StatusChangeNotification
+  const [showStatusNotification, setShowStatusNotification] = useState(false);
+  const [statusNotificationData, setStatusNotificationData] = useState<{
+    leadName: string;
+    newStatus: string;
+    statusGroup: string;
+  } | null>(null);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -836,7 +845,7 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Add new function to handle remark submission
+  // Update the handleStatusRemarkSubmit function
   const handleStatusRemarkSubmit = async (remark: string) => {
     if (!selectedLeadForStatus) return;
 
@@ -872,6 +881,15 @@ const LeadCreationComponent: React.FC = () => {
             } : lead
           )
         );
+
+        // Show status change notification
+        setStatusNotificationData({
+          leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
+          newStatus: newStatus,
+          statusGroup: response.data.data.statusGroup
+        });
+        setShowStatusNotification(true);
+
         setShowStatusRemarkModal(false);
         setSelectedLeadForStatus(null);
         setNewStatus('');
@@ -1624,6 +1642,13 @@ const LeadCreationComponent: React.FC = () => {
         onSubmit={handleStatusRemarkSubmit}
         currentStatus={selectedLeadForStatus?.status || ''}
         newStatus={newStatus}
+      />
+      <StatusChangeNotification
+        isOpen={showStatusNotification}
+        onClose={() => setShowStatusNotification(false)}
+        leadName={statusNotificationData?.leadName || ''}
+        newStatus={statusNotificationData?.newStatus || ''}
+        statusGroup={statusNotificationData?.statusGroup || ''}
       />
     </div>
   );
