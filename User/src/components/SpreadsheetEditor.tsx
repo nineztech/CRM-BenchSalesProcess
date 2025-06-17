@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { HotTable } from '@handsontable/react';
+import { HotTable, HotTableClass } from '@handsontable/react';
 import * as XLSX from 'xlsx';
 import 'handsontable/dist/handsontable.full.min.css';
 
 const SpreadsheetEditor: React.FC = () => {
-  const hotRef = useRef<HotTable>(null);
+  const hotRef = useRef<HotTableClass | null>(null);
   const [tableData, setTableData] = useState<any[][]>([]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

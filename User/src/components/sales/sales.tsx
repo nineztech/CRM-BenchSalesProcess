@@ -1,6 +1,6 @@
 import React, { useState, } from 'react';
 import * as XLSX from 'xlsx';
-import Sidebar from '../Sidebar/Sidebar';
+import Sidebar from '../sidebar/Sidebar';
 import LogoIcon from "../../assets/xls_logo.webp"
 
 interface Lead {
@@ -105,7 +105,7 @@ const LeadCreationComponent: React.FC = () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
     const currentDate = new Date().toISOString();
-    const isReassigning = selectedLeads.some(index => leads[index].salesPerson);
+    // const isReassigning = selectedLeads.some(index => leads[index].salesPerson);
 
     setLeads(prevLeads => 
       prevLeads.map((lead, index) => {
@@ -273,7 +273,7 @@ const LeadCreationComponent: React.FC = () => {
   };
 
   const handleCheckboxChange = (index: number) => {
-    const originalIndex = filteredLeads.findIndex((lead, i) => i === index + ((currentPage - 1) * pageSize));
+    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((currentPage - 1) * pageSize));
     setSelectedLeads(prev =>
       prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
     );

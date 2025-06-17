@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@handsontable/react": "^15.3.0",
     "@headlessui/react": "^2.2.4",
     "@tinymce/tinymce-react": "^6.2.1",
     "@types/jsonwebtoken": "^9.0.9",
@@ -17,6 +18,7 @@
     "axios": "^1.9.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.16.0",
+    "handsontable": "^15.3.0",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.0",

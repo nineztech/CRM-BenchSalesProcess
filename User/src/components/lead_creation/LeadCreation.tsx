@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
-import Sidebar from '../sidebar/Sidebar';
+// import Sidebar from '../sidebar/Sidebar';
 import LogoIcon from "../../assets/xls_logo.webp"
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,16 +11,16 @@ import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
-type Country = {
-  label: string;
-  value: string;
-};
+// type Country = {
+//   label: string;
+//   value: string;
+// };
 
-type CountryList = {
-  getData: () => Country[];
-  getLabel: (value: string) => string;
-  getValue: (label: string) => string;
-};
+// type CountryList = {
+//   getData: () => Country[];
+//   getLabel: (value: string) => string;
+//   getValue: (label: string) => string;
+// };
 
 // Using dynamic import for country list
 import countryList from 'react-select-country-list';
@@ -144,35 +144,35 @@ const LeadCreationComponent: React.FC = () => {
 
   // Table states
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  var searchTerm='';
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Edit states
-  const [editingLead, setEditingLead] = useState<number | null>(null);
-  const [editFormData, setEditFormData] = useState<Lead>({
-    firstName: '',
-    lastName: '',
-    contactNumbers: [''],
-    emails: ['', ''],
-    primaryEmail: '',
-    primaryContact: '',
-    technology: [''],
-    country: '',
-    countryCode: '',
-    visaStatus: '',
-    leadSource: '',
-    remarks: [{
-      text: '',
-      createdAt: new Date().toISOString(),
-      createdBy: 0
-    }],
-    linkedinId: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
+  // // Edit states
+  // const [editingLead, setEditingLead] = useState<number | null>(null);
+  // const [editFormData, setEditFormData] = useState<Lead>({
+  //   firstName: '',
+  //   lastName: '',
+  //   contactNumbers: [''],
+  //   emails: ['', ''],
+  //   primaryEmail: '',
+  //   primaryContact: '',
+  //   technology: [''],
+  //   country: '',
+  //   countryCode: '',
+  //   visaStatus: '',
+  //   leadSource: '',
+  //   remarks: [{
+  //     text: '',
+  //     createdAt: new Date().toISOString(),
+  //     createdBy: 0
+  //   }],
+  //   linkedinId: '',
+  //   createdAt: new Date().toISOString(),
+  //   updatedAt: new Date().toISOString()
+  // });
 
   // Dialog states
   const [showInfoDialog, setShowInfoDialog] = useState(false);
@@ -208,7 +208,7 @@ const LeadCreationComponent: React.FC = () => {
       setLeads(response.data.data.leads);
       // Update pagination info from API response if available
       if (response.data.data.pagination) {
-        const { total, totalPages } = response.data.data.pagination;
+        const {totalPages } = response.data.data.pagination;
         setTotalPages(totalPages);
       }
     } catch (error) {
@@ -225,9 +225,9 @@ const LeadCreationComponent: React.FC = () => {
   }, []);
 
   // Filter leads based on status
-  const getLeadsByStatus = (status: string) => {
-    return leads.filter(lead => lead.statusGroup === status);
-  };
+  // const getLeadsByStatus = (status: string) => {
+  //   return leads.filter(lead => lead.statusGroup === status);
+  // };
 
   // Get leads count by status
   const getLeadsCountByStatus = (status: string) => {
@@ -629,7 +629,7 @@ const LeadCreationComponent: React.FC = () => {
   };
 
   const handleCheckboxChange = (index: number) => {
-    const originalIndex = filteredLeads.findIndex((lead, i) => i === index + ((currentPage - 1) * pageSize));
+    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((currentPage - 1) * pageSize));
     setSelectedLeads(prev =>
       prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
     );
