@@ -103,32 +103,32 @@ const getNearestDiscountEndDate = (discounts: Package['discounts']): Date | null
   return nearestEndDate;
 };
 
-const CountdownTimer: React.FC<{ endDate: string; endTime: string }> = ({ endDate, endTime }) => {
-  const endDateTime = new Date(`${endDate}T${endTime}`);
+// const CountdownTimer: React.FC<{ endDate: string; endTime: string }> = ({ endDate, endTime }) => {
+//   const endDateTime = new Date(`${endDate}T${endTime}`);
   
-  const renderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
-    if (completed) {
-      return <span className="text-xs font-medium text-orange-600">Expired</span>;
-    }
+//   const renderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+//     if (completed) {
+//       return <span className="text-xs font-medium text-orange-600">Expired</span>;
+//     }
 
-    if (days > 0) {
-      return <span className="text-xs font-medium text-orange-600">{days}d {hours}h</span>;
-    }
+//     if (days > 0) {
+//       return <span className="text-xs font-medium text-orange-600">{days}d {hours}h</span>;
+//     }
     
-    if (hours > 0) {
-      return <span className="text-xs font-medium text-orange-600">{hours}h {minutes}m</span>;
-    }
+//     if (hours > 0) {
+//       return <span className="text-xs font-medium text-orange-600">{hours}h {minutes}m</span>;
+//     }
     
-    return <span className="text-xs font-medium text-orange-600">{minutes}m {seconds}s</span>;
-  };
+//     return <span className="text-xs font-medium text-orange-600">{minutes}m {seconds}s</span>;
+//   };
 
-  return (
-    <Countdown
-      date={endDateTime}
-      renderer={renderer}
-    />
-  );
-};
+//   return (
+//     <Countdown
+//       date={endDateTime}
+//       renderer={renderer}
+//     />
+//   );
+// };
 
 const PackagesPage: React.FC = () => {
   const navigate = useNavigate();
