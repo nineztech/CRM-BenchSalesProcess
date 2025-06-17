@@ -13,7 +13,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'leads',
+        model: 'Leads',
         key: 'id'
       }
     },
@@ -21,7 +21,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -29,7 +29,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -52,7 +52,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -60,7 +60,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },

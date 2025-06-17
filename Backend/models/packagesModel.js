@@ -102,7 +102,7 @@ const Packages = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -110,7 +110,7 @@ const Packages = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
