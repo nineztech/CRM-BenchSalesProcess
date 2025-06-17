@@ -53,7 +53,7 @@ const startServer = async () => {
     await connectDB();
 
     // Use the new syncModels function instead of sequelize.sync()
-    await syncModels();
+    await syncModels({force:true});
 
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
 
