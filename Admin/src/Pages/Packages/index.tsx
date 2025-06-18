@@ -627,7 +627,7 @@ const PackagesPage: React.FC = () => {
           {/* Basic Fields Section */}
           <div className="grid grid-cols-4 gap-6">
             <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="planName"
@@ -659,7 +659,7 @@ const PackagesPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Enrollment Charge</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Enrollment Charge <span className="text-red-500">*</span></label>
               <input
                 type="number"
                 name="enrollmentCharge"
@@ -675,7 +675,7 @@ const PackagesPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Offer Letter Charge</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2">Offer Letter Charge <span className="text-red-500">*</span></label>
               <input
                 type="number"
                 name="offerLetterCharge"

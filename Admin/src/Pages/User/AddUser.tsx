@@ -58,11 +58,11 @@ const UserRegister: React.FC = () => {
 
   const fetchRoles = async (departmentId: number) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/department/${departmentId}/roles`);
+      const response = await axios.get(`${API_BASE_URL}/department/${departmentId}`);
       if (response.data.success) {
-        const subrolesArr = response.data.data.subroles;
-        if (Array.isArray(subrolesArr)) {
-          setSubroles(subrolesArr.filter((r: any) => typeof r === 'string'));
+        const department = response.data.data;
+        if (department && Array.isArray(department.subroles)) {
+          setSubroles(department.subroles);
         } else {
           setSubroles([]);
         }
@@ -241,33 +241,39 @@ const UserRegister: React.FC = () => {
               {/* Form Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">First Name</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="firstName"
-                  placeholder="First Name"
+                    placeholder="First Name"
                     value={formData.firstName}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Last Name</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="lastName"
-                  placeholder="Last Name"
+                    placeholder="Last Name"
                     value={formData.lastName}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Department</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Department <span className="text-red-500">*</span>
+                  </label>
                   <select
                     name="department"
                     value={formData.department}
@@ -285,7 +291,9 @@ const UserRegister: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Roles</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Roles <span className="text-red-500">*</span>
+                  </label>
                   <select
                     name="subrole"
                     value={formData.subrole}
@@ -305,28 +313,32 @@ const UserRegister: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Mobile Number</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="mobileNumber"
-                  placeholder="Mobile Number"
+                    placeholder="Mobile Number"
                     value={formData.mobileNumber}
                     onChange={handleChange}
                     maxLength={10}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Email</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Email <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     name="email"
-                  placeholder="Email ID"
+                    placeholder="Email ID"
                     value={formData.email}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                 </div>
@@ -336,45 +348,51 @@ const UserRegister: React.FC = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Username</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Username <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="username"
-                  placeholder="Username"
+                    placeholder="Username"
                     value={formData.username}
                     onChange={handleChange}
                     disabled={editingUserId !== null}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                   {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Password</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Password <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
-                  placeholder="Password"
+                    placeholder="Password"
                     value={formData.password}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                 </div>
                 
                 <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Confirm Password</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="confirmPassword"
-                  placeholder="Confirm Password"
+                    placeholder="Confirm Password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
+                </div>
               </div>
-            </div>
           </div>
         </motion.div>
 

@@ -320,7 +320,9 @@ const AdminRegister: React.FC = () => {
             {/* Form Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">First Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  First Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="firstName"
@@ -334,7 +336,9 @@ const AdminRegister: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Last Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="lastName"
@@ -348,7 +352,9 @@ const AdminRegister: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Mobile Number</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="mobileNumber"
@@ -363,7 +369,9 @@ const AdminRegister: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Email</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
                   name="email"
@@ -381,7 +389,9 @@ const AdminRegister: React.FC = () => {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Username</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Username <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="username"
@@ -395,7 +405,9 @@ const AdminRegister: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Password</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -409,7 +421,9 @@ const AdminRegister: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Confirm Password</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
                 <input
                   type={showPassword ? "text" : "password"}
                   name="confirmPassword"
