@@ -923,7 +923,7 @@ const LeadCreationComponent: React.FC = () => {
     try {
       const response = await axios.get(`${BASE_URL}/department/all`);
       const salesDepartment = response.data.data.find(
-        (dept: any) => dept.departmentName.toLowerCase() === 'sales'
+        (dept: any) => dept.isSalesTeam === true
       );
       return salesDepartment?.id;
     } catch (error) {
@@ -940,11 +940,15 @@ const LeadCreationComponent: React.FC = () => {
       
       if (salesDeptId) {
         const response = await axios.get(`${BASE_URL}/user/department/${salesDeptId}`);
-        const executives = response.data.data.users
+        const executives = response.data.data.users;
         setSalesUsers(executives);
+      } else {
+        console.error('No department found with isSalesTeam=true');
+        setSalesUsers([]);
       }
     } catch (error) {
       console.error('Error fetching sales executives:', error);
+      setSalesUsers([]);
     } finally {
       setIsLoadingSalesUsers(false);
     }

@@ -3,6 +3,9 @@ import Department  from './departmentModel.js';
 import Lead from './leadModel.js';
 import Packages from './packagesModel.js';
 import LeadAssignment from './leadAssignmentModel.js';
+import Activity from './activityModel.js';
+import Permission from './permissionsModel.js';
+import RolePermission from './rolePermissionModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -22,6 +25,31 @@ Department.hasMany(User, {
   foreignKey: 'departmentId',
   as: 'users'
 });
+
+// Activity associations
+Activity.belongsTo(Department, { foreignKey: 'dept_id', as: 'department' });
+Activity.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Activity.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
+
+Department.hasMany(Activity, { foreignKey: 'dept_id', as: 'activities' });
+User.hasMany(Activity, { foreignKey: 'createdBy', as: 'createdActivities' });
+User.hasMany(Activity, { foreignKey: 'updatedBy', as: 'updatedActivities' });
+
+// Permission associations
+Permission.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Permission.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
+
+User.hasMany(Permission, { foreignKey: 'createdBy', as: 'createdPermissions' });
+User.hasMany(Permission, { foreignKey: 'updatedBy', as: 'updatedPermissions' });
+
+// RolePermission associations
+RolePermission.belongsTo(Department, { foreignKey: 'dept_id', as: 'department' });
+RolePermission.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+RolePermission.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
+
+Department.hasMany(RolePermission, { foreignKey: 'dept_id', as: 'rolePermissions' });
+User.hasMany(RolePermission, { foreignKey: 'createdBy', as: 'createdRolePermissions' });
+User.hasMany(RolePermission, { foreignKey: 'updatedBy', as: 'updatedRolePermissions' });
 
 // Add a virtual field to User model to access department subroles
 User.prototype.getSubroles = async function() {
@@ -155,6 +183,18 @@ export const syncModels = async () => {
     await Department.sync({ alter: true });
     console.log('Department table synced successfully');
 
+    // Create Activity table
+    await Activity.sync({ alter: true });
+    console.log('Activity table synced successfully');
+
+    // Create Permission table
+    await Permission.sync({ alter: true });
+    console.log('Permission table synced successfully');
+
+    // Create RolePermission table
+    await RolePermission.sync({ alter: true });
+    console.log('RolePermission table synced successfully');
+
     // Create other tables
     await Lead.sync({ alter: true });
     console.log('Lead table synced successfully');
@@ -162,7 +202,6 @@ export const syncModels = async () => {
     await Packages.sync({ alter: true });
     console.log('Packages table synced successfully');
 
-    // Create LeadAssignment table
     await LeadAssignment.sync({ alter: true });
     console.log('LeadAssignment table synced successfully');
 
@@ -181,5 +220,8 @@ export {
   Department,
   Lead,
   Packages,
-  LeadAssignment
+  LeadAssignment,
+  Activity,
+  Permission,
+  RolePermission
 };

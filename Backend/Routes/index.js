@@ -4,6 +4,10 @@ import leadRoute from './leadRoutes.js'
 import DepartmentRoute from './departmentRoutes.js'
 import PackagesRoute from './packagesRoutes.js'
 import LeadAssignRoute from './leadAssignmentRoutes.js'
+import activityRoutes from './activityRoutes.js'
+import permissionsRoutes from './permissionsRoutes.js'
+import rolePermissionRoutes from './rolePermissionRoutes.js'
+
 import express from 'express'
 const router =express.Router()
 
@@ -13,4 +17,8 @@ router.use("/lead",leadRoute)
 router.use("/department",DepartmentRoute)
 router.use("/packages",PackagesRoute)
 router.use("/lead-assignments",LeadAssignRoute)
+router.use('/activity', activityRoutes)
+router.use('/permissions', permissionsRoutes)
+router.use('/role-permissions', rolePermissionRoutes)
+
 export default router

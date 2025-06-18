@@ -4,7 +4,7 @@ import User from "../models/userModel.js";
 // Add Department
 export const addDepartment = async (req, res) => {
   try {
-    const { departmentName, subroles } = req.body;
+    const { departmentName, subroles, isSalesTeam } = req.body;
     const userId = req.user?.id;
 
     if (!departmentName) {
@@ -44,6 +44,7 @@ export const addDepartment = async (req, res) => {
     const newDepartment = await Department.create({
       departmentName: departmentName.trim(),
       subroles: subrolesArray,
+      isSalesTeam: isSalesTeam || false,
       createdBy: userId,
       status: 'active'
     });
@@ -130,7 +131,7 @@ export const getDepartmentById = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentName, subroles, status } = req.body;
+    const { departmentName, subroles, status, isSalesTeam } = req.body;
     const userId = req.user?.id;
 
     const department = await Department.findByPk(id);
@@ -153,6 +154,7 @@ export const updateDepartment = async (req, res) => {
     await department.update({
       departmentName: departmentName?.trim() || department.departmentName,
       subroles: subrolesArray,
+      isSalesTeam: isSalesTeam !== undefined ? isSalesTeam : department.isSalesTeam,
       status: status || department.status,
       updatedBy: userId
     });
@@ -235,6 +237,29 @@ export const getDepartmentSubroles = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching department subroles:", error);
+    handleError(error, res);
+  }
+};
+
+// Check if sales team department exists
+export const checkSalesTeamExists = async (req, res) => {
+  try {
+    const salesTeamDepartment = await Department.findOne({
+      where: { isSalesTeam: true }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        exists: !!salesTeamDepartment,
+        department: salesTeamDepartment ? {
+          id: salesTeamDepartment.id,
+          departmentName: salesTeamDepartment.departmentName
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error("Error checking sales team department:", error);
     handleError(error, res);
   }
 };

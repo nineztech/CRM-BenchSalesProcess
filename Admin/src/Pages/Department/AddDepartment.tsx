@@ -9,6 +9,7 @@ interface Department {
   id: number;
   departmentName: string;
   subroles: string[];
+  isSalesTeam: boolean;
   status: string;
   createdAt: string;
   creator: {
@@ -22,11 +23,14 @@ const AddDepartment: React.FC = () => {
   const navigate = useNavigate();
   const [departmentName, setDepartmentName] = useState('');
   const [subroles, setSubroles] = useState<string[]>([]);
+  const [isSalesTeam, setIsSalesTeam] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [salesTeamExists, setSalesTeamExists] = useState(false);
+  const [existingSalesTeamDept, setExistingSalesTeamDept] = useState<{id: number, departmentName: string} | null>(null);
 
  const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
@@ -72,6 +76,7 @@ const AddDepartment: React.FC = () => {
       return;
     }
     fetchDepartments();
+    checkSalesTeamExists();
   }, [navigate]);
 
   const fetchDepartments = async () => {
@@ -80,6 +85,8 @@ const AddDepartment: React.FC = () => {
       const response = await axiosInstance.get('/department/all');
       if (response.data.success) {
         setDepartments(response.data.data);
+        setSalesTeamExists(response.data.data.some((dept: Department) => dept.isSalesTeam));
+        setExistingSalesTeamDept(response.data.data.find((dept: Department) => dept.isSalesTeam) as {id: number, departmentName: string} | null);
       }
     } catch (error: unknown) {
       console.error('Error fetching departments:', error);
@@ -89,6 +96,18 @@ const AddDepartment: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkSalesTeamExists = async () => {
+    try {
+      const response = await axiosInstance.get('/department/check/sales-team');
+      if (response.data.success) {
+        setSalesTeamExists(response.data.data.exists);
+        setExistingSalesTeamDept(response.data.data.department);
+      }
+    } catch (error: unknown) {
+      console.error('Error checking sales team existence:', error);
     }
   };
 
@@ -110,11 +129,18 @@ const AddDepartment: React.FC = () => {
       return;
     }
 
+    // Check if trying to create a new sales team when one already exists
+    if (!editingDepartment && isSalesTeam && salesTeamExists) {
+      alert('A sales team department already exists. Only one sales team department is allowed.');
+      return;
+    }
+
     try {
       setIsLoading(true);
       const payload = {
         departmentName: departmentName.trim(),
-        subroles: subroles
+        subroles: subroles,
+        isSalesTeam: isSalesTeam
       };
 
       if (editingDepartment) {
@@ -125,8 +151,10 @@ const AddDepartment: React.FC = () => {
 
       setDepartmentName('');
       setSubroles([]);
+      setIsSalesTeam(false);
       setEditingDepartment(null);
       fetchDepartments();
+      checkSalesTeamExists();
       alert(editingDepartment ? 'Department updated successfully' : 'Department created successfully');
     } catch (error) {
       console.error('Error:', error);
@@ -140,6 +168,13 @@ const AddDepartment: React.FC = () => {
     setEditingDepartment(dept);
     setDepartmentName(dept.departmentName);
     setSubroles(dept.subroles || []);
+    setIsSalesTeam(dept.isSalesTeam);
+    
+    // If editing the existing sales team department, update the state
+    if (dept.isSalesTeam) {
+      setSalesTeamExists(true);
+      setExistingSalesTeamDept({ id: dept.id, departmentName: dept.departmentName });
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -249,6 +284,25 @@ const AddDepartment: React.FC = () => {
               </div>
             </div>
 
+            <div className="form-group flex flex-row gap-2">
+                <input
+                   type="checkbox"
+                   checked={isSalesTeam}
+                   onChange={(e) => setIsSalesTeam(e.target.checked)}
+                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
+                   disabled={isLoading || (salesTeamExists && !editingDepartment?.isSalesTeam)}
+                 />
+                   <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
+                
+                  Is Sales Team
+                </label>
+                {salesTeamExists && !editingDepartment?.isSalesTeam && (
+                  <span className="text-xs text-red-500 ml-2">
+                    (Sales team already exists: {existingSalesTeamDept?.departmentName})
+                  </span>
+                )}
+              </div>
+
             <div className="flex justify-end gap-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -268,7 +322,9 @@ const AddDepartment: React.FC = () => {
                 onClick={() => {
                   setDepartmentName('');
                   setSubroles([]);
+                  setIsSalesTeam(false);
                   setEditingDepartment(null);
+                  checkSalesTeamExists();
                 }}
                 disabled={isLoading}
                 className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 transition-colors duration-200 disabled:bg-gray-400"
@@ -311,6 +367,7 @@ const AddDepartment: React.FC = () => {
                   <tr>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Is Sales Team</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created By</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
@@ -334,6 +391,9 @@ const AddDepartment: React.FC = () => {
                             </span>
                           ))}
                         </div>
+                      </td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                        {dept.isSalesTeam ? 'Yes' : 'No'}
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         {dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}
