@@ -58,11 +58,11 @@ const UserRegister: React.FC = () => {
 
   const fetchRoles = async (departmentId: number) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/department/${departmentId}/roles`);
+      const response = await axios.get(`${API_BASE_URL}/department/${departmentId}`);
       if (response.data.success) {
-        const subrolesArr = response.data.data.subroles;
-        if (Array.isArray(subrolesArr)) {
-          setSubroles(subrolesArr.filter((r: any) => typeof r === 'string'));
+        const department = response.data.data;
+        if (department && Array.isArray(department.subroles)) {
+          setSubroles(department.subroles);
         } else {
           setSubroles([]);
         }
