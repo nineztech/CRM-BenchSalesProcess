@@ -3,6 +3,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import Layout from '../Layout/Layout';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const AdminRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -23,9 +24,9 @@ const AdminRegister: React.FC = () => {
 
   // Base URLs for API endpoints
   const API_BASE_URL=import.meta.env.VITE_API_URL || "http://localhost:5006/api"
-  const API_URL = `${API_BASE_URL}/all`;
-  const REGISTER_API_URL = `${API_BASE_URL}/register`;
-  const UPDATE_API_URL = `${API_BASE_URL}/edit`;
+  const API_URL = `${API_BASE_URL}/admin/all`;
+  const REGISTER_API_URL = `${API_BASE_URL}/admin/register`;
+  const UPDATE_API_URL = `${API_BASE_URL}/admin`;
 
   // Store the admin being edited
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
@@ -36,15 +37,29 @@ const AdminRegister: React.FC = () => {
 
   const fetchAdmins = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
       setIsLoading(true);
-      const response = await axios.get(API_URL);
+      const response = await axios.get(API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       if (response.data.success) {
         setAdmins(response.data.data);
       } else {
         console.error("Failed to fetch admins", response.data.message);
+        toast.error(response.data.message || 'Failed to fetch admins');
       }
-    } catch (err) {
-      console.error("API Error:", err);
+    } catch (error: any) {
+      console.error("API Error:", error);
+      toast.error(error.response?.data?.message || 'Error fetching admins');
     } finally {
       setIsLoading(false);
     }
@@ -122,43 +137,39 @@ const AdminRegister: React.FC = () => {
         updateAdmin();
       } else {
         // Create new admin
-        try {
-          setIsLoading(true);
-          const payload = {
-            email: formData.email,
-            password: formData.password,
-            firstname: formData.firstName,
-            lastname: formData.lastName,
-            phoneNumber: formData.mobileNumber,
-            username: formData.username
-          };
-          console.log('Sending payload:', payload); // Log payload for debugging
-          const response = await axios.post(REGISTER_API_URL, payload);
-          if (response.data.success || response.status === 201) {
-            setFormData({
-              firstName: "",
-              lastName: "",
-              mobileNumber: "",
-              username: "",
-              email: "",
-              password: "",
-              confirmPassword: ""
-            });
-            setErrors({});
-            fetchAdmins();
-            alert('Admin registered successfully');
-          } else {
-            alert(response.data.message);
+        const payload = {
+          email: formData.email,
+          password: formData.password,
+          firstname: formData.firstName,
+          lastname: formData.lastName,
+          phoneNumber: formData.mobileNumber,
+          username: formData.username
+        };
+
+        toast.promise(
+          axios.post(REGISTER_API_URL, payload),
+          {
+            loading: 'Creating admin...',
+            success: (response) => {
+              if (response.data.success || response.status === 201) {
+                setFormData({
+                  firstName: "",
+                  lastName: "",
+                  mobileNumber: "",
+                  username: "",
+                  email: "",
+                  password: "",
+                  confirmPassword: ""
+                });
+                setErrors({});
+                fetchAdmins();
+                return 'Admin registered successfully';
+              }
+              throw new Error(response.data.message || 'Failed to register admin');
+            },
+            error: (err) => err.response?.data?.message || 'Error registering admin'
           }
-        } catch (error: any) {
-          console.error('Registration Error:', error);
-          if (error.response) {
-            console.error('Error response:', error.response.data);
-          }
-          alert('Error registering admin');
-        } finally {
-          setIsLoading(false);
-        }
+        );
       }
     }
   };
@@ -178,28 +189,29 @@ const AdminRegister: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this admin?")) return;
+    if (window.confirm('Are you sure you want to deactivate this admin?')) {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
 
-    setIsLoading(true);
-    
-    try {
-      const response = await axios.delete(`${API_BASE_URL}/${id}`);
-      
-      if (response.status === 200) {
-        alert("Admin deleted successfully!");
-        await fetchAdmins(); // Refresh the admin list
-      }
-    } catch (error: any) {
-      console.error("Error deleting admin:", error);
-      
-      let errorMessage = "Failed to delete admin.";
-      if (error.response?.data?.message) {
-        errorMessage = `${error.response.data.message}`;
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
+      toast.promise(
+        axios.delete(`${API_BASE_URL}/admin/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        {
+          loading: 'Deactivating admin...',
+          success: () => {
+            fetchAdmins();
+            return 'Admin deactivated successfully!';
+          },
+          error: (err) => err.response?.data?.message || 'Failed to deactivate admin'
+        }
+      );
     }
   };
 
@@ -217,54 +229,55 @@ const AdminRegister: React.FC = () => {
   };
 
   const updateAdmin = async () => {
-    try {
-      setIsLoading(true);
-      const updateData = {
-        email: formData.email.trim() || undefined,
-        firstname: formData.firstName.trim() || undefined,
-        lastname: formData.lastName.trim() || undefined,
-        phoneNumber: formData.mobileNumber.trim() || undefined,
-        username: formData.username.trim() || undefined,
-        password: formData.password.trim() || undefined,
-        confirmPassword: formData.confirmPassword.trim() || undefined
-      };
-      const filteredData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, value]) => value !== undefined)
-      );
-      if (Object.keys(filteredData).length > 0) {
-        const response = await axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
+    const updateData = {
+      email: formData.email.trim() || undefined,
+      firstname: formData.firstName.trim() || undefined,
+      lastname: formData.lastName.trim() || undefined,
+      phoneNumber: formData.mobileNumber.trim() || undefined,
+      username: formData.username.trim() || undefined,
+      password: formData.password.trim() || undefined,
+      confirmPassword: formData.confirmPassword.trim() || undefined
+    };
+
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+
+    if (Object.keys(filteredData).length > 0) {
+      toast.promise(
+        axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
           headers: {
             'Content-Type': 'application/json'
           }
-        });
-        if (response.data.success) {
-          setAdmins(prevAdmins =>
-            prevAdmins.map(admin =>
-              admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
-            )
-          );
-          setEditingAdmin(null);
-          setFormData({
-            firstName: "",
-            lastName: "",
-            mobileNumber: "",
-            username: "",
-            email: "",
-            password: "",
-            confirmPassword: ""
-          });
-          alert('Admin updated successfully');
-        } else {
-          alert('Failed to update admin');
+        }),
+        {
+          loading: 'Updating admin...',
+          success: (response) => {
+            if (response.data.success) {
+              setAdmins(prevAdmins =>
+                prevAdmins.map(admin =>
+                  admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
+                )
+              );
+              setEditingAdmin(null);
+              setFormData({
+                firstName: "",
+                lastName: "",
+                mobileNumber: "",
+                username: "",
+                email: "",
+                password: "",
+                confirmPassword: ""
+              });
+              return 'Admin updated successfully';
+            }
+            throw new Error('Failed to update admin');
+          },
+          error: (err) => err.response?.data?.message || 'Error updating admin'
         }
-      } else {
-        alert('No changes made to update');
-      }
-    } catch (error) {
-      console.error('Error updating admin:', error);
-      alert('Error updating admin');
-    } finally {
-      setIsLoading(false);
+      );
+    } else {
+      toast.error('No changes made to update');
     }
   };
 
@@ -485,6 +498,7 @@ const AdminRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                   </tr>
@@ -504,6 +518,15 @@ const AdminRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.email}</td>
+                      <td className="p-2.5 text-sm border-b border-gray-100">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          admin.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {admin.status}
+                        </span>
+                      </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-GB', {
                           day: '2-digit',
@@ -531,7 +554,8 @@ const AdminRegister: React.FC = () => {
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                             onClick={() => handleDelete(admin.id)}
-                            disabled={isLoading}
+                            disabled={isLoading || admin.status === 'inactive'}
+                            title={admin.status === 'inactive' ? 'Admin is already inactive' : 'Deactivate admin'}
                           >
                             <FaTrash size={16} />
                           </motion.button>

@@ -14,7 +14,6 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
   isOpen,
   onClose,
   leadName,
-  newStatus,
   statusGroup
 }) => {
   // Add auto-close effect
@@ -33,9 +32,9 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
 
-      const randomInRange = (min: number, max: number) => {
-        return Math.random() * (max - min) + min;
-      };
+      // const randomInRange = (min: number, max: number) => {
+      //   return Math.random() * (max - min) + min;
+      // };
 
       const interval: any = setInterval(() => {
         const timeLeft = animationEnd - Date.now();

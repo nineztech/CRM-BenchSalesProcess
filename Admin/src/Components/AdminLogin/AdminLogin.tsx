@@ -39,8 +39,9 @@ export const AdminLogin = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store JWT token in localStorage
+        // Store JWT token and user data in localStorage
         localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         
         // Get the redirect path from location state or default to dashboard
         const state = location.state as LocationState;

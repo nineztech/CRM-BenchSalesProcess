@@ -9,6 +9,7 @@ import AdminRoles from '../Components/AdminRoles/AdminRoles';
 import { Navbar } from '../Components/Navbar/Navbar';
 import Dashboard from '../Components/AdminDashboard/Dashboard';
 import PackagesPage from '../Pages/Packages';
+import AdminProfile from '../Components/AdminProfile';
 // Import other admin components as needed
 
 // Layout component that includes Navbar
@@ -52,6 +53,14 @@ const AppRouter: React.FC = () => {
           </ProtectedRoute>
         } />
         
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <AdminLayout>
+              <AdminProfile />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
         <Route path="/departments" element={
           <ProtectedRoute>
             <AdminLayout>

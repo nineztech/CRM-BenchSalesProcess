@@ -3,6 +3,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import Layout from '../../Components/Layout/Layout';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 const UserRegister: React.FC = () => {
@@ -34,12 +35,23 @@ const UserRegister: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
       setIsLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/user/all`);
+      const response = await axios.get(`${API_BASE_URL}/user/all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       setUsers(response.data.data.users || []);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      alert('Error fetching users');
+    } catch (error: any) {
+      console.error('Fetch error:', error);
+      toast.error(error.response?.data?.message || 'Error fetching users');
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +117,13 @@ const UserRegister: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
       setIsLoading(true);
       const userData = {
         email: formData.email,
@@ -118,16 +137,44 @@ const UserRegister: React.FC = () => {
       };
 
       if (editingUserId) {
-        await axios.put(`${API_BASE_URL}/user/${editingUserId}`, userData);
+        await toast.promise(
+          axios.put(`${API_BASE_URL}/user/${editingUserId}`, userData, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          {
+            loading: 'Updating user...',
+            success: () => {
+              handleReset();
+              fetchUsers();
+              return 'User updated successfully!';
+            },
+            error: (err) => err.response?.data?.message || 'Failed to update user'
+          }
+        );
       } else {
-        await axios.post(`${API_BASE_URL}/user/register`, userData);
+        await toast.promise(
+          axios.post(`${API_BASE_URL}/user/register`, userData, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          {
+            loading: 'Creating user...',
+            success: () => {
+              handleReset();
+              fetchUsers();
+              return 'User created successfully!';
+            },
+            error: (err) => err.response?.data?.message || 'Failed to create user'
+          }
+        );
       }
-      handleReset();
-      fetchUsers();
-      alert(editingUserId ? 'User updated successfully!' : 'User created successfully!');
     } catch (err: any) {
       console.error('Error:', err);
-      alert(err.response?.data?.message || 'Operation failed');
     } finally {
       setIsLoading(false);
     }
@@ -150,17 +197,29 @@ const UserRegister: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
-    try {
-      setIsLoading(true);
-      await axios.delete(`http://localhost:5003/api/user/${id}`);
-        fetchUsers();
-      alert('User deleted successfully!');
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Delete operation failed');
-    } finally {
-      setIsLoading(false);
+    if (window.confirm('Are you sure you want to deactivate this user?')) {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
+      toast.promise(
+        axios.delete(`${API_BASE_URL}/user/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        {
+          loading: 'Deactivating user...',
+          success: () => {
+            fetchUsers();
+            return 'User deactivated successfully!';
+          },
+          error: (err) => err.response?.data?.message || 'Failed to deactivate user'
+        }
+      );
     }
   };
 
@@ -433,6 +492,7 @@ const UserRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                 </tr>
@@ -454,6 +514,15 @@ const UserRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
+                      <td className="p-2.5 text-sm border-b border-gray-100">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          user.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.status}
+                        </span>
+                      </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', {
                           day: '2-digit',
@@ -481,7 +550,8 @@ const UserRegister: React.FC = () => {
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                           onClick={() => handleDelete(user.id)}
-                            disabled={isLoading}
+                            disabled={isLoading || user.status === 'inactive'}
+                            title={user.status === 'inactive' ? 'User is already inactive' : 'Deactivate user'}
                         >
                             <FaTrash size={16} />
                           </motion.button>
