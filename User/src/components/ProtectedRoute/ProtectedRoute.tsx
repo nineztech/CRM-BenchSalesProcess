@@ -10,7 +10,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!token) {
     // Redirect to login page if not authenticated
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/" state={{ from: location.pathname }} replace />;
   }
 
   // If authenticated, render the protected content

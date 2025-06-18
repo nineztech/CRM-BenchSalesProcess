@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js'; // Adjust path to your User model
 import Department from '../models/departmentModel.js';
 import { Op } from 'sequelize';
+import bcrypt from 'bcrypt';
 
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -146,8 +147,16 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user by email
-    const user = await User.findOne({ where: { email } });
+    // Find user by email with department info
+    const user = await User.findOne({ 
+      where: { email },
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }]
+    });
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -179,18 +188,29 @@ export const login = async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    // Prepare user data for response
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      phoneNumber: user.phoneNumber,
+      username: user.username,
+      role: user.role,
+      departmentId: user.departmentId,
+      subrole: user.subrole,
+      department: user.department,
+      status: user.status,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
     // Return success response
     res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          status: user.status,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt
-        },
+        user: userData,
         token
       }
     });
@@ -207,10 +227,14 @@ export const login = async (req, res) => {
 // Get current user profile (requires authentication)
 export const getProfile = async (req, res) => {
   try {
-    const userId = req.user.userId; // Assuming middleware adds user to request
+    const userId = req.user.userId;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'email', 'createdAt', 'updatedAt'] // Exclude password
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }]
     });
 
     if (!user) {
@@ -220,9 +244,25 @@ export const getProfile = async (req, res) => {
       });
     }
 
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      phoneNumber: user.phoneNumber,
+      username: user.username,
+      role: user.role,
+      departmentId: user.departmentId,
+      subrole: user.subrole,
+      department: user.department,
+      status: user.status,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
     res.status(200).json({
       success: true,
-      data: { user }
+      data: { user: userData }
     });
 
   } catch (error) {
@@ -515,6 +555,202 @@ export const getUsersByDepartment = async (req, res) => {
 
   } catch (error) {
     console.error('Get users by department error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the user
+    const user = await User.findOne({ 
+      where: { 
+        id,
+        role: 'user'
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Instead of deleting, update status to inactive
+    await user.update({ 
+      status: 'inactive'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User deactivated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deactivating user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const editUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if request body exists
+    if (!req.body) {
+      return res.status(400).json({ message: 'Request body is required' });
+    }
+
+    // Get the fields from request body
+    const updateFields = {};
+    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole'];
+
+    // Add only the allowed fields that exist in the request
+    Object.keys(req.body).forEach(field => {
+      if (allowedFields.includes(field)) {
+        updateFields[field] = req.body[field];
+      }
+    });
+
+    // If no valid fields were provided
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
+    // Check if user exists and get current user
+    const currentUser = await User.findByPk(id);
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if the user is actually a user (not admin)
+    if (currentUser.role !== 'user') {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not a regular user'
+      });
+    }
+
+    // Handle password update if both password fields are provided
+    if (updateFields.password && updateFields.confirmPassword) {
+      // Validate password requirements
+      if (!updateFields.password || updateFields.password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      }
+
+      // Check if confirmPassword exists and matches
+      if (!updateFields.confirmPassword || updateFields.password !== updateFields.confirmPassword) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+      }
+
+      // Hash the new password
+      try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(updateFields.password, saltRounds);
+        updateFields.password = hashedPassword;
+        // Remove confirmPassword from update fields
+        delete updateFields.confirmPassword;
+      } catch (hashError) {
+        console.error('Error hashing password:', hashError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Error hashing password' 
+        });
+      }
+    } else {
+      // If no password update, remove password fields from update
+      delete updateFields.password;
+      delete updateFields.confirmPassword;
+    }
+
+    // Validate department and subrole if provided
+    if (updateFields.departmentId || updateFields.subrole) {
+      const department = await Department.findByPk(updateFields.departmentId);
+      if (!department) {
+        return res.status(400).json({ message: 'Invalid department' });
+      }
+
+      if (updateFields.subrole && !department.subroles.includes(updateFields.subrole)) {
+        return res.status(400).json({ message: 'Invalid subrole for this department' });
+      }
+    }
+
+    // Validate and update each field that exists in updateFields
+    for (const field of Object.keys(updateFields)) {
+      const value = updateFields[field];
+      
+      switch (field) {
+        case 'email':
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+          }
+
+          const existingUserByEmail = await User.findOne({
+            where: { 
+              email: value, 
+              id: { [Op.ne]: id } 
+            }
+          });
+          if (existingUserByEmail) {
+            return res.status(400).json({ message: 'Email already exists' });
+          }
+          break;
+
+        case 'phoneNumber':
+          if (isNaN(value) || value.toString().length < 10) {
+            return res.status(400).json({ message: 'Invalid phone number' });
+          }
+          break;
+
+        case 'username':
+          const existingUserByUsername = await User.findOne({
+            where: { 
+              username: value, 
+              id: { [Op.ne]: id } 
+            }
+          });
+          if (existingUserByUsername) {
+            return res.status(400).json({ message: 'Username already exists' });
+          }
+          break;
+      }
+    }
+
+    // Update user data with the validated fields
+    await currentUser.update(updateFields);
+
+    // Prepare response data
+    const updatedUser = {
+      id: currentUser.id,
+      email: currentUser.email,
+      firstname: currentUser.firstname,
+      lastname: currentUser.lastname,
+      phoneNumber: currentUser.phoneNumber,
+      username: currentUser.username,
+      role: currentUser.role,
+      departmentId: currentUser.departmentId,
+      subrole: currentUser.subrole,
+      status: currentUser.status,
+      createdAt: currentUser.createdAt,
+      updatedAt: currentUser.updatedAt
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

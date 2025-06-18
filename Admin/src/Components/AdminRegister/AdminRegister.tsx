@@ -26,7 +26,7 @@ const AdminRegister: React.FC = () => {
   const API_BASE_URL=import.meta.env.VITE_API_URL || "http://localhost:5006/api"
   const API_URL = `${API_BASE_URL}/admin/all`;
   const REGISTER_API_URL = `${API_BASE_URL}/admin/register`;
-  const UPDATE_API_URL = `${API_BASE_URL}/edit`;
+  const UPDATE_API_URL = `${API_BASE_URL}/admin`;
 
   // Store the admin being edited
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
@@ -37,15 +37,29 @@ const AdminRegister: React.FC = () => {
 
   const fetchAdmins = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
       setIsLoading(true);
-      const response = await axios.get(API_URL);
+      const response = await axios.get(API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       if (response.data.success) {
         setAdmins(response.data.data);
       } else {
         console.error("Failed to fetch admins", response.data.message);
+        toast.error(response.data.message || 'Failed to fetch admins');
       }
-    } catch (err) {
-      console.error("API Error:", err);
+    } catch (error: any) {
+      console.error("API Error:", error);
+      toast.error(error.response?.data?.message || 'Error fetching admins');
     } finally {
       setIsLoading(false);
     }
@@ -175,20 +189,30 @@ const AdminRegister: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    toast.promise(
-      axios.delete(`${API_BASE_URL}/admin/${id}`),
-      {
-        loading: 'Deleting admin...',
-        success: (response) => {
-          if (response.status === 200) {
-            fetchAdmins();
-            return 'Admin deleted successfully!';
-          }
-          throw new Error('Failed to delete admin');
-        },
-        error: (err) => err.response?.data?.message || 'Failed to delete admin'
+    if (window.confirm('Are you sure you want to deactivate this admin?')) {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
       }
-    );
+
+      toast.promise(
+        axios.delete(`${API_BASE_URL}/admin/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        {
+          loading: 'Deactivating admin...',
+          success: () => {
+            fetchAdmins();
+            return 'Admin deactivated successfully!';
+          },
+          error: (err) => err.response?.data?.message || 'Failed to deactivate admin'
+        }
+      );
+    }
   };
 
   const handleEdit = (admin: any) => {
@@ -474,6 +498,7 @@ const AdminRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                   </tr>
@@ -493,6 +518,15 @@ const AdminRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.email}</td>
+                      <td className="p-2.5 text-sm border-b border-gray-100">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          admin.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {admin.status}
+                        </span>
+                      </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-GB', {
                           day: '2-digit',
@@ -520,7 +554,8 @@ const AdminRegister: React.FC = () => {
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                             onClick={() => handleDelete(admin.id)}
-                            disabled={isLoading}
+                            disabled={isLoading || admin.status === 'inactive'}
+                            title={admin.status === 'inactive' ? 'Admin is already inactive' : 'Deactivate admin'}
                           >
                             <FaTrash size={16} />
                           </motion.button>

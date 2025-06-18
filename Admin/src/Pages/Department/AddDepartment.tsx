@@ -4,6 +4,7 @@ import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 interface Department {
   id: number;
@@ -85,7 +86,7 @@ const AddDepartment: React.FC = () => {
       console.error('Error fetching departments:', error);
       const axiosError = error as AxiosError;
       if (axiosError.response?.status !== 401) {
-        alert('Failed to fetch departments');
+        toast.error('Failed to fetch departments');
       }
     } finally {
       setIsLoading(false);
@@ -106,33 +107,45 @@ const AddDepartment: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!departmentName.trim()) {
-      alert('Please enter a department name');
+      toast.error('Please enter a department name');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      const payload = {
-        departmentName: departmentName.trim(),
-        subroles: subroles
-      };
+    const payload = {
+      departmentName: departmentName.trim(),
+      subroles: subroles
+    };
 
-      if (editingDepartment) {
-        await axiosInstance.put(`/department/${editingDepartment.id}`, payload);
-      } else {
-        await axiosInstance.post('/department/add', payload);
-      }
-
-      setDepartmentName('');
-      setSubroles([]);
-      setEditingDepartment(null);
-      fetchDepartments();
-      alert(editingDepartment ? 'Department updated successfully' : 'Department created successfully');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Operation failed');
-    } finally {
-      setIsLoading(false);
+    if (editingDepartment) {
+      toast.promise(
+        axiosInstance.put(`/department/${editingDepartment.id}`, payload),
+        {
+          loading: 'Updating department...',
+          success: () => {
+            setDepartmentName('');
+            setSubroles([]);
+            setEditingDepartment(null);
+            fetchDepartments();
+            return 'Department updated successfully';
+          },
+          error: (err: any) => err.response?.data?.message || 'Failed to update department'
+        }
+      );
+    } else {
+      toast.promise(
+        axiosInstance.post('/department/add', payload),
+        {
+          loading: 'Creating department...',
+          success: () => {
+            setDepartmentName('');
+            setSubroles([]);
+            setEditingDepartment(null);
+            fetchDepartments();
+            return 'Department created successfully';
+          },
+          error: (err: any) => err.response?.data?.message || 'Failed to create department'
+        }
+      );
     }
   };
 
@@ -143,19 +156,17 @@ const AddDepartment: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this department?')) return;
-
-    try {
-      setIsLoading(true);
-      await axiosInstance.delete(`/department/${id}`);
-      fetchDepartments();
-      alert('Department deleted successfully');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Delete operation failed');
-    } finally {
-      setIsLoading(false);
-    }
+    toast.promise(
+      axiosInstance.delete(`/department/${id}`),
+      {
+        loading: 'Deleting department...',
+        success: () => {
+          fetchDepartments();
+          return 'Department deleted successfully';
+        },
+        error: (err: any) => err.response?.data?.message || 'Failed to delete department'
+      }
+    );
   };
 
   const filteredDepartments = departments.filter(dept =>

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../../Components/Layout/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import Countdown from 'react-countdown';
+import toast from 'react-hot-toast';
 
 interface Package {
   id: number;
@@ -247,7 +248,7 @@ const PackagesPage: React.FC = () => {
       console.error('Error fetching packages:', error);
       const axiosError = error as AxiosError;
       if (axiosError.response?.status !== 401) {
-        alert('Failed to fetch packages');
+        toast.error('Failed to fetch packages');
       }
     } finally {
       setIsLoading(false);
@@ -319,62 +320,60 @@ const PackagesPage: React.FC = () => {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      
-      const packageData = {
-        ...formData,
-        initialPrice: Number(formData.initialPrice),
-        enrollmentCharge: Number(formData.enrollmentCharge),
-        offerLetterCharge: Number(formData.offerLetterCharge),
-        features: formData.features.map(feature => feature.trim()).filter(Boolean),
-        discounts: formData.discounts.map(discount => ({
-          ...discount,
-          percentage: Number(discount.percentage)
-        }))
-      };
+    const packageData = {
+      ...formData,
+      initialPrice: Number(formData.initialPrice),
+      enrollmentCharge: Number(formData.enrollmentCharge),
+      offerLetterCharge: Number(formData.offerLetterCharge),
+      features: formData.features.map(feature => feature.trim()).filter(Boolean),
+      discounts: formData.discounts.map(discount => ({
+        ...discount,
+        percentage: Number(discount.percentage)
+      }))
+    };
 
-      if (editingPackage) {
-        const response = await axiosInstance.put(`/${editingPackage.id}`, packageData);
-        if (response.data.success) {
-          console.log('Package updated successfully:', response.data);
-          await fetchPackages();
-          resetForm();
-          alert('Package updated successfully');
+    if (editingPackage) {
+      toast.promise(
+        axiosInstance.put(`/${editingPackage.id}`, packageData),
+        {
+          loading: 'Updating package...',
+          success: () => {
+            fetchPackages();
+            resetForm();
+            return 'Package updated successfully';
+          },
+          error: (err: any) => {
+            if (err.response?.data?.errors) {
+              setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
+                acc[curr.field] = curr.message;
+                return acc;
+              }, {}));
+            }
+            return err.response?.data?.message || 'Failed to update package';
+          }
         }
-      } else {
-        const response = await axiosInstance.post('/add', packageData);
-        if (response.data.success) {
-          console.log('Package created successfully:', response.data);
-          await fetchPackages();
-          resetForm();
-          alert('Package created successfully');
+      );
+    } else {
+      toast.promise(
+        axiosInstance.post('/add', packageData),
+        {
+          loading: 'Creating package...',
+          success: () => {
+            fetchPackages();
+            resetForm();
+            return 'Package created successfully';
+          },
+          error: (err: any) => {
+            if (err.response?.data?.errors) {
+              setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
+                acc[curr.field] = curr.message;
+                return acc;
+              }, {}));
+            }
+            return err.response?.data?.message || 'Failed to create package';
+          }
         }
-      }
-    } catch (error) {
-      console.error('Error submitting package:', error);
-      if (axios.isAxiosError(error) && error.response?.data) {
-        // Handle validation errors from the server
-        if (error.response.data.errors) {
-          const serverErrors = error.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
-            acc[curr.field] = curr.message;
-            return acc;
-          }, {});
-          setErrors(serverErrors);
-        } else {
-          setErrors({
-            submit: error.response.data.message || 'Failed to submit package'
-          });
-          alert(error.response.data.message || 'Operation failed');
-        }
-      } else {
-        setErrors({
-          submit: 'An unexpected error occurred'
-        });
-        alert('Operation failed');
-      }
-    } finally {
-      setIsLoading(false);
+      );
     }
   };
 
@@ -416,16 +415,17 @@ const PackagesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this package?')) return;
-    try {
-      setIsLoading(true);
-      await axiosInstance.delete(`/${id}`);
-      fetchPackages();
-    } catch (error) {
-      console.error('Error deleting package:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    toast.promise(
+      axiosInstance.delete(`/${id}`),
+      {
+        loading: 'Deleting package...',
+        success: () => {
+          fetchPackages();
+          return 'Package deleted successfully';
+        },
+        error: (err: any) => err.response?.data?.message || 'Failed to delete package'
+      }
+    );
   };
 
   const resetForm = () => {
@@ -475,61 +475,55 @@ const PackagesPage: React.FC = () => {
     if (!discountFormData.planName || !discountFormData.name || discountFormData.percentage <= 0 || 
         !discountFormData.startDate || !discountFormData.startTime || 
         !discountFormData.endDate || !discountFormData.endTime) {
-      setErrors({ submit: 'Please fill all discount fields' });
+      toast.error('Please fill all discount fields');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      const selectedPackage = packages.find(p => p.planName === discountFormData.planName);
+    const selectedPackage = packages.find(p => p.planName === discountFormData.planName);
       
-      if (!selectedPackage) {
-        setErrors({ submit: 'Selected package not found' });
-        return;
-      }
+    if (!selectedPackage) {
+      toast.error('Selected package not found');
+      return;
+    }
 
-      if (isEditingDiscount && discountFormData.discountIndex !== undefined) {
-        // Update existing discount
-        const updatedDiscounts = [...selectedPackage.discounts];
-        updatedDiscounts[discountFormData.discountIndex] = {
-          ...updatedDiscounts[discountFormData.discountIndex],
-          name: discountFormData.name,
-          percentage: discountFormData.percentage
-        };
+    if (isEditingDiscount && discountFormData.discountIndex !== undefined) {
+      // Update existing discount
+      const updatedDiscounts = [...selectedPackage.discounts];
+      updatedDiscounts[discountFormData.discountIndex] = {
+        ...updatedDiscounts[discountFormData.discountIndex],
+        name: discountFormData.name,
+        percentage: discountFormData.percentage
+      };
 
-        const response = await axiosInstance.put(`/${selectedPackage.id}`, {
+      toast.promise(
+        axiosInstance.put(`/${selectedPackage.id}`, {
           ...selectedPackage,
           discounts: updatedDiscounts
-        });
-
-        if (response.data.success) {
-          await fetchPackages();
-          resetDiscountForm();
-          alert('Discount updated successfully');
+        }),
+        {
+          loading: 'Updating discount...',
+          success: () => {
+            fetchPackages();
+            resetDiscountForm();
+            return 'Discount updated successfully';
+          },
+          error: (err: any) => err.response?.data?.message || 'Failed to update discount'
         }
-      } else {
-        // Add new discount
-        const response = await axiosInstance.post(`/${selectedPackage.id}/discounts`, discountFormData);
-        
-        if (response.data.success) {
-          await fetchPackages();
-          resetDiscountForm();
-          alert('Discount added successfully');
+      );
+    } else {
+      // Add new discount
+      toast.promise(
+        axiosInstance.post(`/${selectedPackage.id}/discounts`, discountFormData),
+        {
+          loading: 'Adding discount...',
+          success: () => {
+            fetchPackages();
+            resetDiscountForm();
+            return 'Discount added successfully';
+          },
+          error: (err: any) => err.response?.data?.message || 'Failed to add discount'
         }
-      }
-    } catch (error) {
-      console.error('Error handling discount:', error);
-      if (axios.isAxiosError(error) && error.response?.data) {
-        setErrors({
-          submit: error.response.data.message || 'Failed to handle discount'
-        });
-      } else {
-        setErrors({
-          submit: 'An unexpected error occurred'
-        });
-      }
-    } finally {
-      setIsLoading(false);
+      );
     }
   };
 

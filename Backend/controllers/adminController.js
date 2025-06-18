@@ -104,7 +104,14 @@ export const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const admin = await User.findOne({ where: { username, role: 'admin' } });
+    const admin = await User.findOne({ 
+      where: { username, role: 'admin' },
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }]
+    });
 
     if (!admin) {
       return res.status(404).json({ message: 'Admin not found' });
@@ -121,7 +128,27 @@ export const loginAdmin = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    res.status(200).json({ message: 'Login successful', token });
+    const userData = {
+      id: admin.id,
+      email: admin.email,
+      firstname: admin.firstname,
+      lastname: admin.lastname,
+      phoneNumber: admin.phoneNumber,
+      username: admin.username,
+      role: admin.role,
+      departmentId: admin.departmentId,
+      subrole: admin.subrole,
+      department: admin.department,
+      status: admin.status,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt
+    };
+
+    res.status(200).json({ 
+      message: 'Login successful', 
+      token,
+      user: userData
+    });
   } catch (error) {
     console.error('Admin Login Error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -372,6 +399,61 @@ export const updateUserStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Update user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const deleteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the admin
+    const admin = await User.findOne({ 
+      where: { 
+        id,
+        role: 'admin'
+      }
+    });
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin not found'
+      });
+    }
+
+    // Instead of deleting, update status to inactive
+    await admin.update({ 
+      status: 'inactive'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Admin deactivated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deactivating admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const logoutAdmin = async (req, res) => {
+  try {
+    // Since we're using JWT, we don't need to do anything server-side
+    // The client will handle removing the token
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
