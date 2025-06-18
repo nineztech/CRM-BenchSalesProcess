@@ -17,8 +17,19 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
   newStatus,
   statusGroup
 }) => {
+  // Add auto-close effect
   React.useEffect(() => {
     if (isOpen) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000); // Close after 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose]);
+
+  React.useEffect(() => {
+    if (isOpen && (statusGroup === 'converted' || statusGroup === 'open')) {
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
 
@@ -35,75 +46,32 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
 
         const particleCount = 50 * (timeLeft / duration);
 
-        switch (statusGroup) {
-          case 'converted':
-            // Celebratory confetti with gold and blue colors
-            confetti({
-              particleCount,
-              spread: 70,
-              origin: { y: 0.6 },
-              colors: ['#FFD700', '#4169E1', '#00FF00'],
-              shapes: ['star', 'circle'],
-              gravity: 0.8,
-              ticks: 200,
-              scalar: 1.2,
-              drift: 0
-            });
-            break;
-
-          case 'archived':
-            // Sad, falling confetti with gray and red colors
-            confetti({
-              particleCount: particleCount / 2,
-              spread: 50,
-              origin: { y: 0.3 },
-              colors: ['#808080', '#FF0000', '#4B0082'],
-              shapes: ['square'],
-              gravity: 1.5,
-              ticks: 100,
-              scalar: 0.8,
-              drift: 1,
-              decay: 0.9
-            });
-            break;
-
-          case 'inProcess':
-            // Minimal, professional confetti with blue tones
-            confetti({
-              particleCount: particleCount / 3,
-              spread: 40,
-              origin: { y: 0.5 },
-              colors: ['#1E90FF', '#87CEEB', '#B0E0E6'],
-              shapes: ['circle'],
-              gravity: 1,
-              ticks: 150,
-              scalar: 0.6,
-              drift: 0.5
-            });
-            break;
-
-          case 'open':
-            // Fresh, green confetti for new opportunities
-            confetti({
-              particleCount: particleCount / 2,
-              spread: 60,
-              origin: { y: 0.4 },
-              colors: ['#32CD32', '#98FB98', '#90EE90'],
-              shapes: ['circle', 'square'],
-              gravity: 1.2,
-              ticks: 120,
-              scalar: 0.7,
-              drift: 0.3
-            });
-            break;
-
-          default:
-            // Default confetti
-            confetti({
-              particleCount,
-              spread: 70,
-              origin: { y: 0.6 }
-            });
+        if (statusGroup === 'converted') {
+          // Celebratory confetti with gold and blue colors
+          confetti({
+            particleCount,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#FFD700', '#4169E1', '#00FF00'],
+            shapes: ['star', 'circle'],
+            gravity: 0.8,
+            ticks: 200,
+            scalar: 1.2,
+            drift: 0
+          });
+        } else if (statusGroup === 'open') {
+          // Fresh, green confetti for new opportunities
+          confetti({
+            particleCount: particleCount / 2,
+            spread: 60,
+            origin: { y: 0.4 },
+            colors: ['#32CD32', '#98FB98', '#90EE90'],
+            shapes: ['circle', 'square'],
+            gravity: 1.2,
+            ticks: 120,
+            scalar: 0.7,
+            drift: 0.3
+          });
         }
       }, 250);
 
@@ -215,8 +183,21 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className={`relative max-w-md w-full p-8 rounded-2xl shadow-xl ${getStatusColor()} border-2`}
+            className={`relative max-w-md w-full p-8 rounded-2xl shadow-xl ${getStatusColor()} border-2 overflow-hidden`}
           >
+            {/* Progress strip */}
+            <motion.div
+              initial={{ width: "100%" }}
+              animate={{ width: "0%" }}
+              transition={{ duration: 3, ease: "linear" }}
+              className={`absolute bottom-0 left-0 h-1 ${
+                statusGroup === 'open' ? 'bg-green-500' :
+                statusGroup === 'converted' ? 'bg-blue-500' :
+                statusGroup === 'archived' ? 'bg-red-500' :
+                'bg-yellow-500'
+              }`}
+            />
+
             <button
               onClick={onClose}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
