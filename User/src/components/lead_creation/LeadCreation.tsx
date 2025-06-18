@@ -355,6 +355,26 @@ const LeadCreationComponent: React.FC = () => {
               } : l
             )
           );
+
+          // Send email notification
+          try {
+            await axios.post(
+              `${BASE_URL}/lead-assignments/notify`,
+              {
+                leadId: lead.id,
+                assignedToId: selectedUser.id
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            );
+          } catch (emailError) {
+            console.error('Error sending email notification:', emailError);
+            // Don't throw error here, as the lead assignment was successful
+          }
         }
       }
 
