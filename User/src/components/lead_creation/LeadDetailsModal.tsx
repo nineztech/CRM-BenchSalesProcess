@@ -236,7 +236,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                 </div>
                                 <div className="ml-4 flex-1">
                                   <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
-                                    <b>{typeof remark === 'object' ? remark.text : remark}</b>
+                                    {typeof remark.text === 'string' ? remark.text : 'No text available'}
                                   </p>
                                   {remark.statusChange && (
                                     <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">

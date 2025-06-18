@@ -183,7 +183,9 @@ const AddDepartment: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Department Name</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Department Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={departmentName}
@@ -201,6 +203,13 @@ const AddDepartment: React.FC = () => {
                     type="text"
                     value={currentRole}
                     onChange={(e) => setCurrentRole(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && currentRole.trim()) {
+                        e.preventDefault();
+                        setSubroles([...subroles, currentRole.trim()]);
+                        setCurrentRole('');
+                      }
+                    }}
                     placeholder="Enter subrole"
                     className="flex-1 p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                     disabled={isLoading}
@@ -216,28 +225,29 @@ const AddDepartment: React.FC = () => {
                     <FaPlus />
                   </motion.button>
                 </div>
+                {subroles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-100">
+                    {subroles.map((subrole, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full text-sm shadow-sm border border-gray-200"
+                      >
+                        <span className="text-gray-700">{subrole}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubrole(index)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-
-            {subroles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {subroles.map((subrole, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-sm"
-                  >
-                    <span>{subrole}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSubrole(index)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
 
             <div className="flex justify-end gap-3">
               <motion.button
