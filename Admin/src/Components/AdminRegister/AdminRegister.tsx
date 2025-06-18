@@ -3,6 +3,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import Layout from '../Layout/Layout';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const AdminRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -23,8 +24,8 @@ const AdminRegister: React.FC = () => {
 
   // Base URLs for API endpoints
   const API_BASE_URL=import.meta.env.VITE_API_URL || "http://localhost:5006/api"
-  const API_URL = `${API_BASE_URL}/all`;
-  const REGISTER_API_URL = `${API_BASE_URL}/register`;
+  const API_URL = `${API_BASE_URL}/admin/all`;
+  const REGISTER_API_URL = `${API_BASE_URL}/admin/register`;
   const UPDATE_API_URL = `${API_BASE_URL}/edit`;
 
   // Store the admin being edited
@@ -122,43 +123,39 @@ const AdminRegister: React.FC = () => {
         updateAdmin();
       } else {
         // Create new admin
-        try {
-          setIsLoading(true);
-          const payload = {
-            email: formData.email,
-            password: formData.password,
-            firstname: formData.firstName,
-            lastname: formData.lastName,
-            phoneNumber: formData.mobileNumber,
-            username: formData.username
-          };
-          console.log('Sending payload:', payload); // Log payload for debugging
-          const response = await axios.post(REGISTER_API_URL, payload);
-          if (response.data.success || response.status === 201) {
-            setFormData({
-              firstName: "",
-              lastName: "",
-              mobileNumber: "",
-              username: "",
-              email: "",
-              password: "",
-              confirmPassword: ""
-            });
-            setErrors({});
-            fetchAdmins();
-            alert('Admin registered successfully');
-          } else {
-            alert(response.data.message);
+        const payload = {
+          email: formData.email,
+          password: formData.password,
+          firstname: formData.firstName,
+          lastname: formData.lastName,
+          phoneNumber: formData.mobileNumber,
+          username: formData.username
+        };
+
+        toast.promise(
+          axios.post(REGISTER_API_URL, payload),
+          {
+            loading: 'Creating admin...',
+            success: (response) => {
+              if (response.data.success || response.status === 201) {
+                setFormData({
+                  firstName: "",
+                  lastName: "",
+                  mobileNumber: "",
+                  username: "",
+                  email: "",
+                  password: "",
+                  confirmPassword: ""
+                });
+                setErrors({});
+                fetchAdmins();
+                return 'Admin registered successfully';
+              }
+              throw new Error(response.data.message || 'Failed to register admin');
+            },
+            error: (err) => err.response?.data?.message || 'Error registering admin'
           }
-        } catch (error: any) {
-          console.error('Registration Error:', error);
-          if (error.response) {
-            console.error('Error response:', error.response.data);
-          }
-          alert('Error registering admin');
-        } finally {
-          setIsLoading(false);
-        }
+        );
       }
     }
   };
@@ -178,29 +175,20 @@ const AdminRegister: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this admin?")) return;
-
-    setIsLoading(true);
-    
-    try {
-      const response = await axios.delete(`${API_BASE_URL}/${id}`);
-      
-      if (response.status === 200) {
-        alert("Admin deleted successfully!");
-        await fetchAdmins(); // Refresh the admin list
+    toast.promise(
+      axios.delete(`${API_BASE_URL}/admin/${id}`),
+      {
+        loading: 'Deleting admin...',
+        success: (response) => {
+          if (response.status === 200) {
+            fetchAdmins();
+            return 'Admin deleted successfully!';
+          }
+          throw new Error('Failed to delete admin');
+        },
+        error: (err) => err.response?.data?.message || 'Failed to delete admin'
       }
-    } catch (error: any) {
-      console.error("Error deleting admin:", error);
-      
-      let errorMessage = "Failed to delete admin.";
-      if (error.response?.data?.message) {
-        errorMessage = `${error.response.data.message}`;
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
+    );
   };
 
   const handleEdit = (admin: any) => {
@@ -217,54 +205,55 @@ const AdminRegister: React.FC = () => {
   };
 
   const updateAdmin = async () => {
-    try {
-      setIsLoading(true);
-      const updateData = {
-        email: formData.email.trim() || undefined,
-        firstname: formData.firstName.trim() || undefined,
-        lastname: formData.lastName.trim() || undefined,
-        phoneNumber: formData.mobileNumber.trim() || undefined,
-        username: formData.username.trim() || undefined,
-        password: formData.password.trim() || undefined,
-        confirmPassword: formData.confirmPassword.trim() || undefined
-      };
-      const filteredData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, value]) => value !== undefined)
-      );
-      if (Object.keys(filteredData).length > 0) {
-        const response = await axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
+    const updateData = {
+      email: formData.email.trim() || undefined,
+      firstname: formData.firstName.trim() || undefined,
+      lastname: formData.lastName.trim() || undefined,
+      phoneNumber: formData.mobileNumber.trim() || undefined,
+      username: formData.username.trim() || undefined,
+      password: formData.password.trim() || undefined,
+      confirmPassword: formData.confirmPassword.trim() || undefined
+    };
+
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+
+    if (Object.keys(filteredData).length > 0) {
+      toast.promise(
+        axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
           headers: {
             'Content-Type': 'application/json'
           }
-        });
-        if (response.data.success) {
-          setAdmins(prevAdmins =>
-            prevAdmins.map(admin =>
-              admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
-            )
-          );
-          setEditingAdmin(null);
-          setFormData({
-            firstName: "",
-            lastName: "",
-            mobileNumber: "",
-            username: "",
-            email: "",
-            password: "",
-            confirmPassword: ""
-          });
-          alert('Admin updated successfully');
-        } else {
-          alert('Failed to update admin');
+        }),
+        {
+          loading: 'Updating admin...',
+          success: (response) => {
+            if (response.data.success) {
+              setAdmins(prevAdmins =>
+                prevAdmins.map(admin =>
+                  admin.id === editingAdmin.id ? { ...admin, ...filteredData } : admin
+                )
+              );
+              setEditingAdmin(null);
+              setFormData({
+                firstName: "",
+                lastName: "",
+                mobileNumber: "",
+                username: "",
+                email: "",
+                password: "",
+                confirmPassword: ""
+              });
+              return 'Admin updated successfully';
+            }
+            throw new Error('Failed to update admin');
+          },
+          error: (err) => err.response?.data?.message || 'Error updating admin'
         }
-      } else {
-        alert('No changes made to update');
-      }
-    } catch (error) {
-      console.error('Error updating admin:', error);
-      alert('Error updating admin');
-    } finally {
-      setIsLoading(false);
+      );
+    } else {
+      toast.error('No changes made to update');
     }
   };
 
