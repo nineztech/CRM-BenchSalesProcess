@@ -36,6 +36,15 @@ interface RolePermission {
   };
 }
 
+interface AdminUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  username: string;
+  email: string;
+  status: string;
+}
+
 interface Rights {
   [activity: string]: {
     [permission: string]: boolean;
@@ -45,6 +54,9 @@ interface Rights {
 const AdminRoles: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedAdminUser, setSelectedAdminUser] = useState('');
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [rights, setRights] = useState<Rights>({});
   const [departments, setDepartments] = useState<Department[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -88,6 +100,27 @@ const AdminRoles: React.FC = () => {
     fetchData();
   }, []);
 
+  // Update admin users fetch to get all admins
+  useEffect(() => {
+    const fetchAdminUsers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/all`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.data.success) {
+          setAdminUsers(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching admin users:', error);
+      }
+    };
+
+    fetchAdminUsers();
+  }, []);
+
   // Update subroles when department changes
   useEffect(() => {
     if (selectedDepartment) {
@@ -103,22 +136,20 @@ const AdminRoles: React.FC = () => {
     }
   }, [selectedDepartment, departments]);
 
-  // Fetch activities when department changes
+  // Fetch activities for all departments
   useEffect(() => {
     const fetchActivities = async () => {
-      if (!selectedDepartment) return;
-      
       try {
-        console.log('Fetching activities for department:', selectedDepartment);
+        console.log('Fetching all activities');
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/activity/all`);
         if (response.data.success) {
           console.log('All activities:', response.data.data);
-          // Filter activities for selected department
-          const departmentActivities = response.data.data.filter(
-            (activity: Activity) => activity.dept_id === parseInt(selectedDepartment) && activity.status === 'active'
+          // Get all active activities
+          const activeActivities = response.data.data.filter(
+            (activity: Activity) => activity.status === 'active'
           );
-          console.log('Filtered activities:', departmentActivities);
-          setActivities(departmentActivities);
+          console.log('Active activities:', activeActivities);
+          setActivities(activeActivities);
         }
       } catch (error) {
         console.error('Error fetching activities:', error);
@@ -127,7 +158,7 @@ const AdminRoles: React.FC = () => {
     };
 
     fetchActivities();
-  }, [selectedDepartment]);
+  }, []); // Remove selectedDepartment dependency to fetch all activities
 
   // Fetch existing permissions when department and role are selected
   useEffect(() => {
@@ -194,6 +225,17 @@ const AdminRoles: React.FC = () => {
 
     fetchExistingPermissions();
   }, [selectedDepartment, selectedRole, activities, permissions]);
+
+  // Update subroles and reset selections when isAdmin changes
+  useEffect(() => {
+    if (isAdmin) {
+      setSelectedDepartment('');
+      setSelectedRole('');
+      setCurrentDepartmentSubroles([]);
+    } else {
+      setSelectedAdminUser('');
+    }
+  }, [isAdmin]);
 
   const handlePermissionChange = (activity: string, permission: string) => {
     setRights(prev => {
@@ -348,7 +390,40 @@ const AdminRoles: React.FC = () => {
       <div className="flex flex-col gap-4 max-w-[98%]">
         <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
           <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center gap-3">
+              {/* Is Admin Checkbox */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isAdmin"
+                  checked={isAdmin}
+                  onChange={(e) => setIsAdmin(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label htmlFor="isAdmin" className="text-sm text-gray-600">
+                  Is Admin
+                </label>
+              </div>
+
+              {/* Admin Users Dropdown - Moved next to checkbox */}
+              {isAdmin && (
+                <select 
+                  value={selectedAdminUser} 
+                  onChange={(e) => setSelectedAdminUser(e.target.value)}
+                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                >
+                  <option value="" disabled hidden>Select Admin User *</option>
+                  {adminUsers.map((admin) => (
+                    <option key={admin.id} value={admin.id}>
+                      {admin.firstname} {admin.lastname}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Department Dropdown */}
             <select 
               value={selectedDepartment} 
               onChange={(e) => {
@@ -356,6 +431,7 @@ const AdminRoles: React.FC = () => {
                 setSelectedDepartment(e.target.value);
               }}
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+              disabled={isAdmin}
             >
               <option value="" disabled hidden>Select Department *</option>
               {departments.map((dept) => (
@@ -363,10 +439,12 @@ const AdminRoles: React.FC = () => {
               ))}
             </select>
 
+            {/* Role Dropdown */}
             <select 
               value={selectedRole} 
               onChange={(e) => setSelectedRole(e.target.value)}
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+              disabled={isAdmin}
             >
               <option value="" disabled hidden>Select Role *</option>
               {currentDepartmentSubroles.map((role) => (
