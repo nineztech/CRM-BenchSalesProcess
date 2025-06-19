@@ -627,6 +627,3 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
-
-// Export all functions
-export { registerAdmin, loginAdmin, getAllAdmins, editAdmin, deleteAdmin, updateUserStatus, logoutAdmin, sendOtp, verifyOtp, resetPassword };
