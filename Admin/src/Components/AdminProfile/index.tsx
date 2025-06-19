@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiEdit2, FiLogOut, FiLock } from 'react-icons/fi';
+import { FiEdit2, FiLogOut, FiLock, FiMail, FiKey, FiShield } from 'react-icons/fi';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -453,22 +453,33 @@ const AdminProfile = () => {
         {showPasswordModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Reset Password</h2>
-              <p className="mb-4 text-sm text-gray-600">Send OTP to your email: {email}</p>
+              <h2 className="text-lg font-semibold text-gray-800 mb-6">Reset Password</h2>
+              <div className="mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="rounded-full bg-blue-50 p-3">
+                    <FiMail className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-600">
+                  We'll send a verification code to your email:<br />
+                  <span className="font-medium text-gray-800">{email}</span>
+                </p>
+              </div>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowPasswordModal(false);
                     setOtpError('');
                   }}
-                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendOtp}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2"
                 >
+                  <FiMail className="h-4 w-4" />
                   Send OTP
                 </button>
               </div>
@@ -480,34 +491,45 @@ const AdminProfile = () => {
         {showOtpModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Enter OTP</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Please enter the 6-digit OTP sent to your email
-              </p>
-              <p className="mb-2 text-sm text-gray-500">
-                Time remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
-              </p>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
-                  if (value.length <= 6) setOtp(value);
-                }}
-                placeholder="Enter 6-digit OTP"
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                maxLength={6}
-              />
-              {otpError && (
-                <p className="text-red-500 text-sm mb-4">{otpError}</p>
-              )}
-              <div className="flex justify-between items-center mb-4">
-                <button
-                  onClick={handleSendOtp}
-                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200"
-                >
-                  Resend OTP
-                </button>
+              <h2 className="text-lg font-semibold text-gray-800 mb-6">Enter Verification Code</h2>
+              <div className="mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="rounded-full bg-blue-50 p-3">
+                    <FiKey className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-600 mb-4">
+                  Enter the 6-digit verification code sent to your email
+                </p>
+                <div className="flex justify-center mb-2">
+                  <div className="w-48">
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        if (value.length <= 6) setOtp(value);
+                      }}
+                      placeholder="Enter 6-digit OTP"
+                      className="w-full px-4 py-2 text-center text-lg tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      maxLength={6}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">
+                    Time remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+                  </p>
+                  {otpError && (
+                    <p className="text-sm text-red-500 mb-2">{otpError}</p>
+                  )}
+                  <button
+                    onClick={handleSendOtp}
+                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
               </div>
               <div className="flex justify-end gap-3">
                 <button
@@ -517,19 +539,19 @@ const AdminProfile = () => {
                     setOtp('');
                     setOtpError('');
                   }}
-                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleVerifyOtp}
                   disabled={otp.length !== 6}
-                  className={`px-3 py-1.5 text-sm rounded-md text-white transition-colors duration-200 ${
-                    otp.length === 6 
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center gap-2
+                    ${otp.length === 6 
                       ? 'bg-blue-600 hover:bg-blue-700' 
-                      : 'bg-gray-400 cursor-not-allowed'
-                  }`}
+                      : 'bg-gray-400 cursor-not-allowed'}`}
                 >
+                  <FiShield className="h-4 w-4" />
                   Verify OTP
                 </button>
               </div>
@@ -541,37 +563,44 @@ const AdminProfile = () => {
         {showNewPasswordModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Set New Password</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+              <h2 className="text-lg font-semibold text-gray-800 mb-6">Set New Password</h2>
+              <div className="mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="rounded-full bg-blue-50 p-3">
+                    <FiKey className="h-6 w-6 text-blue-600" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
                 </div>
+                {passwordError && (
+                  <p className="mt-2 text-sm text-red-500">{passwordError}</p>
+                )}
               </div>
-              {passwordError && (
-                <p className="text-red-500 text-sm mt-2">{passwordError}</p>
-              )}
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowNewPasswordModal(false);
@@ -579,19 +608,19 @@ const AdminProfile = () => {
                     setConfirmPassword('');
                     setPasswordError('');
                   }}
-                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleResetPassword}
                   disabled={!newPassword || !confirmPassword || newPassword.length < 6}
-                  className={`px-3 py-1.5 text-sm rounded-md text-white transition-colors duration-200 ${
-                    newPassword && confirmPassword && newPassword.length >= 6
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center gap-2
+                    ${newPassword && confirmPassword && newPassword.length >= 6
                       ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-gray-400 cursor-not-allowed'
-                  }`}
+                      : 'bg-gray-400 cursor-not-allowed'}`}
                 >
+                  <FiKey className="h-4 w-4" />
                   Reset Password
                 </button>
               </div>
