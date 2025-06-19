@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEdit } from 'react-icons/fa';
 import Layout from '../Layout/Layout';
+import axios from 'axios';
 
-const departmentActivities: Record<string, string[]> = {
-  lead: ['Lead Create', 'Sales Executive Assign', 'Bulk Upload'],
-  sales: ['Client Follow-up'],
-  resume: ['Resume Upload', 'Resume Review'],
-};
+interface Department {
+  id: number;
+  departmentName: string;
+  subroles: string[];
+  status: string;
+}
 
-const permissions = ['View', 'Create', 'Edit', 'Delete'];
+interface Activity {
+  id: number;
+  name: string;
+  dept_id: number;
+  status: string;
+}
+
+interface Permission {
+  id: number;
+  name: string;
+}
 
 interface RoleEntry {
   role: string;
@@ -16,14 +28,88 @@ interface RoleEntry {
 }
 
 const AdminRoles: React.FC = () => {
-  const [selectedDepartment, setSelectedDepartment] = useState('lead');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [rights, setRights] = useState<Record<string, Record<string, boolean>>>({});
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [currentDepartmentSubroles, setCurrentDepartmentSubroles] = useState<string[]>([]);
 
   const [showNewRoleForm, setShowNewRoleForm] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
   const [roleList, setRoleList] = useState<RoleEntry[]>([]);
   const [editIndex, setEditIndex] = useState<number | null>(null);
+
+  // Fetch all departments and permissions on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch departments
+        const deptResponse = await axios.get(`${import.meta.env.VITE_API_URL}/department/all`);
+        if (deptResponse.data.success) {
+          console.log('Departments fetched:', deptResponse.data.data);
+          // Filter only active departments
+          const activeDepartments = deptResponse.data.data.filter(
+            (dept: Department) => dept.status === 'active'
+          );
+          setDepartments(activeDepartments);
+        }
+
+        // Fetch permissions
+        const permResponse = await axios.get(`${import.meta.env.VITE_API_URL}/permissions/all`);
+        if (permResponse.data.success) {
+          console.log('Permissions fetched:', permResponse.data.data);
+          setPermissions(permResponse.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Update subroles when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      const selectedDept = departments.find(dept => dept.id.toString() === selectedDepartment);
+      if (selectedDept) {
+        setCurrentDepartmentSubroles(selectedDept.subroles || []);
+        setSelectedRole(''); // Reset selected role when department changes
+      } else {
+        setCurrentDepartmentSubroles([]);
+      }
+    } else {
+      setCurrentDepartmentSubroles([]);
+    }
+  }, [selectedDepartment, departments]);
+
+  // Fetch activities when department changes
+  useEffect(() => {
+    const fetchActivities = async () => {
+      if (!selectedDepartment) return;
+      
+      try {
+        console.log('Fetching activities for department:', selectedDepartment);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/activity/all`);
+        if (response.data.success) {
+          console.log('All activities:', response.data.data);
+          // Filter activities for selected department
+          const departmentActivities = response.data.data.filter(
+            (activity: Activity) => activity.dept_id === parseInt(selectedDepartment) && activity.status === 'active'
+          );
+          console.log('Filtered activities:', departmentActivities);
+          setActivities(departmentActivities);
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        setActivities([]);
+      }
+    };
+
+    fetchActivities();
+  }, [selectedDepartment]);
 
   const handlePermissionChange = (activity: string, permission: string) => {
     setRights(prev => ({
@@ -35,12 +121,61 @@ const AdminRoles: React.FC = () => {
     }));
   };
 
-  const handleAssign = () => {
-    console.log('Assigned Rights:', {
-      department: selectedDepartment,
-      rights,
-    });
-    alert('Roles & Rights assigned successfully!');
+  const handleAssign = async () => {
+    if (!selectedDepartment || !selectedRole) {
+      alert('Please select both department and role');
+      return;
+    }
+
+    try {
+      // Transform the rights object into the format expected by the backend
+      const hasAccessTo: Record<number, number[]> = {};
+      
+      activities.forEach(activity => {
+        const activityPermissions: number[] = [];
+        permissions.forEach(permission => {
+          if (rights[activity.name]?.[permission.name]) {
+            activityPermissions.push(permission.id);
+          }
+        });
+        
+        // Only include activities that have at least one permission assigned
+        if (activityPermissions.length > 0) {
+          hasAccessTo[activity.id] = activityPermissions;
+        }
+      });
+
+      const payload = {
+        dept_id: parseInt(selectedDepartment),
+        subrole: selectedRole,
+        hasAccessTo
+      };
+
+      console.log('Sending payload:', payload);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/role-permissions/add`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        alert('Role permissions assigned successfully!');
+        // Reset the form
+        setRights({});
+        setSelectedRole('');
+      } else {
+        alert(response.data.message || 'Failed to assign permissions');
+      }
+    } catch (error: any) {
+      console.error('Error assigning permissions:', error);
+      alert(error.response?.data?.message || 'Failed to assign permissions');
+    }
   };
 
   const handleAddNewRole = () => {
@@ -74,8 +209,6 @@ const AdminRoles: React.FC = () => {
     setNewRoleName(roleList[index].role);
   };
 
-  const activities = departmentActivities[selectedDepartment] || [];
-
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[98%]">
@@ -84,16 +217,16 @@ const AdminRoles: React.FC = () => {
           <div className="flex gap-3">
             <select 
               value={selectedDepartment} 
-              onChange={(e) => setSelectedDepartment(e.target.value)}
+              onChange={(e) => {
+                console.log('Selected department:', e.target.value);
+                setSelectedDepartment(e.target.value);
+              }}
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
             >
               <option value="" disabled hidden>Select Department *</option>
-              <option value="lead">Lead Generation</option>
-              <option value="sales">Sales</option>
-              <option value="resume">Resume Making</option>
-              <option value="training">Training</option>
-              <option value="marketing">Marketing</option>
-              <option value="onboarding">Onboarding BGC</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+              ))}
             </select>
 
             <select 
@@ -102,8 +235,9 @@ const AdminRoles: React.FC = () => {
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
             >
               <option value="" disabled hidden>Select Role *</option>
-              <option value="manager">Manager</option>
-              <option value="executive">Executive</option>
+              {currentDepartmentSubroles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -174,27 +308,27 @@ const AdminRoles: React.FC = () => {
           </div>
         )}
 
-        {activities.length > 0 && (
+        {activities.length > 0 && permissions.length > 0 && (
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
             <table className="w-full border-collapse min-w-[600px]">
               <thead>
                 <tr>
                   <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
                   {permissions.map((perm) => (
-                    <th key={perm} className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[16.25%]">{perm}</th>
+                    <th key={perm.id} className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[16.25%]">{perm.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {activities.map((activity) => (
-                  <tr key={activity} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                    <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">{activity}</td>
+                  <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
+                    <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">{activity.name}</td>
                     {permissions.map((perm) => (
-                      <td key={perm} className="p-2.5 border border-gray-200 text-center w-[16.25%]">
+                      <td key={perm.id} className="p-2.5 border border-gray-200 text-center w-[16.25%]">
                         <input
                           type="checkbox"
-                          checked={rights[activity]?.[perm] || false}
-                          onChange={() => handlePermissionChange(activity, perm)}
+                          checked={rights[activity.name]?.[perm.name] || false}
+                          onChange={() => handlePermissionChange(activity.name, perm.name)}
                           className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
                         />
                       </td>
