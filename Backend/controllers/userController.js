@@ -3,7 +3,7 @@ import User from '../models/userModel.js'; // Adjust path to your User model
 import Department from '../models/departmentModel.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcrypt';
-import { sendWelcomeEmail } from '../utils/emailService.js';
+import { sendWelcomeEmail, sendOtpEmail } from '../utils/emailService.js';
 
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -762,6 +762,183 @@ export const editUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const sendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+
+    // Save OTP and expiry to user record
+    await user.update({
+      resetPasswordOtp: otp,
+      resetPasswordOtpExpiry: otpExpiry
+    });
+
+    // Send OTP email
+    const emailSent = await sendOtpEmail({
+      email,
+      otp,
+      firstname: user.firstname
+    });
+
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required'
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if OTP exists and is not expired
+    if (!user.resetPasswordOtp || !user.resetPasswordOtpExpiry) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP request found'
+      });
+    }
+
+    if (new Date() > new Date(user.resetPasswordOtpExpiry)) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP has expired'
+      });
+    }
+
+    // Verify OTP
+    if (user.resetPasswordOtp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully'
+    });
+
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, OTP, and new password are required'
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify OTP again
+    if (
+      !user.resetPasswordOtp ||
+      !user.resetPasswordOtpExpiry ||
+      user.resetPasswordOtp !== otp ||
+      new Date() > new Date(user.resetPasswordOtpExpiry)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Update password and clear OTP fields
+    await user.update({
+      password: newPassword,
+      resetPasswordOtp: null,
+      resetPasswordOtpExpiry: null
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

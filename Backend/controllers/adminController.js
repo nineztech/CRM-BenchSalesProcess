@@ -512,10 +512,53 @@ export const sendOtp = async (req, res) => {
         subject: 'Password Reset OTP',
         text: `Your OTP for password reset is: ${otp}\nThis OTP will expire in 2 minutes.`,
         html: `
-          <h2>Password Reset OTP</h2>
-          <p>Your OTP for password reset is: <strong>${otp}</strong></p>
-          <p>This OTP will expire in 2 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                @media only screen and (max-width: 600px) {
+                  .container { width: 100% !important; padding: 15px !important; }
+                  .content { padding: 20px !important; }
+                }
+              </style>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+              <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <!-- Header -->
+                <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                  <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Password Reset</h1>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="padding: 32px 40px; text-align: center;">
+                  <p style="color: #334155; font-size: 16px; margin: 0;">Hello ${user.firstname},</p>
+                  <p style="color: #64748b; font-size: 15px; margin: 24px 0;">You have requested to reset your password. Please use the verification code below:</p>
+                  
+                  <!-- OTP Display -->
+                  <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 32px 0;">
+                    <div style="font-family: monospace; font-size: 32px; letter-spacing: 8px; color: #0369a1; font-weight: 600;">
+                      ${otp}
+                    </div>
+                    <p style="color: #94a3b8; font-size: 13px; margin: 16px 0 0 0;">This code will expire in 2 minutes</p>
+                  </div>
+
+                  <!-- Security Notice -->
+                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                    <p style="color: #64748b; font-size: 14px; margin: 0; line-height: 1.5;">
+                      If you didn't request this password reset, you can safely ignore this email. Your account security is important to us.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+                  <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
+                  <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">CRM Bench Sales Process Team</p>
+                </div>
+              </div>
+            </body>
+          </html>
         `
       });
 

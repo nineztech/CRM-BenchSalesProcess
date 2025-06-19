@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
+import { FaUserCheck, FaUserXmark } from "react-icons/fa6";
 import axios from 'axios';
 import Layout from '../Layout/Layout';
 import { motion } from 'framer-motion';
@@ -651,9 +652,9 @@ const AdminRegister: React.FC = () => {
                             title={admin.status === 'active' ? 'Deactivate admin' : 'Activate admin'}
                           >
                             {admin.status === 'active' ? (
-                              <FaExclamationCircle size={16} />
+                              <FaUserXmark  size={16} />
                             ) : (
-                              <FaCheckCircle size={16} />
+                              <FaUserCheck size={16} />
                             )}
                           </motion.button>
                         </div>

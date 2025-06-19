@@ -298,150 +298,150 @@ const AdminProfile = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Admin Profile</h1>
-          <div className="flex gap-4">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8 mt-8">
+        <div className="flex justify-between items-center mb-8 border-b pb-4">
+          <h1 className="text-2xl font-semibold text-gray-800">Admin Profile</h1>
+          <div className="flex gap-3">
             {!isEditing && (
               <>
                 <button
                   onClick={handleEdit}
-                  className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 transition-colors duration-200"
                 >
-                  <FiEdit2 /> Edit Profile
+                  <FiEdit2 size={14} /> Edit
                 </button>
                 <button
                   onClick={handleForgotPassword}
-                  className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                  className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-md text-sm hover:bg-amber-600 transition-colors duration-200"
                 >
-                  <FiLock /> Change Password
+                  <FiLock size={14} /> Password
                 </button>
               </>
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-1.5 rounded-md text-sm hover:bg-red-600 transition-colors duration-200"
             >
-              <FiLogOut /> Logout
+              <FiLogOut size={14} /> Logout
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2.5 rounded-md mb-4 text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-2.5 rounded-md mb-4 text-sm">
             {success}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">First Name</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">First Name</label>
               {isEditing ? (
                 <input
                   type="text"
                   name="firstname"
                   value={editedData.firstname || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="mt-1 text-gray-900">{userData.firstname}</p>
+                <p className="text-gray-800 text-sm py-2">{userData.firstname}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Last Name</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">Last Name</label>
               {isEditing ? (
                 <input
                   type="text"
                   name="lastname"
                   value={editedData.lastname || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="mt-1 text-gray-900">{userData.lastname}</p>
+                <p className="text-gray-800 text-sm py-2">{userData.lastname}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">Email</label>
               {isEditing ? (
                 <input
                   type="email"
                   name="email"
                   value={editedData.email || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="mt-1 text-gray-900">{userData.email}</p>
+                <p className="text-gray-800 text-sm py-2">{userData.email}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">Phone Number</label>
               {isEditing ? (
                 <input
                   type="text"
                   name="phoneNumber"
                   value={editedData.phoneNumber || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="mt-1 text-gray-900">{userData.phoneNumber}</p>
+                <p className="text-gray-800 text-sm py-2">{userData.phoneNumber}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Username</label>
-              <p className="mt-1 text-gray-900">{userData.username}</p>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">Username</label>
+              <p className="text-gray-800 text-sm py-2">{userData.username}</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Role</label>
-              <p className="mt-1 text-gray-900 capitalize">{userData.role}</p>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">Role</label>
+              <p className="text-gray-800 text-sm py-2 capitalize">{userData.role}</p>
             </div>
 
             {userData.department && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Department</label>
-                <p className="mt-1 text-gray-900">{userData.department.departmentName}</p>
+                <label className="block text-sm font-medium text-gray-600 mb-1.5">Department</label>
+                <p className="text-gray-800 text-sm py-2">{userData.department.departmentName}</p>
               </div>
             )}
 
             {userData.subrole && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Sub Role</label>
-                <p className="mt-1 text-gray-900 capitalize">{userData.subrole}</p>
+                <label className="block text-sm font-medium text-gray-600 mb-1.5">Sub Role</label>
+                <p className="text-gray-800 text-sm py-2 capitalize">{userData.subrole}</p>
               </div>
             )}
           </div>
 
           {isEditing && (
-            <div className="flex justify-end gap-4 mt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
               <button
                 type="button"
                 onClick={() => {
                   setIsEditing(false);
                   setEditedData(userData);
                 }}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                className="px-4 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
               >
                 Save Changes
               </button>
@@ -451,23 +451,23 @@ const AdminProfile = () => {
 
         {/* Password Reset Modal */}
         {showPasswordModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg w-96">
-              <h2 className="text-xl font-bold mb-4">Reset Password</h2>
-              <p className="mb-4">Send OTP to your email: {email}</p>
-              <div className="flex justify-end gap-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Reset Password</h2>
+              <p className="mb-4 text-sm text-gray-600">Send OTP to your email: {email}</p>
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowPasswordModal(false);
                     setOtpError('');
                   }}
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendOtp}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
                 >
                   Send OTP
                 </button>
@@ -478,13 +478,13 @@ const AdminProfile = () => {
 
         {/* OTP Verification Modal */}
         {showOtpModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg w-96">
-              <h2 className="text-xl font-bold mb-4">Enter OTP</h2>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Enter OTP</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Please enter the 6-digit OTP sent to your email
               </p>
-              <p className="mb-2 text-sm text-gray-600">
+              <p className="mb-2 text-sm text-gray-500">
                 Time remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
               </p>
               <input
@@ -495,7 +495,7 @@ const AdminProfile = () => {
                   if (value.length <= 6) setOtp(value);
                 }}
                 placeholder="Enter 6-digit OTP"
-                className="w-full p-2 border rounded mb-4"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 maxLength={6}
               />
               {otpError && (
@@ -504,12 +504,12 @@ const AdminProfile = () => {
               <div className="flex justify-between items-center mb-4">
                 <button
                   onClick={handleSendOtp}
-                  className="text-sm text-blue-500 hover:text-blue-700"
+                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200"
                 >
                   Resend OTP
                 </button>
               </div>
-              <div className="flex justify-end gap-4">
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setShowOtpModal(false);
@@ -517,16 +517,16 @@ const AdminProfile = () => {
                     setOtp('');
                     setOtpError('');
                   }}
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleVerifyOtp}
                   disabled={otp.length !== 6}
-                  className={`px-4 py-2 rounded text-white ${
+                  className={`px-3 py-1.5 text-sm rounded-md text-white transition-colors duration-200 ${
                     otp.length === 6 
-                      ? 'bg-blue-500 hover:bg-blue-600' 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
                       : 'bg-gray-400 cursor-not-allowed'
                   }`}
                 >
@@ -539,12 +539,12 @@ const AdminProfile = () => {
 
         {/* New Password Modal */}
         {showNewPasswordModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg w-96">
-              <h2 className="text-xl font-bold mb-4">Set New Password</h2>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Set New Password</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">
                     New Password
                   </label>
                   <input
@@ -552,11 +552,11 @@ const AdminProfile = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    className="w-full p-2 border rounded"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">
                     Confirm Password
                   </label>
                   <input
@@ -564,14 +564,14 @@ const AdminProfile = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    className="w-full p-2 border rounded"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
               {passwordError && (
                 <p className="text-red-500 text-sm mt-2">{passwordError}</p>
               )}
-              <div className="flex justify-end gap-4 mt-6">
+              <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => {
                     setShowNewPasswordModal(false);
@@ -579,16 +579,16 @@ const AdminProfile = () => {
                     setConfirmPassword('');
                     setPasswordError('');
                   }}
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleResetPassword}
                   disabled={!newPassword || !confirmPassword || newPassword.length < 6}
-                  className={`px-4 py-2 rounded text-white ${
+                  className={`px-3 py-1.5 text-sm rounded-md text-white transition-colors duration-200 ${
                     newPassword && confirmPassword && newPassword.length >= 6
-                      ? 'bg-blue-500 hover:bg-blue-600'
+                      ? 'bg-blue-600 hover:bg-blue-700'
                       : 'bg-gray-400 cursor-not-allowed'
                   }`}
                 >

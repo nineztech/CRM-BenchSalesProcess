@@ -10,6 +10,7 @@ import { Navbar } from '../Components/Navbar/Navbar';
 import Dashboard from '../Components/AdminDashboard/Dashboard';
 import PackagesPage from '../Pages/Packages';
 import AdminProfile from '../Components/AdminProfile';
+import Sidebar from '../Components/Sidebar/Sidebar';
 // Import other admin components as needed
 
 // Layout component that includes Navbar
@@ -23,6 +24,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="app-container">
+      <Sidebar/>
       <Navbar />
       <div className="content-layout">
         <main className="main-content">

@@ -88,93 +88,64 @@ export const sendLeadAssignmentEmail = async (leadData, assignedUser) => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             @media only screen and (max-width: 600px) {
-              .container {
-                width: 100% !important;
-                padding: 10px !important;
-              }
-              .lead-card {
-                padding: 15px !important;
-              }
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
             }
           </style>
         </head>
-        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f4;">
-          <div class="container" style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); padding: 25px; text-align: center; border-radius: 8px 8px 0 0;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 500;">New Lead Assignment</h1>
+            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">New Lead Assignment</h1>
             </div>
 
-            <!-- Greeting -->
-            <div style="padding: 25px; background-color: #ffffff;">
-              <p style="color: #333333; font-size: 16px; margin: 0; font-weight: 500;">Hello ${assignedUser.firstname || 'Team Member'},</p>
-              <p style="color: #666666; font-size: 15px; margin-top: 10px;">A new lead has been assigned to you. Please review the details below:</p>
-            </div>
+            <!-- Content -->
+            <div class="content" style="padding: 32px 40px;">
+              <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Hello ${assignedUser.firstname || 'Team Member'},</p>
+              <p style="color: #64748b; font-size: 15px; margin: 0 0 32px 0;">A new lead has been assigned to you. Here are the details:</p>
 
-            <!-- Lead Details Card -->
-            <div class="lead-card" style="background-color: #ffffff; border-radius: 8px; padding: 25px; margin: 0 20px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <div style="background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%); padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 500;">${leadName}</h2>
+              <!-- Lead Info Card -->
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 32px;">
+                <h2 style="color: #0369a1; font-size: 18px; margin: 0 0 20px 0;">${leadName}</h2>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500; width: 120px;">Contact:</td>
+                    <td style="padding: 12px 0; color: #64748b;">${contactNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500;">Email:</td>
+                    <td style="padding: 12px 0; color: #64748b;">${emailAddress}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500;">Technology:</td>
+                    <td style="padding: 12px 0; color: #64748b;">${leadData.technology || 'Not specified'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500;">Country:</td>
+                    <td style="padding: 12px 0; color: #64748b;">${leadData.country || 'Not specified'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500;">Visa Status:</td>
+                    <td style="padding: 12px 0; color: #64748b;">${leadData.visaStatus || 'Not specified'}</td>
+                  </tr>
+                  ${leadData.linkedinProfile ? `
+                  <tr>
+                    <td style="padding: 12px 0; color: #334155; font-weight: 500;">LinkedIn:</td>
+                    <td style="padding: 12px 0;">
+                      <a href="${leadData.linkedinProfile}" style="color: #0369a1; text-decoration: none; font-weight: 500;">View Profile</a>
+                    </td>
+                  </tr>
+                  ` : ''}
+                </table>
               </div>
-              
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7;">
-                    <strong style="color: #333333; font-weight: 500;">Contact:</strong>
-                  </td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7; color: #666666;">
-                    ${contactNumber}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7;">
-                    <strong style="color: #333333; font-weight: 500;">Email:</strong>
-                  </td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7; color: #666666;">
-                    ${emailAddress}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7;">
-                    <strong style="color: #333333; font-weight: 500;">Technology:</strong>
-                  </td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7; color: #666666;">
-                    ${leadData.technology || 'Not specified'}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7;">
-                    <strong style="color: #333333; font-weight: 500;">Country:</strong>
-                  </td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7; color: #666666;">
-                    ${leadData.country || 'Not specified'}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7;">
-                    <strong style="color: #333333; font-weight: 500;">Visa Status:</strong>
-                  </td>
-                  <td style="padding: 12px 0; border-bottom: 1px solid #eef2f7; color: #666666;">
-                    ${leadData.visaStatus || 'Not specified'}
-                  </td>
-                </tr>
-                ${leadData.linkedinProfile ? `
-                <tr>
-                  <td style="padding: 12px 0;">
-                    <strong style="color: #333333; font-weight: 500;">LinkedIn:</strong>
-                  </td>
-                  <td style="padding: 12px 0;">
-                    <a href="${leadData.linkedinProfile}" style="color: #1976d2; text-decoration: none; font-weight: 500;">View Profile</a>
-                  </td>
-                </tr>
-                ` : ''}
-              </table>
             </div>
 
             <!-- Footer -->
-            <div style="text-align: center; padding: 20px; color: #666666; font-size: 14px; border-top: 1px solid #eef2f7;">
-              <p style="margin: 0;">This is an automated message. Please do not reply to this email.</p>
-              <p style="margin: 5px 0 0 0; color: #333333;">CRM Bench Sales Process Team</p>
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
+              <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">CRM Bench Sales Process Team</p>
             </div>
           </div>
         </body>
@@ -189,6 +160,75 @@ export const sendLeadAssignmentEmail = async (leadData, assignedUser) => {
     return true;
   } catch (error) {
     console.error('Error sending lead assignment email:', error);
+    return false;
+  }
+};
+
+export const sendOtpEmail = async (userData) => {
+  console.log('Attempting to send OTP email to:', userData.email);
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    to: userData.email,
+    subject: 'Password Reset OTP - CRM Bench Sales Process',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <!-- Header -->
+            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Password Reset</h1>
+            </div>
+
+            <!-- Content -->
+            <div class="content" style="padding: 32px 40px; text-align: center;">
+              <p style="color: #334155; font-size: 16px; margin: 0;">Hello ${userData.firstname},</p>
+              <p style="color: #64748b; font-size: 15px; margin: 24px 0;">You have requested to reset your password. Please use the verification code below:</p>
+              
+              <!-- OTP Display -->
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 32px 0;">
+                <div style="font-family: monospace; font-size: 32px; letter-spacing: 8px; color: #0369a1; font-weight: 600;">
+                  ${userData.otp}
+                </div>
+                <p style="color: #94a3b8; font-size: 13px; margin: 16px 0 0 0;">This code will expire in 2 minutes</p>
+              </div>
+
+              <!-- Security Notice -->
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 14px; margin: 0; line-height: 1.5;">
+                  If you didn't request this password reset, you can safely ignore this email. Your account security is important to us.
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
+              <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">CRM Bench Sales Process Team</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+  };
+
+  try {
+    console.log('Sending OTP email...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('OTP email sent successfully:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
     return false;
   }
 }; 
