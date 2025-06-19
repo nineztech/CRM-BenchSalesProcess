@@ -6,7 +6,10 @@ import {
   editAdmin,
   deleteAdmin,
   updateUserStatus,
-  logoutAdmin
+  logoutAdmin,
+  sendOtp,
+  verifyOtp,
+  resetPassword
 } from '../controllers/adminController.js';
 import  authenticateToken  from '../middleware/auth.js';
 
@@ -32,5 +35,14 @@ router.patch('/:id/status', authenticateToken, updateUserStatus);
 
 // Admin logout route
 router.post('/logout', authenticateToken, logoutAdmin);
+
+// Send OTP for password reset
+router.post('/send-otp', sendOtp);
+
+// Verify OTP
+router.post('/verify-otp', verifyOtp);
+
+// Reset password
+router.post('/reset-password', resetPassword);
 
 export default router;

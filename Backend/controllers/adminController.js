@@ -3,8 +3,23 @@ import Department from '../models/departmentModel.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: parseInt(process.env.EMAIL_PORT),
+  secure: process.env.EMAIL_SECURE === 'true',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
 
 export const registerAdmin = async (req, res) => {
   try {  
@@ -457,6 +472,158 @@ export const logoutAdmin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+};
+
+// Send OTP for password reset
+export const sendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Check if email configuration exists
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.error('Email configuration missing');
+      return res.status(500).json({ message: 'Email service not configured' });
+    }
+
+    const user = await User.findOne({ where: { email, role: 'admin' } });
+    if (!user) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+
+    // Save OTP and expiry to user record
+    user.resetPasswordOtp = otp;
+    user.resetPasswordOtpExpiry = expiry;
+    await user.save();
+
+    // Send email
+    try {
+      await transporter.sendMail({
+        from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'Password Reset OTP',
+        text: `Your OTP for password reset is: ${otp}\nThis OTP will expire in 2 minutes.`,
+        html: `
+          <h2>Password Reset OTP</h2>
+          <p>Your OTP for password reset is: <strong>${otp}</strong></p>
+          <p>This OTP will expire in 2 minutes.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+        `
+      });
+
+      res.status(200).json({ message: 'OTP sent successfully' });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Reset OTP in case of email failure
+      user.resetPasswordOtp = null;
+      user.resetPasswordOtpExpiry = null;
+      await user.save();
+      return res.status(500).json({ 
+        message: 'Failed to send OTP email',
+        error: emailError.message 
+      });
+    }
+  } catch (error) {
+    console.error('Send OTP Error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+// Verify OTP
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    const user = await User.findOne({ where: { email, role: 'admin' } });
+    if (!user) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (!user.resetPasswordOtp || !user.resetPasswordOtpExpiry) {
+      return res.status(400).json({ message: 'No OTP was requested. Please request a new OTP.' });
+    }
+
+    if (user.resetPasswordOtp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP. Please check and try again.' });
+    }
+
+    if (new Date() > user.resetPasswordOtpExpiry) {
+      // Clear expired OTP
+      user.resetPasswordOtp = null;
+      user.resetPasswordOtpExpiry = null;
+      await user.save();
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    res.status(200).json({ message: 'OTP verified successfully' });
+  } catch (error) {
+    console.error('Verify OTP Error:', error);
+    res.status(500).json({ 
+      message: 'Failed to verify OTP',
+      error: error.message 
+    });
+  }
+};
+
+// Reset password after OTP verification
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'Email, OTP, and new password are required' });
+    }
+
+    const user = await User.findOne({ where: { email, role: 'admin' } });
+    if (!user) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (!user.resetPasswordOtp || !user.resetPasswordOtpExpiry) {
+      return res.status(400).json({ message: 'No OTP was requested. Please start the password reset process again.' });
+    }
+
+    if (user.resetPasswordOtp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP. Please check and try again.' });
+    }
+
+    if (new Date() > user.resetPasswordOtpExpiry) {
+      // Clear expired OTP
+      user.resetPasswordOtp = null;
+      user.resetPasswordOtpExpiry = null;
+      await user.save();
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    // Update password and clear OTP
+    user.password = newPassword; // Will be hashed by model hook
+    user.resetPasswordOtp = null;
+    user.resetPasswordOtpExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: 'Password changed successfully! Please login with your new password.' });
+  } catch (error) {
+    console.error('Reset Password Error:', error);
+    res.status(500).json({ 
+      message: 'Failed to reset password',
+      error: error.message 
     });
   }
 };
