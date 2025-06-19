@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import session from "express-session"; // optional
 import { connectDB, sequelize } from "./config/dbConnection.js";
 import router from "./Routes/index.js";
+import addOtpFields from './migrations/addOtpFields.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,10 +58,26 @@ const startServer = async () => {
 
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
 
-    app.listen(PORT, () => {
-      console.log(colors.cyan(`🚀 Server running on port ${PORT}`));
-      console.log(colors.yellow(`📝 Environment: ${process.env.NODE_ENV || 'development'}`));
-    });
+    // After database connection is established
+    sequelize.authenticate()
+      .then(() => {
+        console.log('✅ MySQL Database Connected Successfully!');
+        // Sync all models
+        return sequelize.sync({ alter: true });
+      })
+      .then(() => {
+        // Run OTP fields migration
+        return addOtpFields();
+      })
+      .then(() => {
+        app.listen(PORT, () => {
+          console.log(colors.cyan(`🚀 Server running on port ${PORT}`));
+          console.log(colors.yellow(`📝 Environment: ${process.env.NODE_ENV || 'development'}`));
+        });
+      })
+      .catch((error) => {
+        console.error('❌ Unable to connect to the database:', error);
+      });
   } catch (error) {
     console.error(colors.red("❌ Failed to start server:"), error);
     process.exit(1);

@@ -75,6 +75,14 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: 'active',
     },
+    resetPasswordOtp: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    resetPasswordOtpExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
