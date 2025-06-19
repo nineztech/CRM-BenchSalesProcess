@@ -164,10 +164,13 @@ const UserRegister: React.FC = () => {
           }),
           {
             loading: 'Creating user...',
-            success: () => {
+            success: (response) => {
               handleReset();
               fetchUsers();
-              return 'User created successfully!';
+              const message = response.data.data.emailSent 
+                ? 'User created successfully and welcome email sent!'
+                : 'User created successfully but failed to send welcome email.';
+              return message;
             },
             error: (err) => err.response?.data?.message || 'Failed to create user'
           }

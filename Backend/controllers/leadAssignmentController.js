@@ -1,6 +1,7 @@
 import LeadAssignment from "../models/leadAssignmentModel.js";
 import User from "../models/userModel.js";
 import Lead from "../models/leadModel.js";
+import { sendLeadAssignmentEmail } from '../utils/emailService.js';
 
 // Assign Lead
 export const assignLead = async (req, res) => {
@@ -188,6 +189,85 @@ export const getLeadAssignmentHistory = async (req, res) => {
   } catch (error) {
     console.error("Error fetching lead assignment history:", error);
     handleError(error, res);
+  }
+};
+
+export const notifyAssignment = async (req, res) => {
+  try {
+    const { leadId, assignedToId } = req.body;
+
+    // Get lead details
+    const lead = await Lead.findByPk(leadId, {
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found'
+      });
+    }
+
+    // Get assigned user details
+    const assignedUser = await User.findByPk(assignedToId);
+    if (!assignedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assigned user not found'
+      });
+    }
+
+    // Send email notification
+    const emailSent = await sendLeadAssignmentEmail(lead, assignedUser);
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification sent successfully',
+      data: {
+        emailSent
+      }
+    });
+
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send notification'
+    });
+  }
+};
+
+export const getLeadAssignments = async (req, res) => {
+  try {
+    const assignments = await LeadAssignment.findAll({
+      include: [
+        {
+          model: Lead,
+          attributes: ['id', 'name', 'email', 'phone', 'technology', 'country', 'visaStatus', 'linkedinProfile']
+        },
+        {
+          model: User,
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: assignments
+    });
+  } catch (error) {
+    console.error('Error fetching lead assignments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch lead assignments'
+    });
   }
 };
 

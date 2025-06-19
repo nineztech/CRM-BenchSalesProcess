@@ -3,6 +3,7 @@ import User from '../models/userModel.js'; // Adjust path to your User model
 import Department from '../models/departmentModel.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcrypt';
+import { sendWelcomeEmail } from '../utils/emailService.js';
 
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -80,6 +81,15 @@ export const register = async (req, res) => {
       role: 'user' // Optional, since default is already 'user'
     });
 
+    // Send welcome email
+    const emailSent = await sendWelcomeEmail({
+      email,
+      username,
+      password, // Send the plain password before it's hashed
+      firstname,
+      lastname
+    });
+
     const token = jwt.sign(
       { userId: newUser.id, role: newUser.role },
       JWT_SECRET,
@@ -102,7 +112,8 @@ export const register = async (req, res) => {
           role: newUser.role,
           createdAt: newUser.createdAt
         },
-        token
+        token,
+        emailSent
       }
     });
 
