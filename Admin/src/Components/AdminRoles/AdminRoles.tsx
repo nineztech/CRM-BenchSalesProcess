@@ -27,10 +27,25 @@ interface RoleEntry {
   createdAt: string;
 }
 
+interface RolePermission {
+  id: number;
+  dept_id: number;
+  subrole: string;
+  hasAccessTo: {
+    [key: string]: number[];
+  };
+}
+
+interface Rights {
+  [activity: string]: {
+    [permission: string]: boolean;
+  };
+}
+
 const AdminRoles: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
-  const [rights, setRights] = useState<Record<string, Record<string, boolean>>>({});
+  const [rights, setRights] = useState<Rights>({});
   const [departments, setDepartments] = useState<Department[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -40,6 +55,9 @@ const AdminRoles: React.FC = () => {
   const [newRoleName, setNewRoleName] = useState('');
   const [roleList, setRoleList] = useState<RoleEntry[]>([]);
   const [editIndex, setEditIndex] = useState<number | null>(null);
+
+  // Add new state for loading existing permissions
+  const [existingPermissions, setExistingPermissions] = useState<RolePermission | null>(null);
 
   // Fetch all departments and permissions on component mount
   useEffect(() => {
@@ -111,14 +129,84 @@ const AdminRoles: React.FC = () => {
     fetchActivities();
   }, [selectedDepartment]);
 
+  // Fetch existing permissions when department and role are selected
+  useEffect(() => {
+    const fetchExistingPermissions = async () => {
+      if (!selectedDepartment || !selectedRole) {
+        setRights({}); // Reset rights when department or role changes
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          const rolePermissions = response.data.data.find(
+            (rp: RolePermission & { dept_id: number; subrole: string }) => 
+              rp.dept_id.toString() === selectedDepartment && rp.subrole === selectedRole
+          );
+
+          if (rolePermissions) {
+            setExistingPermissions(rolePermissions);
+            
+            // Set initial rights based on existing permissions
+            const initialRights: Rights = {};
+            activities.forEach(activity => {
+              const permissionIds = rolePermissions.hasAccessTo[activity.id] || [];
+              initialRights[activity.name] = {};
+              permissions.forEach(permission => {
+                initialRights[activity.name][permission.name] = permissionIds.includes(permission.id);
+              });
+            });
+            setRights(initialRights);
+          } else {
+            // If no existing permissions found, initialize empty rights for all activities
+            const emptyRights: Rights = {};
+            activities.forEach(activity => {
+              emptyRights[activity.name] = {};
+              permissions.forEach(permission => {
+                emptyRights[activity.name][permission.name] = false;
+              });
+            });
+            setRights(emptyRights);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching existing permissions:', error);
+        // Initialize empty rights on error
+        const emptyRights: Rights = {};
+        activities.forEach(activity => {
+          emptyRights[activity.name] = {};
+          permissions.forEach(permission => {
+            emptyRights[activity.name][permission.name] = false;
+          });
+        });
+        setRights(emptyRights);
+      }
+    };
+
+    fetchExistingPermissions();
+  }, [selectedDepartment, selectedRole, activities, permissions]);
+
   const handlePermissionChange = (activity: string, permission: string) => {
-    setRights(prev => ({
-      ...prev,
-      [activity]: {
-        ...prev[activity],
-        [permission]: !prev[activity]?.[permission],
-      },
-    }));
+    setRights(prev => {
+      const newRights: Rights = { ...prev };
+      if (!newRights[activity]) {
+        newRights[activity] = {};
+      }
+      newRights[activity] = {
+        ...newRights[activity],
+        [permission]: !newRights[activity][permission]
+      };
+      return newRights;
+    });
   };
 
   const handleAssign = async () => {
@@ -153,28 +241,46 @@ const AdminRoles: React.FC = () => {
 
       console.log('Sending payload:', payload);
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/role-permissions/add`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+      let response;
+
+      // Check if we have existing permissions
+      if (existingPermissions) {
+        // If exists, use PUT to update
+        response = await axios.put(
+          `${import.meta.env.VITE_API_URL}/role-permissions/${existingPermissions.id}`,
+          { hasAccessTo },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
           }
-        }
-      );
+        );
+      } else {
+        // If doesn't exist, use POST to create
+        response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/role-permissions/add`,
+          payload,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+      }
 
       if (response.data.success) {
-        alert('Role permissions assigned successfully!');
+        alert('Role permissions ' + (existingPermissions ? 'updated' : 'assigned') + ' successfully!');
         // Reset the form
         setRights({});
         setSelectedRole('');
       } else {
-        alert(response.data.message || 'Failed to assign permissions');
+        alert(response.data.message || 'Failed to ' + (existingPermissions ? 'update' : 'assign') + ' permissions');
       }
     } catch (error: any) {
-      console.error('Error assigning permissions:', error);
-      alert(error.response?.data?.message || 'Failed to assign permissions');
+      console.error('Error ' + (existingPermissions ? 'updating' : 'assigning') + ' permissions:', error);
+      alert(error.response?.data?.message || 'Failed to ' + (existingPermissions ? 'update' : 'assign') + ' permissions');
     }
   };
 
@@ -207,6 +313,34 @@ const AdminRoles: React.FC = () => {
   const handleEditRole = (index: number) => {
     setEditIndex(index);
     setNewRoleName(roleList[index].role);
+  };
+
+  // Handle select all for a row
+  const handleSelectAllRow = (activityName: string) => {
+    setRights(prev => {
+      const newRights: Rights = { ...prev };
+      if (!newRights[activityName]) {
+        newRights[activityName] = {};
+      }
+      
+      const currentRow = newRights[activityName];
+      const allChecked = permissions.every(perm => currentRow[perm.name]);
+      
+      const updatedRow: { [key: string]: boolean } = {};
+      permissions.forEach(permission => {
+        updatedRow[permission.name] = !allChecked;
+      });
+      
+      newRights[activityName] = updatedRow;
+      return newRights;
+    });
+  };
+
+  // Check if all permissions in a row are selected
+  const isAllSelected = (activityName: string): boolean => {
+    const activityRights = rights[activityName];
+    if (!activityRights) return false;
+    return permissions.every(perm => activityRights[perm.name]);
   };
 
   return (
@@ -314,6 +448,7 @@ const AdminRoles: React.FC = () => {
               <thead>
                 <tr>
                   <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
+                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Select All</th>
                   {permissions.map((perm) => (
                     <th key={perm.id} className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[16.25%]">{perm.name}</th>
                   ))}
@@ -323,6 +458,14 @@ const AdminRoles: React.FC = () => {
                 {activities.map((activity) => (
                   <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
                     <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">{activity.name}</td>
+                    <td className="p-2.5 border border-gray-200 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected(activity.name)}
+                        onChange={() => handleSelectAllRow(activity.name)}
+                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                      />
+                    </td>
                     {permissions.map((perm) => (
                       <td key={perm.id} className="p-2.5 border border-gray-200 text-center w-[16.25%]">
                         <input

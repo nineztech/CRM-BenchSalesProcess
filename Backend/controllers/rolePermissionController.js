@@ -38,12 +38,12 @@ export const addRolePermission = async (req, res) => {
       where: { dept_id, subrole }
     });
 
-    if (existingRolePermission) {
-      return res.status(409).json({
-        success: false,
-        message: "Role permission already exists for this department and subrole"
-      });
-    }
+    // if (existingRolePermission) {
+    //   return res.status(409).json({
+    //     success: false,
+    //     message: "Role permission already exists for this department and subrole"
+    //   });
+    // }
 
     // Validate hasAccessTo format and activity IDs
     for (const [activityId, permissionIds] of Object.entries(hasAccessTo)) {

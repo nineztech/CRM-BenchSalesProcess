@@ -1,9 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import axios from 'axios';
 import Layout from '../Layout/Layout';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+
+// Confirmation Dialog Component
+const ConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}> = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+      >
+        <h3 className="text-lg font-medium text-gray-900 mb-3">{title}</h3>
+        <p className="text-sm text-gray-500 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Confirm
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const AdminRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -30,6 +72,13 @@ const AdminRegister: React.FC = () => {
 
   // Store the admin being edited
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
+
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     fetchAdmins();
@@ -279,6 +328,46 @@ const AdminRegister: React.FC = () => {
     } else {
       toast.error('No changes made to update');
     }
+  };
+
+  const handleStatusChange = async (id: number, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    
+    setConfirmDialog({
+      isOpen: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Admin`,
+      message: `Are you sure you want to ${action} this admin?`,
+      onConfirm: async () => {
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          toast.error('Authentication token not found. Please login again.');
+          return;
+        }
+
+        const message = newStatus === 'active' ? 'Activating' : 'Deactivating';
+        
+        toast.promise(
+          axios.patch(`${API_BASE_URL}/admin/${id}/status`, 
+            { status: newStatus },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          ),
+          {
+            loading: `${message} admin...`,
+            success: () => {
+              fetchAdmins();
+              return `Admin ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`;
+            },
+            error: (err) => err.response?.data?.message || `Failed to ${newStatus} admin`
+          }
+        );
+      }
+    });
   };
 
   const filteredAdmins = admins.filter((admin) => {
@@ -550,14 +639,22 @@ const AdminRegister: React.FC = () => {
                           <motion.button 
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className={`text-red-500 hover:text-red-600 transition-colors duration-200 ${
+                            className={`transition-colors duration-200 ${
+                              admin.status === 'active' 
+                                ? 'text-red-500 hover:text-red-600'
+                                : 'text-green-500 hover:text-green-600'
+                            } ${
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
-                            onClick={() => handleDelete(admin.id)}
-                            disabled={isLoading || admin.status === 'inactive'}
-                            title={admin.status === 'inactive' ? 'Admin is already inactive' : 'Deactivate admin'}
+                            onClick={() => handleStatusChange(admin.id, admin.status)}
+                            disabled={isLoading}
+                            title={admin.status === 'active' ? 'Deactivate admin' : 'Activate admin'}
                           >
-                            <FaTrash size={16} />
+                            {admin.status === 'active' ? (
+                              <FaExclamationCircle size={16} />
+                            ) : (
+                              <FaCheckCircle size={16} />
+                            )}
                           </motion.button>
                         </div>
                       </td>
@@ -570,6 +667,15 @@ const AdminRegister: React.FC = () => {
             <p className="text-sm text-gray-600 text-center py-4">No admins found.</p>
           )}
         </motion.div>
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+        />
       </div>
     </Layout>
   );
