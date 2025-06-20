@@ -43,6 +43,10 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    designation: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     departmentId: {
       type: DataTypes.INTEGER,
       allowNull: true,

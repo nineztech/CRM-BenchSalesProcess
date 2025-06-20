@@ -1,10 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit } from 'react-icons/fa';
+import { FaUserCheck, FaUserXmark } from 'react-icons/fa6';
 import Layout from '../../Components/Layout/Layout';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
+
+// Confirmation Dialog Component
+const ConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}> = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+      >
+        <h3 className="text-lg font-medium text-gray-900 mb-3">{title}</h3>
+        <p className="text-sm text-gray-500 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Confirm
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const UserRegister: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +60,7 @@ const UserRegister: React.FC = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    designation: ""
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -27,6 +71,13 @@ const UserRegister: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
   const [subroles, setSubroles] = useState<string[]>([]);
+
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -48,6 +99,7 @@ const UserRegister: React.FC = () => {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log(response)
       setUsers(response.data.data.users || []);
     } catch (error: any) {
       console.error('Fetch error:', error);
@@ -88,6 +140,7 @@ const UserRegister: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+   
 
     // If department is changed, fetch subroles
     if (name === 'department') {
@@ -133,7 +186,8 @@ const UserRegister: React.FC = () => {
         departmentId: Number(formData.department),
         subrole: formData.subrole,
         phoneNumber: formData.mobileNumber,
-        username: formData.username
+        username: formData.username,
+        designation: formData.designation
       };
 
       if (editingUserId) {
@@ -194,6 +248,7 @@ const UserRegister: React.FC = () => {
       email: "",
       password: "",
       confirmPassword: "",
+      designation: ""
     });
     setErrors({});
     setEditingUserId(null);
@@ -237,9 +292,50 @@ const UserRegister: React.FC = () => {
       email: user.email || "",
       password: "",
       confirmPassword: "",
+      designation: user.designation || ""
     });
     setEditingUserId(user.id);
     setErrors({});
+  };
+
+  const handleStatusChange = async (id: number, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    
+    setConfirmDialog({
+      isOpen: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+      message: `Are you sure you want to ${action} this user?`,
+      onConfirm: async () => {
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          toast.error('Authentication token not found. Please login again.');
+          return;
+        }
+
+        const message = newStatus === 'active' ? 'Activating' : 'Deactivating';
+        
+        toast.promise(
+          axios.patch(`${API_BASE_URL}/user/${id}/status`, 
+            { status: newStatus },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          ),
+          {
+            loading: `${message} user...`,
+            success: () => {
+              fetchUsers();
+              return `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`;
+            },
+            error: (err) => err.response?.data?.message || `Failed to ${action} user`
+          }
+        );
+      }
+    });
   };
 
   const filteredUsers = Array.isArray(users) ? users.filter((user) => {
@@ -373,7 +469,7 @@ const UserRegister: React.FC = () => {
                 </div>
               </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="form-group">
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                     Mobile Number <span className="text-red-500">*</span>
@@ -403,6 +499,21 @@ const UserRegister: React.FC = () => {
                     className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                   />
                   {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
+                </div>
+
+                <div className="form-group">
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Designation <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="designation"
+                    placeholder="Enter Designation"
+                    value={formData.designation}
+                    onChange={handleChange}
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                  />
+                  {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
                 </div>
                 </div>
 
@@ -495,6 +606,7 @@ const UserRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
@@ -517,6 +629,7 @@ const UserRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           user.status === 'active' 
@@ -527,11 +640,15 @@ const UserRegister: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', {
-                          day: '2-digit',
+                        {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
                           month: 'short',
-                          year: 'numeric'
-                        }) : ''}
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false
+                        }).replace(',', '').replace(/(\d{4})\s(\d{2}):/, '$1, $2:') : ''}
                       </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
@@ -549,17 +666,25 @@ const UserRegister: React.FC = () => {
                           <motion.button 
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className={`text-red-500 hover:text-red-600 transition-colors duration-200 ${
+                            className={`transition-colors duration-200 ${
+                              user.status === 'active' 
+                                ? 'text-red-500 hover:text-red-600'
+                                : 'text-green-500 hover:text-green-600'
+                            } ${
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
-                          onClick={() => handleDelete(user.id)}
-                            disabled={isLoading || user.status === 'inactive'}
-                            title={user.status === 'inactive' ? 'User is already inactive' : 'Deactivate user'}
-                        >
-                            <FaTrash size={16} />
+                            onClick={() => handleStatusChange(user.id, user.status)}
+                            disabled={isLoading}
+                            title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
+                          >
+                            {user.status === 'active' ? (
+                              <FaUserXmark size={16} />
+                            ) : (
+                              <FaUserCheck size={16} />
+                            )}
                           </motion.button>
-                      </div>
-                    </td>
+                        </div>
+                      </td>
                     </motion.tr>
                 ))}
               </tbody>
@@ -570,6 +695,15 @@ const UserRegister: React.FC = () => {
           )}
         </motion.div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+      />
     </Layout>
   );
 };

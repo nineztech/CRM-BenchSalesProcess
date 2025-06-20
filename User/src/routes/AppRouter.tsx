@@ -8,6 +8,7 @@ import Sales from '../components/sales/sales';
 import LeadCreationComponent from '../components/lead_creation/LeadCreation';
 import SaleCreationComponent from '../components/sales/sales.tsx';
 import Sidebar from '../components/sidebar/Sidebar';
+import Packages from '../components/packages/Packages';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -59,8 +60,16 @@ const AppRouter: React.FC = () => {
           </ProtectedRoute>
         } />
 
+        <Route path="/packages" element={
+          <ProtectedRoute>
+            <UserLayout>
+              <Packages />
+            </UserLayout>
+          </ProtectedRoute>
+        } />
+
         {/* Add other protected routes here */}
-<Route path="/leadcreation" element={
+        <Route path="/leadcreation" element={
           <ProtectedRoute>
             <UserLayout>
               <LeadCreationComponent />
