@@ -264,6 +264,54 @@ export const checkSalesTeamExists = async (req, res) => {
   }
 };
 
+// Update Department Status
+export const updateDepartmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user?.id;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required"
+      });
+    }
+
+    const department = await Department.findByPk(id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found"
+      });
+    }
+
+    await department.update({
+      status: status,
+      updatedBy: userId
+    });
+
+    const updatedDepartment = await Department.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Department status updated successfully",
+      data: updatedDepartment
+    });
+  } catch (error) {
+    console.error("Error updating department status:", error);
+    handleError(error, res);
+  }
+};
+
 // Error handler
 const handleError = (error, res) => {
   if (error.name === 'SequelizeValidationError') {

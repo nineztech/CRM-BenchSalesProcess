@@ -618,11 +618,15 @@ const AdminRegister: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
-                        {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-GB', {
-                          day: '2-digit',
+                        {admin.createdAt ? new Date(admin.createdAt).toLocaleString('en-US', {
                           month: 'short',
-                          year: 'numeric'
-                        }) : ''}
+                          day: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false
+                        }).replace(',', '') : ''}
                       </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">

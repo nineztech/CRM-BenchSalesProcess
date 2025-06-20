@@ -1,10 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../Components/Layout/Layout';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaPlus, FaUserCheck, FaUserTimes } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+
+// Add the styles
+const tooltipStyles = `
+  .status-tooltip {
+    visibility: hidden;
+    position: fixed;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    opacity: 0;
+    z-index: 9999;
+    min-width: max-content;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .status-cell {
+    position: relative;
+  }
+
+  .status-cell:hover .status-tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .tooltip-content {
+    white-space: nowrap;
+    text-align: left;
+  }
+`;
 
 interface Department {
   id: number;
@@ -13,12 +44,61 @@ interface Department {
   isSalesTeam: boolean;
   status: string;
   createdAt: string;
+  updatedAt: string;
+  updatedBy: number;
   creator: {
     firstname: string;
     lastname: string;
     email: string;
   };
+  updater: {
+    firstname: string;
+    lastname: string;
+    email: string;
+  };
 }
+
+// Confirmation Dialog Component
+const ConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}> = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+      >
+        <h3 className="text-lg font-medium text-gray-900 mb-3">{title}</h3>
+        <p className="text-sm text-gray-500 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Confirm
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const AddDepartment: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +112,12 @@ const AddDepartment: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [salesTeamExists, setSalesTeamExists] = useState(false);
   const [existingSalesTeamDept, setExistingSalesTeamDept] = useState<{id: number, departmentName: string} | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
  const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
@@ -84,16 +170,21 @@ const AddDepartment: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get('/department/all');
+      
       if (response.data.success) {
+        console.log('Departments response:', response.data.data);
         setDepartments(response.data.data);
         setSalesTeamExists(response.data.data.some((dept: Department) => dept.isSalesTeam));
         setExistingSalesTeamDept(response.data.data.find((dept: Department) => dept.isSalesTeam) as {id: number, departmentName: string} | null);
+      } else {
+        console.error("Failed to fetch departments", response.data.message);
+        toast.error('Failed to fetch departments');
       }
-    } catch (error: unknown) {
-      console.error('Error fetching departments:', error);
+    } catch (error) {
+      console.error("API Error:", error);
       const axiosError = error as AxiosError;
       if (axiosError.response?.status !== 401) {
-        toast.error('Failed to fetch departments');
+        toast.error('Error fetching departments');
       }
     } finally {
       setIsLoading(false);
@@ -127,6 +218,11 @@ const AddDepartment: React.FC = () => {
     e.preventDefault();
     if (!departmentName.trim()) {
       toast.error('Please enter a department name');
+      return;
+    }
+
+    if (subroles.length === 0) {
+      toast.error('Please add at least one role');
       return;
     }
 
@@ -178,18 +274,42 @@ const AddDepartment: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    toast.promise(
-      axiosInstance.delete(`/department/${id}`),
-      {
-        loading: 'Deleting department...',
-        success: () => {
+  // const handleDelete = async (id: number) => {
+  //   toast.promise(
+  //     axiosInstance.delete(`/department/${id}`),
+  //     {
+  //       loading: 'Deleting department...',
+  //       success: () => {
+  //         fetchDepartments();
+  //         return 'Department deleted successfully';
+  //       },
+  //       error: (err: any) => err.response?.data?.message || 'Failed to delete department'
+  //     }
+  //   );
+  // };
+
+  const handleStatusUpdate = async (id: number, status: string) => {
+    const newStatus = status === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    
+    setConfirmDialog({
+      isOpen: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Department`,
+      message: `Are you sure you want to ${action} this department?`,
+      onConfirm: async () => {
+        try {
+          setIsLoading(true);
+          await axiosInstance.patch(`/department/${id}/status`, { status: newStatus });
+          toast.success(`Department ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
           fetchDepartments();
-          return 'Department deleted successfully';
-        },
-        error: (err: any) => err.response?.data?.message || 'Failed to delete department'
+        } catch (error) {
+          console.error('Error updating department status:', error);
+          toast.error('Failed to update department status');
+        } finally {
+          setIsLoading(false);
+        }
       }
-    );
+    });
   };
 
   const filteredDepartments = departments.filter(dept =>
@@ -200,6 +320,7 @@ const AddDepartment: React.FC = () => {
 
   return (
     <Layout>
+      <style>{tooltipStyles}</style>
       <div className="flex flex-col gap-5 max-w-[98%]">
         {/* Form Container */}
         <motion.div 
@@ -231,7 +352,9 @@ const AddDepartment: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">Add Roles</label>
+                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  Add Roles <span className="text-red-500">*</span>
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -259,6 +382,7 @@ const AddDepartment: React.FC = () => {
                     <FaPlus />
                   </motion.button>
                 </div>
+                <span className="text-xs text-gray-500 mt-1 block">Minimum one role is required</span>
                 {subroles.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-100">
                     {subroles.map((subrole, index) => (
@@ -369,6 +493,7 @@ const AddDepartment: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Is Sales Team</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created By</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                   </tr>
                 </thead>
@@ -398,7 +523,47 @@ const AddDepartment: React.FC = () => {
                         {dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
-                        {new Date(dept.createdAt).toLocaleDateString()}
+                        {dept.createdAt ? new Date(dept.createdAt).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false
+                        }).replace(/(\d+):(\d+):(\d+)/, (_, h, m, s) => 
+                          `${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`
+                        ) : 'N/A'}
+                      </td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative">
+                        <span 
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}
+                          onMouseEnter={(e) => {
+                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (tooltip) {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              tooltip.style.left = `${rect.left}px`;
+                              tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
+                            }
+                          }}
+                        >
+                          {dept.status}
+                        </span>
+                        <div className="status-tooltip">
+                          <div className="tooltip-content text-xs text-gray-800">
+                            <p className="mb-1">Updated By: {dept.updatedBy && dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}</p>
+                            <p>Updated At: {dept.updatedAt ? new Date(dept.updatedAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            }) : 'N/A'}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
@@ -411,7 +576,7 @@ const AddDepartment: React.FC = () => {
                           >
                             <FaEdit size={16} />
                           </motion.button>
-                          <motion.button
+                          {/* <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleDelete(dept.id)}
@@ -419,7 +584,30 @@ const AddDepartment: React.FC = () => {
                             className="text-red-500 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
                           >
                             <FaTrash size={16} />
-                          </motion.button>
+                          </motion.button> */}
+                          {dept.status === 'active' ? (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleStatusUpdate(dept.id, dept.status)}
+                              disabled={isLoading}
+                              className="text-red-500 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
+                              title="Deactivate Department"
+                            >
+                              <FaUserTimes size={16} />
+                            </motion.button>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleStatusUpdate(dept.id, dept.status)}
+                              disabled={isLoading}
+                              className="text-green-500 hover:text-green-600 transition-colors duration-200 disabled:opacity-50"
+                              title="Activate Department"
+                            >
+                              <FaUserCheck size={16} />
+                            </motion.button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -431,6 +619,15 @@ const AddDepartment: React.FC = () => {
             <p className="text-sm text-gray-600 text-center py-4">No departments found.</p>
           )}
         </motion.div>
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+        />
       </div>
     </Layout>
   );

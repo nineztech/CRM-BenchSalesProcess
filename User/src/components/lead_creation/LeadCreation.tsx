@@ -1262,70 +1262,27 @@ const LeadCreationComponent: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
                     <label className="block text-sm font-medium text-gray-700">Remarks *</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (formData.remarks[formData.remarks.length - 1].text.trim()) {
-                          setFormData(prev => ({
-                            ...prev,
-                            remarks: [...prev.remarks, {
-                              text: '',
-                              createdAt: new Date().toISOString(),
-                              createdBy: 0
-                            }]
-                          }));
-                        }
-                      }}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 focus:outline-none"
-                    >
-                      <span className="mr-1">+</span> Add Remark
-                    </button>
                   </div>
                   
                   {/* Current Textarea */}
                   <div className="relative w-full">
                     <textarea
-                      value={formData.remarks[formData.remarks.length - 1].text}
-                      onChange={handleRemarkChange}
-                      onKeyPress={handleRemarkKeyPress}
+                      value={formData.remarks[0].text}
+                      onChange={(e) => {
+                        const newRemarks = [{
+                          text: e.target.value,
+                          createdAt: new Date().toISOString(),
+                          createdBy: 0
+                        }];
+                        setFormData(prev => ({
+                          ...prev,
+                          remarks: newRemarks
+                        }));
+                      }}
                       className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
                       placeholder="Enter your remark here..."
                     />
                   </div>
-
-                  {/* Previous Remarks List */}
-                  {formData.remarks.length > 1 && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Previous Remarks</h4>
-                      <div className="space-y-3">
-                        {formData.remarks.slice(0, -1).reverse().map((remark, idx) => (
-                          <div key={idx} className="relative group">
-                            <div className="p-3 sm:p-4 bg-gray-50 rounded-md border border-gray-200">
-                              <pre className="whitespace-pre-wrap text-sm break-words">{remark.text}</pre>
-                              <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                                Remark #{formData.remarks.length - 1 - idx}
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newRemarks = formData.remarks.filter((_, i) => i !== (formData.remarks.length - 2 - idx));
-                                setFormData(prev => ({
-                                  ...prev,
-                                  remarks: newRemarks
-                                }));
-                              }}
-                              className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-gray-600"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {errors.remarks && (
                     <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0].text}</p>

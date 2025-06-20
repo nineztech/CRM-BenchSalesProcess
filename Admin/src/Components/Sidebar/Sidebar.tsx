@@ -54,6 +54,13 @@ const Sidebar: React.FC = () => {
             isActive={location.pathname === '/admins'}
           />
           <SidebarItem 
+            icon={<FaBuilding />} 
+            to="/departments" 
+            text="Department" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/departments'}
+          />
+          <SidebarItem 
             icon={<FaUserPlus />} 
             to="/roles" 
             text="Roles & Rights" 
@@ -67,13 +74,7 @@ const Sidebar: React.FC = () => {
             isExpanded={isExpanded}
             isActive={location.pathname === '/users'}
           />
-          <SidebarItem 
-            icon={<FaBuilding />} 
-            to="/departments" 
-            text="Department" 
-            isExpanded={isExpanded}
-            isActive={location.pathname === '/departments'}
-          />
+          
           <SidebarItem 
             icon={<FaBox />} 
             to="/packages" 
