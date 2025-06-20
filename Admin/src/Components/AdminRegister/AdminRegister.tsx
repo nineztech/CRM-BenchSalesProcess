@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
+import { FaEdit, } from 'react-icons/fa';
 import { FaUserCheck, FaUserXmark } from "react-icons/fa6";
 import axios from 'axios';
 import Layout from '../Layout/Layout';
@@ -238,32 +238,32 @@ const AdminRegister: React.FC = () => {
     setEditingAdmin(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to deactivate this admin?')) {
-      const token = localStorage.getItem('token');
+  // const handleDelete = async (id: number) => {
+  //   if (window.confirm('Are you sure you want to deactivate this admin?')) {
+  //     const token = localStorage.getItem('token');
       
-      if (!token) {
-        toast.error('Authentication token not found. Please login again.');
-        return;
-      }
+  //     if (!token) {
+  //       toast.error('Authentication token not found. Please login again.');
+  //       return;
+  //     }
 
-      toast.promise(
-        axios.delete(`${API_BASE_URL}/admin/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }),
-        {
-          loading: 'Deactivating admin...',
-          success: () => {
-            fetchAdmins();
-            return 'Admin deactivated successfully!';
-          },
-          error: (err) => err.response?.data?.message || 'Failed to deactivate admin'
-        }
-      );
-    }
-  };
+  //     toast.promise(
+  //       axios.delete(`${API_BASE_URL}/admin/${id}`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`
+  //         }
+  //       }),
+  //       {
+  //         loading: 'Deactivating admin...',
+  //         success: () => {
+  //           fetchAdmins();
+  //           return 'Admin deactivated successfully!';
+  //         },
+  //         error: (err) => err.response?.data?.message || 'Failed to deactivate admin'
+  //       }
+  //     );
+  //   }
+  // };
 
   const handleEdit = (admin: any) => {
     setEditingAdmin(admin);

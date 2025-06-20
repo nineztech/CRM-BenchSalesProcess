@@ -254,32 +254,32 @@ const UserRegister: React.FC = () => {
     setEditingUserId(null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to deactivate this user?')) {
-      const token = localStorage.getItem('token');
+  // const handleDelete = async (id: number) => {
+  //   if (window.confirm('Are you sure you want to deactivate this user?')) {
+  //     const token = localStorage.getItem('token');
       
-      if (!token) {
-        toast.error('Authentication token not found. Please login again.');
-        return;
-      }
+  //     if (!token) {
+  //       toast.error('Authentication token not found. Please login again.');
+  //       return;
+  //     }
 
-      toast.promise(
-        axios.delete(`${API_BASE_URL}/user/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }),
-        {
-          loading: 'Deactivating user...',
-          success: () => {
-            fetchUsers();
-            return 'User deactivated successfully!';
-          },
-          error: (err) => err.response?.data?.message || 'Failed to deactivate user'
-        }
-      );
-    }
-  };
+  //     toast.promise(
+  //       axios.delete(`${API_BASE_URL}/user/${id}`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`
+  //         }
+  //       }),
+  //       {
+  //         loading: 'Deactivating user...',
+  //         success: () => {
+  //           fetchUsers();
+  //           return 'User deactivated successfully!';
+  //         },
+  //         error: (err) => err.response?.data?.message || 'Failed to deactivate user'
+  //       }
+  //     );
+  //   }
+  // };
 
   const handleEdit = (user: any) => {
     setFormData({
