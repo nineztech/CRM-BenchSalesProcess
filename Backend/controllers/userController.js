@@ -781,7 +781,7 @@ export const sendOtp = async (req, res) => {
     }
 
     // Find user by email
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email, role: 'user' } });
     if (!user) {
       return res.status(404).json({
         success: false,
