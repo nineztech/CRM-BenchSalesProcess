@@ -257,11 +257,41 @@ const PackagesPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name.includes('Charge') || name === 'firstYearSalaryPercentage' ? Number(value) : value
-    }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? Number(value) : value;
+    
+    setFormData(prev => {
+      const updatedData = {
+        ...prev,
+        [name]: newValue
+      };
+
+      // Real-time validation for initial price and enrollment charge
+      if (name === 'initialPrice' || name === 'enrollmentCharge') {
+        const initialPrice = name === 'initialPrice' ? Number(value) : updatedData.initialPrice;
+        const enrollmentCharge = name === 'enrollmentCharge' ? Number(value) : updatedData.enrollmentCharge;
+
+        if (initialPrice <= enrollmentCharge) {
+          setErrors(prev => ({
+            ...prev,
+            initialPrice: 'Initial price must be greater than enrollment charge'
+          }));
+        } else {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.initialPrice;
+            return newErrors;
+          });
+        }
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+
+      return updatedData;
+    });
   };
 
   const validateForm = () => {
@@ -277,6 +307,11 @@ const PackagesPage: React.FC = () => {
     
     if (!formData.enrollmentCharge || formData.enrollmentCharge <= 0) {
       newErrors.enrollmentCharge = 'Valid enrollment charge is required';
+    }
+
+    // Add validation for initial price being greater than enrollment charge
+    if (formData.initialPrice <= formData.enrollmentCharge) {
+      newErrors.initialPrice = 'Initial price must be greater than enrollment charge';
     }
     
     if (!formData.offerLetterCharge || formData.offerLetterCharge <= 0) {
@@ -719,6 +754,18 @@ const PackagesPage: React.FC = () => {
                   type="text"
                   value={featureInput}
                   onChange={(e) => setFeatureInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (featureInput.trim()) {
+                        setFormData(prev => ({
+                          ...prev,
+                          features: [...prev.features, featureInput.trim()]
+                        }));
+                        setFeatureInput('');
+                      }
+                    }
+                  }}
                   className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                   placeholder="Add a feature"
                 />
@@ -822,7 +869,7 @@ const PackagesPage: React.FC = () => {
                       type="number"
                       min="0"
                       max="100"
-                      value={discountFormData.percentage}
+                      value={discountFormData.percentage || ''}
                       onChange={(e) => setDiscountFormData(prev => ({ ...prev, percentage: Number(e.target.value) }))}
                       className="w-full p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="Enter percentage"
@@ -943,6 +990,23 @@ const PackagesPage: React.FC = () => {
 
                   {/* Add margin top to card content if countdown is present */}
                   <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
+                     {/* Discounted Price Section */}
+                    <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
+                      <div className="text-xs font-semibold text-gray-600 mb-1">Discounted Price</div>
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
+                        <span className={`text-2xl font-bold ${theme.accent}`}>
+                          ${pkg.discountedPrice || pkg.enrollmentCharge}
+                        </span>
+                      </div>
+                      {pkg.discounts && pkg.discounts.length > 0 && (
+                        <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
+                          <span className="text-xs font-medium text-red-600">
+                            Save ${(pkg.enrollmentCharge - (pkg.discountedPrice || pkg.enrollmentCharge)).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
@@ -972,6 +1036,8 @@ const PackagesPage: React.FC = () => {
                         </motion.button>
                       </div>
                     </div>
+
+                   
 
                     {/* Pricing Section - Always Visible */}
                     <div className="space-y-2 mb-4">
@@ -1037,24 +1103,42 @@ const PackagesPage: React.FC = () => {
                           Special Offers
                         </h4>
                         <div className="space-y-1.5">
-                          {pkg.discounts.map((discount, idx) => (
-                            <div
-                              key={idx}
-                              className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
-                            >
-                              <span className="text-sm font-medium text-gray-700">
-                                {discount.name} ({discount.percentage}%) - {discount.planName}
-                              </span>
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleEditDiscount(pkg, idx)}
-                                className="p-1.5 text-blue-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                          {pkg.discounts.map((discount, idx) => {
+                            const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
+                            const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
+                            
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
                               >
-                                <FaEdit size={14} />
-                              </motion.button>
-                            </div>
-                          ))}
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    {discount.name}
+                                  </span>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs font-semibold text-purple-600">
+                                      {discount.percentage}% OFF
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      (Save ${discountAmount.toFixed(2)})
+                                    </span>
+                                    <span className="text-xs font-medium text-green-600">
+                                      Final: ${priceAfterDiscount.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => handleEditDiscount(pkg, idx)}
+                                  className="p-1.5 text-blue-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                                >
+                                  <FaEdit size={14} />
+                                </motion.button>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

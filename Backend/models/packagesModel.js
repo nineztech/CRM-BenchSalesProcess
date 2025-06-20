@@ -46,7 +46,12 @@ const Packages = sequelize.define(
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0
+        min: 0,
+        isGreaterThanEnrollmentCharge(value) {
+          if (parseFloat(value) <= parseFloat(this.enrollmentCharge)) {
+            throw new Error('Initial price must be greater than enrollment charge');
+          }
+        }
       }
     },
     discountedPrice: {
