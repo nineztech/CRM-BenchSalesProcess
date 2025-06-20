@@ -628,34 +628,34 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const newRemarks = [...formData.remarks];
-    newRemarks[formData.remarks.length - 1] = {
-      ...newRemarks[formData.remarks.length - 1],
-      text: e.target.value
-    };
-    setFormData(prev => ({
-      ...prev,
-      remarks: newRemarks
-    }));
-  };
+  // const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  //   const newRemarks = [...formData.remarks];
+  //   newRemarks[formData.remarks.length - 1] = {
+  //     ...newRemarks[formData.remarks.length - 1],
+  //     text: e.target.value
+  //   };
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     remarks: newRemarks
+  //   }));
+  // };
 
-  const handleRemarkKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const currentRemark = formData.remarks[formData.remarks.length - 1].text.trim();
-      if (currentRemark) {
-        setFormData(prev => ({
-          ...prev,
-          remarks: [...prev.remarks, {
-            text: '',
-            createdAt: new Date().toISOString(),
-            createdBy: 0
-          }]
-        }));
-      }
-    }
-  };
+  // const handleRemarkKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  //   if (e.key === 'Enter' && !e.shiftKey) {
+  //     e.preventDefault();
+  //     const currentRemark = formData.remarks[formData.remarks.length - 1].text.trim();
+  //     if (currentRemark) {
+  //       setFormData(prev => ({
+  //         ...prev,
+  //         remarks: [...prev.remarks, {
+  //           text: '',
+  //           createdAt: new Date().toISOString(),
+  //           createdBy: 0
+  //         }]
+  //       }));
+  //     }
+  //   }
+  // };
 
   const handleCheckboxChange = (index: number) => {
     const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((currentPage - 1) * pageSize));

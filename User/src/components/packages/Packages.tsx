@@ -139,177 +139,184 @@ const PackagesPage: React.FC = () => {
       <div className="flex flex-col gap-8 max-w-[98%] p-6 font-inter">
         <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-6">Available Packages</h2>
         
-        {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence>
-            {packages.map((pkg, index) => {
-              const theme = colorThemes[index % colorThemes.length];
-              const nearestEndDate = getNearestDiscountEndDate(pkg.discounts);
-              const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
-              
-              return (
-                <motion.div
-                  key={pkg.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: index * 0.1 }}
-                  onHoverStart={() => setIsAnyCardHovered(true)}
-                  onHoverEnd={() => setIsAnyCardHovered(false)}
-                  className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
-                >
-                  {/* Countdown Timer - Only show if there are active discounts */}
-                  {hasActiveDiscount && nearestEndDate && (
-                    <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FaClock className="text-red-500" size={14} />
-                        <Countdown
-                          date={nearestEndDate}
-                          renderer={countdownRenderer}
-                        />
-                        <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
-                      </div>
-                      {pkg.discountedPrice && (
-                        <span className="text-sm font-bold text-red-600">${pkg.discountedPrice}</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Add margin top to card content if countdown is present */}
-                  <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
-                    {/* Discounted Price Section - Only show if there are active discounts */}
-                    {hasActiveDiscount && (
-                      <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
-                        <div className="text-xs font-semibold text-gray-600 mb-1">Discounted Price</div>
-                        <div className="flex items-center justify-center gap-3">
-                          <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
-                          <span className={`text-2xl font-bold ${theme.accent}`}>
-                            ${pkg.discountedPrice || pkg.enrollmentCharge}
-                          </span>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          /* Packages Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <AnimatePresence>
+              {packages.map((pkg, index) => {
+                const theme = colorThemes[index % colorThemes.length];
+                const nearestEndDate = getNearestDiscountEndDate(pkg.discounts);
+                const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
+                
+                return (
+                  <motion.div
+                    key={pkg.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: index * 0.1 }}
+                    onHoverStart={() => setIsAnyCardHovered(true)}
+                    onHoverEnd={() => setIsAnyCardHovered(false)}
+                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
+                  >
+                    {/* Countdown Timer - Only show if there are active discounts */}
+                    {hasActiveDiscount && nearestEndDate && (
+                      <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FaClock className="text-red-500" size={14} />
+                          <Countdown
+                            date={nearestEndDate}
+                            renderer={countdownRenderer}
+                          />
+                          <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
                         </div>
-                        {pkg.discounts && pkg.discounts.length > 0 && (
-                          <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
-                            <span className="text-xs font-medium text-red-600">
-                              Save ${(pkg.enrollmentCharge - (pkg.discountedPrice || pkg.enrollmentCharge)).toFixed(2)}
-                            </span>
-                          </div>
+                        {pkg.discountedPrice && (
+                          <span className="text-sm font-bold text-red-600">${pkg.discountedPrice}</span>
                         )}
                       </div>
                     )}
 
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
-                          {pkg.planName}
-                        </h3>
-                        <div className="flex items-center gap-1">
-                          <FaStar className={`${theme.icon} text-xs`} />
-                          <span className="text-xs text-gray-600 font-medium">Premium Plan</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pricing Section */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaMoneyBillWave size={12} />
+                    {/* Add margin top to card content if countdown is present */}
+                    <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
+                      {/* Discounted Price Section - Only show if there are active discounts */}
+                      {hasActiveDiscount && (
+                        <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Discounted Price</div>
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
+                            <span className={`text-2xl font-bold ${theme.accent}`}>
+                              ${pkg.discountedPrice || pkg.enrollmentCharge}
+                            </span>
                           </div>
-                          <span className="font-medium text-gray-700 text-xs">Enrollment</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 line-through">${pkg.initialPrice}</span>
-                          <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaGift size={12} />
-                          </div>
-                          <span className="font-medium text-gray-700 text-xs">Offer Letter</span>
-                        </div>
-                        <span className={`font-bold ${theme.accent} text-sm`}>${pkg.offerLetterCharge}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaMoneyBillWave size={12} />
-                          </div>
-                          <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
-                        </div>
-                        <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
-                      </div>
-                    </div>
-
-                    {/* Features Section */}
-                    {pkg.features && pkg.features.length > 0 && (
-                      <div className="space-y-2 mb-4">
-                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
-                          <FaUserGraduate size={12} />
-                          Package Features
-                        </h4>
-                        <div className="space-y-1.5">
-                          {pkg.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-white/80">
-                              <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                                <FaCheck size={10} />
-                              </div>
-                              <span className="text-xs font-medium text-gray-700">{feature}</span>
+                          {pkg.discounts && pkg.discounts.length > 0 && (
+                            <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
+                              <span className="text-xs font-medium text-red-600">
+                                Save ${(pkg.enrollmentCharge - (pkg.discountedPrice || pkg.enrollmentCharge)).toFixed(2)}
+                              </span>
                             </div>
-                          ))}
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
+                            {pkg.planName}
+                          </h3>
+                          <div className="flex items-center gap-1">
+                            <FaStar className={`${theme.icon} text-xs`} />
+                            <span className="text-xs text-gray-600 font-medium">Premium Plan</span>
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Special Offers Section */}
-                    {pkg.discounts.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
-                          <FaClock size={12} />
-                          Special Offers
-                        </h4>
-                        <div className="space-y-1.5">
-                          {pkg.discounts.map((discount, idx) => {
-                            const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
-                            const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
-                            
-                            return (
-                              <div
-                                key={idx}
-                                className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    {discount.name}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-semibold text-purple-600">
-                                      {discount.percentage}% OFF
+                      {/* Pricing Section */}
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaMoneyBillWave size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">Enrollment</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 line-through">${pkg.initialPrice}</span>
+                            <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaGift size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">Offer Letter</span>
+                          </div>
+                          <span className={`font-bold ${theme.accent} text-sm`}>${pkg.offerLetterCharge}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaMoneyBillWave size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
+                          </div>
+                          <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
+                        </div>
+                      </div>
+
+                      {/* Features Section */}
+                      {pkg.features && pkg.features.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                            <FaUserGraduate size={12} />
+                            Package Features
+                          </h4>
+                          <div className="space-y-1.5">
+                            {pkg.features.map((feature, idx) => (
+                              <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-white/80">
+                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                                  <FaCheck size={10} />
+                                </div>
+                                <span className="text-xs font-medium text-gray-700">{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Special Offers Section */}
+                      {pkg.discounts.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                            <FaClock size={12} />
+                            Special Offers
+                          </h4>
+                          <div className="space-y-1.5">
+                            {pkg.discounts.map((discount, idx) => {
+                              const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
+                              const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
+                              
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {discount.name}
                                     </span>
-                                    <span className="text-xs text-gray-500">
-                                      (Save ${discountAmount.toFixed(2)})
-                                    </span>
-                                    <span className="text-xs font-medium text-green-600">
-                                      Final: ${priceAfterDiscount.toFixed(2)}
-                                    </span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs font-semibold text-purple-600">
+                                        {discount.percentage}% OFF
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        (Save ${discountAmount.toFixed(2)})
+                                      </span>
+                                      <span className="text-xs font-medium text-green-600">
+                                        Final: ${priceAfterDiscount.toFixed(2)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </Layout>
   );
