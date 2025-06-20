@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaUserPlus, FaChartLine } from 'react-icons/fa';
+import { FaUserPlus, FaChartLine, FaGift } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../assets/Logo.webp';
@@ -53,6 +53,14 @@ const Sidebar: React.FC = () => {
             text="Sales" 
             isExpanded={isExpanded}
             isActive={location.pathname === '/sales'}
+          />
+
+          <SidebarItem 
+            icon={<FaGift />} 
+            to="/packages" 
+            text="Packages" 
+            isExpanded={isExpanded}
+            isActive={location.pathname === '/packages'}
           />
         </ul>
       </motion.div>

@@ -19,13 +19,14 @@ export const register = async (req, res) => {
       departmentId,
       subrole,
       phoneNumber,
-      username
+      username,
+      designation
     } = req.body;
 
     // Validate input
     if (
       !email || !password || !firstname || !lastname ||
-      !departmentId || !subrole || !phoneNumber || !username
+      !departmentId || !subrole || !phoneNumber || !username || !designation
     ) {
       return res.status(400).json({
         success: false,
@@ -78,6 +79,7 @@ export const register = async (req, res) => {
       subrole,
       phoneNumber,
       username,
+      designation,
       role: 'user' // Optional, since default is already 'user'
     });
 
@@ -109,6 +111,7 @@ export const register = async (req, res) => {
           departmentId: newUser.departmentId,
           subrole: newUser.subrole,
           phoneNumber: newUser.phoneNumber,
+          designation: newUser.designation,
           role: newUser.role,
           createdAt: newUser.createdAt
         },
@@ -442,6 +445,7 @@ export const getAllUsers = async (req, res) => {
         'departmentId',
         'subrole',
         'phoneNumber',
+        'designation',
         'status',
         'createdAt',
         'updatedAt'
@@ -939,6 +943,57 @@ export const resetPassword = async (req, res) => {
 
   } catch (error) {
     console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value. Must be either "active" or "inactive"'
+      });
+    }
+
+    // Find the user
+    const user = await User.findOne({ 
+      where: { 
+        id,
+        role: 'user' // Ensure we're only updating regular users
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update the status
+    await user.update({ status });
+
+    res.status(200).json({
+      success: true,
+      message: `User ${status === 'active' ? 'activated' : 'deactivated'} successfully`,
+      data: {
+        id: user.id,
+        email: user.email,
+        status: user.status,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Update user status error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

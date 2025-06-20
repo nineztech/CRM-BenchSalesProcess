@@ -490,7 +490,7 @@ export const sendOtp = async (req, res) => {
       return res.status(500).json({ message: 'Email service not configured' });
     }
 
-    const user = await User.findOne({ where: { email, role: 'admin' } });
+    const user = await User.findOne({ where: { email, role: 'admin',status:"active" } });
     if (!user) {
       return res.status(404).json({ message: 'Admin not found' });
     }

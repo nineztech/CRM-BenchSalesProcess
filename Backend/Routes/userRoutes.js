@@ -11,8 +11,10 @@ import {
   editUser,
   sendOtp,
   verifyOtp,
-  resetPassword
+  resetPassword,
+  updateUserStatus
 } from '../controllers/userController.js';
+import authenticateToken from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -25,7 +27,9 @@ router.put('/:id', editUser);
 router.delete('/:id', deleteUser);
 router.get('/profile', getProfile);
 router.post('/logout', logout);
-router.patch("/status/:id",updateOwnStatus)
+
+// Status update route
+router.patch('/:id/status', authenticateToken, updateUserStatus);
 
 // Password reset routes
 router.post('/send-otp', sendOtp);
