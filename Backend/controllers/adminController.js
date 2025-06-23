@@ -123,7 +123,7 @@ export const loginAdmin = async (req, res) => {
       where: { username, role: 'admin' },
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }]
     });
@@ -153,7 +153,7 @@ export const loginAdmin = async (req, res) => {
       role: admin.role,
       departmentId: admin.departmentId,
       subrole: admin.subrole,
-      department: admin.department,
+      department: admin.userDepartment,
       status: admin.status,
       createdAt: admin.createdAt,
       updatedAt: admin.updatedAt
@@ -193,7 +193,7 @@ export const getAllAdmins = async (req, res) => {
       ],
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }],
       offset,
