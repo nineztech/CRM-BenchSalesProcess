@@ -7,13 +7,13 @@ import Permission from "../models/permissionsModel.js";
 // Add RolePermission
 export const addRolePermission = async (req, res) => {
   try {
-    const { dept_id, subrole, hasAccessTo } = req.body;
+    const { activity_id, dept_id, subrole, canView, canAdd, canEdit, canDelete } = req.body;
     const userId = req.user?.id;
 
-    if (!dept_id || !subrole || !hasAccessTo) {
+    if (!activity_id || !dept_id || !subrole) {
       return res.status(400).json({
         success: false,
-        message: "Department ID, subrole, and access permissions are required"
+        message: "Activity ID, department ID, and subrole are required"
       });
     }
 
@@ -33,59 +33,30 @@ export const addRolePermission = async (req, res) => {
       });
     }
 
-    // Check if role permission already exists for this department and subrole
-    const existingRolePermission = await RolePermission.findOne({
-      where: { dept_id, subrole }
-    });
+    // Check if activity exists and belongs to the department
+    const activity = await Activity.findByPk(activity_id);
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: "Activity not found"
+      });
+    }
 
-    // if (existingRolePermission) {
-    //   return res.status(409).json({
-    //     success: false,
-    //     message: "Role permission already exists for this department and subrole"
-    //   });
-    // }
-
-    // Validate hasAccessTo format and activity IDs
-    for (const [activityId, permissionIds] of Object.entries(hasAccessTo)) {
-      // Validate activity
-      const activity = await Activity.findByPk(activityId);
-      if (!activity) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid activity ID: ${activityId}`
-        });
-      }
-      if (activity.dept_id !== dept_id) {
-        return res.status(400).json({
-          success: false,
-          message: `Activity ${activityId} does not belong to the specified department`
-        });
-      }
-
-      // Validate permission IDs
-      if (!Array.isArray(permissionIds)) {
-        return res.status(400).json({
-          success: false,
-          message: `Permissions for activity ${activityId} must be an array of permission IDs`
-        });
-      }
-
-      // Check if all permission IDs exist
-      for (const permId of permissionIds) {
-        const permission = await Permission.findByPk(permId);
-        if (!permission) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid permission ID: ${permId}`
-          });
-        }
-      }
+    if (!activity.dept_ids.includes(dept_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Activity does not belong to the specified department"
+      });
     }
 
     const newRolePermission = await RolePermission.create({
+      activity_id,
       dept_id,
       subrole,
-      hasAccessTo,
+      canView: canView || false,
+      canAdd: canAdd || false,
+      canEdit: canEdit || false,
+      canDelete: canDelete || false,
       createdBy: userId
     });
 
@@ -93,7 +64,11 @@ export const addRolePermission = async (req, res) => {
       include: [
         {
           model: Department,
-          as: 'department'
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
         },
         {
           model: User,
@@ -122,7 +97,11 @@ export const getAllRolePermissions = async (req, res) => {
       include: [
         {
           model: Department,
-          as: 'department'
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
         },
         {
           model: User,
@@ -152,7 +131,11 @@ export const getRolePermissionById = async (req, res) => {
       include: [
         {
           model: Department,
-          as: 'department'
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
         },
         {
           model: User,
@@ -183,11 +166,11 @@ export const getRolePermissionById = async (req, res) => {
 export const updateRolePermission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hasAccessTo } = req.body;
+    const { canView, canAdd, canEdit, canDelete } = req.body;
     const userId = req.user?.id;
 
     const rolePermission = await RolePermission.findByPk(id, {
-      include: [{ model: Department, as: 'department' }]
+      include: [{ model: Department, as: 'roleDepartment' }]
     });
 
     if (!rolePermission) {
@@ -197,47 +180,11 @@ export const updateRolePermission = async (req, res) => {
       });
     }
 
-    // Validate hasAccessTo format and activity IDs if provided
-    if (hasAccessTo) {
-      for (const [activityId, permissionIds] of Object.entries(hasAccessTo)) {
-        // Validate activity
-        const activity = await Activity.findByPk(activityId);
-        if (!activity) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid activity ID: ${activityId}`
-          });
-        }
-        if (activity.dept_id !== rolePermission.dept_id) {
-          return res.status(400).json({
-            success: false,
-            message: `Activity ${activityId} does not belong to the department`
-          });
-        }
-
-        // Validate permission IDs
-        if (!Array.isArray(permissionIds)) {
-          return res.status(400).json({
-            success: false,
-            message: `Permissions for activity ${activityId} must be an array of permission IDs`
-          });
-        }
-
-        // Check if all permission IDs exist
-        for (const permId of permissionIds) {
-          const permission = await Permission.findByPk(permId);
-          if (!permission) {
-            return res.status(400).json({
-              success: false,
-              message: `Invalid permission ID: ${permId}`
-            });
-          }
-        }
-      }
-    }
-
     await rolePermission.update({
-      hasAccessTo: hasAccessTo || rolePermission.hasAccessTo,
+      canView: typeof canView === 'boolean' ? canView : rolePermission.canView,
+      canAdd: typeof canAdd === 'boolean' ? canAdd : rolePermission.canAdd,
+      canEdit: typeof canEdit === 'boolean' ? canEdit : rolePermission.canEdit,
+      canDelete: typeof canDelete === 'boolean' ? canDelete : rolePermission.canDelete,
       updatedBy: userId
     });
 
@@ -245,7 +192,11 @@ export const updateRolePermission = async (req, res) => {
       include: [
         {
           model: Department,
-          as: 'department'
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
         },
         {
           model: User,
@@ -309,7 +260,11 @@ export const getRolePermissionsByDepartment = async (req, res) => {
       include: [
         {
           model: Department,
-          as: 'department'
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
         },
         {
           model: User,

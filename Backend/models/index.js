@@ -18,20 +18,34 @@ User.hasMany(Department, { foreignKey: 'updatedBy', as: 'updatedDepartments' });
 // User-Department association for department and subroles
 User.belongsTo(Department, { 
   foreignKey: 'departmentId',
-  as: 'department'
+  as: 'userDepartment'
 });
 
 Department.hasMany(User, {
   foreignKey: 'departmentId',
-  as: 'users'
+  as: 'departmentUsers'
 });
 
-// Activity associations
-Activity.belongsTo(Department, { foreignKey: 'dept_id', as: 'department' });
+// Activity associations - Using a custom method to handle JSON dept_ids
+Activity.getDepartments = async function(activityId) {
+  const activity = await this.findByPk(activityId);
+  if (!activity || !activity.dept_ids) return [];
+  return await Department.findAll({
+    where: {
+      id: activity.dept_ids
+    }
+  });
+};
+
+Department.getActivities = async function(departmentId) {
+  return await Activity.findAll({
+    where: sequelize.literal(`JSON_CONTAINS(dept_ids, '${departmentId}')`),
+  });
+};
+
 Activity.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 Activity.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 
-Department.hasMany(Activity, { foreignKey: 'dept_id', as: 'activities' });
 User.hasMany(Activity, { foreignKey: 'createdBy', as: 'createdActivities' });
 User.hasMany(Activity, { foreignKey: 'updatedBy', as: 'updatedActivities' });
 
@@ -43,18 +57,20 @@ User.hasMany(Permission, { foreignKey: 'createdBy', as: 'createdPermissions' });
 User.hasMany(Permission, { foreignKey: 'updatedBy', as: 'updatedPermissions' });
 
 // RolePermission associations
-RolePermission.belongsTo(Department, { foreignKey: 'dept_id', as: 'department' });
+RolePermission.belongsTo(Department, { foreignKey: 'dept_id', as: 'roleDepartment' });
+RolePermission.belongsTo(Activity, { foreignKey: 'activity_id', as: 'roleActivity' });
 RolePermission.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 RolePermission.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 
-Department.hasMany(RolePermission, { foreignKey: 'dept_id', as: 'rolePermissions' });
+Department.hasMany(RolePermission, { foreignKey: 'dept_id', as: 'departmentRolePermissions' });
+Activity.hasMany(RolePermission, { foreignKey: 'activity_id', as: 'activityRolePermissions' });
 User.hasMany(RolePermission, { foreignKey: 'createdBy', as: 'createdRolePermissions' });
 User.hasMany(RolePermission, { foreignKey: 'updatedBy', as: 'updatedRolePermissions' });
 
 // Add a virtual field to User model to access department subroles
 User.prototype.getSubroles = async function() {
-  if (this.department && this.department.subroles) {
-    return this.department.subroles;
+  if (this.userDepartment && this.userDepartment.subroles) {
+    return this.userDepartment.subroles;
   }
   return [];
 };

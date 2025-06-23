@@ -169,7 +169,7 @@ export const login = async (req, res) => {
       where: { username },
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }]
     });
@@ -216,7 +216,7 @@ export const login = async (req, res) => {
       role: user.role,
       departmentId: user.departmentId,
       subrole: user.subrole,
-      department: user.department,
+      department: user.userDepartment,
       status: user.status,
       is_special: user.is_special,
       createdAt: user.createdAt,
@@ -250,7 +250,7 @@ export const getProfile = async (req, res) => {
     const user = await User.findByPk(userId, {
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }]
     });
@@ -272,7 +272,7 @@ export const getProfile = async (req, res) => {
       role: user.role,
       departmentId: user.departmentId,
       subrole: user.subrole,
-      department: user.department,
+      department: user.userDepartment,
       status: user.status,
       is_special: user.is_special,
       createdAt: user.createdAt,
@@ -458,7 +458,7 @@ export const getAllUsers = async (req, res) => {
       ],
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }],
       order: [[sortBy, sortOrder]],
@@ -549,7 +549,7 @@ export const getUsersByDepartment = async (req, res) => {
       ],
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }],
       order: [[sortBy, sortOrder]],
@@ -1116,7 +1116,7 @@ export const getSpecialUsers = async (req, res) => {
       ],
       include: [{
         model: Department,
-        as: 'department',
+        as: 'userDepartment',
         attributes: ['departmentName']
       }],
       order: [[sortBy, sortOrder]],
