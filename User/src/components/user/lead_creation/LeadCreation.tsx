@@ -208,6 +208,9 @@ const LeadCreationComponent: React.FC = () => {
     statusGroup: string;
   } | null>(null);
 
+  // Add new state for packages
+  const [packages, setPackages] = useState([]);
+
   // Fetch leads
   const fetchLeads = async () => {
     try {
@@ -979,6 +982,76 @@ const LeadCreationComponent: React.FC = () => {
     fetchSalesExecutives();
   }, []);
 
+  // Add function to fetch packages
+  const fetchPackages = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/packages/all`);
+      if (response.data.success) {
+        setPackages(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+    }
+  };
+
+  // Add useEffect to fetch packages when component mounts
+  useEffect(() => {
+    fetchPackages();
+  }, []);
+
+  // Add function to format currency
+  const formatCurrency = (amount: number | bigint) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  // Add function to generate email body
+  const generateEmailBody = (lead: { firstName: any; lastName: any; }, packages: any[]) => {
+    const packageDetails = packages.map((pkg: { discounts: any[]; planName: any; enrollmentCharge: number | bigint; discountedPrice: any; initialPrice: number | bigint; offerLetterCharge: number | bigint; firstYearSalaryPercentage: any; features: any[]; }) => {
+      const activeDiscount = pkg.discounts && pkg.discounts.length > 0 
+        ? Math.max(...pkg.discounts.map((d: { percentage: any; }) => d.percentage))
+        : null;
+
+      return `
+${pkg.planName}
+• Enrollment: **${formatCurrency(pkg.enrollmentCharge)}**${pkg.discountedPrice ? ` (Original: ~~${formatCurrency(pkg.initialPrice)}~~)` : ''}
+• Offer Letter: **${formatCurrency(pkg.offerLetterCharge)}**
+• First Year: **${pkg.firstYearSalaryPercentage}%** of salary
+${pkg.features.length > 0 ? `\nFeatures:\n${pkg.features.map((f: any) => `• ${f}`).join('\n')}` : ''}
+${activeDiscount ? `\n*Active Discount: Up to **${activeDiscount}% off**!*` : ''}
+-------------------`;
+    }).join('\n\n');
+
+    return `Dear ${lead.firstName} ${lead.lastName},
+
+Thank you for your valuable time.
+
+As discussed, I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.
+
+Why Choose Ninez Tech?
+Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.
+
+Our Available Plans:
+
+${packageDetails}
+
+Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.
+
+Looking forward to helping you take the next big step in your career!
+
+Best regards,
+${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
+  };
+
+  // Update handleEmailClick function
+  const handleEmailClick = (lead: Lead) => {
+    const emailBody = generateEmailBody(lead, packages);
+    const mailtoLink = `mailto:${lead.primaryEmail}?subject=Embark on a Success Journey with Ninez Tech&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = mailtoLink;
+  };
+
   return (
     <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
       <div className="max-w-[1350px] mx-auto">
@@ -1456,6 +1529,7 @@ const LeadCreationComponent: React.FC = () => {
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Send Email</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
@@ -1488,6 +1562,14 @@ const LeadCreationComponent: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                         {lead.primaryEmail}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                        <button
+                          onClick={() => handleEmailClick(lead)}
+                          className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                        >
+                          Send Email
+                        </button>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                         {lead.primaryContact}

@@ -231,4 +231,135 @@ export const sendOtpEmail = async (userData) => {
     console.error('Error sending OTP email:', error);
     return false;
   }
+};
+
+export const sendPackageDetailsEmail = async (userData, packages) => {
+  console.log('Attempting to send package details email to:', userData.email);
+
+  // Function to format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  // Generate HTML for package features
+  const getFeaturesList = (features) => {
+    return features.map(feature => `<li style="margin-bottom: 8px;">✓ ${feature}</li>`).join('');
+  };
+
+  // Generate package cards HTML
+  const getPackageCards = (packages) => {
+    return packages.map(pkg => `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 20px;">
+        <h3 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">${pkg.planName}</h3>
+        
+        <div style="margin-bottom: 16px;">
+          <p style="font-size: 24px; font-weight: bold; color: #334155; margin: 0;">
+            ${formatCurrency(pkg.enrollmentCharge)}
+            ${pkg.discountedPrice ? `
+              <span style="text-decoration: line-through; font-size: 16px; color: #64748b; margin-left: 8px;">
+                ${formatCurrency(pkg.initialPrice)}
+              </span>
+            ` : ''}
+          </p>
+          <p style="color: #64748b; margin: 8px 0 0 0;">at enrollment</p>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <p style="font-size: 18px; font-weight: bold; color: #334155; margin: 0;">
+            ${formatCurrency(pkg.offerLetterCharge)}
+          </p>
+          <p style="color: #64748b; margin: 8px 0 0 0;">at offer letter</p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <p style="font-size: 16px; color: #334155; margin: 0;">
+            <strong>${pkg.firstYearSalaryPercentage}%</strong> of first-year salary
+          </p>
+        </div>
+
+        ${pkg.features.length > 0 ? `
+          <div style="margin-bottom: 24px;">
+            <h4 style="color: #334155; font-size: 16px; margin: 0 0 12px 0;">Features:</h4>
+            <ul style="list-style-type: none; padding: 0; margin: 0;">
+              ${getFeaturesList(pkg.features)}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${pkg.discounts.length > 0 ? `
+          <div style="background-color: #fee2e2; border-radius: 6px; padding: 12px; margin-top: 16px;">
+            <p style="color: #ef4444; font-weight: 500; margin: 0;">
+              Active Discount: Up to ${Math.max(...pkg.discounts.map(d => d.percentage))}% off
+            </p>
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+  };
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    to: userData.email,
+    subject: 'Embark on a Success Journey with Ninez Tech',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <!-- Header -->
+            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Welcome to Ninez Tech</h1>
+            </div>
+
+            <!-- Content -->
+            <div class="content" style="padding: 32px 40px;">
+              <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Hello ${userData.firstName},</p>
+              <p style="color: #64748b; font-size: 15px; margin: 0 0 32px 0;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+
+              <div style="margin-bottom: 32px;">
+                <h2 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">Why Choose Ninez Tech?</h2>
+                <p style="color: #64748b; line-height: 1.6;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
+              </div>
+
+              <div style="margin-bottom: 32px;">
+                <h2 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">Our Available Plans</h2>
+                ${getPackageCards(packages)}
+              </div>
+
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 15px; margin: 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+  };
+
+  try {
+    console.log('Sending package details email...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Package details email sent successfully:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending package details email:', error);
+    return false;
+  }
 }; 

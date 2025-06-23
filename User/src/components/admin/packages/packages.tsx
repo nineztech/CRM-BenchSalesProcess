@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck, FaStar } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck } from 'react-icons/fa';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../common/layout/Layout';
@@ -102,6 +102,16 @@ const getNearestDiscountEndDate = (discounts: Package['discounts']): Date | null
   });
 
   return nearestEndDate;
+};
+
+// Add a new function to filter active discounts
+const getActiveDiscounts = (discounts: Package['discounts']): Package['discounts'] => {
+  const now = new Date();
+  return discounts.filter(discount => {
+    if (!discount.endDate || !discount.endTime) return false;
+    const endDate = new Date(`${discount.endDate}T${discount.endTime}`);
+    return endDate.getTime() > now.getTime();
+  });
 };
 
 // const CountdownTimer: React.FC<{ endDate: string; endTime: string }> = ({ endDate, endTime }) => {
@@ -957,8 +967,17 @@ const PackagesPage: React.FC = () => {
           <AnimatePresence>
             {packages.map((pkg, index) => {
               const theme = colorThemes[index % colorThemes.length];
-              const nearestEndDate = getNearestDiscountEndDate(pkg.discounts);
+              const activeDiscounts = getActiveDiscounts(pkg.discounts);
+              const nearestEndDate = getNearestDiscountEndDate(activeDiscounts);
               const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
+              
+              // Calculate the current valid discounted price
+              let currentDiscountedPrice = pkg.enrollmentCharge;
+              if (hasActiveDiscount && activeDiscounts.length > 0) {
+                const highestDiscount = Math.max(...activeDiscounts.map(d => d.percentage));
+                const discountAmount = (pkg.enrollmentCharge * highestDiscount) / 100;
+                currentDiscountedPrice = pkg.enrollmentCharge - discountAmount;
+              }
               
               return (
                 <motion.div
@@ -982,40 +1001,39 @@ const PackagesPage: React.FC = () => {
                         />
                         <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
                       </div>
-                      {pkg.discountedPrice && (
-                        <span className="text-sm font-bold text-red-600">${pkg.discountedPrice}</span>
-                      )}
+                      <span className="text-sm font-bold text-red-600">${currentDiscountedPrice}</span>
                     </div>
                   )}
 
                   {/* Add margin top to card content if countdown is present */}
                   <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
-                     {/* Discounted Price Section */}
-                    <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
-                      <div className="text-xs font-semibold text-gray-600 mb-1">Discounted Price</div>
-                      <div className="flex items-center justify-center gap-3">
-                        <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
-                        <span className={`text-2xl font-bold ${theme.accent}`}>
-                          ${pkg.discountedPrice || pkg.enrollmentCharge}
-                        </span>
-                      </div>
-                      {pkg.discounts && pkg.discounts.length > 0 && (
-                        <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
-                          <span className="text-xs font-medium text-red-600">
-                            Save ${(pkg.enrollmentCharge - (pkg.discountedPrice || pkg.enrollmentCharge)).toFixed(2)}
+                    {/* Discounted Price Section - Only show when there's an active discount */}
+                    {hasActiveDiscount && (
+                      <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
+                        <div className="text-xs font-semibold text-gray-600 mb-1">Price</div>
+                        <div className="flex items-center justify-center gap-3">
+                          <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
+                          <span className={`text-2xl font-bold ${theme.accent}`}>
+                            ${currentDiscountedPrice}
                           </span>
                         </div>
-                      )}
-                    </div>
+                        <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
+                          <span className="text-xs font-medium text-red-600">
+                            Save ${(pkg.enrollmentCharge - currentDiscountedPrice).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
                           {pkg.planName}
                         </h3>
-                        <div className="flex items-center gap-1">
+                        {/* <div className="flex items-center gap-1">
                           <FaStar className={`${theme.icon} text-xs`} />
                           <span className="text-xs text-gray-600 font-medium">Premium Plan</span>
-                        </div>
+                        </div> */}
                       </div>
                       <div className="flex gap-1.5">
                         <motion.button
@@ -1092,15 +1110,15 @@ const PackagesPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Special Offers Section - Always Visible */}
-                    {pkg.discounts.length > 0 && (
+                    {/* Special Offers Section - Show only active discounts */}
+                    {activeDiscounts.length > 0 && (
                       <div className="space-y-2">
                         <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
                           <FaClock size={12} />
                           Special Offers
                         </h4>
                         <div className="space-y-1.5">
-                          {pkg.discounts.map((discount, idx) => {
+                          {activeDiscounts.map((discount, idx) => {
                             const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
                             const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
                             

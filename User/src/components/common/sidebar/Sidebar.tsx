@@ -51,33 +51,45 @@ const Sidebar: React.FC = () => {
 
         {/* Menu List */}
         <ul className="mt-4">
-          <SidebarItem 
-            icon={<FaUserPlus />} 
-            to="/leadcreation" 
-            text="Lead Creation" 
-            isExpanded={isExpanded}
-            isActive={location.pathname === '/leadcreation'}
-          />
-          
-          <SidebarItem 
-            icon={<FaChartLine />} 
-            to="/sales" 
-            text="Sales" 
-            isExpanded={isExpanded}
-            isActive={location.pathname === '/sales'}
-          />
+          {/* User menu items */}
+          {!isAdmin && (
+            <>
+              <SidebarItem 
+                icon={<FaUserPlus />} 
+                to="/leadcreation" 
+                text="Lead Creation" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/leadcreation'}
+              />
+              
+              <SidebarItem 
+                icon={<FaChartLine />} 
+                to="/sales" 
+                text="Sales" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/sales'}
+              />
 
-          <SidebarItem 
-            icon={<FaGift />} 
-            to={isAdmin ? "/adminpackages" : "/packages"} 
-            text="Packages" 
-            isExpanded={isExpanded}
-            isActive={isAdmin ? location.pathname === '/adminpackages' : location.pathname === '/packages'}
-          />
+              <SidebarItem 
+                icon={<FaGift />} 
+                to="/packages" 
+                text="Packages" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/packages'}
+              />
+            </>
+          )}
 
           {/* Admin-only menu items */}
           {isAdmin && (
             <>
+              <SidebarItem 
+                icon={<FaGift />} 
+                to="/adminpackages" 
+                text="Packages" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/adminpackages'}
+              />
 
               <SidebarItem 
                 icon={<FaUserPlus />} 
@@ -86,6 +98,7 @@ const Sidebar: React.FC = () => {
                 isExpanded={isExpanded}
                 isActive={location.pathname === '/admins'}
               />
+
               <SidebarItem 
                 icon={<FaBuilding />} 
                 to="/departments" 
@@ -93,6 +106,7 @@ const Sidebar: React.FC = () => {
                 isExpanded={isExpanded}
                 isActive={location.pathname === '/departments'}
               />
+
               <SidebarItem 
                 icon={<FaUserPlus />} 
                 to="/roles" 
@@ -100,6 +114,7 @@ const Sidebar: React.FC = () => {
                 isExpanded={isExpanded}
                 isActive={location.pathname === '/roles'}
               />
+
               <SidebarItem 
                 icon={<FaUsers />} 
                 to="/users" 

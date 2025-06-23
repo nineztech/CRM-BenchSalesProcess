@@ -17,6 +17,7 @@ import {
   getSpecialUsers
 } from '../controllers/userController.js';
 import authenticateToken from '../middleware/auth.js';
+import { sendPackageDetailsEmail } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -41,5 +42,21 @@ router.patch('/:id/special-status', authenticateToken, toggleSpecialStatus);
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
+
+router.post('/email/send-package-details', authenticateToken, async (req, res) => {
+  try {
+    const { userData, packages } = req.body;
+    const result = await sendPackageDetailsEmail(userData, packages);
+    
+    if (result) {
+      res.json({ success: true, message: 'Package details email sent successfully' });
+    } else {
+      res.status(500).json({ success: false, message: 'Failed to send email' });
+    }
+  } catch (error) {
+    console.error('Error sending package details email:', error);
+    res.status(500).json({ success: false, message: 'Failed to send email' });
+  }
+});
 
 export default router;
