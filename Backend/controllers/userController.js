@@ -151,19 +151,19 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
     // Validate input
-    if (!email || !password) {
+    if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required'
+        message: 'Username and password are required'
       });
     }
 
-    // Find user by email with department info
+    // Find user by username with department info
     const user = await User.findOne({ 
-      where: { email },
+      where: { username },
       include: [{
         model: Department,
         as: 'department',
@@ -174,7 +174,7 @@ export const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid username or password'
       });
     }
 
@@ -191,13 +191,13 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid username or password'
       });
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -784,8 +784,8 @@ export const sendOtp = async (req, res) => {
       });
     }
 
-    // Find user by email
-    const user = await User.findOne({ where: { email, role: 'user' } });
+    // Find user by email (both admin and regular users)
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -842,7 +842,7 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Find user by email
+    // Find user by email (both admin and regular users)
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({
@@ -899,7 +899,7 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Find user by email
+    // Find user by email (both admin and regular users)
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import logo from '../../assets/Logo.webp';
-import { FiMail, FiKey, FiShield } from 'react-icons/fi';
+import logo from '../../../assets/Logo.webp';
+import { FiMail, FiKey, FiShield, FiUser } from 'react-icons/fi';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 interface LocationState {
   from?: string;
@@ -14,6 +14,8 @@ interface LoginResponse {
     user: {
       id: number;
       email: string;
+      username: string;
+      role: string;
       status: string;
       createdAt: string;
       updatedAt: string;
@@ -25,6 +27,7 @@ interface LoginResponse {
 export const UserLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -78,7 +81,7 @@ export const UserLogin = () => {
           'Accept': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data: LoginResponse = await response.json();
@@ -87,11 +90,13 @@ export const UserLogin = () => {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         const state = location.state as LocationState;
-        const from = state?.from || '/dashboard';
+        // Redirect based on user role
+        const redirectPath = data.data.user.role === 'admin' ? '/adminpackages' : '/dashboard';
+        const from = state?.from || redirectPath;
         console.log('Login successful, redirecting to:', from);
         navigate(from);
       } else {
-        setError(data.message || 'Invalid email or password');
+        setError(data.message || 'Invalid username or password');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -205,7 +210,7 @@ export const UserLogin = () => {
             </div>
             
             <h2 className="text-center mb-10 text-gray-100 text-2xl font-semibold -mt-8">
-              User Login
+              Login
             </h2>
             
             {error && (
@@ -216,25 +221,33 @@ export const UserLogin = () => {
             
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
               <label className="flex flex-col font-medium text-sm">
-                Email:
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-1 p-2 border border-gray-300 rounded-md text-sm text-black focus:border-blue-500 focus:outline-none"
-                />
+                Username:
+                <div className="relative">
+                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="mt-1 pl-10 p-2 w-full border border-gray-300 rounded-md text-sm text-black focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter your username"
+                  />
+                </div>
               </label>
               
               <label className="flex flex-col font-medium text-sm">
                 Password:
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="mt-1 p-2 border border-gray-300 rounded-md text-sm text-black focus:border-blue-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <FiKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="mt-1 pl-10 p-2 w-full border border-gray-300 rounded-md text-sm text-black focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter your password"
+                  />
+                </div>
               </label>
               
               <button

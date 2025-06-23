@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
 // import Sidebar from '../sidebar/Sidebar';
-import LogoIcon from "../../assets/xls_logo.webp"
+import LogoIcon from "../../../assets/xls_logo.webp"
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneInput from 'react-phone-input-2';

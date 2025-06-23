@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { FaUserPlus, FaChartLine, FaGift } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import logoIcon from '../../assets/Logo.webp';
+import logoIcon from '../../../assets/Logo.webp';
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const location = useLocation();
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserRole(user.role || '');
+    }
+  }, []);
+
+  const isAdmin = userRole === 'admin';
 
   return (
     <>
@@ -19,6 +30,7 @@ const Sidebar: React.FC = () => {
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
       >
+
         {/* Logo Section */}
         <div className="flex items-center h-16 px-3 border-b border-gray-200">
           <img src={logoIcon} alt="Logo" className="w-7 h-7 object-contain" />
@@ -57,11 +69,46 @@ const Sidebar: React.FC = () => {
 
           <SidebarItem 
             icon={<FaGift />} 
-            to="/packages" 
+            to={isAdmin ? "/adminpackages" : "/packages"} 
             text="Packages" 
             isExpanded={isExpanded}
-            isActive={location.pathname === '/packages'}
+            isActive={isAdmin ? location.pathname === '/adminpackages' : location.pathname === '/packages'}
           />
+
+          {/* Admin-only menu items */}
+          {isAdmin && (
+            <>
+
+              <SidebarItem 
+                icon={<FaUserPlus />} 
+                to="/admins" 
+                text="Add Admin" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/admins'}
+              />
+              <SidebarItem 
+                icon={<FaBuilding />} 
+                to="/departments" 
+                text="Department" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/departments'}
+              />
+              <SidebarItem 
+                icon={<FaUserPlus />} 
+                to="/roles" 
+                text="Roles & Rights" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/roles'}
+              />
+              <SidebarItem 
+                icon={<FaUsers />} 
+                to="/users" 
+                text="User Creation" 
+                isExpanded={isExpanded}
+                isActive={location.pathname === '/users'}
+              />
+            </>
+          )}
         </ul>
       </motion.div>
 

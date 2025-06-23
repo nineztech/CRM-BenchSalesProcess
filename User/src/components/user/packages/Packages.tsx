@@ -4,7 +4,7 @@ import axios, { AxiosError } from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import Countdown from 'react-countdown';
 import toast from 'react-hot-toast';
-import Layout from '../layout/Layout';
+import Layout from '../../common/layout/Layout';
 
 interface Package {
   id: number;

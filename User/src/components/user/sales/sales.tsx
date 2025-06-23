@@ -1,7 +1,7 @@
 import React, { useState, } from 'react';
 import * as XLSX from 'xlsx';
-import Sidebar from '../sidebar/Sidebar';
-import LogoIcon from "../../assets/xls_logo.webp"
+import Sidebar from '../../common/sidebar/Sidebar';
+import LogoIcon from "../../../assets/xls_logo.webp"
 
 interface Lead {
   candidateName: string;

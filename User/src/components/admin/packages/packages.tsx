@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck, FaStar } from 'react-icons/fa';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../../Components/Layout/Layout';
+import Layout from '../../common/layout/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import Countdown from 'react-countdown';
 import toast from 'react-hot-toast';
