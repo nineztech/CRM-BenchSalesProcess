@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaEdit } from 'react-icons/fa';
 import Layout from '../../common/layout/Layout';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 
 interface Department {
   id: number;
@@ -43,6 +44,7 @@ interface AdminUser {
   username: string;
   email: string;
   status: string;
+  is_special?: boolean;
 }
 
 interface Rights {
@@ -52,6 +54,9 @@ interface Rights {
 }
 
 const AdminRoles: React.FC = () => {
+  const location = useLocation();
+  const specialUserData = location.state as { isSpecialUser: boolean; specialUserId: number; specialUserName: string } | null;
+
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -70,6 +75,10 @@ const AdminRoles: React.FC = () => {
 
   // Add new state for loading existing permissions
   const [existingPermissions, setExistingPermissions] = useState<RolePermission | null>(null);
+
+  const [isSpecial, setIsSpecial] = useState(false);
+  const [selectedSpecialUser, setSelectedSpecialUser] = useState('');
+  const [specialUsers, setSpecialUsers] = useState<AdminUser[]>([]);
 
   // Fetch all departments and permissions on component mount
   useEffect(() => {
@@ -226,16 +235,50 @@ const AdminRoles: React.FC = () => {
     fetchExistingPermissions();
   }, [selectedDepartment, selectedRole, activities, permissions]);
 
+  // Add new effect to fetch special users
+  useEffect(() => {
+    const fetchSpecialUsers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/special`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.data.success) {
+          // Set special users directly from the response
+          setSpecialUsers(response.data.data.users);
+        }
+      } catch (error) {
+        console.error('Error fetching special users:', error);
+      }
+    };
+
+    if (isSpecial) {
+      fetchSpecialUsers();
+    }
+  }, [isSpecial]);
+
   // Update subroles and reset selections when isAdmin changes
   useEffect(() => {
     if (isAdmin) {
       setSelectedDepartment('');
       setSelectedRole('');
       setCurrentDepartmentSubroles([]);
+      setIsSpecial(false);
+      setSelectedSpecialUser('');
     } else {
       setSelectedAdminUser('');
     }
   }, [isAdmin]);
+
+  // Update useEffect to handle special user data
+  useEffect(() => {
+    if (specialUserData?.isSpecialUser) {
+      setIsSpecial(true);
+      setSelectedSpecialUser(specialUserData.specialUserId.toString());
+    }
+  }, [specialUserData]);
 
   const handlePermissionChange = (activity: string, permission: string) => {
     setRights(prev => {
@@ -451,6 +494,42 @@ const AdminRoles: React.FC = () => {
                 <option key={role} value={role}>{role}</option>
               ))}
             </select>
+
+            {/* Is Special Checkbox */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isSpecial"
+                checked={isSpecial}
+                onChange={(e) => {
+                  setIsSpecial(e.target.checked);
+                  if (!e.target.checked) {
+                    setSelectedSpecialUser('');
+                  }
+                }}
+                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                disabled={isAdmin}
+              />
+              <label htmlFor="isSpecial" className="text-sm text-gray-600">
+                Is Special
+              </label>
+            </div>
+
+            {/* Special Users Dropdown */}
+            {isSpecial && (
+              <select 
+                value={selectedSpecialUser} 
+                onChange={(e) => setSelectedSpecialUser(e.target.value)}
+                className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+              >
+                <option value="" disabled hidden>Select Special User *</option>
+                {specialUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstname} {user.lastname}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

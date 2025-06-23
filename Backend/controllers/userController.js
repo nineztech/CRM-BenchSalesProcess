@@ -20,7 +20,8 @@ export const register = async (req, res) => {
       subrole,
       phoneNumber,
       username,
-      designation
+      designation,
+      is_special
     } = req.body;
 
     // Validate input
@@ -69,7 +70,7 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid subrole for this department' });
     }
 
-    // Create user
+    // Create user with is_special as number
     const newUser = await User.create({
       email,
       password,
@@ -80,6 +81,7 @@ export const register = async (req, res) => {
       phoneNumber,
       username,
       designation,
+      is_special: is_special ? 1 : 0, // Convert boolean to number
       role: 'user' // Optional, since default is already 'user'
     });
 
@@ -113,6 +115,7 @@ export const register = async (req, res) => {
           phoneNumber: newUser.phoneNumber,
           designation: newUser.designation,
           role: newUser.role,
+          is_special: Boolean(newUser.is_special), // Convert back to boolean for response
           createdAt: newUser.createdAt
         },
         token,
@@ -215,6 +218,7 @@ export const login = async (req, res) => {
       subrole: user.subrole,
       department: user.department,
       status: user.status,
+      is_special: user.is_special,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
@@ -270,6 +274,7 @@ export const getProfile = async (req, res) => {
       subrole: user.subrole,
       department: user.department,
       status: user.status,
+      is_special: user.is_special,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
@@ -447,6 +452,7 @@ export const getAllUsers = async (req, res) => {
         'phoneNumber',
         'designation',
         'status',
+        'is_special',
         'createdAt',
         'updatedAt'
       ],
@@ -537,6 +543,7 @@ export const getUsersByDepartment = async (req, res) => {
         'subrole',
         'phoneNumber',
         'status',
+        'is_special',
         'createdAt',
         'updatedAt'
       ],
@@ -755,6 +762,7 @@ export const editUser = async (req, res) => {
       departmentId: currentUser.departmentId,
       subrole: currentUser.subrole,
       status: currentUser.status,
+      is_special: currentUser.is_special,
       createdAt: currentUser.createdAt,
       updatedAt: currentUser.updatedAt
     };
@@ -994,6 +1002,148 @@ export const updateUserStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Update user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const toggleSpecialStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_special } = req.body;
+
+    // Validate is_special
+    if (typeof is_special !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid is_special value. Must be a boolean'
+      });
+    }
+
+    // Find the user
+    const user = await User.findOne({ 
+      where: { 
+        id,
+        role: 'user' // Ensure we're only updating regular users
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update the special status
+    await user.update({ is_special });
+
+    res.status(200).json({
+      success: true,
+      message: `User special status ${is_special ? 'enabled' : 'disabled'} successfully`,
+      data: {
+        id: user.id,
+        email: user.email,
+        is_special: user.is_special,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Toggle special status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const getSpecialUsers = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      status
+    } = req.query;
+
+    // Build where clause
+    const whereClause = {
+      role: 'user',  // Only get users with role 'user'
+      is_special: true // Only get special users
+    };
+
+    // Add status filter if provided
+    if (status && ['active', 'inactive'].includes(status)) {
+      whereClause.status = status;
+    }
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { email: { [Op.like]: `%${search}%` } },
+        { firstname: { [Op.like]: `%${search}%` } },
+        { lastname: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { subrole: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Calculate offset
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get special users with pagination
+    const users = await User.findAndCountAll({
+      where: whereClause,
+      attributes: [
+        'id', 
+        'email', 
+        'firstname', 
+        'lastname', 
+        'username',
+        'departmentId',
+        'subrole',
+        'phoneNumber',
+        'designation',
+        'status',
+        'is_special',
+        'createdAt',
+        'updatedAt'
+      ],
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['departmentName']
+      }],
+      order: [[sortBy, sortOrder]],
+      offset: offset,
+      limit: parseInt(limit)
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(users.count / parseInt(limit));
+    const currentPage = parseInt(page);
+
+    res.status(200).json({
+      success: true,
+      message: 'Special users fetched successfully',
+      data: {
+        users: users.rows,
+        pagination: {
+          total: users.count,
+          totalPages,
+          currentPage,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get special users error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

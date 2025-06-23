@@ -12,7 +12,9 @@ import {
   sendOtp,
   verifyOtp,
   resetPassword,
-  updateUserStatus
+  updateUserStatus,
+  toggleSpecialStatus,
+  getSpecialUsers
 } from '../controllers/userController.js';
 import authenticateToken from '../middleware/auth.js';
 
@@ -22,6 +24,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/all', getAllUsers);
+router.get('/special', getSpecialUsers);
 router.get('/department/:departmentId', getUsersByDepartment);
 router.put('/:id', editUser);
 router.delete('/:id', deleteUser);
@@ -30,6 +33,9 @@ router.post('/logout', logout);
 
 // Status update route
 router.patch('/:id/status', authenticateToken, updateUserStatus);
+
+// Special status update route
+router.patch('/:id/special-status', authenticateToken, toggleSpecialStatus);
 
 // Password reset routes
 router.post('/send-otp', sendOtp);

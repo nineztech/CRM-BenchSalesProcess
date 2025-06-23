@@ -5,6 +5,7 @@ import Layout from '../../common/layout/Layout';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import SpecialUserRolesPopup from './SpecialUserRolesPopup';
 const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 // Confirmation Dialog Component
@@ -60,7 +61,8 @@ const UserRegister: React.FC = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    designation: ""
+    designation: "",
+    is_special: false
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -78,6 +80,9 @@ const UserRegister: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
+
+  const [showSpecialUserPopup, setShowSpecialUserPopup] = useState(false);
+  const [newUserId, setNewUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -187,7 +192,8 @@ const UserRegister: React.FC = () => {
         subrole: formData.subrole,
         phoneNumber: formData.mobileNumber,
         username: formData.username,
-        designation: formData.designation
+        designation: formData.designation,
+        is_special: formData.is_special ? 1 : 0
       };
 
       if (editingUserId) {
@@ -209,7 +215,7 @@ const UserRegister: React.FC = () => {
           }
         );
       } else {
-        await toast.promise(
+        const response = await toast.promise(
           axios.post(`${API_BASE_URL}/user/register`, userData, {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -219,7 +225,12 @@ const UserRegister: React.FC = () => {
           {
             loading: 'Creating user...',
             success: (response) => {
-              handleReset();
+              if (formData.is_special) {
+                setNewUserId(response.data.data.user.id);
+                setShowSpecialUserPopup(true);
+              } else {
+                handleReset();
+              }
               fetchUsers();
               const message = response.data.data.emailSent 
                 ? 'User created successfully and welcome email sent!'
@@ -248,7 +259,8 @@ const UserRegister: React.FC = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      designation: ""
+      designation: "",
+      is_special: false
     });
     setErrors({});
     setEditingUserId(null);
@@ -292,7 +304,8 @@ const UserRegister: React.FC = () => {
       email: user.email || "",
       password: "",
       confirmPassword: "",
-      designation: user.designation || ""
+      designation: user.designation || "",
+      is_special: user.is_special || false
     });
     setEditingUserId(user.id);
     setErrors({});
@@ -336,6 +349,11 @@ const UserRegister: React.FC = () => {
         );
       }
     });
+  };
+
+  const handleSpecialUserPopupClose = () => {
+    setShowSpecialUserPopup(false);
+    handleReset();
   };
 
   const filteredUsers = Array.isArray(users) ? users.filter((user) => {
@@ -501,21 +519,35 @@ const UserRegister: React.FC = () => {
                   {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                 </div>
 
-                <div className="form-group">
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                    Designation <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="designation"
-                    placeholder="Enter Designation"
-                    value={formData.designation}
-                    onChange={handleChange}
-                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
-                  {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
+                <div className="form-group flex gap-4">
+                  <div className="flex-grow">
+                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                      Designation <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="designation"
+                      placeholder="Enter Designation"
+                      value={formData.designation}
+                      onChange={handleChange}
+                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    />
+                    {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
+                  </div>
+                  <div className="flex items-end mb-[6px]">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="is_special"
+                        checked={formData.is_special}
+                        onChange={(e) => setFormData(prev => ({ ...prev, is_special: e.target.checked }))}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-600">Special User</span>
+                    </label>
+                  </div>
                 </div>
-                </div>
+            </div>
 
             <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
               
@@ -607,6 +639,7 @@ const UserRegister: React.FC = () => {
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
@@ -630,6 +663,15 @@ const UserRegister: React.FC = () => {
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          user.is_special 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.is_special ? 'Yes' : 'No'}
+                        </span>
+                      </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           user.status === 'active' 
@@ -695,6 +737,14 @@ const UserRegister: React.FC = () => {
           )}
         </motion.div>
       </div>
+
+      {/* Add the SpecialUserRolesPopup */}
+      <SpecialUserRolesPopup
+        isOpen={showSpecialUserPopup}
+        onClose={handleSpecialUserPopupClose}
+        userName={`${formData.firstName} ${formData.lastName}`}
+        userId={newUserId || 0}
+      />
 
       {/* Confirmation Dialog */}
       <ConfirmationDialog
