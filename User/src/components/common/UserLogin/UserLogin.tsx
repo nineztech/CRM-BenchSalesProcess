@@ -16,9 +16,14 @@ interface LoginResponse {
       email: string;
       username: string;
       role: string;
+      subrole: string;
+      departmentId: number;
       status: string;
       createdAt: string;
       updatedAt: string;
+      department?: {
+        departmentName: string;
+      };
     };
     token: string;
   };
@@ -88,10 +93,14 @@ export const UserLogin = () => {
 
       if (data.success && data.data?.token) {
         localStorage.setItem('token', data.data.token);
+        localStorage.setItem('userId', data.data.user.id.toString());
+        localStorage.setItem('departmentId', data.data.user.departmentId?.toString() || '');
+        localStorage.setItem('subrole', data.data.user.subrole || '');
+        localStorage.setItem('role', data.data.user.role || '');
         localStorage.setItem('user', JSON.stringify(data.data.user));
         const state = location.state as LocationState;
         // Redirect based on user role
-        const redirectPath = data.data.user.role === 'admin' ? '/adminpackages' : '/dashboard';
+        const redirectPath = data.data.user.role === 'admin' ? '/packages' : '/dashboard';
         const from = state?.from || redirectPath;
         console.log('Login successful, redirecting to:', from);
         navigate(from);

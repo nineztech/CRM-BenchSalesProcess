@@ -3,43 +3,140 @@ import Department from "../models/departmentModel.js";
 import User from "../models/userModel.js";
 import { sequelize } from "../config/dbConnection.js";
 
-// Add Activity
-export const addActivity = async (req, res) => {
+// Function to create default activities for all models
+export const createDefaultActivities = async () => {
   try {
-    const { name, dept_ids, status, viewRoute, addRoute, editRoute, deleteRoute, description } = req.body;
-    const userId = req.user?.id;
+    const defaultActivities = [
+      // Lead Activities
+      {
+        name: "Lead Management",
+        category: "Lead",
+        description: "Manage leads including creation, updates, and status changes",
+        viewRoute: "/leadcreation",
+        addRoute: "/leadcreation",
+        editRoute: "/leadcreation",
+        deleteRoute: "/leadcreation",
+        status: "active"
+      },
+      {
+        name: "Lead Assignment Management",
+        category: "Lead",
+        description: "Manage lead assignments and transfers between users",
+        viewRoute: "/leadcreation",
+        addRoute: "/leadcreation",
+        editRoute: "/leadcreation",
+        deleteRoute: "/leadcreation",
+        status: "active"
+      },
+      {
+        name: "Lead Status Management",
+        category: "Lead",
+        description: "Manage and update lead statuses",
+        viewRoute: "/leadcreation",
+        addRoute: "/leadcreation",
+        editRoute: "/leadcreation",
+        deleteRoute: "/leadcreation",
+        status: "active"
+      },
+      
+      // User Activities
+      {
+        name: "User Management",
+        category: "User",
+        description: "Manage system users including creation and modification",
+        viewRoute: "/users",
+        addRoute: "/users",
+        editRoute: "/users",
+        deleteRoute: "/users",
+        status: "active"
+      },
+      {
+        name: "Admin Management",
+        category: "User",
+        description: "Manage admin users and their privileges",
+        viewRoute: "/admins",
+        addRoute: "/admins",
+        editRoute: "/admins",
+        deleteRoute: "/admins",
+        status: "active"
+      },
 
-    if (!name || !dept_ids || !Array.isArray(dept_ids) || dept_ids.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and at least one department ID are required"
+      // Department Activities
+      {
+        name: "Department Management",
+        category: "Department",
+        description: "Manage departments, their configurations, and subroles",
+        viewRoute: "/departments",
+        addRoute: "/departments",
+        editRoute: "/departments",
+        deleteRoute: "/departments",
+        status: "active"
+      },
+
+      // Package Activities
+      {
+        name: "Package Management",
+        category: "Package",
+        description: "Manage service packages, pricing, and configurations",
+        viewRoute: "/adminpackages",
+        addRoute: "/adminpackages",
+        editRoute: "/adminpackages",
+        deleteRoute: "/adminpackages",
+        status: "active"
+      },
+
+      // System Activities
+      {
+        name: "Activity Management",
+        category: "System",
+        description: "Manage system activities and their permissions",
+        viewRoute: "/roles",
+        addRoute: "/roles",
+        editRoute: "/roles",
+        deleteRoute: "/roles",
+        status: "active"
+      },
+      {
+        name: "Role Permission Management",
+        category: "System",
+        description: "Manage role-based permissions and access controls",
+        viewRoute: "/department-permissions",
+        addRoute: "/department-permissions",
+        editRoute: "/department-permissions",
+        deleteRoute: "/department-permissions",
+        status: "active"
+      }
+    ];
+
+    for (const activity of defaultActivities) {
+      await Activity.findOrCreate({
+        where: { name: activity.name },
+        defaults: activity
       });
     }
 
-    // if (!viewRoute || !addRoute || !editRoute || !deleteRoute) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "All route paths (view, add, edit, delete) are required"
-    //   });
-    // }
+    console.log('✅ Default activities created successfully');
+  } catch (error) {
+    console.error('Error creating default activities:', error);
+    throw error;
+  }
+};
 
-    // Check if all departments exist
-    const departments = await Department.findAll({
-      where: {
-        id: dept_ids
-      }
-    });
+// Add Activity
+export const addActivity = async (req, res) => {
+  try {
+    const { name, status, viewRoute, addRoute, editRoute, deleteRoute, description } = req.body;
+    const userId = req.user?.id;
 
-    if (departments.length !== dept_ids.length) {
-      return res.status(404).json({
+    if (!name) {
+      return res.status(400).json({
         success: false,
-        message: "One or more department IDs are invalid"
+        message: "Name is required"
       });
     }
 
     const newActivity = await Activity.create({
       name: name.trim(),
-      dept_ids,
       status: status || 'active',
       viewRoute,
       addRoute,
@@ -59,21 +156,10 @@ export const addActivity = async (req, res) => {
       ]
     });
 
-    // Fetch departments separately since they're stored in JSON
-    const activityDepartments = await Department.findAll({
-      where: {
-        id: dept_ids
-      },
-      attributes: ['id', 'departmentName']
-    });
-
     res.status(201).json({
       success: true,
       message: "Activity created successfully",
-      data: {
-        ...activityWithDetails.toJSON(),
-        departments: activityDepartments
-      }
+      data: activityWithDetails
     });
 
   } catch (error) {
@@ -96,25 +182,9 @@ export const getAllActivities = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Fetch departments for each activity
-    const activitiesWithDepts = await Promise.all(
-      activities.map(async (activity) => {
-        const departments = await Department.findAll({
-          where: {
-            id: activity.dept_ids
-          },
-          attributes: ['id', 'name']
-        });
-        return {
-          ...activity.toJSON(),
-          departments
-        };
-      })
-    );
-
     res.status(200).json({
       success: true,
-      data: activitiesWithDepts
+      data: activities
     });
   } catch (error) {
     console.error("Error fetching activities:", error);
@@ -144,20 +214,9 @@ export const getActivityById = async (req, res) => {
       });
     }
 
-    // Fetch departments separately
-    const departments = await Department.findAll({
-      where: {
-        id: activity.dept_ids
-      },
-      attributes: ['id', 'name']
-    });
-
     res.status(200).json({
       success: true,
-      data: {
-        ...activity.toJSON(),
-        departments
-      }
+      data: activity
     });
   } catch (error) {
     console.error("Error fetching activity:", error);
@@ -169,7 +228,7 @@ export const getActivityById = async (req, res) => {
 export const updateActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, dept_ids, status, viewRoute, addRoute, editRoute, deleteRoute, description } = req.body;
+    const { name, status, viewRoute, addRoute, editRoute, deleteRoute, description } = req.body;
     const userId = req.user?.id;
 
     const activity = await Activity.findByPk(id);
@@ -180,32 +239,8 @@ export const updateActivity = async (req, res) => {
       });
     }
 
-    // If updating department IDs, validate them
-    if (dept_ids) {
-      if (!Array.isArray(dept_ids) || dept_ids.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "At least one department ID is required"
-        });
-      }
-
-      const departments = await Department.findAll({
-        where: {
-          id: dept_ids
-        }
-      });
-
-      if (departments.length !== dept_ids.length) {
-        return res.status(404).json({
-          success: false,
-          message: "One or more department IDs are invalid"
-        });
-      }
-    }
-
     await activity.update({
       name: name?.trim() || activity.name,
-      dept_ids: dept_ids || activity.dept_ids,
       status: status || activity.status,
       viewRoute: viewRoute || activity.viewRoute,
       addRoute: addRoute || activity.addRoute,
@@ -225,21 +260,10 @@ export const updateActivity = async (req, res) => {
       ]
     });
 
-    // Fetch departments separately
-    const departments = await Department.findAll({
-      where: {
-        id: updatedActivity.dept_ids
-      },
-      attributes: ['id', 'name']
-    });
-
     res.status(200).json({
       success: true,
       message: "Activity updated successfully",
-      data: {
-        ...updatedActivity.toJSON(),
-        departments
-      }
+      data: updatedActivity
     });
   } catch (error) {
     console.error("Error updating activity:", error);

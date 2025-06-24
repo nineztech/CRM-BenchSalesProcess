@@ -5,6 +5,9 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { sequelize } from '../config/dbConnection.js';
+import Activity from '../models/activityModel.js';
+import AdminPermission from '../models/adminPermissionModel.js';
 
 dotenv.config();
 
@@ -62,33 +65,64 @@ export const registerAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Username already taken' });
     }
 
-    const newAdmin = await User.create({ 
-      email, 
-      password, 
-      firstname, 
-      lastname, 
-      phoneNumber, 
-      username,
-      role: 'admin',
-      departmentId: null,
-      subrole: null
-    });
+    // Start a transaction
+    const transaction = await sequelize.transaction();
 
-    const adminResponse = {
-      id: newAdmin.id,
-      email: newAdmin.email,
-      firstname: newAdmin.firstname,
-      lastname: newAdmin.lastname,
-      phoneNumber: newAdmin.phoneNumber,
-      username: newAdmin.username,
-      role: newAdmin.role,
-      createdAt: newAdmin.createdAt
-    };
+    try {
+      const newAdmin = await User.create({ 
+        email, 
+        password, 
+        firstname, 
+        lastname, 
+        phoneNumber, 
+        username,
+        role: 'admin',
+        departmentId: null,
+        subrole: null
+      }, { transaction });
 
-    res.status(201).json({ 
-      message: 'Admin registered successfully', 
-      admin: adminResponse 
-    });
+      // Get all activities
+      const activities = await Activity.findAll({ transaction });
+
+      // Create permissions for each activity
+      await Promise.all(
+        activities.map(activity =>
+          AdminPermission.create({
+            admin_id: newAdmin.id,
+            activity_id: activity.id,
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true,
+            createdBy: newAdmin.id
+          }, { transaction })
+        )
+      );
+
+      // Commit the transaction
+      await transaction.commit();
+
+      const adminResponse = {
+        id: newAdmin.id,
+        email: newAdmin.email,
+        firstname: newAdmin.firstname,
+        lastname: newAdmin.lastname,
+        phoneNumber: newAdmin.phoneNumber,
+        username: newAdmin.username,
+        role: newAdmin.role,
+        createdAt: newAdmin.createdAt
+      };
+
+      res.status(201).json({ 
+        message: 'Admin registered successfully with all activity permissions', 
+        admin: adminResponse 
+      });
+
+    } catch (error) {
+      // Rollback transaction in case of error
+      await transaction.rollback();
+      throw error;
+    }
 
   } catch (error) {
     console.error('Admin Register Error:', error);

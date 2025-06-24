@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding } from 'react-icons/fa';
+import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding, FaLock } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
+import usePermissions from '../../../hooks/usePermissions';
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const location = useLocation();
+  const { checkPermission, loading } = usePermissions();
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -18,6 +20,80 @@ const Sidebar: React.FC = () => {
   }, []);
 
   const isAdmin = userRole === 'admin';
+
+  // Define menu items with their permissions
+  const userMenuItems = [
+    {
+      icon: <FaUserPlus />,
+      to: '/leadcreation',
+      text: 'Lead Creation',
+      activity: 'Lead Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaChartLine />,
+      to: '/sales',
+      text: 'Sales',
+      activity: 'Lead Status Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaGift />,
+      to: '/packages',
+      text: 'Packages',
+      activity: 'Package Management',
+      permission: 'view'
+    }
+  ];
+
+  const adminMenuItems = [
+    {
+      icon: <FaGift />,
+      to: '/packages',
+      text: 'Packages',
+      activity: 'Package Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaUserPlus />,
+      to: '/admins',
+      text: 'Add Admin',
+      activity: 'Admin Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaBuilding />,
+      to: '/departments',
+      text: 'Department',
+      activity: 'Department Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaUserPlus />,
+      to: '/roles',
+      text: 'Roles & Rights',
+      activity: 'Activity Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaLock />,
+      to: '/department-permissions',
+      text: 'Department Permissions',
+      activity: 'Role Permission Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaUsers />,
+      to: '/users',
+      text: 'User Creation',
+      activity: 'User Management',
+      permission: 'view'
+    }
+  ];
+
+  if (loading) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <>
@@ -30,7 +106,6 @@ const Sidebar: React.FC = () => {
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
       >
-
         {/* Logo Section */}
         <div className="flex items-center h-16 px-3 border-b border-gray-200">
           <img src={logoIcon} alt="Logo" className="w-7 h-7 object-contain" />
@@ -52,78 +127,32 @@ const Sidebar: React.FC = () => {
         {/* Menu List */}
         <ul className="mt-4">
           {/* User menu items */}
-          {!isAdmin && (
-            <>
-              <SidebarItem 
-                icon={<FaUserPlus />} 
-                to="/leadcreation" 
-                text="Lead Creation" 
+          {!isAdmin && userMenuItems.map((item, index) => (
+            checkPermission(item.activity, item.permission as 'view' | 'add' | 'edit' | 'delete') && (
+              <SidebarItem
+                key={index}
+                icon={item.icon}
+                to={item.to}
+                text={item.text}
                 isExpanded={isExpanded}
-                isActive={location.pathname === '/leadcreation'}
+                isActive={location.pathname === item.to}
               />
-              
-              <SidebarItem 
-                icon={<FaChartLine />} 
-                to="/sales" 
-                text="Sales" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/sales'}
-              />
+            )
+          ))}
 
-              <SidebarItem 
-                icon={<FaGift />} 
-                to="/packages" 
-                text="Packages" 
+          {/* Admin menu items */}
+          {isAdmin && adminMenuItems.map((item, index) => (
+            checkPermission(item.activity, item.permission as 'view' | 'add' | 'edit' | 'delete') && (
+              <SidebarItem
+                key={index}
+                icon={item.icon}
+                to={item.to}
+                text={item.text}
                 isExpanded={isExpanded}
-                isActive={location.pathname === '/packages'}
+                isActive={location.pathname === item.to}
               />
-            </>
-          )}
-
-          {/* Admin-only menu items */}
-          {isAdmin && (
-            <>
-              <SidebarItem 
-                icon={<FaGift />} 
-                to="/adminpackages" 
-                text="Packages" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/adminpackages'}
-              />
-
-              <SidebarItem 
-                icon={<FaUserPlus />} 
-                to="/admins" 
-                text="Add Admin" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/admins'}
-              />
-
-              <SidebarItem 
-                icon={<FaBuilding />} 
-                to="/departments" 
-                text="Department" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/departments'}
-              />
-
-              <SidebarItem 
-                icon={<FaUserPlus />} 
-                to="/roles" 
-                text="Roles & Rights" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/roles'}
-              />
-
-              <SidebarItem 
-                icon={<FaUsers />} 
-                to="/users" 
-                text="User Creation" 
-                isExpanded={isExpanded}
-                isActive={location.pathname === '/users'}
-              />
-            </>
-          )}
+            )
+          ))}
         </ul>
       </motion.div>
 

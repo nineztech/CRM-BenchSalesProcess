@@ -33,7 +33,7 @@ export const addRolePermission = async (req, res) => {
       });
     }
 
-    // Check if activity exists and belongs to the department
+    // Check if activity exists
     const activity = await Activity.findByPk(activity_id);
     if (!activity) {
       return res.status(404).json({
@@ -42,45 +42,79 @@ export const addRolePermission = async (req, res) => {
       });
     }
 
-    if (!activity.dept_ids.includes(dept_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Activity does not belong to the specified department"
+    // Check if a role permission already exists for this combination
+    const existingPermission = await RolePermission.findOne({
+      where: {
+        activity_id,
+        dept_id,
+        subrole
+      }
+    });
+
+    let rolePermissionWithDetails;
+
+    if (existingPermission) {
+      // Update existing permission
+      await existingPermission.update({
+        canView: canView || false,
+        canAdd: canAdd || false,
+        canEdit: canEdit || false,
+        canDelete: canDelete || false,
+        updatedBy: userId
+      });
+
+      rolePermissionWithDetails = await RolePermission.findByPk(existingPermission.id, {
+        include: [
+          {
+            model: Department,
+            as: 'roleDepartment'
+          },
+          {
+            model: Activity,
+            as: 'roleActivity'
+          },
+          {
+            model: User,
+            as: 'creator',
+            attributes: ['id', 'firstname', 'lastname', 'email']
+          }
+        ]
+      });
+    } else {
+      // Create new permission
+      const newRolePermission = await RolePermission.create({
+        activity_id,
+        dept_id,
+        subrole,
+        canView: canView || false,
+        canAdd: canAdd || false,
+        canEdit: canEdit || false,
+        canDelete: canDelete || false,
+        createdBy: userId
+      });
+
+      rolePermissionWithDetails = await RolePermission.findByPk(newRolePermission.id, {
+        include: [
+          {
+            model: Department,
+            as: 'roleDepartment'
+          },
+          {
+            model: Activity,
+            as: 'roleActivity'
+          },
+          {
+            model: User,
+            as: 'creator',
+            attributes: ['id', 'firstname', 'lastname', 'email']
+          }
+        ]
       });
     }
 
-    const newRolePermission = await RolePermission.create({
-      activity_id,
-      dept_id,
-      subrole,
-      canView: canView || false,
-      canAdd: canAdd || false,
-      canEdit: canEdit || false,
-      canDelete: canDelete || false,
-      createdBy: userId
-    });
-
-    const rolePermissionWithDetails = await RolePermission.findByPk(newRolePermission.id, {
-      include: [
-        {
-          model: Department,
-          as: 'roleDepartment'
-        },
-        {
-          model: Activity,
-          as: 'roleActivity'
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email']
-        }
-      ]
-    });
-
     res.status(201).json({
       success: true,
-      message: "Role permission created successfully",
+      message: existingPermission ? "Role permission updated successfully" : "Role permission created successfully",
       data: rolePermissionWithDetails
     });
 
@@ -246,17 +280,32 @@ export const deleteRolePermission = async (req, res) => {
 export const getRolePermissionsByDepartment = async (req, res) => {
   try {
     const { dept_id } = req.params;
+    const { role } = req.query;
+
+    console.log('Fetching permissions for department:', dept_id, 'role:', role);
 
     const department = await Department.findByPk(dept_id);
     if (!department) {
+      console.log('Department not found:', dept_id);
       return res.status(404).json({
         success: false,
-        message: "Department not found"
+        message: `Department with ID ${dept_id} not found`
       });
     }
 
+    // Build where clause based on whether role is specified
+    const whereClause = {
+      dept_id
+    };
+    
+    if (role) {
+      whereClause.subrole = role;
+    }
+
+    console.log('Using where clause:', whereClause);
+
     const rolePermissions = await RolePermission.findAll({
-      where: { dept_id },
+      where: whereClause,
       include: [
         {
           model: Department,
@@ -274,6 +323,8 @@ export const getRolePermissionsByDepartment = async (req, res) => {
       ],
       order: [['createdAt', 'DESC']]
     });
+
+    console.log(`Found ${rolePermissions.length} permissions`);
 
     res.status(200).json({
       success: true,

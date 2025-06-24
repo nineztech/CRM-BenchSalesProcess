@@ -15,6 +15,7 @@ interface Department {
 interface Activity {
   id: number;
   name: string;
+  category: string;
   dept_ids: number[];
   status: string;
   viewRoute: string;
@@ -77,6 +78,27 @@ interface Rights {
 
 type PermissionType = 'canView' | 'canAdd' | 'canEdit' | 'canDelete';
 
+interface RolePermissionWithDetails {
+  dept_id: number;
+  subrole: string;
+  activity_id: number;
+  canView: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+interface AdminPermissionResponse {
+  permissionActivity: {
+    id: number;
+    name: string;
+  };
+  canView: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
   const specialUserData = location.state as { isSpecialUser: boolean; specialUserId: number; specialUserName: string } | null;
@@ -103,6 +125,9 @@ const AdminRoles = (): ReactElement => {
   const [isSpecial, setIsSpecial] = useState(false);
   const [selectedSpecialUser, setSelectedSpecialUser] = useState('');
   const [specialUsers, setSpecialUsers] = useState<AdminUser[]>([]);
+
+  // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch all departments and permissions on component mount
   useEffect(() => {
@@ -169,25 +194,20 @@ const AdminRoles = (): ReactElement => {
     }
   }, [selectedDepartment, departments]);
 
-  // Fetch activities when department changes
+  // Fetch activities when component mounts instead of when department changes
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        if (!selectedDepartment) {
-          setActivities([]);
-          return;
-        }
-
-        console.log('Fetching activities for department:', selectedDepartment);
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/activity/department/${selectedDepartment}`);
+        console.log('Fetching all activities');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/activity/all`);
         
         if (response.data.success) {
-          console.log('Department activities:', response.data.data);
+          console.log('All activities:', response.data.data);
           // Get all active activities
           const activeActivities = response.data.data.filter(
             (activity: Activity) => activity.status === 'active'
           );
-          console.log('Active department activities:', activeActivities);
+          console.log('Active activities:', activeActivities);
           setActivities(activeActivities);
         }
       } catch (error) {
@@ -197,9 +217,9 @@ const AdminRoles = (): ReactElement => {
     };
 
     fetchActivities();
-  }, [selectedDepartment]);
+  }, []); // Only run once when component mounts
 
-  // Fetch existing permissions when department and role are selected
+  // Update the fetchExistingPermissions function
   useEffect(() => {
     const fetchExistingPermissions = async () => {
       if (!selectedDepartment || !selectedRole) {
@@ -218,22 +238,21 @@ const AdminRoles = (): ReactElement => {
         );
 
         if (response.data.success) {
-          const rolePermissions = response.data.data.find(
-            (rp: RolePermission & { dept_id: number; subrole: string }) => 
-              rp.dept_id.toString() === selectedDepartment && rp.subrole === selectedRole
+          const rolePermissions = (response.data.data as RolePermissionWithDetails[]).filter(
+            rp => rp.dept_id.toString() === selectedDepartment && rp.subrole === selectedRole
           );
 
-          if (rolePermissions) {
-            setExistingPermissions(rolePermissions);
-            
-            // Set initial rights based on existing permissions
+          if (rolePermissions.length > 0) {
+            // Initialize rights for all activities
             const initialRights: Rights = {};
             activities.forEach(activity => {
+              // Find permission for this activity
+              const permission = rolePermissions.find(rp => rp.activity_id === activity.id);
               initialRights[activity.name] = {
-                canView: rolePermissions.canView,
-                canAdd: rolePermissions.canAdd,
-                canEdit: rolePermissions.canEdit,
-                canDelete: rolePermissions.canDelete
+                canView: permission?.canView || false,
+                canAdd: permission?.canAdd || false,
+                canEdit: permission?.canEdit || false,
+                canDelete: permission?.canDelete || false
               };
             });
             setRights(initialRights);
@@ -268,7 +287,7 @@ const AdminRoles = (): ReactElement => {
     };
 
     fetchExistingPermissions();
-  }, [selectedDepartment, selectedRole, activities, permissions]);
+  }, [selectedDepartment, selectedRole, activities]);
 
   // Add new effect to fetch special users
   useEffect(() => {
@@ -315,6 +334,53 @@ const AdminRoles = (): ReactElement => {
     }
   }, [specialUserData]);
 
+  // Update fetchAdminPermissions function
+  const fetchAdminPermissions = async () => {
+    if (!selectedAdminUser) return;
+
+    try {
+      setIsLoading(true);
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/admin-permissions/admin/${selectedAdminUser}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        const initialRights: Rights = {};
+        activities.forEach(activity => {
+          const permission = response.data.data.find(
+            (p: AdminPermissionResponse) => p.permissionActivity.id === activity.id
+          );
+          
+          initialRights[activity.name] = {
+            canView: permission?.canView || false,
+            canAdd: permission?.canAdd || false,
+            canEdit: permission?.canEdit || false,
+            canDelete: permission?.canDelete || false
+          };
+        });
+        setRights(initialRights);
+      }
+    } catch (error) {
+      console.error('Error fetching admin permissions:', error);
+      alert('Failed to fetch admin permissions');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update useEffect to use the extracted function
+  useEffect(() => {
+    if (isAdmin && selectedAdminUser) {
+      fetchAdminPermissions();
+    }
+  }, [selectedAdminUser, isAdmin, activities]);
+
+  // Update handlePermissionChange to work with both admin and role permissions
   const handlePermissionChange = (activity: string, permission: PermissionType) => {
     setRights(prev => {
       const newRights: Rights = { ...prev };
@@ -334,49 +400,113 @@ const AdminRoles = (): ReactElement => {
     });
   };
 
+  // Update handleSelectAllRow to work with both admin and role permissions
+  const handleSelectAllRow = (activityName: string) => {
+    setRights(prev => {
+      const newRights: Rights = { ...prev };
+      if (!newRights[activityName]) {
+        newRights[activityName] = {
+          canView: false,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false
+        };
+      }
+      
+      const currentRow = newRights[activityName];
+      const allChecked = currentRow.canView && currentRow.canAdd && currentRow.canEdit && currentRow.canDelete;
+      
+      newRights[activityName] = {
+        canView: !allChecked,
+        canAdd: !allChecked,
+        canEdit: !allChecked,
+        canDelete: !allChecked
+      };
+      
+      return newRights;
+    });
+  };
+
+  // Update handleAssign function
   const handleAssign = async () => {
-    if (!selectedDepartment || !selectedRole) {
+    if (isAdmin && !selectedAdminUser) {
+      alert('Please select an admin user');
+      return;
+    }
+
+    if (!isAdmin && (!selectedDepartment || !selectedRole)) {
       alert('Please select both department and role');
       return;
     }
 
     try {
-      // Transform the rights object into the format expected by the backend
-      const rolePermissions = activities.map(activity => ({
-        activity_id: activity.id,
-        dept_id: parseInt(selectedDepartment),
-        subrole: selectedRole,
-        canView: rights[activity.name]?.canView || false,
-        canAdd: rights[activity.name]?.canAdd || false,
-        canEdit: rights[activity.name]?.canEdit || false,
-        canDelete: rights[activity.name]?.canDelete || false
-      }));
+      setIsLoading(true);
+      if (isAdmin) {
+        // Handle admin permissions
+        await Promise.all(
+          activities.map(activity => {
+            const permission = {
+              admin_id: parseInt(selectedAdminUser),
+              activity_id: activity.id,
+              canView: rights[activity.name]?.canView || false,
+              canAdd: rights[activity.name]?.canAdd || false,
+              canEdit: rights[activity.name]?.canEdit || false,
+              canDelete: rights[activity.name]?.canDelete || false
+            };
 
-      // Create or update role permissions for each activity
-      for (const permission of rolePermissions) {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/role-permissions/add`,
-          permission,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          }
+            return axios.post(
+              `${import.meta.env.VITE_API_URL}/admin-permissions/add`,
+              permission,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              }
+            );
+          })
         );
 
-        if (!response.data.success) {
-          throw new Error(response.data.message || 'Failed to assign permissions');
-        }
-      }
+        alert('Admin permissions updated successfully!');
+        await fetchAdminPermissions();
+      } else {
+        // Existing role permissions logic
+        const rolePermissions = activities.map(activity => ({
+          activity_id: activity.id,
+          dept_id: parseInt(selectedDepartment),
+          subrole: selectedRole,
+          canView: rights[activity.name]?.canView || false,
+          canAdd: rights[activity.name]?.canAdd || false,
+          canEdit: rights[activity.name]?.canEdit || false,
+          canDelete: rights[activity.name]?.canDelete || false
+        }));
 
-      alert('Role permissions assigned successfully!');
-      // Reset the form
-      setRights({});
-      setSelectedRole('');
+        for (const permission of rolePermissions) {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL}/role-permissions/add`,
+            permission,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+
+          if (!response.data.success) {
+            throw new Error(response.data.message || 'Failed to assign permissions');
+          }
+        }
+
+        alert('Role permissions assigned successfully!');
+        setRights({});
+        setSelectedRole('');
+      }
     } catch (error: any) {
       console.error('Error assigning permissions:', error);
       alert(error.response?.data?.message || 'Failed to assign permissions');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -409,33 +539,6 @@ const AdminRoles = (): ReactElement => {
   const handleEditRole = (index: number) => {
     setEditIndex(index);
     setNewRoleName(roleList[index].role);
-  };
-
-  // Handle select all for a row
-  const handleSelectAllRow = (activityName: string) => {
-    setRights(prev => {
-      const newRights: Rights = { ...prev };
-      if (!newRights[activityName]) {
-        newRights[activityName] = {
-          canView: false,
-          canAdd: false,
-          canEdit: false,
-          canDelete: false
-        };
-      }
-      
-      const currentRow = newRights[activityName];
-      const allChecked = currentRow.canView && currentRow.canAdd && currentRow.canEdit && currentRow.canDelete;
-      
-      newRights[activityName] = {
-        canView: !allChecked,
-        canAdd: !allChecked,
-        canEdit: !allChecked,
-        canDelete: !allChecked
-      };
-      
-      return newRights;
-    });
   };
 
   // Check if all permissions in a row are selected
@@ -618,88 +721,111 @@ const AdminRoles = (): ReactElement => {
           </div>
         )}
 
-        {/* Show activities table only when department is selected */}
-        {selectedDepartment && activities.length > 0 && (
+        {/* Show activities table */}
+        {activities.length > 0 && (
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-            <table className="w-full border-collapse min-w-[600px]">
-              <thead>
-                <tr>
-                  <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
-                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Select All</th>
-                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Read</th>
-                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Create</th>
-                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Update</th>
-                  <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activities.map((activity) => (
-                  <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                    <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">
-                      {activity.name}
-                      {activity.description && (
-                        <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
-                      )}
-                    </td>
-                    <td className="p-2.5 border border-gray-200 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected(activity.name)}
-                        onChange={() => handleSelectAllRow(activity.name)}
-                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-                    <td className="p-2.5 border border-gray-200 text-center">
-                      <input
-                        type="checkbox"
-                        checked={rights[activity.name]?.canView || false}
-                        onChange={() => handlePermissionChange(activity.name, 'canView')}
-                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-                    <td className="p-2.5 border border-gray-200 text-center">
-                      <input
-                        type="checkbox"
-                        checked={rights[activity.name]?.canAdd || false}
-                        onChange={() => handlePermissionChange(activity.name, 'canAdd')}
-                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-                    <td className="p-2.5 border border-gray-200 text-center">
-                      <input
-                        type="checkbox"
-                        checked={rights[activity.name]?.canEdit || false}
-                        onChange={() => handlePermissionChange(activity.name, 'canEdit')}
-                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-                    <td className="p-2.5 border border-gray-200 text-center">
-                      <input
-                        type="checkbox"
-                        checked={rights[activity.name]?.canDelete || false}
-                        onChange={() => handlePermissionChange(activity.name, 'canDelete')}
-                        className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Group activities by category */}
+            {Array.from(new Set(activities.map(a => a.category))).map(category => {
+              const categoryActivities = activities.filter(a => a.category === category);
+              return (
+                <div key={category} className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-medium text-gray-800 border-b-2 border-blue-100 inline-block">
+                      {category}
+                    </h2>
+                  </div>
 
-            <button 
-              className="mt-4 px-5 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200"
-              onClick={handleAssign}
-              disabled={!selectedDepartment || !selectedRole}
-            >
-              Assign
-            </button>
+                  {/* Activities Table */}
+                  <table className="w-full border-collapse min-w-[600px] mb-4">
+                    <thead>
+                      <tr>
+                        <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
+                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Select All</th>
+                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Read</th>
+                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Create</th>
+                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Update</th>
+                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categoryActivities.map((activity) => (
+                        <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
+                          <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">
+                            {activity.name}
+                            {activity.description && (
+                              <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
+                            )}
+                          </td>
+                          <td className="p-2.5 border border-gray-200 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isAllSelected(activity.name)}
+                              onChange={() => handleSelectAllRow(activity.name)}
+                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                              disabled={!selectedRole && !selectedAdminUser}
+                            />
+                          </td>
+                          <td className="p-2.5 border border-gray-200 text-center">
+                            <input
+                              type="checkbox"
+                              checked={rights[activity.name]?.canView || false}
+                              onChange={() => handlePermissionChange(activity.name, 'canView')}
+                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                              disabled={!selectedRole && !selectedAdminUser}
+                            />
+                          </td>
+                          <td className="p-2.5 border border-gray-200 text-center">
+                            <input
+                              type="checkbox"
+                              checked={rights[activity.name]?.canAdd || false}
+                              onChange={() => handlePermissionChange(activity.name, 'canAdd')}
+                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                              disabled={!selectedRole && !selectedAdminUser}
+                            />
+                          </td>
+                          <td className="p-2.5 border border-gray-200 text-center">
+                            <input
+                              type="checkbox"
+                              checked={rights[activity.name]?.canEdit || false}
+                              onChange={() => handlePermissionChange(activity.name, 'canEdit')}
+                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                              disabled={!selectedRole && !selectedAdminUser}
+                            />
+                          </td>
+                          <td className="p-2.5 border border-gray-200 text-center">
+                            <input
+                              type="checkbox"
+                              checked={rights[activity.name]?.canDelete || false}
+                              onChange={() => handlePermissionChange(activity.name, 'canDelete')}
+                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                              disabled={!selectedRole && !selectedAdminUser}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+
+            {/* Show Assign button when either role or admin is selected */}
+            {(selectedRole || (isAdmin && selectedAdminUser)) && (
+              <button 
+                className={`mt-4 px-5 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleAssign}
+                disabled={(!selectedDepartment || !selectedRole) && (!isAdmin || !selectedAdminUser) || isLoading}
+              >
+                {isLoading ? 'Updating...' : 'Assign'}
+              </button>
+            )}
           </div>
         )}
 
-        {/* Show message when no activities are found for selected department */}
-        {selectedDepartment && activities.length === 0 && (
+        {/* Show message when no activities are found */}
+        {activities.length === 0 && (
           <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">No activities found for this department.</p>
+            <p className="text-gray-600">No activities found.</p>
           </div>
         )}
       </div>

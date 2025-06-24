@@ -19,22 +19,12 @@ const Activity = sequelize.define(
         len: [2, 100],
       }
     },
-    dept_ids: {
-      type: DataTypes.JSON,
+    category: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: [],
       validate: {
-        isValidDeptIds(value) {
-          if (!Array.isArray(value)) {
-            throw new Error('Department IDs must be an array');
-          }
-          if (value.length === 0) {
-            throw new Error('At least one department ID is required');
-          }
-          if (!value.every(id => Number.isInteger(id) && id > 0)) {
-            throw new Error('All department IDs must be positive integers');
-          }
-        }
+        notEmpty: true,
+        isIn: [['Lead', 'User', 'Department', 'Package', 'System']]
       }
     },
     status: {
@@ -80,15 +70,7 @@ const Activity = sequelize.define(
     }
   },
   {
-    timestamps: true,
-    hooks: {
-      beforeValidate: async (activity) => {
-        if (activity.dept_ids && Array.isArray(activity.dept_ids)) {
-          // Remove duplicates
-          activity.dept_ids = [...new Set(activity.dept_ids)];
-        }
-      }
-    }
+    timestamps: true
   }
 );
 

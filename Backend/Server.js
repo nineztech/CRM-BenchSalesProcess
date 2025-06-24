@@ -6,6 +6,7 @@ import session from "express-session"; // optional
 import { connectDB, sequelize } from "./config/dbConnection.js";
 import router from "./Routes/index.js";
 import addOtpFields from './migrations/addOtpFields.js';
+import { createDefaultActivities } from './controllers/activityController.js';
 
 // Load environment variables
 dotenv.config();
@@ -69,7 +70,11 @@ const startServer = async () => {
         // Run OTP fields migration
         return addOtpFields();
       })
-      .then(() => {
+      .then(async () => {
+        // Create default activities
+        await createDefaultActivities();
+        console.log(colors.green("✅ Default activities created successfully!"));
+        
         app.listen(PORT, () => {
           console.log(colors.cyan(`🚀 Server running on port ${PORT}`));
           console.log(colors.yellow(`📝 Environment: ${process.env.NODE_ENV || 'development'}`));

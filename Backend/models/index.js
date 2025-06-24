@@ -6,6 +6,7 @@ import LeadAssignment from './leadAssignmentModel.js';
 import Activity from './activityModel.js';
 import Permission from './permissionsModel.js';
 import RolePermission from './rolePermissionModel.js';
+import AdminPermission from './adminPermissionModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -26,23 +27,7 @@ Department.hasMany(User, {
   as: 'departmentUsers'
 });
 
-// Activity associations - Using a custom method to handle JSON dept_ids
-Activity.getDepartments = async function(activityId) {
-  const activity = await this.findByPk(activityId);
-  if (!activity || !activity.dept_ids) return [];
-  return await Department.findAll({
-    where: {
-      id: activity.dept_ids
-    }
-  });
-};
-
-Department.getActivities = async function(departmentId) {
-  return await Activity.findAll({
-    where: sequelize.literal(`JSON_CONTAINS(dept_ids, '${departmentId}')`),
-  });
-};
-
+// Activity associations
 Activity.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 Activity.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 
@@ -66,6 +51,51 @@ Department.hasMany(RolePermission, { foreignKey: 'dept_id', as: 'departmentRoleP
 Activity.hasMany(RolePermission, { foreignKey: 'activity_id', as: 'activityRolePermissions' });
 User.hasMany(RolePermission, { foreignKey: 'createdBy', as: 'createdRolePermissions' });
 User.hasMany(RolePermission, { foreignKey: 'updatedBy', as: 'updatedRolePermissions' });
+
+// AdminPermission associations
+AdminPermission.belongsTo(User, { 
+  foreignKey: 'admin_id', 
+  as: 'permissionAdminUser',
+  onDelete: 'CASCADE'
+});
+
+AdminPermission.belongsTo(Activity, { 
+  foreignKey: 'activity_id', 
+  as: 'permissionActivity',
+  onDelete: 'CASCADE'
+});
+
+AdminPermission.belongsTo(User, { 
+  foreignKey: 'createdBy', 
+  as: 'permissionCreatedBy',
+  onDelete: 'SET NULL'
+});
+
+AdminPermission.belongsTo(User, { 
+  foreignKey: 'updatedBy', 
+  as: 'permissionUpdatedBy',
+  onDelete: 'SET NULL'
+});
+
+User.hasMany(AdminPermission, { 
+  foreignKey: 'admin_id', 
+  as: 'adminUserPermissions'
+});
+
+Activity.hasMany(AdminPermission, { 
+  foreignKey: 'activity_id', 
+  as: 'activityAdminPermissions'
+});
+
+User.hasMany(AdminPermission, { 
+  foreignKey: 'createdBy', 
+  as: 'adminPermissionsCreated'
+});
+
+User.hasMany(AdminPermission, { 
+  foreignKey: 'updatedBy', 
+  as: 'adminPermissionsUpdated'
+});
 
 // Add a virtual field to User model to access department subroles
 User.prototype.getSubroles = async function() {
@@ -211,6 +241,10 @@ export const syncModels = async () => {
     await RolePermission.sync({ alter: true });
     console.log('RolePermission table synced successfully');
 
+    // Create AdminPermission table
+    await AdminPermission.sync({ alter: true });
+    console.log('AdminPermission table synced successfully');
+
     // Create other tables
     await Lead.sync({ alter: true });
     console.log('Lead table synced successfully');
@@ -239,5 +273,6 @@ export {
   LeadAssignment,
   Activity,
   Permission,
-  RolePermission
+  RolePermission,
+  AdminPermission
 };

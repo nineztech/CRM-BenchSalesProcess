@@ -15,6 +15,7 @@ import UserRegister from '../components/admin/addUser/addUser.tsx';
 import AdminRegister from '../components/admin/adminRegister/AdminRegister.tsx';
 import PackagesPage from '../components/admin/packages/packages.tsx';
 import AdminRoles from '../components/admin/adminRoles/adminRoles.tsx';
+import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions.tsx';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -67,13 +68,13 @@ const AppRouter: React.FC = () => {
         } />
 
         {/* Regular user packages route */}
-        <Route path="/packages" element={
+        {/* <Route path="/packages" element={
           <ProtectedRoute>
             <UserLayout>
               <Packages />
             </UserLayout>
           </ProtectedRoute>
-        } />
+        } /> */}
 
         <Route path="/leadcreation" element={
           <ProtectedRoute>
@@ -124,8 +125,16 @@ const AppRouter: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/adminpackages" element={
+        <Route path="/department-permissions" element={
           <ProtectedRoute requireAdmin={true}>
+            <UserLayout>
+              <DepartmentPermissions />
+            </UserLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/packages" element={
+          <ProtectedRoute>
             <UserLayout>
               <PackagesPage />
             </UserLayout>

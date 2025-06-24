@@ -10,6 +10,9 @@ import 'react-phone-input-2/lib/style.css';
 import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
 import StatusChangeNotification from './StatusChangeNotification';
+import PermissionGuard from '../../common/PermissionGuard';
+import usePermissions from '../../../hooks/usePermissions';
+import RouteGuard from '../../common/RouteGuard';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -117,6 +120,7 @@ interface SalesUser {
 }
 
 const LeadCreationComponent: React.FC = () => {
+  const { checkPermission, error: permissionError, loading: permissionsLoading, permissions } = usePermissions();
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
@@ -1052,668 +1056,749 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
     window.location.href = mailtoLink;
   };
 
-  return (
-    <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-[1350px] mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
-          <p className="text-gray-600">Create and manage your leads efficiently</p>
-        </div>
+  useEffect(() => {
+    if (permissionError) {
+      console.error('Permission error:', permissionError);
+      setApiError('Error loading permissions. Please try again or contact support.');
+    }
+  }, [permissionError]);
 
-        {/* Main Tabs */}
-        <div className="bg-white mb-10 rounded-t-xl border-b border-gray-200">
-            <div className="flex">
-            <button
-              className={getTabStyle(activeMainTab === 'create')}
-              onClick={() => setActiveMainTab('create')}
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create Lead
-              </span>
-            </button>
-            <button
-              className={getTabStyle(activeMainTab === 'bulk')}
-              onClick={() => setActiveMainTab('bulk')}
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Bulk Upload
-              </span>
-            </button>
-          </div>
-                </div>
-                
-        {/* Form Sections */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeMainTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-b-xl shadow-lg p-8 mb-8 border-x border-b border-gray-200"
-          >
-            {activeMainTab === 'create' ? (
-              // Create Lead Form
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  console.log('Form submitted');
-                  handleSubmit(e);
-                }} 
-                className="space-y-6"
+  // Add debugging logs
+  useEffect(() => {
+    console.log('Current permissions:', permissions);
+    console.log('Lead Management view permission:', checkPermission('Lead Management', 'view'));
+    console.log('Lead Management edit permission:', checkPermission('Lead Management', 'edit'));
+    console.log('Lead Assignment Management view permission:', checkPermission('Lead Assignment Management', 'view'));
+    console.log('Lead Assignment Management edit permission:', checkPermission('Lead Assignment Management', 'edit'));
+  }, [permissions, checkPermission]);
+
+  // Modify the assign button section to add debugging wrapper
+  const AssignmentSection = () => {
+    const hasAssignmentPermission = checkPermission('Lead Assignment Management', 'edit');
+    console.log('Rendering assignment section, has permission:', hasAssignmentPermission);
+    
+    if (!hasAssignmentPermission) {
+      console.log('No assignment permission, not rendering assignment controls');
+      return null;
+    }
+
+    return (
+      <>
+        <select 
+          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={selectedSalesPerson}
+          onChange={(e) => {
+            setSelectedSalesPerson(e.target.value);
+            if (e.target.value) {
+              setCurrentSalesPerson('');
+            }
+          }}
+        >
+          <option value="">Select sales person</option>
+          {isLoadingSalesUsers ? (
+            <option value="" disabled>Loading sales executives...</option>
+          ) : (
+            salesUsers.map((user) => (
+              <option 
+                key={user.id}
+                value={`${user.firstname} ${user.lastname}`}
+                disabled={`${user.firstname} ${user.lastname}` === currentSalesPerson}
               >
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
-                    <input 
-                      type="text" 
-                      name="firstName" 
-                      value={formData.firstName} 
-                      onChange={handleChange} 
-                      placeholder="Enter first name" 
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.firstName ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.firstName && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.firstName}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
-                    <input 
-                      type="text" 
-                      name="lastName" 
-                      value={formData.lastName} 
-                      onChange={handleChange} 
-                      placeholder="Enter last name" 
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.lastName ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.lastName && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.lastName}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL *</label>
-                    <input 
-                      type="url" 
-                      name="linkedinId" 
-                      value={formData.linkedinId} 
-                      onChange={handleChange} 
-                      placeholder="https://linkedin.com/in/username" 
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.linkedinId ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.linkedinId && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.linkedinId}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Contact *</label>
-                    <PhoneInput
-                      country={'us'}
-                      value={formData.primaryContact}
-                      onChange={handlePhoneChange}
-                      containerClass="w-full"
-                      inputClass={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.primaryContact ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.primaryContact && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.primaryContact}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Contact</label>
-                    <PhoneInput
-                      country={'us'}
-                      value={formData.contactNumbers[1] || ''}
-                      onChange={handleSecondaryContactChange}
-                      containerClass="w-full"
-                      inputClass="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
-                    />
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Primary Email *</label>
-                    <input 
-                      type="email" 
-                      name="primaryEmail" 
-                      value={formData.primaryEmail} 
-                      onChange={(e) => handleEmailChange(e.target.value, 0)}
-                      placeholder="Enter primary email" 
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.primaryEmail ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.primaryEmail && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.primaryEmail}</p>
-                    )}
-                  </div>
+                {user.firstname} {user.lastname}
+              </option>
+            ))
+          )}
+        </select>
+        <button 
+          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow`}
+          onClick={handleAssignSalesPerson}
+          disabled={!selectedSalesPerson || selectedLeads.length === 0}
+        >
+          {getButtonProps().text}
+        </button>
+      </>
+    );
+  };
 
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Email</label>
-                    <input 
-                      type="email" 
-                      name="secondaryEmail" 
-                      value={formData.emails[1] || ''} 
-                      onChange={(e) => handleEmailChange(e.target.value, 1)}
-                      placeholder="Enter secondary email" 
-                      className="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
-                    />
+  return (
+    <RouteGuard activityName="Lead Management">
+      <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
+        <div className="max-w-[1350px] mx-auto">
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center min-h-[200px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <>
+              {apiError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                  {apiError}
+                </div>
+              )}
+              
+              {/* Header */}
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
+                <p className="text-gray-600">Create and manage your leads efficiently</p>
+              </div>
+
+              {/* Main Tabs */}
+              <PermissionGuard activityName="Lead Management" action="add">
+                <div className="bg-white mb-10 rounded-t-xl border-b border-gray-200">
+                  <div className="flex">
+                    <button
+                      className={getTabStyle(activeMainTab === 'create')}
+                      onClick={() => setActiveMainTab('create')}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create Lead
+                      </span>
+                    </button>
+                    <button
+                      className={getTabStyle(activeMainTab === 'bulk')}
+                      onClick={() => setActiveMainTab('bulk')}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Bulk Upload
+                      </span>
+                    </button>
                   </div>
-                  
-                  <div className="relative">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Technology *</label>
+                </div>
+              </PermissionGuard>
+
+              {/* Form Sections */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeMainTab}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-white rounded-b-xl shadow-lg p-8 mb-8 border-x border-b border-gray-200"
+                >
+                  <PermissionGuard activityName="Lead Management" action="add">
+                    {activeMainTab === 'create' ? (
+                      // Create Lead Form
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          console.log('Form submitted');
+                          handleSubmit(e);
+                        }} 
+                        className="space-y-6"
+                      >
+                        <div className="grid grid-cols-3 gap-6">
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                            <input 
+                              type="text" 
+                              name="firstName" 
+                              value={formData.firstName} 
+                              onChange={handleChange} 
+                              placeholder="Enter first name" 
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.firstName ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.firstName && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.firstName}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                            <input 
+                              type="text" 
+                              name="lastName" 
+                              value={formData.lastName} 
+                              onChange={handleChange} 
+                              placeholder="Enter last name" 
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.lastName ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.lastName && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.lastName}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL *</label>
+                            <input 
+                              type="url" 
+                              name="linkedinId" 
+                              value={formData.linkedinId} 
+                              onChange={handleChange} 
+                              placeholder="https://linkedin.com/in/username" 
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.linkedinId ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.linkedinId && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.linkedinId}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Primary Contact *</label>
+                            <PhoneInput
+                              country={'us'}
+                              value={formData.primaryContact}
+                              onChange={handlePhoneChange}
+                              containerClass="w-full"
+                              inputClass={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.primaryContact ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.primaryContact && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.primaryContact}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Contact</label>
+                            <PhoneInput
+                              country={'us'}
+                              value={formData.contactNumbers[1] || ''}
+                              onChange={handleSecondaryContactChange}
+                              containerClass="w-full"
+                              inputClass="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                            />
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Primary Email *</label>
+                            <input 
+                              type="email" 
+                              name="primaryEmail" 
+                              value={formData.primaryEmail} 
+                              onChange={(e) => handleEmailChange(e.target.value, 0)}
+                              placeholder="Enter primary email" 
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.primaryEmail ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.primaryEmail && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.primaryEmail}</p>
+                            )}
+                          </div>
+
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Secondary Email</label>
+                            <input 
+                              type="email" 
+                              name="secondaryEmail" 
+                              value={formData.emails[1] || ''} 
+                              onChange={(e) => handleEmailChange(e.target.value, 1)}
+                              placeholder="Enter secondary email" 
+                              className="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
+                            />
+                          </div>
+                          
+                          <div className="relative">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
+                              <label className="block text-sm font-medium text-gray-700">Technology *</label>
+                            </div>
+                            
+                            {/* Technology Input */}
+                            <div className="relative w-full">
+                              <input
+                                type="text"
+                                value={formData.technology[formData.technology.length - 1]}
+                                onChange={handleTechnologyChange}
+                                onKeyPress={handleTechnologyKeyPress}
+                                placeholder="Enter technology (press Enter to add)"
+                                className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                  errors.technology ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              />
+                              {formData.technology.length > 1 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {formData.technology.slice(0, -1).map((tech, idx) => (
+                                    <div key={idx} className="inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-1">
+                                      <span className="text-sm">{tech}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newTechnologies = formData.technology.filter((_, i) => i !== idx);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            technology: newTechnologies
+                                          }));
+                                        }}
+                                        className="ml-2 text-gray-400 hover:text-gray-600"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {errors.technology && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.technology[0]}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                            <select
+                              name="country"
+                              value={formData.countryCode}
+                              onChange={handleCountryChange}
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.country ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            >
+                              <option value="">Select a country</option>
+                              {countries.map(country => (
+                                <option key={country.value} value={country.value}>
+                                  {country.label}
+                                </option>
+                              ))}
+                            </select>
+                            {errors.country && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.country}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Visa Status *</label>
+                            <select
+                              name="visaStatus"
+                              value={formData.visaStatus}
+                              onChange={handleChange}
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.visaStatus ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            >
+                              <option value="">Select visa status</option>
+                              <option value="H1B">H1B</option>
+                              <option value="L1">L1</option>
+                              <option value="H4">H4</option>
+                              <option value="F1">F1</option>
+                              <option value="B2">B2</option>
+                            </select>
+                            {errors.visaStatus && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.visaStatus}</p>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Lead Source *</label>
+                            <select
+                              name="leadSource"
+                              value={formData.leadSource}
+                              onChange={handleChange}
+                              className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                errors.leadSource ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            >
+                              <option value="">Select lead source</option>
+                              <option value="Indeed">Indeed</option>
+                              <option value="LinkedIn">LinkedIn</option>
+                              <option value="Referral">Referral</option>
+                              <option value="Other">Other</option>
+                            </select>
+                            {errors.leadSource && (
+                              <p className="mt-1.5 text-sm text-red-600">{errors.leadSource}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Remarks Section */}
+                        <div className="space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
+                            <label className="block text-sm font-medium text-gray-700">Remarks *</label>
+                          </div>
+                          
+                          {/* Current Textarea */}
+                          <div className="relative w-full">
+                            <textarea
+                              value={formData.remarks[0].text}
+                              onChange={(e) => {
+                                const newRemarks = [{
+                                  text: e.target.value,
+                                  createdAt: new Date().toISOString(),
+                                  createdBy: 0
+                                }];
+                                setFormData(prev => ({
+                                  ...prev,
+                                  remarks: newRemarks
+                                }));
+                              }}
+                              className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
+                              placeholder="Enter your remark here..."
+                            />
+                          </div>
+
+                          {errors.remarks && (
+                            <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0].text}</p>
+                          )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="flex justify-end mt-6">
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className={`px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {isLoading ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Creating Lead...
+                              </span>
+                            ) : (
+                              'Create Lead'
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      // Bulk Upload Form
+                      <div className="max-w-xl mx-auto">
+                        <div className="mb-6">
+                          <h4 className="text-lg font-medium text-gray-900 mb-1">Bulk lead upload</h4>
+                          <p className="text-sm text-gray-500">Upload multiple leads at once</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow transition-all duration-300">
+                          <div className="text-center mb-6">
+                            <button 
+                              onClick={exportToExcel}
+                              className="p-3 hover:bg-white rounded-lg cursor-pointer transition-all duration-200 shadow-sm hover:shadow"
+                              title="Export to Excel"
+                            >
+                              <img 
+                                src={LogoIcon}
+                                alt="Excel" 
+                                className="w-12 h-12 mx-auto"
+                              />
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-4">Download the sample file, enter the data of leads into it and upload the bulk lead from Browse button.</p>
+                          <p className="text-sm text-gray-500 mb-6">Note: Don't change the header and the filename.</p>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              accept=".xlsx"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setFile(e.target.files[0]);
+                                  setUploadSuccess(false);
+                                }
+                              }}
+                              className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
+                            />
+                            <button
+                              onClick={handleFileUpload}
+                              className="flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow"
+                              title="Upload selected file"
+                            >
+                              <span className="text-xl font-bold">&uarr;</span>
+                            </button>
+                          </div>
+                          {uploadSuccess && (
+                            <p className="text-green-600 mt-4 text-sm font-medium">File uploaded successfully!</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </PermissionGuard>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Status Tabs */}
+              <PermissionGuard activityName="Lead Management" action="view">
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                      <div className="flex items-center gap-4">
+                        <PermissionGuard 
+                          activityName="Lead Assignment Management" 
+                          action="edit"
+                          fallback={<div className="w-[300px]"></div>}
+                        >
+                          <AssignmentSection />
+                        </PermissionGuard>
+                        <select 
+                          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={pageSize}
+                          onChange={(e) => setPageSize(Number(e.target.value))}
+                        >
+                          <option value="25">25 per page</option>
+                          <option value="50">50 per page</option>
+                          <option value="100">100 per page</option>
+                        </select>
+                      </div>
                     </div>
                     
-                    {/* Technology Input */}
-                    <div className="relative w-full">
-                      <input
-                        type="text"
-                        value={formData.technology[formData.technology.length - 1]}
-                        onChange={handleTechnologyChange}
-                        onKeyPress={handleTechnologyKeyPress}
-                        placeholder="Enter technology (press Enter to add)"
-                        className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                          errors.technology ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                      {formData.technology.length > 1 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {formData.technology.slice(0, -1).map((tech, idx) => (
-                            <div key={idx} className="inline-flex items-center bg-gray-50 rounded-md border border-gray-200 px-3 py-1">
-                              <span className="text-sm">{tech}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newTechnologies = formData.technology.filter((_, i) => i !== idx);
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    technology: newTechnologies
-                                  }));
-                                }}
-                                className="ml-2 text-gray-400 hover:text-gray-600"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {errors.technology && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.technology[0]}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
-                    <select
-                      name="country"
-                      value={formData.countryCode}
-                      onChange={handleCountryChange}
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.country ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select a country</option>
-                      {countries.map(country => (
-                        <option key={country.value} value={country.value}>
-                          {country.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.country && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.country}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Visa Status *</label>
-                    <select
-                      name="visaStatus"
-                      value={formData.visaStatus}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.visaStatus ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select visa status</option>
-                      <option value="H1B">H1B</option>
-                      <option value="L1">L1</option>
-                      <option value="H4">H4</option>
-                      <option value="F1">F1</option>
-                      <option value="B2">B2</option>
-                    </select>
-                    {errors.visaStatus && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.visaStatus}</p>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Lead Source *</label>
-                    <select
-                      name="leadSource"
-                      value={formData.leadSource}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.leadSource ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select lead source</option>
-                      <option value="Indeed">Indeed</option>
-                      <option value="LinkedIn">LinkedIn</option>
-                      <option value="Referral">Referral</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {errors.leadSource && (
-                      <p className="mt-1.5 text-sm text-red-600">{errors.leadSource}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Remarks Section */}
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Remarks *</label>
-                  </div>
-                  
-                  {/* Current Textarea */}
-                  <div className="relative w-full">
-                    <textarea
-                      value={formData.remarks[0].text}
-                      onChange={(e) => {
-                        const newRemarks = [{
-                          text: e.target.value,
-                          createdAt: new Date().toISOString(),
-                          createdBy: 0
-                        }];
-                        setFormData(prev => ({
-                          ...prev,
-                          remarks: newRemarks
-                        }));
-                      }}
-                      className="w-full min-h-[100px] h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300 resize-y"
-                      placeholder="Enter your remark here..."
-                    />
-                  </div>
-
-                  {errors.remarks && (
-                    <p className="mt-1.5 text-sm text-red-600">{errors.remarks[0].text}</p>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end mt-6">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className={`px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Creating Lead...
-                      </span>
-                    ) : (
-                      'Create Lead'
-                    )}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              // Bulk Upload Form
-              <div className="max-w-xl mx-auto">
-                <div className="mb-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-1">Bulk lead upload</h4>
-                  <p className="text-sm text-gray-500">Upload multiple leads at once</p>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow transition-all duration-300">
-                  <div className="text-center mb-6">
-                    <button 
-                      onClick={exportToExcel}
-                      className="p-3 hover:bg-white rounded-lg cursor-pointer transition-all duration-200 shadow-sm hover:shadow"
-                      title="Export to Excel"
-                    >
-                      <img 
-                        src={LogoIcon}
-                        alt="Excel" 
-                        className="w-12 h-12 mx-auto"
-                      />
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-4">Download the sample file, enter the data of leads into it and upload the bulk lead from Browse button.</p>
-                  <p className="text-sm text-gray-500 mb-6">Note: Don't change the header and the filename.</p>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept=".xlsx"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setFile(e.target.files[0]);
-                          setUploadSuccess(false);
-                        }
-                      }}
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
-                    />
-                    <button
-                      onClick={handleFileUpload}
-                      className="flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow"
-                      title="Upload selected file"
-                    >
-                      <span className="text-xl font-bold">&uarr;</span>
-                    </button>
-                  </div>
-                  {uploadSuccess && (
-                    <p className="text-green-600 mt-4 text-sm font-medium">File uploaded successfully!</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Status Tabs */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="px-8 py-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
-              <div className="flex items-center gap-4">
-                <select 
-                  className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={selectedSalesPerson}
-                  onChange={(e) => {
-                    setSelectedSalesPerson(e.target.value);
-                    if (e.target.value) {
-                      setCurrentSalesPerson('');
-                    }
-                  }}
-                >
-                  <option value="">Select sales person</option>
-                  {isLoadingSalesUsers ? (
-                    <option value="" disabled>Loading sales executives...</option>
-                  ) : (
-                    salesUsers.map((user) => (
-                      <option 
-                        key={user.id}
-                        value={`${user.firstname} ${user.lastname}`}
-                        disabled={`${user.firstname} ${user.lastname}` === currentSalesPerson}
-                      >
-                        {user.firstname} {user.lastname}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <button 
-                  className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow`}
-                  onClick={handleAssignSalesPerson}
-                  disabled={!selectedSalesPerson || selectedLeads.length === 0}
-                >
-                  {getButtonProps().text}
-                </button>
-                <select 
-                  className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                >
-                  <option value="25">25 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="border-b border-gray-200">
-              <div className="flex">
-                {(['open', 'converted', 'archived', 'inProcess'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    className={getStatusTabStyle(activeStatusTab === tab)}
-                    onClick={() => handleStatusTabChange(tab)}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
-                      {getLeadsCountByStatus(tab)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Table with horizontal scroll prevention */}
-          <div className="w-full">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <div className="inline-block min-w-full align-middle">
-                  <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-4 border-b">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedLeads.length === paginatedLeads.length}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Send Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedLeads.map((lead: Lead, index: number) => (
-                    <tr key={lead.id || index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 border-b">
-                        <input
-                          type="checkbox"
-                          checked={selectedLeads.includes(index)}
-                          onChange={() => handleCheckboxChange(index)}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {(currentPage - 1) * pageSize + index + 1}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.firstName} {lead.lastName}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.primaryEmail}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        <button
-                          onClick={() => handleEmailClick(lead)}
-                          className="text-indigo-600 hover:text-indigo-900 hover:underline"
-                        >
-                          Send Email
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.primaryContact}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
-                        <a 
-                          href={lead.linkedinId} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:text-indigo-900 hover:underline"
-                        >
-                          LinkedIn
-                        </a>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.visaStatus}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.country}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
-                        <select
-                          value={lead.status || 'open'}
-                          onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                        >
-                          <option value="open">Open</option>
-                          <option value="DNR1">DNR1</option>
-                          <option value="DNR2">DNR2</option>
-                          <option value="DNR3">DNR3</option>
-                          <option value="interested">Interested</option>
-                          <option value="not working">Not Working</option>
-                          <option value="wrong no">Wrong No</option>
-                          <option value="call again later">Call Again Later</option>
-                          <option value="closed">Closed</option>
-                          <option value="Dead">Dead</option>
-                          <option value="notinterested">Not Interested</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                          hour12: false
-                        }).replace(',', '') : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                        {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <button 
-                            onClick={() => handleInfoClick(lead)}
-                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                            title="View details"
+                    <div className="border-b border-gray-200">
+                      <div className="flex">
+                        {(['open', 'converted', 'archived', 'inProcess'] as const).map(tab => (
+                          <button
+                            key={tab}
+                            className={getStatusTabStyle(activeStatusTab === tab)}
+                            onClick={() => handleStatusTabChange(tab)}
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
+                              {getLeadsCountByStatus(tab)}
+                            </span>
                           </button>
-                          {/* <button 
-                            onClick={() => handleEdit(index)}
-                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                            title="Edit lead"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                            </svg>
-                          </button> */}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-                </div>
-              </div>
-            )}
-            </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-          {/* Pagination */}
-          <div className="flex justify-between items-center px-8 py-5 border-t">
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {leads.length} leads
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                Previous
-              </button>
-              <span className="px-4 py-2 mx-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+                  {/* Table with horizontal scroll prevention */}
+                  <div className="w-full">
+                    {isLoading || permissionsLoading ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <div className="inline-block min-w-full align-middle">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="px-6 py-4 border-b">
+                                  <PermissionGuard 
+                                    activityName="Lead Assignment Management" 
+                                    action="edit"
+                                  >
+                                    <input 
+                                      type="checkbox" 
+                                      checked={selectedLeads.length === paginatedLeads.length}
+                                      onChange={handleSelectAll}
+                                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                  </PermissionGuard>
+                                </th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Send Email</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paginatedLeads.map((lead: Lead, index: number) => (
+                                <tr key={lead.id || index} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 border-b">
+                                    <PermissionGuard 
+                                      activityName="Lead Assignment Management" 
+                                      action="edit"
+                                      fallback={<div className="w-4 h-4"></div>}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedLeads.includes(index)}
+                                        onChange={() => handleCheckboxChange(index)}
+                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                      />
+                                    </PermissionGuard>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {(currentPage - 1) * pageSize + index + 1}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.firstName} {lead.lastName}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.primaryEmail}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    <button
+                                      onClick={() => handleEmailClick(lead)}
+                                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                                    >
+                                      Send Email
+                                    </button>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.primaryContact}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                    <a 
+                                      href={lead.linkedinId} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                                    >
+                                      LinkedIn
+                                    </a>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.visaStatus}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.country}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                    <PermissionGuard 
+                                      activityName="Lead Status Management" 
+                                      action="view"
+                                      fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
+                                    >
+                                      <PermissionGuard
+                                        activityName="Lead Status Management"
+                                        action="edit"
+                                        fallback={
+                                          <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                            {lead.status || 'open'}
+                                          </div>
+                                        }
+                                      >
+                                        <select
+                                          value={lead.status || 'open'}
+                                          onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                        >
+                                          <option value="open">Open</option>
+                                          <option value="DNR1">DNR1</option>
+                                          <option value="DNR2">DNR2</option>
+                                          <option value="DNR3">DNR3</option>
+                                          <option value="interested">Interested</option>
+                                          <option value="not working">Not Working</option>
+                                          <option value="wrong no">Wrong No</option>
+                                          <option value="call again later">Call Again Later</option>
+                                          <option value="closed">Closed</option>
+                                          <option value="Dead">Dead</option>
+                                          <option value="notinterested">Not Interested</option>
+                                        </select>
+                                      </PermissionGuard>
+                                    </PermissionGuard>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      second: '2-digit',
+                                      hour12: false
+                                    }).replace(',', '') : '-'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                    <div className="flex items-center space-x-2">
+                                      <button 
+                                        onClick={() => handleInfoClick(lead)}
+                                        className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                        title="View details"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex justify-between items-center px-8 py-5 border-t">
+                    <div className="text-sm text-gray-600">
+                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {leads.length} leads
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-4 py-2 mx-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </PermissionGuard>
+            </>
+          )}
         </div>
+
+        {/* Modals */}
+        <LeadDetailsModal
+          isOpen={showInfoDialog}
+          onClose={handleCloseInfoDialog}
+          lead={selectedLead}
+        />
+        <StatusRemarkModal
+          isOpen={showStatusRemarkModal}
+          onClose={() => {
+            setShowStatusRemarkModal(false);
+            setSelectedLeadForStatus(null);
+            setNewStatus('');
+          }}
+          onSubmit={handleStatusRemarkSubmit}
+          currentStatus={selectedLeadForStatus?.status || ''}
+          newStatus={newStatus}
+        />
+        <StatusChangeNotification
+          isOpen={showStatusNotification}
+          onClose={() => setShowStatusNotification(false)}
+          leadName={statusNotificationData?.leadName || ''}
+          newStatus={statusNotificationData?.newStatus || ''}
+          statusGroup={statusNotificationData?.statusGroup || ''}
+        />
       </div>
-      <LeadDetailsModal
-        isOpen={showInfoDialog}
-        onClose={handleCloseInfoDialog}
-        lead={selectedLead}
-      />
-      <StatusRemarkModal
-        isOpen={showStatusRemarkModal}
-        onClose={() => {
-          setShowStatusRemarkModal(false);
-          setSelectedLeadForStatus(null);
-          setNewStatus('');
-        }}
-        onSubmit={handleStatusRemarkSubmit}
-        currentStatus={selectedLeadForStatus?.status || ''}
-        newStatus={newStatus}
-      />
-      <StatusChangeNotification
-        isOpen={showStatusNotification}
-        onClose={() => setShowStatusNotification(false)}
-        leadName={statusNotificationData?.leadName || ''}
-        newStatus={statusNotificationData?.newStatus || ''}
-        statusGroup={statusNotificationData?.statusGroup || ''}
-      />
-    </div>
+    </RouteGuard>
   );
 };
 

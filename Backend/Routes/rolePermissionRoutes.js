@@ -13,9 +13,9 @@ const router = express.Router();
 
 // RolePermission routes (protected with authentication)
 router.post("/add", authentication, addRolePermission);
-router.get("/all", getAllRolePermissions);
-router.get("/department/:dept_id", getRolePermissionsByDepartment);
-router.get("/:id", getRolePermissionById);
+router.get("/all", authentication, getAllRolePermissions);
+router.get("/department/:dept_id", authentication, getRolePermissionsByDepartment);
+router.get("/:id", authentication, getRolePermissionById);
 router.put("/:id", authentication, updateRolePermission);
 router.delete("/:id", authentication, deleteRolePermission);
 
