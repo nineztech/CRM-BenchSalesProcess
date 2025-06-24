@@ -10,6 +10,7 @@ import 'react-phone-input-2/lib/style.css';
 import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
 import StatusChangeNotification from './StatusChangeNotification';
+import EmailPopup from './EmailPopup';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -210,6 +211,10 @@ const LeadCreationComponent: React.FC = () => {
 
   // Add new state for packages
   const [packages, setPackages] = useState([]);
+
+  // Add new state for email popup
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [selectedLeadForEmail, setSelectedLeadForEmail] = useState<Lead | null>(null);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -1048,8 +1053,8 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
   // Update handleEmailClick function
   const handleEmailClick = (lead: Lead) => {
     const emailBody = generateEmailBody(lead, packages);
-    const mailtoLink = `mailto:${lead.primaryEmail}?subject=Embark on a Success Journey with Ninez Tech&body=${encodeURIComponent(emailBody)}`;
-    window.location.href = mailtoLink;
+    setSelectedLeadForEmail(lead);
+    setShowEmailPopup(true);
   };
 
   return (
@@ -1712,6 +1717,17 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
         leadName={statusNotificationData?.leadName || ''}
         newStatus={statusNotificationData?.newStatus || ''}
         statusGroup={statusNotificationData?.statusGroup || ''}
+      />
+      <EmailPopup
+        isOpen={showEmailPopup}
+        onClose={() => {
+          setShowEmailPopup(false);
+          setSelectedLeadForEmail(null);
+        }}
+        lead={selectedLeadForEmail || { firstName: '', lastName: '', primaryEmail: '' }}
+        emailBody={selectedLeadForEmail ? generateEmailBody(selectedLeadForEmail, packages) : ''}
+        emailSubject="Embark on a Success Journey with Ninez Tech"
+        packages={packages}
       />
     </div>
   );

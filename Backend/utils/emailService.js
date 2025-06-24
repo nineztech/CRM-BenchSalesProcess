@@ -233,7 +233,7 @@ export const sendOtpEmail = async (userData) => {
   }
 };
 
-export const sendPackageDetailsEmail = async (userData, packages) => {
+export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', userData.email);
 
   // Function to format currency
@@ -257,11 +257,11 @@ export const sendPackageDetailsEmail = async (userData, packages) => {
         
         <div style="margin-bottom: 16px;">
           <p style="font-size: 24px; font-weight: bold; color: #334155; margin: 0;">
-            ${formatCurrency(pkg.enrollmentCharge)}
+           <b> ${formatCurrency(pkg.enrollmentCharge)}</b>
             ${pkg.discountedPrice ? `
-              <span style="text-decoration: line-through; font-size: 16px; color: #64748b; margin-left: 8px;">
+            <b>  <span style="text-decoration: line-through; font-size: 16px; color: #64748b; margin-left: 8px;">
                 ${formatCurrency(pkg.initialPrice)}
-              </span>
+              </span></b>
             ` : ''}
           </p>
           <p style="color: #64748b; margin: 8px 0 0 0;">at enrollment</p>
@@ -289,7 +289,7 @@ export const sendPackageDetailsEmail = async (userData, packages) => {
           </div>
         ` : ''}
 
-        ${pkg.discounts.length > 0 ? `
+        ${pkg.discounts && pkg.discounts.length > 0 ? `
           <div style="background-color: #fee2e2; border-radius: 6px; padding: 12px; margin-top: 16px;">
             <p style="color: #ef4444; font-weight: 500; margin: 0;">
               Active Discount: Up to ${Math.max(...pkg.discounts.map(d => d.percentage))}% off
@@ -301,10 +301,10 @@ export const sendPackageDetailsEmail = async (userData, packages) => {
   };
 
   const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    from: options.from || `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
     to: userData.email,
-    subject: 'Embark on a Success Journey with Ninez Tech',
-    html: `
+    subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
+    html: options.customBody || `
       <!DOCTYPE html>
       <html>
         <head>

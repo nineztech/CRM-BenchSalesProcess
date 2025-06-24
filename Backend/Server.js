@@ -6,6 +6,7 @@ import session from "express-session"; // optional
 import { connectDB, sequelize } from "./config/dbConnection.js";
 import router from "./Routes/index.js";
 import addOtpFields from './migrations/addOtpFields.js';
+import emailRoutes from './Routes/emailRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,7 @@ app.use(cors({
 
 // Routes
 app.use("/api", router);
+app.use('/api/email', emailRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
