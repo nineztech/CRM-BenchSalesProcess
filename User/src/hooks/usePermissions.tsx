@@ -51,6 +51,7 @@ const usePermissions = () => {
         const finalSubrole = localStorage.getItem('subrole');
         const finalUser = localStorage.getItem('user');
         const userRole = finalUser ? JSON.parse(finalUser).role : null;
+        const isSpecial = finalUser ? JSON.parse(finalUser).isSpecial : false;
 
         if (!finalToken || !finalUserId) {
           if (retryCount < 3) {
@@ -83,11 +84,19 @@ const usePermissions = () => {
 
         let permissionsResponse;
         
-        // Check permissions based on user role
+        // Check permissions based on user role and special status
         if (userRole === 'admin') {
           // Fetch admin permissions
           permissionsResponse = await axios.get(
             `${BASE_URL}/admin-permissions/admin/${finalUserId}`,
+            {
+              headers: { Authorization: `Bearer ${finalToken}` }
+            }
+          );
+        } else if (isSpecial) {
+          // Fetch special user permissions
+          permissionsResponse = await axios.get(
+            `${BASE_URL}/special-user-permission/${finalUserId}`,
             {
               headers: { Authorization: `Bearer ${finalToken}` }
             }
@@ -115,7 +124,7 @@ const usePermissions = () => {
         
         permissionsResponse.data.data.forEach((permission: any) => {
           const activity = activitiesResponse.data.data.find(
-            (a: Activity) => a.id === (userRole === 'admin' ? permission.activity_id : permission.activity_id)
+            (a: Activity) => a.id === permission.activity_id
           );
           
           if (activity) {

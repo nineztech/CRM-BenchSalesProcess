@@ -131,7 +131,7 @@ const ArchivedLeads: React.FC = () => {
   };
 
   return (
-    <RouteGuard activityName="Lead Management">
+    <RouteGuard activityName="Archived Lead Management">
       <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
         <div className="max-w-[1350px] mx-auto">
           {/* Header */}
@@ -199,7 +199,7 @@ const ArchivedLeads: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900 border-b">{lead.archiveReason}</td>
                           <td className="px-6 py-4 text-sm border-b">
-                            {lead.status === 'active' && (
+                            {lead.status === 'active' && checkPermission('Reopen Lead Management', 'edit') && (
                               <button
                                 onClick={() => {
                                   setSelectedLead(lead);
