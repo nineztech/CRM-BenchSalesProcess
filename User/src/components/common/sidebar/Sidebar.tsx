@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding, FaLock } from 'react-icons/fa';
+import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding, FaLock, FaArchive } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -27,6 +27,13 @@ const Sidebar: React.FC = () => {
       icon: <FaUserPlus />,
       to: '/leadcreation',
       text: 'Lead Creation',
+      activity: 'Lead Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaArchive />,
+      to: '/archived-leads',
+      text: 'Archived Leads',
       activity: 'Lead Management',
       permission: 'view'
     },

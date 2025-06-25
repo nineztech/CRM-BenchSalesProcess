@@ -38,6 +38,16 @@ export const createDefaultActivities = async () => {
         deleteRoute: "/leadcreation",
         status: "active"
       },
+      {
+        name: "Archived Lead Management",
+        category: "Lead",
+        description: "View and manage archived leads, including reopening leads",
+        viewRoute: "/archived-leads",
+        addRoute: "/archived-leads",
+        editRoute: "/archived-leads",
+        deleteRoute: "/archived-leads",
+        status: "active"
+      },
       
       // User Activities
       {

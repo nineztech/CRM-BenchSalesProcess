@@ -1,6 +1,8 @@
 import Lead from "../models/leadModel.js";
 import { ValidationError, UniqueConstraintError, Op } from "sequelize";
 import User from "../models/userModel.js";
+import ArchivedLead from "../models/archivedLeadModel.js";
+import { sequelize } from "../config/dbConnection.js";
 
 export const createLead = async (req, res) => {
   try {
@@ -609,6 +611,8 @@ export const updateLead = async (req, res) => {
 
 // Update Lead Status
 export const updateLeadStatus = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
   try {
     const { id } = req.params;
     const { status, remark } = req.body;
@@ -695,12 +699,44 @@ export const updateLeadStatus = async (req, res) => {
     const currentRemarks = Array.isArray(lead.remarks) ? lead.remarks : [];
     const updatedRemarks = [...currentRemarks, remarkObject];
 
-    // Update status and remarks
+    // Check if the lead should be archived
+    const archiveStatuses = ['Dead', 'notinterested'];
+    if (archiveStatuses.includes(status)) {
+      // Create archived lead
+      const archivedLeadData = {
+        ...lead.toJSON(),
+        originalLeadId: lead.id,
+        archiveReason: status,
+        status: 'inactive',
+        archivedAt: new Date(),
+        remarks: updatedRemarks,
+        updatedBy: req.user.id
+      };
+
+      // Remove fields that shouldn't be copied
+      delete archivedLeadData.id;
+
+      // Create archived lead and delete original lead
+      await ArchivedLead.create(archivedLeadData, { transaction });
+      await lead.destroy({ transaction });
+
+      await transaction.commit();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Lead archived successfully',
+        data: archivedLeadData
+      });
+    }
+
+    // If not archiving, just update the status and remarks
     await lead.update({
       status,
       remarks: updatedRemarks,
       updatedBy: req.user.id
-    });
+    }, { transaction });
+
+    await transaction.commit();
 
     // Fetch updated lead with associations
     const updatedLead = await Lead.findByPk(id, {
@@ -735,10 +771,104 @@ export const updateLeadStatus = async (req, res) => {
     });
 
   } catch (error) {
+    await transaction.rollback();
     console.error('Error updating lead status:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while updating lead status'
+    });
+  }
+};
+
+// Archive lead
+export const archiveLead = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const { archiveReason } = req.body;
+
+    // Find the lead to archive
+    const lead = await Lead.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        }
+      ],
+      transaction
+    });
+
+    if (!lead) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found'
+      });
+    }
+
+    // Parse the archive reason if it's a string
+    let archiveReasonData;
+    try {
+      archiveReasonData = typeof archiveReason === 'string' ? JSON.parse(archiveReason) : archiveReason;
+    } catch (e) {
+      archiveReasonData = { text: archiveReason };
+    }
+
+    // Extract the text from the archive reason data
+    const archiveReasonText = archiveReasonData.text || archiveReasonData;
+
+    // Add the archive action to remarks
+    const remarks = lead.remarks || [];
+    remarks.push({
+      text: `Lead archived: ${archiveReasonText}`,
+      createdAt: new Date().toISOString(),
+      createdBy: req.user.id,
+      statusChange: {
+        from: lead.status || 'open',
+        to: 'archived'
+      }
+    });
+
+    // Create archived lead record
+    const archivedLead = await ArchivedLead.create({
+      ...lead.toJSON(),
+      originalLeadId: lead.id,
+      archiveReason: archiveReasonText,
+      archivedAt: new Date(),
+      status: 'active',
+      archivedBy: req.user.id,
+      remarks
+    }, { transaction });
+
+    // Delete the original lead
+    await lead.destroy({ transaction });
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Lead archived successfully',
+      data: archivedLead
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error archiving lead:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while archiving lead'
     });
   }
 };

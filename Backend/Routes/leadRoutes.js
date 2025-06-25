@@ -4,7 +4,8 @@ import {
   getLeadsByStatus,
   getLeadsByStatusGroup,
   updateLead,
-  updateLeadStatus
+  updateLeadStatus,
+  archiveLead
 } from '../controllers/leadController.js'
 import express from 'express'
 import authenticate from '../middleware/auth.js'
@@ -28,5 +29,8 @@ leadRoute.put("/:id", authenticate, updateLead)
 
 // Update lead status
 leadRoute.patch("/:id/status", authenticate, updateLeadStatus)
+
+// Archive lead
+leadRoute.post("/:id/archive", authenticate, archiveLead)
 
 export default leadRoute

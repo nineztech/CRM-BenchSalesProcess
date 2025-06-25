@@ -7,6 +7,7 @@ import Activity from './activityModel.js';
 import Permission from './permissionsModel.js';
 import RolePermission from './rolePermissionModel.js';
 import AdminPermission from './adminPermissionModel.js';
+import ArchivedLead from './archivedLeadModel.js';
 import SpecialUserPermission from './specialUserPermissionModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
@@ -229,6 +230,40 @@ Packages.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 User.hasMany(Packages, { foreignKey: 'createdBy', as: 'createdPackages' });
 User.hasMany(Packages, { foreignKey: 'updatedBy', as: 'updatedPackages' });
 
+// ArchivedLead associations
+ArchivedLead.belongsTo(User, { 
+  foreignKey: 'assignTo', 
+  as: 'assignedUser',
+  onDelete: 'SET NULL'
+});
+
+ArchivedLead.belongsTo(User, { 
+  foreignKey: 'createdBy',
+  as: 'creator',
+  onDelete: 'RESTRICT'
+});
+
+ArchivedLead.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater',
+  onDelete: 'RESTRICT'
+});
+
+User.hasMany(ArchivedLead, { 
+  foreignKey: 'assignTo', 
+  as: 'assignedArchivedLeads'
+});
+
+User.hasMany(ArchivedLead, {
+  foreignKey: 'createdBy',
+  as: 'createdArchivedLeads'
+});
+
+User.hasMany(ArchivedLead, {
+  foreignKey: 'updatedBy',
+  as: 'updatedArchivedLeads'
+});
+
 // Function to sync all models in the correct order
 export const syncModels = async () => {
   try {
@@ -259,6 +294,7 @@ export const syncModels = async () => {
     await AdminPermission.sync({ alter: true });
     console.log('AdminPermission table synced successfully');
 
+    // Create Lead and ArchivedLead tables
     // Create SpecialUserPermission table
     await SpecialUserPermission.sync({ alter: true });
     console.log('SpecialUserPermission table synced successfully');
@@ -267,6 +303,10 @@ export const syncModels = async () => {
     await Lead.sync({ alter: true });
     console.log('Lead table synced successfully');
 
+    await ArchivedLead.sync({ alter: true });
+    console.log('ArchivedLead table synced successfully');
+
+    // Create other tables
     await Packages.sync({ alter: true });
     console.log('Packages table synced successfully');
 
@@ -293,5 +333,6 @@ export {
   Permission,
   RolePermission,
   AdminPermission,
+  ArchivedLead,
   SpecialUserPermission
 };

@@ -10,10 +10,10 @@ import 'react-phone-input-2/lib/style.css';
 import LeadDetailsModal from './LeadDetailsModal';
 import StatusRemarkModal from './StatusRemarkModal';
 import StatusChangeNotification from './StatusChangeNotification';
+import EmailPopup from './EmailPopup';
 import PermissionGuard from '../../common/PermissionGuard';
 import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
-import EmailPopup from './EmailPopup';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -188,7 +188,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'archived' | 'inProcess'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -862,7 +862,7 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   // Handle status tab change
-  const handleStatusTabChange = (status: 'open' | 'converted' | 'archived' | 'inProcess') => {
+  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess') => {
     setActiveStatusTab(status);
     setCurrentPage(1); // Reset to first page when changing status
   };
@@ -888,45 +888,81 @@ const LeadCreationComponent: React.FC = () => {
         return;
       }
 
-      const response = await axios.patch(
-        `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-        { 
-          status: newStatus,
-          remark 
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+      if (newStatus === 'Dead' || newStatus === 'notinterested') {
+        // Archive the lead
+        const response = await axios.post(
+          `${BASE_URL}/lead/${selectedLeadForStatus.id}/archive`,
+          { 
+            archiveReason: remark
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
           }
-        }
-      );
-
-      if (response.data.success) {
-        // Update the leads list with the new data
-        setLeads(prevLeads => 
-          prevLeads.map(lead => 
-            lead.id === selectedLeadForStatus.id ? {
-              ...lead,
-              status: newStatus,
-              statusGroup: response.data.data.statusGroup
-            } : lead
-          )
         );
 
-        // Show status change notification
-        setStatusNotificationData({
-          leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
-          newStatus: newStatus,
-          statusGroup: response.data.data.statusGroup
-        });
-        setShowStatusNotification(true);
+        if (response.data.success) {
+          // Remove the lead from the list
+          setLeads(prevLeads => 
+            prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
+          );
 
-        setShowStatusRemarkModal(false);
-        setSelectedLeadForStatus(null);
-        setNewStatus('');
+          // Show status change notification
+          setStatusNotificationData({
+            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
+            newStatus: newStatus,
+            statusGroup: 'archived'
+          });
+          setShowStatusNotification(true);
+
+          setShowStatusRemarkModal(false);
+          setSelectedLeadForStatus(null);
+          setNewStatus('');
+        }
       } else {
-        setApiError('Failed to update status. Please try again.');
+        // Regular status update
+        const response = await axios.patch(
+          `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
+          { 
+            status: newStatus,
+            remark 
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          // Update the leads list with the new data
+          setLeads(prevLeads => 
+            prevLeads.map(lead => 
+              lead.id === selectedLeadForStatus.id ? {
+                ...lead,
+                status: newStatus,
+                statusGroup: response.data.data.statusGroup
+              } : lead
+            )
+          );
+
+          // Show status change notification
+          setStatusNotificationData({
+            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
+            newStatus: newStatus,
+            statusGroup: response.data.data.statusGroup
+          });
+          setShowStatusNotification(true);
+
+          setShowStatusRemarkModal(false);
+          setSelectedLeadForStatus(null);
+          setNewStatus('');
+        } else {
+          setApiError('Failed to update status. Please try again.');
+        }
       }
     } catch (error: any) {
       console.error('Error updating status:', error);
@@ -1057,7 +1093,14 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
   // Update handleEmailClick function
   const handleEmailClick = (lead: Lead) => {
     const emailBody = generateEmailBody(lead, packages);
-    setSelectedLeadForEmail(lead);
+    const userEmail = localStorage.getItem('email');
+    const userFirstName = localStorage.getItem('firstname');
+    const userLastName = localStorage.getItem('lastname');
+    
+    setSelectedLeadForEmail({
+      ...lead,
+      from: `${userFirstName} ${userLastName} <${userEmail}>`
+    });
     setShowEmailPopup(true);
   };
 
@@ -1556,7 +1599,7 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'converted', 'archived', 'inProcess'] as const).map(tab => (
+                        {(['open', 'converted', 'inProcess'] as const).map(tab => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1801,6 +1844,14 @@ ${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
           leadName={statusNotificationData?.leadName || ''}
           newStatus={statusNotificationData?.newStatus || ''}
           statusGroup={statusNotificationData?.statusGroup || ''}
+        />
+        <EmailPopup
+          isOpen={showEmailPopup}
+          onClose={() => setShowEmailPopup(false)}
+          lead={selectedLeadForEmail || { firstName: '', lastName: '', primaryEmail: '' }}
+          emailBody={generateEmailBody(selectedLeadForEmail || { firstName: '', lastName: '' }, packages)}
+          emailSubject="Embark on a Success Journey with Ninez Tech"
+          packages={packages}
         />
       </div>
     </RouteGuard>

@@ -8,8 +8,8 @@ import Sales from '../components/user/sales/sales.tsx';
 import LeadCreationComponent from '../components/user/lead_creation/LeadCreation.tsx';
 import SaleCreationComponent from '../components/user/sales/sales.tsx';
 import Sidebar from '../components/common/sidebar/Sidebar.tsx';
-import Packages from '../components/user/packages/Packages.tsx';
-
+// import Packages from '../components/user/packages/Packages.tsx';
+import ArchivedLeads from '../components/user/archived_leads/ArchivedLeads.tsx';
 import AddDepartment from '../components/admin/department/department.tsx';
 import UserRegister from '../components/admin/addUser/addUser.tsx';
 import AdminRegister from '../components/admin/adminRegister/AdminRegister.tsx';
@@ -91,7 +91,13 @@ const AppRouter: React.FC = () => {
             </UserLayout>
           </ProtectedRoute>
         } />
-
+<Route path="/archived-leads" element={
+          <ProtectedRoute>
+            <UserLayout>
+              <ArchivedLeads/>
+            </UserLayout>
+          </ProtectedRoute>
+        } />
         {/* Admin Protected Routes */}
         <Route path="/departments" element={
           <ProtectedRoute requireAdmin={true}>

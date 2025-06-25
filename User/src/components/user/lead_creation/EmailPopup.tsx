@@ -10,6 +10,7 @@ interface EmailPopupProps {
     lastName: string;
     primaryEmail: string;
     id?: number;
+    from?: string;
   };
   emailBody: string;
   emailSubject: string;
@@ -29,7 +30,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState(emailSubject);
   const [body, setBody] = useState(emailBody);
-  const [from, setFrom] = useState(`${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')} <${localStorage.getItem('email')}>`);
+  const [from, setFrom] = useState(lead.from || `${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')} <${localStorage.getItem('email')}>`);
 
   const handleSendEmail = async () => {
     try {
