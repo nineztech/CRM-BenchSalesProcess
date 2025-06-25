@@ -130,6 +130,31 @@ interface SalesUser {
   };
 }
 
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'open':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'converted':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      );
+    case 'inProcess':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
 const LeadCreationComponent: React.FC = () => {
   const { checkPermission, error: permissionError, loading: permissionsLoading, permissions } = usePermissions();
   // Form and error states
@@ -939,45 +964,45 @@ const LeadCreationComponent: React.FC = () => {
         }
       } else {
         // Regular status update
-        const response = await axios.patch(
-          `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-          { 
-            status: newStatus,
-            remark 
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
+      const response = await axios.patch(
+        `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
+        { 
+          status: newStatus,
+          remark 
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
+        }
+      );
+
+      if (response.data.success) {
+        // Update the leads list with the new data
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === selectedLeadForStatus.id ? {
+              ...lead,
+              status: newStatus,
+              statusGroup: response.data.data.statusGroup
+            } : lead
+          )
         );
 
-        if (response.data.success) {
-          // Update the leads list with the new data
-          setLeads(prevLeads => 
-            prevLeads.map(lead => 
-              lead.id === selectedLeadForStatus.id ? {
-                ...lead,
-                status: newStatus,
-                statusGroup: response.data.data.statusGroup
-              } : lead
-            )
-          );
+        // Show status change notification
+        setStatusNotificationData({
+          leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
+          newStatus: newStatus,
+          statusGroup: response.data.data.statusGroup
+        });
+        setShowStatusNotification(true);
 
-          // Show status change notification
-          setStatusNotificationData({
-            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
-            newStatus: newStatus,
-            statusGroup: response.data.data.statusGroup
-          });
-          setShowStatusNotification(true);
-
-          setShowStatusRemarkModal(false);
-          setSelectedLeadForStatus(null);
-          setNewStatus('');
-        } else {
-          setApiError('Failed to update status. Please try again.');
+        setShowStatusRemarkModal(false);
+        setSelectedLeadForStatus(null);
+        setNewStatus('');
+      } else {
+        setApiError('Failed to update status. Please try again.');
         }
       }
     } catch (error: any) {
@@ -1629,9 +1654,12 @@ ${(() => {
                             className={getStatusTabStyle(activeStatusTab === tab)}
                             onClick={() => handleStatusTabChange(tab)}
                           >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
-                              {getLeadsCountByStatus(tab)}
+                            <span className="flex items-center gap-2">
+                              {getStatusIcon(tab)}
+                              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
+                                {getLeadsCountByStatus(tab)}
+                              </span>
                             </span>
                           </button>
                         ))}

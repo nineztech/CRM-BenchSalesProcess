@@ -235,7 +235,7 @@ export const sendOtpEmail = async (userData) => {
 
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', userData.email);
-  
+
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
     return text
@@ -356,7 +356,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
 
             <div style="margin-bottom: 30px;">
               <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Our Available Plans</h2>
-              ${getPackageCards(packages)}
+                ${getPackageCards(packages)}
             </div>
 
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5;">
