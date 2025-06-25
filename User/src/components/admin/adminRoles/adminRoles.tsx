@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { FaEdit } from 'react-icons/fa';
 import Layout from '../../common/layout/Layout';
