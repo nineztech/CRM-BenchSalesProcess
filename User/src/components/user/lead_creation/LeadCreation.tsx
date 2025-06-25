@@ -156,7 +156,7 @@ const getStatusIcon = (status: string) => {
 };
 
 const LeadCreationComponent: React.FC = () => {
-  const { checkPermission, error: permissionError, loading: permissionsLoading, permissions } = usePermissions();
+  const { checkPermission, error: permissionError, loading: permissionsLoading } = usePermissions();
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
@@ -1137,7 +1137,6 @@ ${(() => {
 
   // Update handleEmailClick function
   const handleEmailClick = (lead: Lead) => {
-    const emailBody = generateEmailBody(lead, packages);
     const userDataString = localStorage.getItem('user');
     const userData = userDataString ? JSON.parse(userDataString) : null;
     
@@ -1160,14 +1159,7 @@ ${(() => {
     }
   }, [permissionError]);
 
-  // Add debugging logs
-  useEffect(() => {
-    console.log('Current permissions:', permissions);
-    console.log('Lead Management view permission:', checkPermission('Lead Management', 'view'));
-    console.log('Lead Management edit permission:', checkPermission('Lead Management', 'edit'));
-    console.log('Lead Assignment Management view permission:', checkPermission('Lead Assignment Management', 'view'));
-    console.log('Lead Assignment Management edit permission:', checkPermission('Lead Assignment Management', 'edit'));
-  }, [permissions, checkPermission]);
+
 
   // Modify the assign button section to add debugging wrapper
   const AssignmentSection = () => {
