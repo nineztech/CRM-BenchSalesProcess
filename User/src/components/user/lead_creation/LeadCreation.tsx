@@ -1137,7 +1137,7 @@ ${(() => {
 
   // Update handleEmailClick function
   const handleEmailClick = (lead: Lead) => {
-    const emailBody = generateEmailBody(lead, packages);
+    // const emailBody = generateEmailBody(lead, packages);
     const userDataString = localStorage.getItem('user');
     const userData = userDataString ? JSON.parse(userDataString) : null;
     

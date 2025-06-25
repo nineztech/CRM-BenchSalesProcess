@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { FaEdit } from 'react-icons/fa';
 import Layout from '../../common/layout/Layout';
@@ -78,15 +78,15 @@ interface Rights {
 
 type PermissionType = 'canView' | 'canAdd' | 'canEdit' | 'canDelete';
 
-interface RolePermissionWithDetails {
-  dept_id: number;
-  subrole: string;
-  activity_id: number;
-  canView: boolean;
-  canAdd: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-}
+// interface RolePermissionWithDetails {
+//   dept_id: number;
+//   subrole: string;
+//   activity_id: number;
+//   canView: boolean;
+//   canAdd: boolean;
+//   canEdit: boolean;
+//   canDelete: boolean;
+// }
 
 interface AdminPermissionResponse {
   permissionActivity: {
@@ -126,7 +126,7 @@ const AdminRoles = (): ReactElement => {
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
   // Add new state for loading existing permissions
-  const [existingPermissions, setExistingPermissions] = useState<RolePermission | null>(null);
+  // const [existingPermissions, setExistingPermissions] = useState<RolePermission | null>(null);
 
   const [isSpecial, setIsSpecial] = useState(false);
   const [selectedSpecialUser, setSelectedSpecialUser] = useState('');
