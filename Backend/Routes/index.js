@@ -8,6 +8,7 @@ import activityRoutes from './activityRoutes.js'
 import permissionsRoutes from './permissionsRoutes.js'
 import rolePermissionRoutes from './rolePermissionRoutes.js'
 import adminPermissionRoutes from './adminPermissionRoutes.js'
+import specialUserPermissionRoutes from './specialUserPermissionRoutes.js'
 
 import express from 'express'
 const router = express.Router()
@@ -22,5 +23,6 @@ router.use('/activity', activityRoutes)
 router.use('/permissions', permissionsRoutes)
 router.use('/role-permissions', rolePermissionRoutes)
 router.use('/admin-permissions', adminPermissionRoutes)
+router.use('/special-user-permission', specialUserPermissionRoutes)
 
 export default router
