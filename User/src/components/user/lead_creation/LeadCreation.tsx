@@ -48,6 +48,7 @@ interface Lead {
   remarks: Remark[];
   reference?: string | null;
   linkedinId: string;
+  from?: string;
   totalAssign?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -105,6 +106,15 @@ interface Remark {
     from: string;
     to: string;
   };
+}
+
+// Add new interface for Email Lead
+interface EmailLead {
+  firstName: string;
+  lastName: string;
+  primaryEmail: string;
+  id?: number;
+  from?: string;
 }
 
 // Add new interface for Sales User
@@ -218,7 +228,13 @@ const LeadCreationComponent: React.FC = () => {
 
   // Add new state for email popup
   const [showEmailPopup, setShowEmailPopup] = useState(false);
-  const [selectedLeadForEmail, setSelectedLeadForEmail] = useState<Lead | null>(null);
+  const [selectedLeadForEmail, setSelectedLeadForEmail] = useState<{
+    firstName: string;
+    lastName: string;
+    primaryEmail: string;
+    id?: number;
+    from?: string;
+  } | null>(null);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -1087,20 +1103,28 @@ Let me know if you have any questions or would like to hop on a quick call to di
 Looking forward to helping you take the next big step in your career!
 
 Best regards,
-${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')}`;
+${(() => {
+  const userDataString = localStorage.getItem('user');
+  const userData = userDataString ? JSON.parse(userDataString) : null;
+  return userData ? `${userData.firstname} ${userData.lastname}` : '';
+})()}`;
   };
 
   // Update handleEmailClick function
   const handleEmailClick = (lead: Lead) => {
     const emailBody = generateEmailBody(lead, packages);
-    const userEmail = localStorage.getItem('email');
-    const userFirstName = localStorage.getItem('firstname');
-    const userLastName = localStorage.getItem('lastname');
+    const userDataString = localStorage.getItem('user');
+    const userData = userDataString ? JSON.parse(userDataString) : null;
     
-    setSelectedLeadForEmail({
-      ...lead,
-      from: `${userFirstName} ${userLastName} <${userEmail}>`
-    });
+    const emailLead: EmailLead = {
+      firstName: lead.firstName,
+      lastName: lead.lastName,
+      primaryEmail: lead.primaryEmail,
+      id: lead.id,
+      from: userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : ''
+    };
+    
+    setSelectedLeadForEmail(emailLead);
     setShowEmailPopup(true);
   };
 

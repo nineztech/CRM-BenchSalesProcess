@@ -30,7 +30,11 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState(emailSubject);
   const [body, setBody] = useState(emailBody);
-  const [from, setFrom] = useState(lead.from || `${localStorage.getItem('firstname')} ${localStorage.getItem('lastname')} <${localStorage.getItem('email')}>`);
+  const [from, setFrom] = useState(() => {
+    const userDataString = localStorage.getItem('user');
+    const userData = userDataString ? JSON.parse(userDataString) : null;
+    return userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : '';
+  });
 
   const handleSendEmail = async () => {
     try {
@@ -48,7 +52,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
           to: lead.primaryEmail,
           from: from,
           subject: subject,
-          body: body,
+          body: body.replace(/\n/g, '<br>'),  // Convert newlines to HTML line breaks
           leadId: lead.id,
           packages: packages,
           userData: {
