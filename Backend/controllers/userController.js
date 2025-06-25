@@ -4,6 +4,8 @@ import Department from '../models/departmentModel.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcrypt';
 import { sendWelcomeEmail, sendOtpEmail } from '../utils/emailService.js';
+import RolePermission from '../models/rolePermissionModel.js';
+import SpecialUserPermission from '../models/specialUserPermissionModel.js';
 
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -84,6 +86,41 @@ export const register = async (req, res) => {
       is_special: is_special ? 1 : 0, // Convert boolean to number
       role: 'user' // Optional, since default is already 'user'
     });
+
+    // If user is special, create special user permissions
+    if (is_special) {
+      try {
+        // Get all role permissions for the user's department and subrole
+        const rolePermissions = await RolePermission.findAll({
+          where: {
+            dept_id: departmentId,
+            subrole: subrole
+          }
+        });
+
+        if (rolePermissions.length > 0) {
+          // Create special user permissions based on role permissions
+          await Promise.all(
+            rolePermissions.map(async (rolePermission) => {
+              return SpecialUserPermission.create({
+                user_id: newUser.id,
+                activity_id: rolePermission.activity_id,
+                dept_id: rolePermission.dept_id,
+                subrole: rolePermission.subrole,
+                canView: rolePermission.canView,
+                canAdd: rolePermission.canAdd,
+                canEdit: rolePermission.canEdit,
+                canDelete: rolePermission.canDelete,
+                createdBy: req.user?.id
+              });
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error creating special user permissions:", error);
+        // Don't fail the user creation if permissions creation fails
+      }
+    }
 
     // Send welcome email
     const emailSent = await sendWelcomeEmail({

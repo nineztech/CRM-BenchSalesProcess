@@ -8,6 +8,7 @@ import Permission from './permissionsModel.js';
 import RolePermission from './rolePermissionModel.js';
 import AdminPermission from './adminPermissionModel.js';
 import ArchivedLead from './archivedLeadModel.js';
+import SpecialUserPermission from './specialUserPermissionModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -97,6 +98,19 @@ User.hasMany(AdminPermission, {
   foreignKey: 'updatedBy', 
   as: 'adminPermissionsUpdated'
 });
+
+// Special User Permission associations
+SpecialUserPermission.belongsTo(User, { foreignKey: 'user_id', as: 'permissionOwner' });
+SpecialUserPermission.belongsTo(Activity, { foreignKey: 'activity_id', as: 'permissionActivity' });
+SpecialUserPermission.belongsTo(Department, { foreignKey: 'dept_id', as: 'permissionDepartment' });
+SpecialUserPermission.belongsTo(User, { foreignKey: 'createdBy', as: 'permissionCreatedBy' });
+SpecialUserPermission.belongsTo(User, { foreignKey: 'updatedBy', as: 'permissionUpdatedBy' });
+
+User.hasMany(SpecialUserPermission, { foreignKey: 'user_id', as: 'userOwnedSpecialPermissions' });
+Activity.hasMany(SpecialUserPermission, { foreignKey: 'activity_id', as: 'activitySpecialPermissions' });
+Department.hasMany(SpecialUserPermission, { foreignKey: 'dept_id', as: 'departmentSpecialPermissions' });
+User.hasMany(SpecialUserPermission, { foreignKey: 'createdBy', as: 'specialPermissionsCreated' });
+User.hasMany(SpecialUserPermission, { foreignKey: 'updatedBy', as: 'specialPermissionsUpdated' });
 
 // Add a virtual field to User model to access department subroles
 User.prototype.getSubroles = async function() {
@@ -281,6 +295,11 @@ export const syncModels = async () => {
     console.log('AdminPermission table synced successfully');
 
     // Create Lead and ArchivedLead tables
+    // Create SpecialUserPermission table
+    await SpecialUserPermission.sync({ alter: true });
+    console.log('SpecialUserPermission table synced successfully');
+
+    // Create other tables
     await Lead.sync({ alter: true });
     console.log('Lead table synced successfully');
 
@@ -314,5 +333,6 @@ export {
   Permission,
   RolePermission,
   AdminPermission,
-  ArchivedLead
+  ArchivedLead,
+  SpecialUserPermission
 };
