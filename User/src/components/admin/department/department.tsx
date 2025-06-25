@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import DepartmentRolesPopup from './DepartmentRolesPopup';
 
 // Add the styles
 const tooltipStyles = `
@@ -118,6 +119,8 @@ const AddDepartment: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
+  const [showRolesPopup, setShowRolesPopup] = useState(false);
+  const [savedDepartment, setSavedDepartment] = useState<{ id: number; name: string } | null>(null);
 
  const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
@@ -242,8 +245,16 @@ const AddDepartment: React.FC = () => {
 
       if (editingDepartment) {
         await axiosInstance.put(`/department/${editingDepartment.id}`, payload);
+        toast.success('Department updated successfully');
       } else {
-        await axiosInstance.post('/department/add', payload);
+        const response = await axiosInstance.post('/department/add', payload);
+        if (response.data.success) {
+          setSavedDepartment({
+            id: response.data.data.id,
+            name: departmentName.trim()
+          });
+          setShowRolesPopup(true);
+        }
       }
 
       setDepartmentName('');
@@ -252,10 +263,9 @@ const AddDepartment: React.FC = () => {
       setEditingDepartment(null);
       fetchDepartments();
       checkSalesTeamExists();
-      alert(editingDepartment ? 'Department updated successfully' : 'Department created successfully');
     } catch (error) {
       console.error('Error:', error);
-      alert('Operation failed');
+      toast.error('Operation failed');
     } finally {
       setIsLoading(false);
     }
@@ -628,6 +638,19 @@ const AddDepartment: React.FC = () => {
           title={confirmDialog.title}
           message={confirmDialog.message}
         />
+
+        {/* Add the DepartmentRolesPopup */}
+        {savedDepartment && (
+          <DepartmentRolesPopup
+            isOpen={showRolesPopup}
+            onClose={() => {
+              setShowRolesPopup(false);
+              setSavedDepartment(null);
+            }}
+            departmentId={savedDepartment.id}
+            departmentName={savedDepartment.name}
+          />
+        )}
       </div>
     </Layout>
   );
