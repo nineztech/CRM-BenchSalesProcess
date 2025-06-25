@@ -140,6 +140,13 @@ const ArchivedLeads: React.FC = () => {
             <p className="text-gray-600">View and manage archived leads</p>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-600">{error}</p>
+            </div>
+          )}
+
           {/* Main Content */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="px-8 py-6">

@@ -1,4 +1,4 @@
-import  { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { FaEdit } from 'react-icons/fa';
 import Layout from '../../common/layout/Layout';
@@ -35,27 +35,11 @@ interface Activity {
   };
 }
 
-interface Permission {
-  id: number;
-  name: string;
-}
-
 interface RoleEntry {
   role: string;
   createdAt: string;
 }
 
-interface RolePermission {
-  id: number;
-  activity_id: number;
-  dept_id: number;
-  subrole: string;
-  canView: boolean;
-  canAdd: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  createdBy: number;
-}
 
 interface AdminUser {
   id: number;
@@ -78,15 +62,6 @@ interface Rights {
 
 type PermissionType = 'canView' | 'canAdd' | 'canEdit' | 'canDelete';
 
-// interface RolePermissionWithDetails {
-//   dept_id: number;
-//   subrole: string;
-//   activity_id: number;
-//   canView: boolean;
-//   canAdd: boolean;
-//   canEdit: boolean;
-//   canDelete: boolean;
-// }
 
 interface AdminPermissionResponse {
   permissionActivity: {
@@ -117,7 +92,6 @@ const AdminRoles = (): ReactElement => {
   const [rights, setRights] = useState<Rights>({});
   const [departments, setDepartments] = useState<Department[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [currentDepartmentSubroles, setCurrentDepartmentSubroles] = useState<string[]>([]);
 
   const [showNewRoleForm, setShowNewRoleForm] = useState(false);
@@ -125,8 +99,6 @@ const AdminRoles = (): ReactElement => {
   const [roleList, setRoleList] = useState<RoleEntry[]>([]);
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
-  // Add new state for loading existing permissions
-  // const [existingPermissions, setExistingPermissions] = useState<RolePermission | null>(null);
 
   const [isSpecial, setIsSpecial] = useState(false);
   const [selectedSpecialUser, setSelectedSpecialUser] = useState('');
@@ -150,12 +122,7 @@ const AdminRoles = (): ReactElement => {
           setDepartments(activeDepartments);
         }
 
-        // Fetch permissions
-        const permResponse = await axios.get(`${import.meta.env.VITE_API_URL}/permissions/all`);
-        if (permResponse.data.success) {
-          console.log('Permissions fetched:', permResponse.data.data);
-          setPermissions(permResponse.data.data);
-        }
+
       } catch (error) {
         console.error('Error fetching data:', error);
       }

@@ -215,7 +215,7 @@ const UserRegister: React.FC = () => {
           }
         );
       } else {
-        const response = await toast.promise(
+        await toast.promise(
           axios.post(`${API_BASE_URL}/user/register`, userData, {
             headers: {
               'Authorization': `Bearer ${token}`,

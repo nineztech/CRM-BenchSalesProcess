@@ -30,7 +30,7 @@ const usePermissions = () => {
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        // const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
         const departmentId = localStorage.getItem('departmentId');
         const subrole = localStorage.getItem('subrole');
