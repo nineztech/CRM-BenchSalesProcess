@@ -744,6 +744,8 @@ const UserRegister: React.FC = () => {
         onClose={handleSpecialUserPopupClose}
         userName={`${formData.firstName} ${formData.lastName}`}
         userId={newUserId || 0}
+        departmentId={Number(formData.department)}
+        userRole={formData.subrole}
       />
 
       {/* Confirmation Dialog */}

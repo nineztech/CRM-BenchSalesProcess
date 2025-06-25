@@ -7,22 +7,11 @@ import usePermissions from '../../../hooks/usePermissions';
 
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [userRole, setUserRole] = useState<string>('');
   const location = useLocation();
   const { checkPermission, loading } = usePermissions();
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      setUserRole(user.role || '');
-    }
-  }, []);
-
-  const isAdmin = userRole === 'admin';
-
-  // Define menu items with their permissions
-  const userMenuItems = [
+  // Define all menu items with their corresponding activities
+  const menuItems = [
     {
       icon: <FaUserPlus />,
       to: '/leadcreation',
@@ -34,7 +23,7 @@ const Sidebar: React.FC = () => {
       icon: <FaArchive />,
       to: '/archived-leads',
       text: 'Archived Leads',
-      activity: 'Lead Management',
+      activity: 'Archived Lead Management',
       permission: 'view'
     },
     // {
@@ -44,16 +33,6 @@ const Sidebar: React.FC = () => {
     //   activity: 'Lead Status Management',
     //   permission: 'view'
     // },
-    {
-      icon: <FaGift />,
-      to: '/packages',
-      text: 'Packages',
-      activity: 'Package Management',
-      permission: 'view'
-    }
-  ];
-
-  const adminMenuItems = [
     {
       icon: <FaGift />,
       to: '/packages',
@@ -99,7 +78,7 @@ const Sidebar: React.FC = () => {
   ];
 
   if (loading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
@@ -133,22 +112,7 @@ const Sidebar: React.FC = () => {
 
         {/* Menu List */}
         <ul className="mt-4">
-          {/* User menu items */}
-          {!isAdmin && userMenuItems.map((item, index) => (
-            checkPermission(item.activity, item.permission as 'view' | 'add' | 'edit' | 'delete') && (
-              <SidebarItem
-                key={index}
-                icon={item.icon}
-                to={item.to}
-                text={item.text}
-                isExpanded={isExpanded}
-                isActive={location.pathname === item.to}
-              />
-            )
-          ))}
-
-          {/* Admin menu items */}
-          {isAdmin && adminMenuItems.map((item, index) => (
+          {menuItems.map((item, index) => (
             checkPermission(item.activity, item.permission as 'view' | 'add' | 'edit' | 'delete') && (
               <SidebarItem
                 key={index}

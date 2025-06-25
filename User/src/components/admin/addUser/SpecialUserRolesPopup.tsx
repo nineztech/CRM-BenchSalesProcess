@@ -7,25 +7,31 @@ interface SpecialUserRolesPopupProps {
   onClose: () => void;
   userName: string;
   userId: number;
+  departmentId: number;
+  userRole: string;
 }
 
 const SpecialUserRolesPopup: React.FC<SpecialUserRolesPopupProps> = ({
   isOpen,
   onClose,
   userName,
-  userId
+  userId,
+  departmentId,
+  userRole
 }) => {
   const navigate = useNavigate();
 
   if (!isOpen) return null;
 
   const handleAddRoles = () => {
-    // Navigate to roles page with special user data
+    // Navigate to roles page with special user data including department and role
     navigate('/roles', {
       state: {
         isSpecialUser: true,
         specialUserId: userId,
-        specialUserName: userName
+        specialUserName: userName,
+        departmentId: departmentId,
+        userRole: userRole
       }
     });
   };

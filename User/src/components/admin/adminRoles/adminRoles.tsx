@@ -101,7 +101,13 @@ interface AdminPermissionResponse {
 
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
-  const specialUserData = location.state as { isSpecialUser: boolean; specialUserId: number; specialUserName: string } | null;
+  const specialUserData = location.state as { 
+    isSpecialUser: boolean; 
+    specialUserId: number; 
+    specialUserName: string;
+    departmentId?: number;
+    userRole?: string;
+  } | null;
 
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
@@ -179,20 +185,39 @@ const AdminRoles = (): ReactElement => {
     fetchAdminUsers();
   }, []);
 
+  // Update useEffect to handle special user data with department and role
+  useEffect(() => {
+    if (specialUserData?.isSpecialUser) {
+      setIsSpecial(true);
+      setSelectedSpecialUser(specialUserData.specialUserId.toString());
+      
+      // Set department and role if provided
+      if (specialUserData.departmentId) {
+        setSelectedDepartment(specialUserData.departmentId.toString());
+      }
+      if (specialUserData.userRole) {
+        setSelectedRole(specialUserData.userRole);
+      }
+    }
+  }, [specialUserData]);
+
   // Update subroles when department changes
   useEffect(() => {
     if (selectedDepartment) {
       const selectedDept = departments.find(dept => dept.id.toString() === selectedDepartment);
       if (selectedDept) {
         setCurrentDepartmentSubroles(selectedDept.subroles || []);
-        setSelectedRole(''); // Reset selected role when department changes
+        // Only reset selected role if not coming from special user creation
+        if (!specialUserData?.userRole) {
+          setSelectedRole('');
+        }
       } else {
         setCurrentDepartmentSubroles([]);
       }
     } else {
       setCurrentDepartmentSubroles([]);
     }
-  }, [selectedDepartment, departments]);
+  }, [selectedDepartment, departments, specialUserData]);
 
   // Fetch activities when component mounts instead of when department changes
   useEffect(() => {
@@ -222,32 +247,36 @@ const AdminRoles = (): ReactElement => {
   // Update the fetchExistingPermissions function
   useEffect(() => {
     const fetchExistingPermissions = async () => {
-      if (!selectedDepartment || !selectedRole) {
-        setRights({}); // Reset rights when department or role changes
+      // Reset rights when conditions are not met
+      if ((!selectedDepartment || !selectedRole) && (!isSpecial || !selectedSpecialUser)) {
+        setRights({});
         return;
       }
 
       try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+        let response;
+        
+        if (isSpecial && selectedSpecialUser) {
+          // Fetch special user permissions
+          response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
             }
-          }
-        );
-
-        if (response.data.success) {
-          const rolePermissions = (response.data.data as RolePermissionWithDetails[]).filter(
-            rp => rp.dept_id.toString() === selectedDepartment && rp.subrole === selectedRole
           );
 
-          if (rolePermissions.length > 0) {
-            // Initialize rights for all activities
+          if (response.data.success) {
+            const specialPermissions = response.data.data;
             const initialRights: Rights = {};
+            
             activities.forEach(activity => {
               // Find permission for this activity
-              const permission = rolePermissions.find(rp => rp.activity_id === activity.id);
+              const permission = specialPermissions.find(
+                (sp: any) => sp.activity_id === activity.id
+              );
+              
               initialRights[activity.name] = {
                 canView: permission?.canView || false,
                 canAdd: permission?.canAdd || false,
@@ -256,22 +285,42 @@ const AdminRoles = (): ReactElement => {
               };
             });
             setRights(initialRights);
-          } else {
-            // If no existing permissions found, initialize empty rights for all activities
-            const emptyRights: Rights = {};
+          }
+        } else {
+          // Fetch role permissions
+          response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+
+          if (response.data.success) {
+            const rolePermissions = (response.data.data).filter(
+              (rp: any) => rp.dept_id.toString() === selectedDepartment && rp.subrole === selectedRole
+            );
+
+            const initialRights: Rights = {};
             activities.forEach(activity => {
-              emptyRights[activity.name] = {
-                canView: false,
-                canAdd: false,
-                canEdit: false,
-                canDelete: false
+              // Find permission for this activity
+              const permission = rolePermissions.find(
+                (rp: any) => rp.activity_id === activity.id
+              );
+              
+              initialRights[activity.name] = {
+                canView: permission?.canView || false,
+                canAdd: permission?.canAdd || false,
+                canEdit: permission?.canEdit || false,
+                canDelete: permission?.canDelete || false
               };
             });
-            setRights(emptyRights);
+            setRights(initialRights);
           }
         }
       } catch (error) {
-        console.error('Error fetching existing permissions:', error);
+        console.error('Error fetching permissions:', error);
         // Initialize empty rights on error
         const emptyRights: Rights = {};
         activities.forEach(activity => {
@@ -287,7 +336,7 @@ const AdminRoles = (): ReactElement => {
     };
 
     fetchExistingPermissions();
-  }, [selectedDepartment, selectedRole, activities]);
+  }, [selectedDepartment, selectedRole, isSpecial, selectedSpecialUser, activities]);
 
   // Add new effect to fetch special users
   useEffect(() => {
@@ -325,14 +374,6 @@ const AdminRoles = (): ReactElement => {
       setSelectedAdminUser('');
     }
   }, [isAdmin]);
-
-  // Update useEffect to handle special user data
-  useEffect(() => {
-    if (specialUserData?.isSpecialUser) {
-      setIsSpecial(true);
-      setSelectedSpecialUser(specialUserData.specialUserId.toString());
-    }
-  }, [specialUserData]);
 
   // Update fetchAdminPermissions function
   const fetchAdminPermissions = async () => {
@@ -470,8 +511,8 @@ const AdminRoles = (): ReactElement => {
         alert('Admin permissions updated successfully!');
         await fetchAdminPermissions();
       } else {
-        // Existing role permissions logic
-        const rolePermissions = activities.map(activity => ({
+        // Handle role or special user permissions based on isSpecial checkbox
+        const permissions = activities.map(activity => ({
           activity_id: activity.id,
           dept_id: parseInt(selectedDepartment),
           subrole: selectedRole,
@@ -481,24 +522,37 @@ const AdminRoles = (): ReactElement => {
           canDelete: rights[activity.name]?.canDelete || false
         }));
 
-        for (const permission of rolePermissions) {
-          const response = await axios.post(
-            `${import.meta.env.VITE_API_URL}/role-permissions/add`,
-            permission,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+        if (isSpecial && selectedSpecialUser) {
+          // Handle special user permissions
+          for (const permission of permissions) {
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
+              permission,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
               }
-            }
-          );
-
-          if (!response.data.success) {
-            throw new Error(response.data.message || 'Failed to assign permissions');
+            );
           }
+          alert('Special user permissions updated successfully!');
+        } else {
+          // Handle regular role permissions
+          for (const permission of permissions) {
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/role-permissions/add`,
+              permission,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              }
+            );
+          }
+          alert('Role permissions assigned successfully!');
         }
-
-        alert('Role permissions assigned successfully!');
         setRights({});
         setSelectedRole('');
       }
