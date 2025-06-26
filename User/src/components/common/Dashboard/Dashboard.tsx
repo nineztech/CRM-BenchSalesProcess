@@ -610,7 +610,7 @@ const Dashboard: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="lg:col-span-4 space-y-4"
         >
-          {keyMetrics.map((metric, index) => (
+          {keyMetrics.map((metric) => (
             <div
               key={metric.title}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-300"
