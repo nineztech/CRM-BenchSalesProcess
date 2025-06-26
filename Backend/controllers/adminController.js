@@ -60,7 +60,7 @@ export const registerAdmin = async (req, res) => {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    const existingAdminByUsername = await User.findOne({ where: { username,role:"admin"} });
+    const existingAdminByUsername = await User.findOne({ where: { username} });
     if (existingAdminByUsername) {
       return res.status(400).json({ message: 'Username already taken' });
     }
