@@ -6,6 +6,9 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import SpecialUserRolesPopup from './SpecialUserRolesPopup';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 // Confirmation Dialog Component
@@ -69,7 +72,8 @@ const UserRegister: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
   const [subroles, setSubroles] = useState<string[]>([]);
@@ -171,6 +175,13 @@ const UserRegister: React.FC = () => {
     }
 
     setErrors({ ...errors, [name]: errorMsg });
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormData({ ...formData, mobileNumber: value });
+    if (errors.mobileNumber) {
+      setErrors({ ...errors, mobileNumber: '' });
+    }
   };
 
   const handleSubmit = async () => {
@@ -496,15 +507,15 @@ const UserRegister: React.FC = () => {
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                     Mobile Number <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="mobileNumber"
-                    placeholder="Mobile Number"
-                    value={formData.mobileNumber}
-                    onChange={handleChange}
-                    maxLength={10}
-                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
+                  <div className="max-w-[180px]">
+                    <PhoneInput
+                      country={'us'}
+                      value={formData.mobileNumber}
+                      onChange={handlePhoneChange}
+                      inputClass={`p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                      disabled={isLoading}
+                    />
+                  </div>
                   {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
                 </div>
                 
@@ -576,14 +587,23 @@ const UserRegister: React.FC = () => {
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                     Password <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="Password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                    </button>
+                  </div>
                   {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                 </div>
                 
@@ -591,14 +611,23 @@ const UserRegister: React.FC = () => {
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                     Confirm Password <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    placeholder="Confirm Password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      placeholder="Confirm Password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                    </button>
+                  </div>
                   {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
                 </div>
               </div>
@@ -634,7 +663,7 @@ const UserRegister: React.FC = () => {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">ID</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
@@ -658,10 +687,10 @@ const UserRegister: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className={`hover:bg-gray-50 transition-colors duration-150`}
                     >
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.id}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.firstname}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.lastname}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{typeof user.department === 'string' ? user.department : user.department?.departmentName || ''}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.userDepartment?.departmentName || ''}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
@@ -685,7 +714,7 @@ const UserRegister: React.FC = () => {
                           {user.status}
                         </span>
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
                         {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -694,7 +723,7 @@ const UserRegister: React.FC = () => {
                           minute: '2-digit',
                           second: '2-digit',
                           hour12: false
-                        }).replace(',', '').replace(/(\d{4})\s(\d{2}):/, '$1, $2:') : ''}
+                        }) : ''}
                       </td>
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">

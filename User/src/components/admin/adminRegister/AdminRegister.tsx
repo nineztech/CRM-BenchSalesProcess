@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+// import { Fa/Eye, FaEyeSlash } from 'react-icons/fa';
 
 // Confirmation Dialog Component
 const ConfirmationDialog: React.FC<{

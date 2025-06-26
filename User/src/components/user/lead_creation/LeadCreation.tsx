@@ -1645,7 +1645,7 @@ ${(() => {
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'converted', 'inProcess'] as const).map(tab => (
+                        {(['open', 'inProcess','converted'] as const).map(tab => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
