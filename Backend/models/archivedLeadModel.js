@@ -166,6 +166,15 @@ const ArchivedLead = sequelize.define(
         }
       }
     },
+    statusGroup: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        const status = this.getDataValue('status');
+        if (!status) return 'inactive';
+        
+        return status === 'active' ? 'active' : 'inactive';
+      }
+    },
     assignTo: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -196,6 +205,13 @@ const ArchivedLead = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true
     },
+    reopenReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [1, 255]
+      }
+    },
     createdBy: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -223,6 +239,12 @@ const ArchivedLead = sequelize.define(
         fields: ['primaryEmail']
       },
       {
+        fields: ['country']
+      },
+      {
+        fields: ['visaStatus']
+      },
+      {
         fields: ['status']
       },
       {
@@ -230,9 +252,38 @@ const ArchivedLead = sequelize.define(
       },
       {
         fields: ['archivedAt']
+      },
+      {
+        fields: ['assignTo']
+      },
+      {
+        fields: ['leadSource']
       }
-    ]
+    ],
+    hooks: {
+      beforeValidate: (lead) => {
+        // Set primaryEmail from emails array
+        if (Array.isArray(lead.emails) && lead.emails.length > 0) {
+          lead.primaryEmail = lead.emails[0].toLowerCase();
+        }
+      }
+    }
   }
 );
+
+// Add a virtual field for technology search
+ArchivedLead.addHook('afterSync', async () => {
+  try {
+    await sequelize.query(`
+      ALTER TABLE ArchivedLeads 
+      ADD COLUMN technology_search VARCHAR(255) GENERATED ALWAYS AS (
+        JSON_UNQUOTE(JSON_EXTRACT(technology, '$[0]'))
+      ) STORED,
+      ADD INDEX idx_technology_search (technology_search)
+    `);
+  } catch (error) {
+    console.log('Technology search column might already exist:', error.message);
+  }
+});
 
 export default ArchivedLead; 

@@ -8,28 +8,61 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
 interface ArchivedLead {
   id: number;
+  originalLeadId: number;
   firstName: string;
   lastName: string;
-  primaryEmail: string;
+  contactNumbers: string[];
   primaryContact: string;
+  emails: string[];
+  primaryEmail: string;
+  linkedinId?: string;
   technology: string[];
   country: string;
+  countryCode: string;
   visaStatus: string;
-  status: string;
+  statusGroup: string;
+  leadSource: string;
+  reference?: string;
+  remarks: Array<{
+    text: string;
+    createdAt: string;
+    createdBy: number;
+    statusChange?: {
+      from: string;
+      to: string;
+    };
+  }>;
   archivedAt: string;
+  reopenedAt?: string;
   archiveReason: string;
+  assignTo?: number;
+  previousAssign?: number;
+  totalAssign: number;
   assignedUser?: {
+    id: number;
     firstname: string;
     lastname: string;
+    email: string;
+    subrole: string;
+    departmentId: number;
   };
   creator?: {
+    id: number;
     firstname: string;
     lastname: string;
+    email: string;
+    subrole: string;
+    departmentId: number;
   };
   updater?: {
+    id: number;
     firstname: string;
     lastname: string;
+    email: string;
+    subrole: string;
+    departmentId: number;
   };
+  status: string;
 }
 
 const ArchivedLeads: React.FC = () => {
@@ -40,7 +73,7 @@ const ArchivedLeads: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [reopenRemark, setReopenRemark] = useState('');
-  const [selectedLead, setSelectedLead] = useState<ArchivedLead | null>(null);
+  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [showReopenModal, setShowReopenModal] = useState(false);
 
   const { checkPermission } = usePermissions();
@@ -79,17 +112,20 @@ const ArchivedLeads: React.FC = () => {
     fetchArchivedLeads();
   }, [currentPage, pageSize]);
 
-  const handleReopenLead = async () => {
-    if (!selectedLead) return;
+  // Handle bulk reopen
+  const handleBulkReopen = async () => {
+    if (!selectedLeads.length) return;
 
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
       
-      // First, reopen the lead
-      const reopenResponse = await axios.post(
-        `${BASE_URL}/archived-leads/${selectedLead.id}/reopen`,
-        { remark: reopenRemark },
+      const response = await axios.post(
+        `${BASE_URL}/archived-leads/bulk-reopen`,
+        {
+          leadIds: selectedLeads.map(index => archivedLeads[index].id),
+          remark: reopenRemark
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -97,38 +133,49 @@ const ArchivedLeads: React.FC = () => {
         }
       );
 
-      if (reopenResponse.data.success) {
-        // Then, update the status to inactive
-        await axios.patch(
-          `${BASE_URL}/archived-leads/${selectedLead.id}/status`,
-          { status: 'inactive' },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
-        // Update the UI
+      if (response.data.success) {
+        // Update the status of reopened leads to inactive
         setArchivedLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === selectedLead.id 
+            response.data.data.results.success.some((result: { id: number }) => result.id === lead.id)
               ? { ...lead, status: 'inactive' }
               : lead
           )
         );
+        setSelectedLeads([]);
         setShowReopenModal(false);
-        setSelectedLead(null);
         setReopenRemark('');
-        alert('Lead reopened successfully!');
+        alert(`Successfully reopened ${response.data.data.successCount} leads!`);
       }
     } catch (err) {
-      setError('Failed to reopen lead');
-      console.error('Error reopening lead:', err);
+      setError('Failed to reopen leads');
+      console.error('Error reopening leads:', err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Select all checkbox handler
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      // Only select active leads
+      const activeIndexes = archivedLeads
+        .map((lead, index) => lead.status === 'active' ? index : -1)
+        .filter(index => index !== -1);
+      setSelectedLeads(activeIndexes);
+    } else {
+      setSelectedLeads([]);
+    }
+  };
+
+  const handleCheckboxChange = (index: number) => {
+    setSelectedLeads(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  // Get count of active leads
+  const activeLeadsCount = archivedLeads.filter(lead => lead.status === 'active').length;
 
   return (
     <RouteGuard activityName="Archived Lead Management">
@@ -151,16 +198,26 @@ const ArchivedLeads: React.FC = () => {
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="px-8 py-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Archived Leads List</h2>
-                <select 
-                  className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                >
-                  <option value="25">25 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
-                </select>
+                <h2 className="text-lg font-semibold text-gray-900">Archived Leads List</h2>
+                <div className="flex items-center gap-4">
+                  {selectedLeads.length > 0 && (
+                    <button
+                      onClick={() => setShowReopenModal(true)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-all duration-200"
+                    >
+                      Reopen Selected ({selectedLeads.length})
+                    </button>
+                  )}
+                  <select 
+                    className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                  >
+                    <option value="25">25 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </select>
+                </div>
               </div>
 
               {/* Table */}
@@ -173,51 +230,79 @@ const ArchivedLeads: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Lead Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Email</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Contact</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Technology</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Status</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Archived At</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Archive Reason</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">
+                          {activeLeadsCount > 0 && (
+                            <input 
+                              type="checkbox" 
+                              checked={selectedLeads.length === activeLeadsCount}
+                              onChange={handleSelectAll}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          )}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Contact</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Technology</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Country</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Visa Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead Source</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Last Assigned To</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Archived At</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Archive Reason</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {archivedLeads.map((lead) => (
+                      {archivedLeads
+                        .sort((a, b) => {
+                          if (a.status === 'active' && b.status !== 'active') return -1;
+                          if (a.status !== 'active' && b.status === 'active') return 1;
+                          return 0;
+                        })
+                        .map((lead, index) => (
                         <tr key={lead.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">
-                            {lead.firstName} {lead.lastName}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">{lead.primaryEmail}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">{lead.primaryContact}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">
-                            {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              lead.status === 'active' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {lead.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">
-                            {new Date(lead.archivedAt).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 border-b">{lead.archiveReason}</td>
-                          <td className="px-6 py-4 text-sm border-b">
-                            {lead.status === 'active' && checkPermission('Reopen Lead Management', 'edit') && (
-                              <button
-                                onClick={() => {
-                                  setSelectedLead(lead);
-                                  setShowReopenModal(true);
-                                }}
-                                className="text-indigo-600 hover:text-indigo-900 font-medium"
-                              >
-                                Reopen
-                              </button>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b">
+                            {lead.status === 'active' && (
+                              <input
+                                type="checkbox"
+                                checked={selectedLeads.includes(index)}
+                                onChange={() => handleCheckboxChange(index)}
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              />
                             )}
                           </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {lead.originalLeadId}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {lead.firstName} {lead.lastName}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryEmail}</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryContact}</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {lead.country} ({lead.countryCode})
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.leadSource}</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '-'}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            {new Date(lead.archivedAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false
+                            }).replace(',', '')}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.archiveReason}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -234,7 +319,7 @@ const ArchivedLeads: React.FC = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                   >
                     Previous
                   </button>
@@ -244,7 +329,7 @@ const ArchivedLeads: React.FC = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                   >
                     Next
                   </button>
@@ -261,9 +346,9 @@ const ArchivedLeads: React.FC = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
               >
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Reopen Lead</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Reopen Selected Leads</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Are you sure you want to reopen this lead? Please provide a remark for reopening.
+                  Are you sure you want to reopen {selectedLeads.length} leads? Please provide a remark for reopening.
                 </p>
                 <textarea
                   value={reopenRemark}
@@ -276,7 +361,6 @@ const ArchivedLeads: React.FC = () => {
                   <button
                     onClick={() => {
                       setShowReopenModal(false);
-                      setSelectedLead(null);
                       setReopenRemark('');
                     }}
                     className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
@@ -284,11 +368,11 @@ const ArchivedLeads: React.FC = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={handleReopenLead}
+                    onClick={handleBulkReopen}
                     disabled={!reopenRemark.trim() || isLoading}
                     className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50"
                   >
-                    {isLoading ? 'Reopening...' : 'Reopen Lead'}
+                    {isLoading ? 'Reopening...' : 'Reopen Leads'}
                   </button>
                 </div>
               </motion.div>

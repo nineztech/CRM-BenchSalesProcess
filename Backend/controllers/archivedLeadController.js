@@ -103,6 +103,7 @@ export const reopenArchivedLead = async (req, res) => {
     const leadData = {
       ...archivedLead.toJSON(),
       status: 'open',
+      createdBy: req.user.id,
       remarks: [
         {
           text: remark || 'Lead reopened from archive',
@@ -128,7 +129,7 @@ export const reopenArchivedLead = async (req, res) => {
 
     // Update archived lead status
     await archivedLead.update({
-      status: 'active',
+      status: 'inactive',
       reopenedAt: new Date(),
       updatedBy: req.user.id
     }, { transaction });
@@ -243,4 +244,123 @@ export const updateArchivedLeadStatus = async (req, res) => {
       message: 'Internal server error occurred while updating archived lead status'
     });
   }
+};
+
+// Bulk reopen archived leads
+export const bulkReopenArchivedLeads = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { leadIds, remark } = req.body;
+
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of lead IDs to reopen'
+      });
+    }
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    // Get the reopening user's details
+    const reopeningUser = await User.findByPk(req.user.id, {
+      attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+    });
+
+    if (!reopeningUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reopening user not found'
+      });
+    }
+
+    // Process each lead
+    for (const id of leadIds) {
+      try {
+        // Find the archived lead
+        const archivedLead = await ArchivedLead.findByPk(id);
+        if (!archivedLead) {
+          results.failed.push({ id, reason: 'Lead not found' });
+          continue;
+        }
+
+        // Create a new lead from the archived data
+        const leadData = {
+          ...archivedLead.toJSON(),
+          status: 'open',
+          createdBy: reopeningUser.id,
+          remarks: [{
+            text: 'Lead Created',
+            createdAt: new Date().toISOString(),
+            createdBy: reopeningUser.id,
+            creator: {
+              id: reopeningUser.id,
+              firstname: reopeningUser.firstname,
+              lastname: reopeningUser.lastname,
+              email: reopeningUser.email,
+              subrole: reopeningUser.subrole,
+              departmentId: reopeningUser.departmentId
+            },
+            statusChange: {
+              to: 'open'
+            }
+          }]
+        };
+
+        // Remove fields that shouldn't be copied
+        delete leadData.id;
+        delete leadData.archivedAt;
+        delete leadData.reopenedAt;
+        delete leadData.archiveReason;
+        delete leadData.originalLeadId;
+
+        // Create new lead
+        const newLead = await Lead.create(leadData, { transaction });
+
+        // Update archived lead status and store reopen reason
+        await archivedLead.update({
+          status: 'inactive',
+          reopenedAt: new Date(),
+          updatedBy: req.user.id,
+          reopenReason: remark || 'Lead reopened from archive (Bulk)'
+        }, { transaction });
+
+        results.success.push({ id, newLeadId: newLead.id });
+      } catch (error) {
+        results.failed.push({ id, reason: error.message });
+      }
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk reopen process completed',
+      data: {
+        results,
+        totalProcessed: leadIds.length,
+        successCount: results.success.length,
+        failureCount: results.failed.length
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error in bulk reopening leads:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while reopening leads'
+    });
+  }
+};
+
+export default {
+  getArchivedLeads,
+  reopenArchivedLead,
+  getArchivedLeadById,
+  updateArchivedLeadStatus,
+  bulkReopenArchivedLeads
 }; 

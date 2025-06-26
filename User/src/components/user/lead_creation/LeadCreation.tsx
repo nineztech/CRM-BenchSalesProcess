@@ -809,7 +809,10 @@ const LeadCreationComponent: React.FC = () => {
           .map(remark => ({
             text: remark.text.trim(),
             createdAt: new Date().toISOString(),
-            createdBy: remark.createdBy || 0
+            createdBy: remark.createdBy || 0,
+            statusChange: {
+              to: 'open'
+            }
           })),
         reference: null
       };
