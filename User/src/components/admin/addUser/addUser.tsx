@@ -193,10 +193,14 @@ const UserRegister: React.FC = () => {
         phoneNumber: formData.mobileNumber,
         username: formData.username,
         designation: formData.designation,
-        is_special: formData.is_special ? 1 : 0
+        is_special: formData.is_special
       };
 
       if (editingUserId) {
+        // For edit, only send password if it's been changed
+        if (!userData.password) {
+          delete userData.password;
+        }
         await toast.promise(
           axios.put(`${API_BASE_URL}/user/${editingUserId}`, userData, {
             headers: {
@@ -305,7 +309,7 @@ const UserRegister: React.FC = () => {
       password: "",
       confirmPassword: "",
       designation: user.designation || "",
-      is_special: user.is_special || false
+      is_special: Boolean(user.is_special)
     });
     setEditingUserId(user.id);
     setErrors({});

@@ -16,7 +16,7 @@ import AdminRegister from '../components/admin/adminRegister/AdminRegister.tsx';
 import PackagesPage from '../components/admin/packages/packages.tsx';
 import AdminRoles from '../components/admin/adminRoles/adminRoles.tsx';
 import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions.tsx';
-import Dashboard from '../components/common/dashoard/dashboard.tsx';
+import Dashboard from '../components/common/Dashboard/Dashboard.tsx';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
