@@ -464,7 +464,7 @@ const AdminRoles = (): ReactElement => {
             };
 
             return axios.post(
-              `${import.meta.env.VITE_API_URL}/admin-permissions/add`,
+              `${import.meta.env.VITE_API_URL}/admin-permissions/create`,
               permission,
               {
                 headers: {
@@ -480,31 +480,68 @@ const AdminRoles = (): ReactElement => {
         await fetchAdminPermissions();
       } else if (isSpecial && selectedSpecialUser) {
         // Handle special user permissions
-        await Promise.all(
-          activities.map(activity => {
-            const permission = {
-              user_id: parseInt(selectedSpecialUser),
-              activity_id: activity.id,
-              canView: rights[activity.name]?.canView || false,
-              canAdd: rights[activity.name]?.canAdd || false,
-              canEdit: rights[activity.name]?.canEdit || false,
-              canDelete: rights[activity.name]?.canDelete || false
-            };
-
-            return axios.post(
-              `${import.meta.env.VITE_API_URL}/special-user-permission/add`,
-              permission,
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
+        try {
+          // First get existing permissions to determine if we need to update or create
+          const existingPermissionsResponse = await axios.get(
+            `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
               }
-            );
-          })
-        );
+            }
+          );
 
-        toast.success('Special user permissions updated successfully!');
+          const existingPermissions = existingPermissionsResponse.data.data;
+
+          // Process each activity's permissions
+          await Promise.all(
+            activities.map(async (activity) => {
+              const permission = {
+                activity_id: activity.id,
+                canView: rights[activity.name]?.canView || false,
+                canAdd: rights[activity.name]?.canAdd || false,
+                canEdit: rights[activity.name]?.canEdit || false,
+                canDelete: rights[activity.name]?.canDelete || false
+              };
+
+              const existingPermission = existingPermissions.find(
+                (p: any) => p.activity_id === activity.id
+              );
+
+              if (existingPermission) {
+                // Update existing permission
+                return axios.put(
+                  `${import.meta.env.VITE_API_URL}/special-user-permission/${existingPermission.id}`,
+                  permission,
+                  {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  }
+                );
+              } else {
+                // Create new permission
+                return axios.post(
+                  `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
+                  permission,
+                  {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  }
+                );
+              }
+            })
+          );
+
+          toast.success('Special user permissions updated successfully!');
+        } catch (error: any) {
+          console.error('Error managing special user permissions:', error);
+          toast.error(error.response?.data?.message || 'Failed to update special user permissions');
+          return;
+        }
       } else {
         // Handle role permissions
         await Promise.all(
