@@ -100,7 +100,7 @@ export const UserLogin = () => {
         localStorage.setItem('user', JSON.stringify(data.data.user));
         const state = location.state as LocationState;
         // Redirect based on user role
-        const redirectPath = data.data.user.role === 'admin' ? '/packages' : '/dashboard';
+        const redirectPath = data.data.user.role === 'admin' ? '/dashbaord' : '/dashboard';
         const from = state?.from || redirectPath;
         console.log('Login successful, redirecting to:', from);
         navigate(from);
