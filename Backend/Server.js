@@ -66,7 +66,7 @@ const startServer = async () => {
       .then(() => {
         console.log('✅ MySQL Database Connected Successfully!');
         // Sync all models
-        return sequelize.sync({ alter: true });
+        return sequelize.sync();
       })
       .then(() => {
         // Run OTP fields migration

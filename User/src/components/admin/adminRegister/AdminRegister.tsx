@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, } from 'react-icons/fa';
+import { FaEdit, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FaUserCheck, FaUserXmark } from "react-icons/fa6";
 import axios from 'axios';
 import Layout from '../../common/layout/Layout';
@@ -533,22 +533,21 @@ const AdminRegister: React.FC = () => {
                   Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  disabled={isLoading}
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={isLoading}
                     className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed pr-10"
-                />
+                  />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    tabIndex={-1}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                   >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
                   </button>
                 </div>
                 {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
@@ -559,22 +558,21 @@ const AdminRegister: React.FC = () => {
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                <input
+                  <input
                     type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  disabled={isLoading}
+                    name="confirmPassword"
+                    placeholder="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    disabled={isLoading}
                     className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed pr-10"
-                />
+                  />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                   >
-                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
                   </button>
                 </div>
                 {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}

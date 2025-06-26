@@ -162,11 +162,28 @@ export const updatePackage = async (req, res) => {
       });
     }
 
-    // Validate initialPrice if it's being updated
-    if (initialPrice !== undefined && (initialPrice === null || initialPrice <= 0)) {
+    // Validate initialPrice and enrollmentCharge
+    const newInitialPrice = initialPrice !== undefined ? Number(initialPrice) : packageData.initialPrice;
+    const newEnrollmentCharge = enrollmentCharge !== undefined ? Number(enrollmentCharge) : packageData.enrollmentCharge;
+
+    if (newInitialPrice <= 0) {
       return res.status(400).json({
         success: false,
         message: "Initial price must be greater than 0"
+      });
+    }
+
+    if (newEnrollmentCharge <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Enrollment charge must be greater than 0"
+      });
+    }
+
+    if (newInitialPrice < newEnrollmentCharge) {
+      return res.status(400).json({
+        success: false,
+        message: "Initial price must be greater than or equal to enrollment charge"
       });
     }
 
@@ -184,12 +201,24 @@ export const updatePackage = async (req, res) => {
       }
     }
 
+    // Validate firstYearSalaryPercentage
+    if (firstYearSalaryPercentage !== undefined) {
+      const newPercentage = Number(firstYearSalaryPercentage);
+      if (newPercentage < 0 || newPercentage > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "First year salary percentage must be between 0 and 100"
+        });
+      }
+    }
+
+    // Update the package
     await packageData.update({
       planName: planName?.trim() || packageData.planName,
-      initialPrice: initialPrice !== undefined ? Number(initialPrice) : packageData.initialPrice,
-      enrollmentCharge: enrollmentCharge ? Number(enrollmentCharge) : packageData.enrollmentCharge,
-      offerLetterCharge: offerLetterCharge ? Number(offerLetterCharge) : packageData.offerLetterCharge,
-      firstYearSalaryPercentage: firstYearSalaryPercentage ? Number(firstYearSalaryPercentage) : packageData.firstYearSalaryPercentage,
+      initialPrice: newInitialPrice,
+      enrollmentCharge: newEnrollmentCharge,
+      offerLetterCharge: offerLetterCharge !== undefined ? Number(offerLetterCharge) : packageData.offerLetterCharge,
+      firstYearSalaryPercentage: firstYearSalaryPercentage !== undefined ? Number(firstYearSalaryPercentage) : packageData.firstYearSalaryPercentage,
       features: features || packageData.features,
       discounts: discounts || packageData.discounts,
       status: status || packageData.status,

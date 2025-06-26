@@ -104,6 +104,9 @@ export const reopenArchivedLead = async (req, res) => {
       ...archivedLead.toJSON(),
       status: 'open',
       createdBy: req.user.id,
+      assignTo: null,
+      previousAssign: null,
+      totalAssign: 0,
       remarks: [
         {
           text: remark || 'Lead reopened from archive',
@@ -123,6 +126,7 @@ export const reopenArchivedLead = async (req, res) => {
     delete leadData.reopenedAt;
     delete leadData.archiveReason;
     delete leadData.originalLeadId;
+    delete leadData.assignedUser;
 
     // Create new lead
     const newLead = await Lead.create(leadData, { transaction });
@@ -292,6 +296,9 @@ export const bulkReopenArchivedLeads = async (req, res) => {
           ...archivedLead.toJSON(),
           status: 'open',
           createdBy: reopeningUser.id,
+          assignTo: null,
+          previousAssign: null,
+          totalAssign: 0,
           remarks: [{
             text: 'Lead Created',
             createdAt: new Date().toISOString(),
@@ -316,6 +323,7 @@ export const bulkReopenArchivedLeads = async (req, res) => {
         delete leadData.reopenedAt;
         delete leadData.archiveReason;
         delete leadData.originalLeadId;
+        delete leadData.assignedUser;
 
         // Create new lead
         const newLead = await Lead.create(leadData, { transaction });

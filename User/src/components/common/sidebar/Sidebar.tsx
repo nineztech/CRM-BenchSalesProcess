@@ -43,18 +43,18 @@ const Sidebar: React.FC = () => {
     }
   };
 
-  // Function to handle Access Control hover
-  const handleAccessControlHover = () => {
-    setIsRolesOpen(true);
-  };
+  // // Function to handle Access Control hover
+  // const handleAccessControlHover = () => {
+  //   setIsRolesOpen(true);
+  // };
 
-  // Function to handle menu item click
-  const handleMenuClick = (path: string) => {
-    // If clicking a non-access control menu item, close the roles menu
-    if (path !== '/roles' && path !== '/department-permissions') {
-      setIsRolesOpen(false);
-    }
-  };
+  // // Function to handle menu item click
+  // const handleMenuClick = (path: string) => {
+  //   // If clicking a non-access control menu item, close the roles menu
+  //   if (path !== '/roles' && path !== '/department-permissions') {
+  //     setIsRolesOpen(false);
+  //   }
+  // };
 
   // Define all menu items with their corresponding activities
   const menuItems: MenuItem[] = [

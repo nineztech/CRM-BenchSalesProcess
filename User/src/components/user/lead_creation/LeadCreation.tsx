@@ -14,6 +14,7 @@ import EmailPopup from './EmailPopup';
 import PermissionGuard from '../../common/PermissionGuard';
 import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
+import toast from 'react-hot-toast';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -436,14 +437,14 @@ const LeadCreationComponent: React.FC = () => {
       setSelectedLeads([]);
       setCurrentSalesPerson('');
 
-      // Show success message
-      alert('Leads assigned successfully!');
+      // Show success message using toast
+      toast.success('Leads assigned successfully!');
 
     } catch (error: any) {
       console.error('Error assigning leads:', error);
       const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
       setApiError(errorMessage);
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -608,12 +609,13 @@ const LeadCreationComponent: React.FC = () => {
           setLeads(prev => [...prev, ...newLeads]);
           setUploadSuccess(true);
           setFile(null); // Clear the file input
+          toast.success('File uploaded successfully!');
         }
       };
       reader.readAsBinaryString(file);
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Error uploading file. Please try again.');
+      toast.error('Error uploading file. Please try again.');
     }
   };
 
@@ -861,8 +863,8 @@ const LeadCreationComponent: React.FC = () => {
         });
         setErrors({});
 
-        // Show success message
-        alert('Lead created successfully!');
+        // Show success message using toast
+        toast.success('Lead created successfully!');
 
         // Refresh the leads list
         fetchLeads();
@@ -870,22 +872,22 @@ const LeadCreationComponent: React.FC = () => {
         const errorMessage = response.data.message || 'Failed to create lead. Please try again.';
         console.error('API Error:', errorMessage);
         setApiError(errorMessage);
-        alert(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (error: any) {
       console.error('Error creating lead:', error.response || error);
       const errorMessage = error.response?.data?.message || 'Failed to create lead. Please try again.';
       setApiError(errorMessage);
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Display API error if exists
+  // Display API error using toast
   useEffect(() => {
     if (apiError) {
-      alert(apiError);
+      toast.error(apiError);
       setApiError(null);
     }
   }, [apiError]);
