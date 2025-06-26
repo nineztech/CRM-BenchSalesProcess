@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import RouteGuard from '../../common/RouteGuard';
-import usePermissions from '../../../hooks/usePermissions';
+// import usePermissions from '../../../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
