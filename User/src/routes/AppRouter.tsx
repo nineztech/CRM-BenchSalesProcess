@@ -1,12 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserLogin } from '../components/common/UserLogin/UserLogin.tsx';
-import { ProtectedRoute } from './ProtectedRoute/ProtectedRoute.tsx';
+import { ProtectedRoute } from '../Routes/ProtectedRoute/ProtectedRoute.tsx';
 import UserProfile from '../components/common/profile/index.tsx';
 import { Navbar } from '../components/common/Navbar/Navbar.tsx';
-
+// import Sales from '../components/user/sales/sales.tsx';
 import LeadCreationComponent from '../components/user/lead_creation/LeadCreation.tsx';
-import SaleCreationComponent from '../components/user/sales/sales.tsx';
+// import SaleCreationComponent from '../components/user/sales/sales.tsx';
 import Sidebar from '../components/common/sidebar/Sidebar.tsx';
 // import Packages from '../components/user/packages/Packages.tsx';
 import ArchivedLeads from '../components/user/archived_leads/ArchivedLeads.tsx';
@@ -85,13 +85,13 @@ const AppRouter: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/sales" element={
+        {/* <Route path="/sales" element={
           <ProtectedRoute>
             <UserLayout>
               <SaleCreationComponent/>
             </UserLayout>
           </ProtectedRoute>
-        } />
+        } /> */}
 <Route path="/archived-leads" element={
           <ProtectedRoute>
             <UserLayout>

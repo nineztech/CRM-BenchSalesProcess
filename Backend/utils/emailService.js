@@ -236,6 +236,14 @@ export const sendOtpEmail = async (userData) => {
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', userData.email);
 
+  // Function to convert markdown-style formatting to HTML
+  const formatText = (text) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold text
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')  // Italic text
+      .replace(/\n/g, '<br>');  // Line breaks
+  };
+
   // Function to format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -304,7 +312,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
     from: options.from || `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
     to: userData.email,
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
-    html: options.customBody || `
+    html: options.customBody ? `
       <!DOCTYPE html>
       <html>
         <head>
@@ -316,36 +324,44 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
             }
           </style>
         </head>
-        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
-          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <!-- Header -->
-            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Welcome to Ninez Tech</h1>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
+          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
+            ${formatText(options.customBody)}
+          </div>
+        </body>
+      </html>
+    ` : `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
+          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
+            <h1 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Welcome to Ninez Tech</h1>
+
+            <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
+            <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Why Choose Ninez Tech?</h2>
+              <p style="color: #333333; line-height: 1.6;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
             </div>
 
-            <!-- Content -->
-            <div class="content" style="padding: 32px 40px;">
-              <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Hello ${userData.firstName},</p>
-              <p style="color: #64748b; font-size: 15px; margin: 0 0 32px 0;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
-
-              <div style="margin-bottom: 32px;">
-                <h2 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">Why Choose Ninez Tech?</h2>
-                <p style="color: #64748b; line-height: 1.6;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
-              </div>
-
-              <div style="margin-bottom: 32px;">
-                <h2 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">Our Available Plans</h2>
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Our Available Plans</h2>
                 ${getPackageCards(packages)}
-              </div>
-
-              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 15px; margin: 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
-              </div>
             </div>
 
-            <!-- Footer -->
-            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #94a3b8; font-size: 14px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5;">
+              <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
+              <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
             </div>
           </div>
         </body>

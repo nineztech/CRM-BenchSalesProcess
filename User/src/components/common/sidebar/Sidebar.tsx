@@ -79,13 +79,13 @@ const Sidebar: React.FC = () => {
       activity: 'Archived Lead Management',
       permission: 'view'
     },
-    {
-      icon: <FaChartLine />,
-      to: '/sales',
-      text: 'Sales',
-      activity: 'Lead Status Management',
-      permission: 'view'
-    },
+    // {
+    //   icon: <FaChartLine />,
+    //   to: '/sales',
+    //   text: 'Sales',
+    //   activity: 'Lead Status Management',
+    //   permission: 'view'
+    // },
     {
       icon: <FaGift />,
       to: '/packages',

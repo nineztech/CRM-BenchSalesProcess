@@ -30,11 +30,12 @@ const usePermissions = () => {
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        const token = localStorage.getItem('token');
+        // Get stored user data
         const userId = localStorage.getItem('userId');
         const departmentId = localStorage.getItem('departmentId');
         const subrole = localStorage.getItem('subrole');
         const user = localStorage.getItem('user');
+        const authToken = localStorage.getItem('token');
 
         // If any required data is missing, try to get it from the user object
         if ((!userId || !departmentId || !subrole) && user) {
@@ -45,7 +46,6 @@ const usePermissions = () => {
         }
 
         // Recheck after potential recovery
-        const finalToken = localStorage.getItem('token');
         const finalUserId = localStorage.getItem('userId');
         const finalDepartmentId = localStorage.getItem('departmentId');
         const finalSubrole = localStorage.getItem('subrole');
@@ -53,7 +53,7 @@ const usePermissions = () => {
         const userRole = finalUser ? JSON.parse(finalUser).role : null;
         const isSpecial = finalUser ? JSON.parse(finalUser).isSpecial : false;
 
-        if (!finalToken || !finalUserId) {
+        if (!authToken || !finalUserId) {
           if (retryCount < 3) {
             setTimeout(() => {
               setRetryCount(prev => prev + 1);
@@ -72,7 +72,7 @@ const usePermissions = () => {
         const activitiesResponse = await axios.get(
           `${BASE_URL}/activity/all`,
           {
-            headers: { Authorization: `Bearer ${finalToken}` }
+            headers: { Authorization: `Bearer ${authToken}` }
           }
         );
 
@@ -90,7 +90,7 @@ const usePermissions = () => {
           permissionsResponse = await axios.get(
             `${BASE_URL}/admin-permissions/admin/${finalUserId}`,
             {
-              headers: { Authorization: `Bearer ${finalToken}` }
+              headers: { Authorization: `Bearer ${authToken}` }
             }
           );
         } else if (isSpecial) {
@@ -98,7 +98,7 @@ const usePermissions = () => {
           permissionsResponse = await axios.get(
             `${BASE_URL}/special-user-permission/${finalUserId}`,
             {
-              headers: { Authorization: `Bearer ${finalToken}` }
+              headers: { Authorization: `Bearer ${authToken}` }
             }
           );
         } else {
@@ -110,7 +110,7 @@ const usePermissions = () => {
           permissionsResponse = await axios.get(
             `${BASE_URL}/role-permissions/department/${finalDepartmentId}`,
             {
-              headers: { Authorization: `Bearer ${finalToken}` },
+              headers: { Authorization: `Bearer ${authToken}` },
               params: { role: finalSubrole }
             }
           );
