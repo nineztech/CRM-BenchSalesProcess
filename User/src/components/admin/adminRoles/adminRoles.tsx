@@ -84,6 +84,9 @@ const AdminRoles = (): ReactElement => {
     userRole?: string;
   } | null;
 
+  // Check for department selection from navigation state
+  const navState = location.state as { selectedDepartment?: number } | null;
+
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -120,6 +123,14 @@ const AdminRoles = (): ReactElement => {
             (dept: Department) => dept.status === 'active'
           );
           setDepartments(activeDepartments);
+
+          // If redirected from DepartmentRolesPopup, preselect department and subrole
+          if (navState && navState.selectedDepartment) {
+            const deptIdStr = navState.selectedDepartment.toString();
+            setSelectedDepartment(deptIdStr);
+            const dept = activeDepartments.find((d: Department) => d.id.toString() === deptIdStr);
+            setSelectedRole(dept && dept.subroles && dept.subroles.length > 0 ? dept.subroles[0] : '');
+          }
         }
 
 
@@ -174,8 +185,8 @@ const AdminRoles = (): ReactElement => {
       const selectedDept = departments.find(dept => dept.id.toString() === selectedDepartment);
       if (selectedDept) {
         setCurrentDepartmentSubroles(selectedDept.subroles || []);
-        // Only reset selected role if not coming from special user creation
-        if (!specialUserData?.userRole) {
+        // Only reset selected role if not coming from special user creation and not redirected from popup
+        if (!specialUserData?.userRole && !(navState && navState.selectedDepartment)) {
           setSelectedRole('');
         }
       } else {
@@ -184,7 +195,7 @@ const AdminRoles = (): ReactElement => {
     } else {
       setCurrentDepartmentSubroles([]);
     }
-  }, [selectedDepartment, departments, specialUserData]);
+  }, [selectedDepartment, departments, specialUserData, navState]);
 
   // Fetch activities when component mounts instead of when department changes
   useEffect(() => {
@@ -617,7 +628,7 @@ const AdminRoles = (): ReactElement => {
                 setRights({}); // Reset rights when department changes
               }}
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              disabled={isAdmin}
+              disabled={!!(isAdmin || (navState && navState.selectedDepartment))}
             >
               <option value="" disabled hidden>Select Department *</option>
               {departments.map((dept) => (
@@ -630,7 +641,7 @@ const AdminRoles = (): ReactElement => {
               value={selectedRole} 
               onChange={(e) => setSelectedRole(e.target.value)}
               className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              disabled={isAdmin || !selectedDepartment}
+              disabled={!!(isAdmin || !selectedDepartment || (navState && navState.selectedDepartment))}
             >
               <option value="" disabled hidden>Select Role *</option>
               {currentDepartmentSubroles.map((role) => (

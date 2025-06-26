@@ -104,8 +104,12 @@ const DepartmentPermissions = (): ReactElement => {
         if (selectedRole && selectedRole.trim() !== '') {
           url += `?role=${encodeURIComponent(selectedRole)}`;
         }
-        
-        const response = await axios.get(url);
+        const token = localStorage.getItem('token');
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (response.data.success) {
           const sortedPermissions = response.data.data.sort((a: RolePermission, b: RolePermission) => 
             a.subrole.localeCompare(b.subrole)
@@ -123,6 +127,22 @@ const DepartmentPermissions = (): ReactElement => {
     fetchPermissions();
   }, [selectedDepartment, selectedRole]);
 
+  // Helper function to get permission for specific activity and role (case-insensitive, trimmed)
+  const getPermissionForActivityAndRole = (activityId: number, role: string): RolePermission | null => {
+    return (
+      permissions.find(
+        (p) =>
+          p.activity_id === activityId &&
+          p.subrole.trim().toLowerCase() === role.trim().toLowerCase()
+      ) || null
+    );
+  };
+
+  console.log("permissions", permissions);
+  console.log("activities", activities);
+  console.log("availableRoles", availableRoles);
+  console.log("selectedRole", selectedRole);
+
   const renderPermissionsTable = (categoryActivities: Activity[]) => {
     return (
       <table className="w-full border-collapse min-w-[600px] mb-4">
@@ -138,13 +158,10 @@ const DepartmentPermissions = (): ReactElement => {
         </thead>
         <tbody>
           {categoryActivities.map((activity) => {
-            // Get all permissions for this activity
-            const activityPermissions = permissions.filter(p => p.activity_id === activity.id);
-            
-            // If no permissions exist for this activity, show a row for each role
-            if (activityPermissions.length === 0) {
-              const rolesToShow = selectedRole ? [selectedRole] : availableRoles;
-              return rolesToShow.map((role) => (
+            const rolesToShow = selectedRole ? [selectedRole] : availableRoles;
+            return rolesToShow.map((role) => {
+              const permission = getPermissionForActivityAndRole(activity.id, role);
+              return (
                 <tr key={`${activity.id}-${role}`} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
                   <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
                     {activity.name}
@@ -154,55 +171,28 @@ const DepartmentPermissions = (): ReactElement => {
                   </td>
                   <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">{role}</td>
                   <td className="p-2.5 border border-gray-200 text-center">
-                    <span className="text-red-600">✗</span>
+                    <span className={permission?.canView ? 'text-green-600' : 'text-red-600'}>
+                      {permission?.canView ? '✓' : '✗'}
+                    </span>
                   </td>
                   <td className="p-2.5 border border-gray-200 text-center">
-                    <span className="text-red-600">✗</span>
+                    <span className={permission?.canAdd ? 'text-green-600' : 'text-red-600'}>
+                      {permission?.canAdd ? '✓' : '✗'}
+                    </span>
                   </td>
                   <td className="p-2.5 border border-gray-200 text-center">
-                    <span className="text-red-600">✗</span>
+                    <span className={permission?.canEdit ? 'text-green-600' : 'text-red-600'}>
+                      {permission?.canEdit ? '✓' : '✗'}
+                    </span>
                   </td>
                   <td className="p-2.5 border border-gray-200 text-center">
-                    <span className="text-red-600">✗</span>
+                    <span className={permission?.canDelete ? 'text-green-600' : 'text-red-600'}>
+                      {permission?.canDelete ? '✓' : '✗'}
+                    </span>
                   </td>
                 </tr>
-              ));
-            }
-
-            // Show existing permissions
-            return activityPermissions.map((permission) => (
-              <tr key={permission.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
-                  {activity.name}
-                  {activity.description && (
-                    <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
-                  )}
-                </td>
-                <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
-                  {permission.subrole}
-                </td>
-                <td className="p-2.5 border border-gray-200 text-center">
-                  <span className={permission.canView ? 'text-green-600' : 'text-red-600'}>
-                    {permission.canView ? '✓' : '✗'}
-                  </span>
-                </td>
-                <td className="p-2.5 border border-gray-200 text-center">
-                  <span className={permission.canAdd ? 'text-green-600' : 'text-red-600'}>
-                    {permission.canAdd ? '✓' : '✗'}
-                  </span>
-                </td>
-                <td className="p-2.5 border border-gray-200 text-center">
-                  <span className={permission.canEdit ? 'text-green-600' : 'text-red-600'}>
-                    {permission.canEdit ? '✓' : '✗'}
-                  </span>
-                </td>
-                <td className="p-2.5 border border-gray-200 text-center">
-                  <span className={permission.canDelete ? 'text-green-600' : 'text-red-600'}>
-                    {permission.canDelete ? '✓' : '✗'}
-                  </span>
-                </td>
-              </tr>
-            ));
+              );
+            });
           })}
         </tbody>
       </table>

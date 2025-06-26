@@ -5,6 +5,9 @@ import axios from 'axios';
 import Layout from '../../common/layout/Layout';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 // Confirmation Dialog Component
 const ConfirmationDialog: React.FC<{
@@ -62,7 +65,8 @@ const AdminRegister: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [admins, setAdmins] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Base URLs for API endpoints
@@ -133,6 +137,13 @@ const AdminRegister: React.FC = () => {
     }
 
     setErrors({ ...errors, [name]: errorMsg });
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormData({ ...formData, mobileNumber: value });
+    if (errors.mobileNumber) {
+      setErrors({ ...errors, mobileNumber: '' });
+    }
   };
 
   const validateForm = () => {
@@ -469,16 +480,15 @@ const AdminRegister: React.FC = () => {
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   Mobile Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="mobileNumber"
-                  placeholder="Mobile Number"
-                  value={formData.mobileNumber}
-                  onChange={handleChange}
-                  minLength={10}
-                  disabled={isLoading}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
+                <div className="max-w-[180px]">
+                  <PhoneInput
+                    country={'us'}
+                    value={formData.mobileNumber}
+                    onChange={handlePhoneChange}
+                    inputClass={` p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                    disabled={isLoading}
+                  />
+                </div>
                 {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
               </div>
               
@@ -522,6 +532,7 @@ const AdminRegister: React.FC = () => {
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   Password <span className="text-red-500">*</span>
                 </label>
+                <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -529,8 +540,17 @@ const AdminRegister: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed pr-10"
                 />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
               </div>
               
@@ -538,15 +558,25 @@ const AdminRegister: React.FC = () => {
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
+                <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                    type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   placeholder="Confirm Password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed pr-10"
                 />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
               </div>
             </div>
