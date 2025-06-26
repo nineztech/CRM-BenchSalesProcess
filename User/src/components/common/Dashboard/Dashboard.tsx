@@ -123,6 +123,88 @@ const performanceMetrics = [
   }
 ];
 
+// Add these new sample data arrays after the existing ones
+const activityTimeline = [
+  {
+    id: 1,
+    type: 'call',
+    title: 'Client Call Scheduled',
+    description: 'Upcoming call with John Smith to discuss project requirements',
+    time: '2:00 PM',
+    date: 'Today',
+    status: 'upcoming',
+    icon: '📞'
+  },
+  {
+    id: 2,
+    type: 'meeting',
+    title: 'Team Meeting',
+    description: 'Weekly sales team sync-up',
+    time: '11:30 AM',
+    date: 'Tomorrow',
+    status: 'scheduled',
+    icon: '👥'
+  },
+  {
+    id: 3,
+    type: 'email',
+    title: 'Follow-up Email',
+    description: 'Send proposal to Sarah Johnson',
+    time: '4:00 PM',
+    date: 'Today',
+    status: 'pending',
+    icon: '📧'
+  }
+];
+
+const upcomingTasks = [
+  {
+    id: 1,
+    title: 'Review Sales Proposals',
+    priority: 'High',
+    dueDate: 'Today',
+    assignee: 'Mike Wilson',
+    progress: 75
+  },
+  {
+    id: 2,
+    title: 'Client Presentation',
+    priority: 'Medium',
+    dueDate: 'Tomorrow',
+    assignee: 'Sarah Johnson',
+    progress: 40
+  },
+  {
+    id: 3,
+    title: 'Update Lead Database',
+    priority: 'Low',
+    dueDate: 'Next Week',
+    assignee: 'John Smith',
+    progress: 20
+  }
+];
+
+const keyMetrics = [
+  {
+    title: 'Sales Velocity',
+    value: '4.2 days',
+    trend: '+12%',
+    description: 'Average time to close deals'
+  },
+  {
+    title: 'Win Rate',
+    value: '68%',
+    trend: '+5%',
+    description: 'Successful deal closure rate'
+  },
+  {
+    title: 'Pipeline Value',
+    value: '$1.2M',
+    trend: '+8%',
+    description: 'Total value of active deals'
+  }
+];
+
 const StatCard: React.FC<{
   title: string;
   value: string;
@@ -160,11 +242,11 @@ const StatCard: React.FC<{
           >
             <span style={{ color }}>{icon}</span>
           </div>
-          <h3 className="text-base font-medium text-gray-600">{title}</h3>
+          <h3 className="text-lg font-medium text-gray-700">{title}</h3>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <p className="text-3xl font-bold" style={{ color }}>{value}</p>
+        <p className="text-2xl font-bold" style={{ color }}>{value}</p>
         <div 
           className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
             isPositive 
@@ -182,7 +264,7 @@ const StatCard: React.FC<{
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen ml-[20px] mt-16">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -310,16 +392,16 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Department Performance and Additional Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
         {/* Department Performance Chart */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+          className="lg:col-span-7 bg-white p-6 rounded-lg shadow-sm border border-gray-200"
         >
           <h2 className="text-lg font-medium text-gray-900 mb-4">Department Performance</h2>
-          <div className="h-80">
+          <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={departmentData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -339,7 +421,7 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+          className="lg:col-span-5 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -352,7 +434,7 @@ const Dashboard: React.FC = () => {
                 View All
               </motion.button>
             </div>
-            <div className="space-y-5">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {recentLeads.map((lead, index) => (
                 <motion.div
                   key={lead.id}
@@ -410,7 +492,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Performance Metrics */}
-          <div className="border-t border-gray-200 mt-4">
+          <div className="border-t border-gray-200">
             <div className="p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h2>
               <div className="space-y-4">
@@ -430,6 +512,129 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           </div>
+        </motion.div>
+      </div>
+
+      {/* Additional Dashboard Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Activity Timeline */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+        >
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Activity Timeline</h2>
+            <div className="space-y-6">
+              {activityTimeline.map((activity) => (
+                <div key={activity.id} className="relative pl-8 pb-6 last:pb-0">
+                  <div className="absolute left-0 top-0 mt-1.5 -ml-[2px] h-full w-[2px] bg-gray-200">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-sm">{activity.icon}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-900">{activity.title}</h3>
+                    <p className="mt-1 text-sm text-gray-500">{activity.description}</p>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                      <span className="font-medium">{activity.time}</span>
+                      <span>•</span>
+                      <span>{activity.date}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Upcoming Tasks */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+        >
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Tasks</h2>
+            <div className="space-y-4">
+              {upcomingTasks.map((task) => (
+                <div key={task.id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-900">{task.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      task.priority === 'High' ? 'bg-red-100 text-red-700' :
+                      task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {task.priority}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-500">Due: {task.dueDate}</span>
+                    <span className="text-xs text-gray-500">{task.assignee}</span>
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                      <div>
+                        <span className="text-xs font-semibold inline-block text-indigo-600">
+                          Progress
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold inline-block text-indigo-600">
+                          {task.progress}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-100">
+                      <div
+                        style={{ width: `${task.progress}%` }}
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Key Metrics Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="lg:col-span-4 space-y-4"
+        >
+          {keyMetrics.map((metric, index) => (
+            <div
+              key={metric.title}
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-300"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-500">{metric.title}</h3>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  metric.trend.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {metric.trend}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gray-900">{metric.value}</span>
+                <span className="text-sm text-gray-500">{metric.description}</span>
+              </div>
+              <div className="mt-4 h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-500 rounded-full"
+                  style={{ width: `${Math.random() * 40 + 60}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
         </motion.div>
       </div>
     </div>
