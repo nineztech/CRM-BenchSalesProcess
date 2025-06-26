@@ -194,7 +194,7 @@ const UserRegister: React.FC = () => {
         username: formData.username,
         designation: formData.designation,
         is_special: formData.is_special
-      };
+      } as { [key: string]: any };  // Type assertion to allow optional properties
 
       if (editingUserId) {
         // For edit, only send password if it's been changed

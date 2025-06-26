@@ -77,7 +77,7 @@ const ArchivedLeads: React.FC = () => {
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [showReopenModal, setShowReopenModal] = useState(false);
 
-  const { checkPermission } = usePermissions();
+  // const { checkPermission } = usePermissions();
 
   const fetchArchivedLeads = async () => {
     try {
