@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import RouteGuard from '../../common/RouteGuard';
 import usePermissions from '../../../hooks/usePermissions';
+import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -145,11 +146,17 @@ const ArchivedLeads: React.FC = () => {
         setSelectedLeads([]);
         setShowReopenModal(false);
         setReopenRemark('');
-        alert(`Successfully reopened ${response.data.data.successCount} leads!`);
+        toast.success(`Successfully reopened ${response.data.data.successCount} leads!`);
+        
+        // Show failure message if any leads failed to reopen
+        if (response.data.data.failureCount > 0) {
+          toast.error(`Failed to reopen ${response.data.data.failureCount} leads.`);
+        }
       }
     } catch (err) {
       setError('Failed to reopen leads');
       console.error('Error reopening leads:', err);
+      toast.error('Failed to reopen leads. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -176,6 +183,14 @@ const ArchivedLeads: React.FC = () => {
 
   // Get count of active leads
   const activeLeadsCount = archivedLeads.filter(lead => lead.status === 'active').length;
+
+  // Update error display to use toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      setError(null);
+    }
+  }, [error]);
 
   return (
     <RouteGuard activityName="Archived Lead Management">
