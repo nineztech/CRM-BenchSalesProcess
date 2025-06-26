@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaChartLine, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome } from 'react-icons/fa';
+import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -65,6 +65,50 @@ const Sidebar: React.FC = () => {
       activity: 'Dashboard Management',
       permission: 'view'
     },
+     {
+      icon: <FaUserPlus />,
+      to: '/admins',
+      text: 'Add Admin',
+      activity: 'Admin Management',
+      permission: 'view'
+    },
+      {
+      icon: <FaBuilding />,
+      to: '/departments',
+      text: 'Department',
+      activity: 'Department Management',
+      permission: 'view'
+    },
+     {
+      icon: <FaLock />,
+      to: '#',
+      text: 'Access Control',
+      activity: 'Activity Management',
+      permission: 'view',
+      subItems: [
+        {
+          icon: <FaUserPlus />,
+          to: '/roles',
+          text: 'Roles & Rights',
+          activity: 'Activity Management',
+          permission: 'view'
+        },
+        {
+          icon: <FaLock />,
+          to: '/department-permissions',
+          text: 'Department Permissions',
+          activity: 'Role Permission Management',
+          permission: 'view'
+        }
+      ]
+    },
+      {
+      icon: <FaUsers />,
+      to: '/users',
+      text: 'User Creation',
+      activity: 'User Management',
+      permission: 'view'
+    },
     {
       icon: <FaUserPlus />,
       to: '/leadcreation',
@@ -93,50 +137,6 @@ const Sidebar: React.FC = () => {
       activity: 'Package Management',
       permission: 'view'
     },
-    {
-      icon: <FaUserPlus />,
-      to: '/admins',
-      text: 'Add Admin',
-      activity: 'Admin Management',
-      permission: 'view'
-    },
-    {
-      icon: <FaBuilding />,
-      to: '/departments',
-      text: 'Department',
-      activity: 'Department Management',
-      permission: 'view'
-    },
-    {
-      icon: <FaLock />,
-      to: '#',
-      text: 'Access Control',
-      activity: 'Activity Management',
-      permission: 'view',
-      subItems: [
-        {
-          icon: <FaUserPlus />,
-          to: '/roles',
-          text: 'Roles & Rights',
-          activity: 'Activity Management',
-          permission: 'view'
-        },
-        {
-          icon: <FaLock />,
-          to: '/department-permissions',
-          text: 'Department Permissions',
-          activity: 'Role Permission Management',
-          permission: 'view'
-        }
-      ]
-    },
-    {
-      icon: <FaUsers />,
-      to: '/users',
-      text: 'User Creation',
-      activity: 'User Management',
-      permission: 'view'
-    }
   ];
 
   if (loading) {

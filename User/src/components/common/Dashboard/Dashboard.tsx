@@ -15,6 +15,14 @@ import {
   Bar,
   Legend
 } from 'recharts';
+import { 
+  FaUserPlus, 
+  FaChartLine, 
+  FaClock, 
+  FaMoneyBillWave,
+  FaArrowUp,
+  FaArrowDown
+} from 'react-icons/fa';
 
 // Sample data - Replace with actual data from your API
 const leadData = [
@@ -121,19 +129,53 @@ const StatCard: React.FC<{
   change: string;
   isPositive: boolean;
   delay: number;
-}> = ({ title, value, change, isPositive, delay }) => (
+  icon: React.ReactNode;
+  color: string;
+  gradientFrom: string;
+  gradientTo: string;
+}> = ({ title, value, change, isPositive, delay, icon, color, gradientFrom, gradientTo }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5, delay }}
-    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+    className="relative bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300 group overflow-hidden"
   >
-    <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-    <div className="mt-2 flex items-baseline">
-      <p className="text-2xl font-semibold text-gray-900">{value}</p>
-      <p className={`ml-2 text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-        {isPositive ? '↑' : '↓'} {change}
-      </p>
+    {/* Gradient Background on Hover */}
+    <div 
+      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+      style={{
+        background: `linear-gradient(145deg, ${gradientFrom}05 0%, ${gradientTo}05 100%)`
+      }}
+    />
+
+    <div className="relative">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div 
+            className="p-3 rounded-lg transition-all duration-300"
+            style={{ 
+              background: `linear-gradient(145deg, ${gradientFrom}15, ${gradientTo}15)`,
+              boxShadow: `0 2px 10px ${color}10`
+            }}
+          >
+            <span style={{ color }}>{icon}</span>
+          </div>
+          <h3 className="text-base font-medium text-gray-600">{title}</h3>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <p className="text-3xl font-bold" style={{ color }}>{value}</p>
+        <div 
+          className={`flex items-center gap-1 text-sm font-medium px-2 py-1 rounded-full ${
+            isPositive 
+              ? 'text-emerald-700 bg-emerald-50' 
+              : 'text-rose-700 bg-rose-50'
+          }`}
+        >
+          {isPositive ? <FaArrowUp size={12} /> : <FaArrowDown size={12} />}
+          <span>{change}</span>
+        </div>
+      </div>
     </div>
   </motion.div>
 );
@@ -160,6 +202,10 @@ const Dashboard: React.FC = () => {
           change="12%"
           isPositive={true}
           delay={0.1}
+          icon={<FaUserPlus size={20} />}
+          color="#2563EB"
+          gradientFrom="#3B82F6"
+          gradientTo="#1D4ED8"
         />
         <StatCard
           title="Conversion Rate"
@@ -167,13 +213,21 @@ const Dashboard: React.FC = () => {
           change="4.1%"
           isPositive={true}
           delay={0.2}
+          icon={<FaChartLine size={20} />}
+          color="#059669"
+          gradientFrom="#10B981"
+          gradientTo="#047857"
         />
         <StatCard
-          title="Average Response Time"
+          title="Response Time"
           value="2.4h"
           change="0.3h"
           isPositive={false}
           delay={0.3}
+          icon={<FaClock size={20} />}
+          color="#B45309"
+          gradientFrom="#D97706"
+          gradientTo="#92400E"
         />
         <StatCard
           title="Active Deals"
@@ -181,6 +235,10 @@ const Dashboard: React.FC = () => {
           change="8.3%"
           isPositive={true}
           delay={0.4}
+          icon={<FaMoneyBillWave size={20} />}
+          color="#6D28D9"
+          gradientFrom="#7C3AED"
+          gradientTo="#5B21B6"
         />
       </div>
 
