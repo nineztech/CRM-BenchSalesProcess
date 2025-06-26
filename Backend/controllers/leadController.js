@@ -206,6 +206,9 @@ export const createLead = async (req, res) => {
             email: creator.email,
             subrole: creator.subrole,
             departmentId: creator.departmentId
+          },
+          statusChange: {
+            to: 'open'
           }
         })).filter(remark => remark.text); // Only keep remarks with non-empty text
 
