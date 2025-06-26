@@ -7,6 +7,17 @@ import { sequelize } from "../config/dbConnection.js";
 export const createDefaultActivities = async () => {
   try {
     const defaultActivities = [
+      // Dashboard Activity
+      {
+        name: "Dashboard Management",
+        category: "System",
+        description: "Access and view the main dashboard",
+        viewRoute: "/dashboard",
+        addRoute: "/dashboard",
+        editRoute: "/dashboard",
+        deleteRoute: "/dashboard",
+        status: "active"
+      },
       // Lead Activities
       {
         name: "Lead Management",

@@ -4,7 +4,7 @@ import { UserLogin } from '../components/common/UserLogin/UserLogin.tsx';
 import { ProtectedRoute } from './ProtectedRoute/ProtectedRoute.tsx';
 import UserProfile from '../components/common/profile/index.tsx';
 import { Navbar } from '../components/common/Navbar/Navbar.tsx';
-import Sales from '../components/user/sales/sales.tsx';
+
 import LeadCreationComponent from '../components/user/lead_creation/LeadCreation.tsx';
 import SaleCreationComponent from '../components/user/sales/sales.tsx';
 import Sidebar from '../components/common/sidebar/Sidebar.tsx';
@@ -16,6 +16,7 @@ import AdminRegister from '../components/admin/adminRegister/AdminRegister.tsx';
 import PackagesPage from '../components/admin/packages/packages.tsx';
 import AdminRoles from '../components/admin/adminRoles/adminRoles.tsx';
 import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions.tsx';
+import Dashboard from '../components/common/Dashboard/Dashboard.tsx';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -54,7 +55,7 @@ const AppRouter: React.FC = () => {
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <UserLayout>
-              <Sales />
+              <Dashboard />
             </UserLayout>
           </ProtectedRoute>
         } />

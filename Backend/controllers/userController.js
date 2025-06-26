@@ -670,12 +670,17 @@ export const editUser = async (req, res) => {
 
     // Get the fields from request body
     const updateFields = {};
-    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole'];
+    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole', 'designation', 'is_special'];
 
     // Add only the allowed fields that exist in the request
     Object.keys(req.body).forEach(field => {
       if (allowedFields.includes(field)) {
-        updateFields[field] = req.body[field];
+        // Convert is_special to boolean if it exists
+        if (field === 'is_special') {
+          updateFields[field] = Boolean(req.body[field]);
+        } else {
+          updateFields[field] = req.body[field];
+        }
       }
     });
 

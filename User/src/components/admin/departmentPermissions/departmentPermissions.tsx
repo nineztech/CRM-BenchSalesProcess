@@ -36,6 +36,7 @@ const DepartmentPermissions = (): ReactElement => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Fetch departments
   useEffect(() => {
@@ -92,24 +93,121 @@ const DepartmentPermissions = (): ReactElement => {
   // Fetch permissions when department or role is selected/changed
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (!selectedDepartment) return;
+      if (!selectedDepartment) {
+        setPermissions([]);
+        return;
+      }
 
+      setLoading(true);
       try {
         let url = `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`;
-        if (selectedRole) {
-          url += `?role=${selectedRole}`;
+        if (selectedRole && selectedRole.trim() !== '') {
+          url += `?role=${encodeURIComponent(selectedRole)}`;
         }
+        
         const response = await axios.get(url);
         if (response.data.success) {
-          setPermissions(response.data.data);
+          const sortedPermissions = response.data.data.sort((a: RolePermission, b: RolePermission) => 
+            a.subrole.localeCompare(b.subrole)
+          );
+          setPermissions(sortedPermissions);
         }
       } catch (error) {
         console.error('Error fetching permissions:', error);
+        setPermissions([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchPermissions();
   }, [selectedDepartment, selectedRole]);
+
+  const renderPermissionsTable = (categoryActivities: Activity[]) => {
+    return (
+      <table className="w-full border-collapse min-w-[600px] mb-4">
+        <thead>
+          <tr>
+            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Activity</th>
+            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Role</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">View</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Add</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Edit</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {categoryActivities.map((activity) => {
+            // Get all permissions for this activity
+            const activityPermissions = permissions.filter(p => p.activity_id === activity.id);
+            
+            // If no permissions exist for this activity, show a row for each role
+            if (activityPermissions.length === 0) {
+              const rolesToShow = selectedRole ? [selectedRole] : availableRoles;
+              return rolesToShow.map((role) => (
+                <tr key={`${activity.id}-${role}`} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
+                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
+                    {activity.name}
+                    {activity.description && (
+                      <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
+                    )}
+                  </td>
+                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">{role}</td>
+                  <td className="p-2.5 border border-gray-200 text-center">
+                    <span className="text-red-600">✗</span>
+                  </td>
+                  <td className="p-2.5 border border-gray-200 text-center">
+                    <span className="text-red-600">✗</span>
+                  </td>
+                  <td className="p-2.5 border border-gray-200 text-center">
+                    <span className="text-red-600">✗</span>
+                  </td>
+                  <td className="p-2.5 border border-gray-200 text-center">
+                    <span className="text-red-600">✗</span>
+                  </td>
+                </tr>
+              ));
+            }
+
+            // Show existing permissions
+            return activityPermissions.map((permission) => (
+              <tr key={permission.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
+                <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
+                  {activity.name}
+                  {activity.description && (
+                    <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
+                  )}
+                </td>
+                <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
+                  {permission.subrole}
+                </td>
+                <td className="p-2.5 border border-gray-200 text-center">
+                  <span className={permission.canView ? 'text-green-600' : 'text-red-600'}>
+                    {permission.canView ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="p-2.5 border border-gray-200 text-center">
+                  <span className={permission.canAdd ? 'text-green-600' : 'text-red-600'}>
+                    {permission.canAdd ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="p-2.5 border border-gray-200 text-center">
+                  <span className={permission.canEdit ? 'text-green-600' : 'text-red-600'}>
+                    {permission.canEdit ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="p-2.5 border border-gray-200 text-center">
+                  <span className={permission.canDelete ? 'text-green-600' : 'text-red-600'}>
+                    {permission.canDelete ? '✓' : '✗'}
+                  </span>
+                </td>
+              </tr>
+            ));
+          })}
+        </tbody>
+      </table>
+    );
+  };
 
   return (
     <Layout>
@@ -146,7 +244,13 @@ const DepartmentPermissions = (): ReactElement => {
           </div>
         </div>
 
-        {selectedDepartment && activities.length > 0 && (
+        {loading && (
+          <div className="text-center p-4 bg-white rounded-lg">
+            <p className="text-gray-600">Loading permissions...</p>
+          </div>
+        )}
+
+        {!loading && selectedDepartment && activities.length > 0 && (
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
             {Array.from(new Set(activities.map(a => a.category))).map(category => {
               const categoryActivities = activities.filter(a => a.category === category);
@@ -157,64 +261,14 @@ const DepartmentPermissions = (): ReactElement => {
                       {category}
                     </h2>
                   </div>
-
-                  <table className="w-full border-collapse min-w-[600px] mb-4">
-                    <thead>
-                      <tr>
-                        <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Activity</th>
-                        <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Role</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">View</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Add</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Edit</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categoryActivities.map((activity) => {
-                        const activityPermissions = permissions.filter(p => p.activity_id === activity.id);
-                        return activityPermissions.map((permission, idx) => (
-                          <tr key={`${activity.id}-${idx}`} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                            <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
-                              {activity.name}
-                              {activity.description && (
-                                <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
-                              )}
-                            </td>
-                            <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
-                              {permission.subrole}
-                            </td>
-                            <td className="p-2.5 border border-gray-200 text-center">
-                              <span className={permission.canView ? 'text-green-600' : 'text-red-600'}>
-                                {permission.canView ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="p-2.5 border border-gray-200 text-center">
-                              <span className={permission.canAdd ? 'text-green-600' : 'text-red-600'}>
-                                {permission.canAdd ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="p-2.5 border border-gray-200 text-center">
-                              <span className={permission.canEdit ? 'text-green-600' : 'text-red-600'}>
-                                {permission.canEdit ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="p-2.5 border border-gray-200 text-center">
-                              <span className={permission.canDelete ? 'text-green-600' : 'text-red-600'}>
-                                {permission.canDelete ? '✓' : '✗'}
-                              </span>
-                            </td>
-                          </tr>
-                        ));
-                      })}
-                    </tbody>
-                  </table>
+                  {renderPermissionsTable(categoryActivities)}
                 </div>
               );
             })}
           </div>
         )}
 
-        {!selectedDepartment && (
+        {!loading && !selectedDepartment && (
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-gray-600">Please select a department to view permissions.</p>
           </div>
