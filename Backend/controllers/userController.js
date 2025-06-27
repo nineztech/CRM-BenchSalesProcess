@@ -50,14 +50,24 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid phone number' });
     }
 
-    // Check for existing user
-    const existingUser = await User.findOne({ where: { email } });
+    // Check for existing user with same email across all roles and statuses
+    const existingUser = await User.findOne({ 
+      where: { 
+        email,
+        // No role or status filter to check across all users
+      } 
+    });
     if (existingUser) {
       return res.status(409).json({ success: false, message: 'User with this email already exists' });
     }
 
-    // Check for existing username
-    const existingUsername = await User.findOne({ where: { username } });
+    // Check for existing username across all roles and statuses
+    const existingUsername = await User.findOne({ 
+      where: { 
+        username,
+        // No role or status filter to check across all users
+      } 
+    });
     if (existingUsername) {
       return res.status(409).json({ success: false, message: 'Username already taken' });
     }
@@ -761,7 +771,8 @@ export const editUser = async (req, res) => {
           const existingUserByEmail = await User.findOne({
             where: { 
               email: value, 
-              id: { [Op.ne]: id } 
+              id: { [Op.ne]: id }
+              // No role or status filter to check across all users
             }
           });
           if (existingUserByEmail) {
@@ -779,7 +790,8 @@ export const editUser = async (req, res) => {
           const existingUserByUsername = await User.findOne({
             where: { 
               username: value, 
-              id: { [Op.ne]: id } 
+              id: { [Op.ne]: id }
+              // No role or status filter to check across all users
             }
           });
           if (existingUserByUsername) {
