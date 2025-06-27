@@ -55,6 +55,15 @@ export const registerAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Invalid phone number' });
     }
 
+    // Check for existing phone number across all users (including inactive)
+    const existingPhone = await User.findOne({
+      where: { phoneNumber }
+      // No role, status, or active/inactive filter to ensure complete uniqueness
+    });
+    if (existingPhone) {
+      return res.status(400).json({ message: 'Phone number already registered' });
+    }
+
     const existingAdminByEmail = await User.findOne({ where: { email } });
     if (existingAdminByEmail) {
       return res.status(400).json({ message: 'User with this email already exists' });
@@ -355,6 +364,18 @@ export const editAdmin = async (req, res) => {
         case 'phoneNumber':
           if (isNaN(value) || value.toString().length < 10) {
             return res.status(400).json({ message: 'Invalid phone number' });
+          }
+          
+          // Check phone number uniqueness across all users (including inactive)
+          const existingUserByPhone = await User.findOne({
+            where: { 
+              phoneNumber: value, 
+              id: { [Op.ne]: id }
+              // No role, status, or active/inactive filter to ensure complete uniqueness
+            }
+          });
+          if (existingUserByPhone) {
+            return res.status(400).json({ message: 'Phone number already registered' });
           }
           break;
 
