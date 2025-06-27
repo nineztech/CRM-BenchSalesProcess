@@ -60,23 +60,39 @@ export const assignLead = async (req, res) => {
       const previousAssignedId = existingAssignment.assignedToId;
       const allPreviousAssignedIds = [...(existingAssignment.allPreviousAssignedIds || []), previousAssignedId];
 
+      // Add remark for assignment change
+      const remarkEntry = {
+        changedTo: { to: assignedToId, from: previousAssignedId },
+        text: req.body.remarkText || 'Lead reassigned'
+      };
+      const remark = Array.isArray(existingAssignment.remark) ? [...existingAssignment.remark, remarkEntry] : [remarkEntry];
+
       await existingAssignment.update({
         assignedToId,
         previousAssignedId,
         allPreviousAssignedIds,
-        updatedBy: userId
+        updatedBy: userId,
+        remark,
+        reassignedBy: userId
       });
 
       newAssignment = existingAssignment;
     } else {
       // Create new assignment
+      // Add remark for assignment change
+      const remarkEntry = {
+        changedTo: { to: assignedToId, from: null },
+        text: req.body.remarkText || 'Lead assigned'
+      };
       newAssignment = await LeadAssignment.create({
         leadId,
         assignedToId,
         previousAssignedId: null,
         allPreviousAssignedIds: [],
         createdBy: userId,
-        status: 'active'
+        status: 'active',
+        remark: [remarkEntry],
+        reassignedBy: null
       });
     }
 
@@ -95,6 +111,11 @@ export const assignLead = async (req, res) => {
         {
           model: User,
           as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'reassignedByUser',
           attributes: ['id', 'firstname', 'lastname', 'email']
         }
       ]
@@ -134,6 +155,11 @@ export const getLeadAssignment = async (req, res) => {
           model: User,
           as: 'creator',
           attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'reassignedByUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
         }
       ]
     });
@@ -145,9 +171,56 @@ export const getLeadAssignment = async (req, res) => {
       });
     }
 
+    // Enhance remarks with user names for from/to
+    let remarks = assignment.remark || [];
+    if (remarks.length > 0) {
+      // Collect all unique user IDs from changedTo.from and changedTo.to
+      const userIds = new Set();
+      remarks.forEach(r => {
+        if (r.changedTo) {
+          if (r.changedTo.from) userIds.add(r.changedTo.from);
+          if (r.changedTo.to) userIds.add(r.changedTo.to);
+        }
+      });
+      // Fetch all users in one go
+      const users = await User.findAll({
+        where: { id: Array.from(userIds) },
+        attributes: ['id', 'firstname', 'lastname']
+      });
+      const userMap = {};
+      users.forEach(u => {
+        userMap[u.id] = `${u.firstname} ${u.lastname}`;
+      });
+      // Attach names to remarks
+      remarks = remarks.map(r => {
+        if (r.changedTo) {
+          return {
+            ...r,
+            changedTo: {
+              ...r.changedTo,
+              fromName: r.changedTo.from ? userMap[r.changedTo.from] || r.changedTo.from : '',
+              toName: r.changedTo.to ? userMap[r.changedTo.to] || r.changedTo.to : ''
+            }
+          };
+        }
+        return r;
+      });
+    }
+
+    // Attach reassignedByUser and createdAt/updatedAt to each remark for frontend display
+    remarks = remarks.map(r => ({
+      ...r,
+      reassignedByUser: assignment.reassignedByUser,
+      createdAt: assignment.updatedAt || assignment.createdAt
+    }));
+
+    // Return remarks with names
+    const assignmentData = assignment.toJSON();
+    assignmentData.remark = remarks;
+
     res.status(200).json({
       success: true,
-      data: assignment
+      data: assignmentData
     });
   } catch (error) {
     console.error("Error fetching lead assignment:", error);
