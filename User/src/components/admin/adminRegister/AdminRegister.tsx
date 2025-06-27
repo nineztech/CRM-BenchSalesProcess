@@ -5,6 +5,9 @@ import axios from 'axios';
 import Layout from '../../common/layout/Layout';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+// import { Fa/Eye, FaEyeSlash } from 'react-icons/fa';
 
 // Confirmation Dialog Component
 const ConfirmationDialog: React.FC<{
@@ -134,6 +137,13 @@ const AdminRegister: React.FC = () => {
     }
 
     setErrors({ ...errors, [name]: errorMsg });
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormData({ ...formData, mobileNumber: value });
+    if (errors.mobileNumber) {
+      setErrors({ ...errors, mobileNumber: '' });
+    }
   };
 
   const validateForm = () => {
@@ -470,16 +480,15 @@ const AdminRegister: React.FC = () => {
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   Mobile Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="mobileNumber"
-                  placeholder="Mobile Number"
-                  value={formData.mobileNumber}
-                  onChange={handleChange}
-                  minLength={10}
-                  disabled={isLoading}
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
+                <div className="max-w-[180px]">
+                  <PhoneInput
+                    country={'us'}
+                    value={formData.mobileNumber}
+                    onChange={handlePhoneChange}
+                    inputClass={` p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                    disabled={isLoading}
+                  />
+                </div>
                 {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
               </div>
               
