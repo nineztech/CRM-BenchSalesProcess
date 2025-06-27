@@ -894,14 +894,14 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab styling
   const getTabStyle = (isActive: boolean) => `
-    relative px-8 py-4 text-sm font-medium transition-all duration-300
+    relative px-6 py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
   `;
 
   const getStatusTabStyle = (isActive: boolean) => `
-    relative px-8 py-4 text-sm font-medium transition-all duration-300
+    relative px-6 py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
@@ -1216,7 +1216,7 @@ ${(() => {
 
   return (
     <RouteGuard activityName="Lead Management">
-      <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
+      <div className="ml-[20px] mt-6 p-8 bg-gray-50 min-h-screen">
         <div className="max-w-[1350px] mx-auto">
           {permissionsLoading ? (
             <div className="flex items-center justify-center min-h-[200px]">
@@ -1238,7 +1238,7 @@ ${(() => {
 
               {/* Main Tabs */}
               <PermissionGuard activityName="Lead Management" action="add">
-                <div className="bg-white mb-10 rounded-t-xl border-b border-gray-200">
+                <div className="bg-white mb-4 rounded-t-xl border-b border-gray-200">
                   <div className="flex">
                     <button
                       className={getTabStyle(activeMainTab === 'create')}
@@ -1274,7 +1274,7 @@ ${(() => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-white rounded-b-xl shadow-lg p-8 mb-8 border-x border-b border-gray-200"
+                  className="bg-white rounded-b-xl shadow-lg p-6 mb-6 border-x border-b border-gray-200"
                 >
                   <PermissionGuard activityName="Lead Management" action="add">
                     {activeMainTab === 'create' ? (
@@ -1689,7 +1689,7 @@ ${(() => {
                                     />
                                   </PermissionGuard>
                                 </th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sr. no</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Send Email</th>

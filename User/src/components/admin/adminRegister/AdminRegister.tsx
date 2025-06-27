@@ -618,7 +618,7 @@ const AdminRegister: React.FC = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">ID</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
@@ -638,7 +638,7 @@ const AdminRegister: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className={`hover:bg-gray-50 transition-colors duration-150`}
                     >
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.id}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.firstname}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.lastname}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{admin.phoneNumber}</td>
@@ -667,13 +667,14 @@ const AdminRegister: React.FC = () => {
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
                           <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`text-blue-600 hover:text-blue-700 transition-colors duration-200 ${
-                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            whileHover={{ scale: admin.status === 'active' ? 1.1 : 1 }}
+                            whileTap={{ scale: admin.status === 'active' ? 0.9 : 1 }}
+                            className={`text-blue-600 transition-colors duration-200 ${
+                              isLoading || admin.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
                             }`}
-                            onClick={() => handleEdit(admin)}
-                            disabled={isLoading}
+                            onClick={() => admin.status === 'active' && handleEdit(admin)}
+                            disabled={isLoading || admin.status !== 'active'}
+                            title={admin.status !== 'active' ? 'Cannot edit inactive admin' : ''}
                           >
                             <FaEdit size={16} />
                           </motion.button>

@@ -498,6 +498,7 @@ const AddDepartment: React.FC = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department Name</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Is Sales Team</th>
@@ -516,6 +517,7 @@ const AddDepartment: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className="hover:bg-gray-50 transition-colors duration-150"
                     >
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{dept.departmentName}</td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
                         <div className="flex flex-wrap gap-1">
@@ -578,23 +580,17 @@ const AddDepartment: React.FC = () => {
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
                           <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(dept)}
-                            disabled={isLoading}
-                            className="text-blue-600 hover:text-blue-700 transition-colors duration-200 disabled:opacity-50"
+                            whileHover={{ scale: dept.status === 'active' ? 1.1 : 1 }}
+                            whileTap={{ scale: dept.status === 'active' ? 0.9 : 1 }}
+                            onClick={() => dept.status === 'active' && handleEdit(dept)}
+                            disabled={isLoading || dept.status !== 'active'}
+                            className={`text-blue-600 transition-colors duration-200 ${
+                              isLoading || dept.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
+                            }`}
+                            title={dept.status !== 'active' ? 'Cannot edit inactive department' : ''}
                           >
                             <FaEdit size={16} />
                           </motion.button>
-                          {/* <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDelete(dept.id)}
-                            disabled={isLoading}
-                            className="text-red-500 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
-                          >
-                            <FaTrash size={16} />
-                          </motion.button> */}
                           {dept.status === 'active' ? (
                             <motion.button
                               whileHover={{ scale: 1.1 }}

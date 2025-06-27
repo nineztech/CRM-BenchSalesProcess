@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { FaUserCircle } from "react-icons/fa";
-import { IoMdLogOut } from "react-icons/io";
-import { FiEdit2 } from "react-icons/fi";
+import React, { useState, useRef, useEffect } from "react";
+import { IoLogOutOutline } from "react-icons/io5";
+import { FiEdit3 } from "react-icons/fi";
+import Avatar from 'react-avatar';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,9 +9,31 @@ import toast from 'react-hot-toast';
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
 export const Navbar: React.FC = () => {
-  const profileImage = ""
   const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+
+  // Get user data from localStorage
+  const userDataString = localStorage.getItem('user');
+  const userData = userDataString ? JSON.parse(userDataString) : null;
+  const userName = userData ? `${userData.firstname} ${userData.lastname}` : 'User';
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && 
+        buttonRef.current && 
+        !dropdownRef.current.contains(event.target as Node) && 
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -49,20 +71,9 @@ export const Navbar: React.FC = () => {
     navigate('/profile');
   };
 
-  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const file = e.target.files?.[0];
-  //   if (file) {
-  //     const reader = new FileReader();
-  //     reader.onloadend = () => {
-  //       setProfileImage(reader.result as string);
-  //     };
-  //     reader.readAsDataURL(file);
-  //   }
-  // };
-
   return (
-    <nav className="fixed top-0 left-16 right-0 h-16 bg-white border-b border-gray-200 z-40">
-      <div className="h-full px-6 flex items-center">
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-40">
+      <div className="h-full pl-[64px] pr-6 flex items-center">
         {/* Centered Content */}
         <div className="flex-1 flex justify-center">
           <h1 className="text-base font-semibold text-gray-800 tracking-wide font-inter">
@@ -74,38 +85,61 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center">
           <div className="relative">
             <button 
+              ref={buttonRef}
               onClick={() => setShowDropdown(!showDropdown)}
-              className="cursor-pointer focus:outline-none"
+              className="cursor-pointer focus:outline-none flex items-center gap-3 px-2 py-1 rounded-full hover:bg-gray-50 transition-all duration-200"
             >
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 hover:bg-gray-200 transition-colors">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt="Profile"
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <FaUserCircle className="text-gray-600 text-xl" />
-                )}
+              <div className="w-12 h-12 rounded-full ring-2 ring-gray-100">
+                <Avatar
+                  name={userName}
+                  size="48"
+                  round={true}
+                  colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
+                  textSizeRatio={2.5}
+                />
+              </div>
+              <div className="text-left hidden md:block">
+                <p className="text-sm font-medium text-gray-900">{userName}</p>
               </div>
             </button>
 
             {/* Dropdown Menu */}
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+              <div 
+                ref={dropdownRef}
+                className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg py-2 border border-gray-100 transform transition-all duration-200 ease-out"
+              >
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16">
+                      <Avatar
+                        name={userName}
+                        size="64"
+                        round={true}
+                        colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
+                        textSizeRatio={2.5}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-gray-900">{userName}</p>
+                      <p className="text-sm text-gray-500">{userData?.email || 'No email'}</p>
+                    </div>
+                  </div>
+                </div>
                 <button
                   onClick={handleEditProfile}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
                 >
-                  <FiEdit2 className="mr-2" />
-                  Edit Profile
+                  <FiEdit3 className="mr-3 text-gray-500 text-lg" />
+                  <span>Edit Profile</span>
                 </button>
+                <div className="h-[1px] bg-gray-100 my-1"></div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
                 >
-                  <IoMdLogOut className="mr-2" />
-                  Logout
+                  <IoLogOutOutline className="mr-3 text-red-500 text-lg" />
+                  <span>Logout</span>
                 </button>
               </div>
             )}

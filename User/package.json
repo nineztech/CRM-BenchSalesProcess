@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.2.3",
+    "@dicebear/core": "^9.2.3",
     "@handsontable/react": "^15.3.0",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
@@ -25,6 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.0",
+    "react-avatar": "^5.0.3",
     "react-countdown": "^2.3.6",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",

@@ -194,10 +194,10 @@ const ArchivedLeads: React.FC = () => {
 
   return (
     <RouteGuard activityName="Archived Lead Management">
-      <div className="ml-[20px] mt-16 p-8 bg-gray-50 min-h-screen">
+      <div className="ml-[20px] mt-6 p-8 bg-gray-50 min-h-screen">
         <div className="max-w-[1350px] mx-auto">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Archived Leads</h1>
             <p className="text-gray-600">View and manage archived leads</p>
           </div>
@@ -255,7 +255,7 @@ const ArchivedLeads: React.FC = () => {
                             />
                           )}
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">#</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead Name</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Email</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Contact</th>
@@ -288,7 +288,7 @@ const ArchivedLeads: React.FC = () => {
                             )}
                           </td>
                           <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
-                            {lead.originalLeadId}
+                            {((currentPage - 1) * pageSize) + index + 1}
                           </td>
                           <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
                             {lead.firstName} {lead.lastName}

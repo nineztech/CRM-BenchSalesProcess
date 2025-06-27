@@ -148,12 +148,12 @@ const DepartmentPermissions = (): ReactElement => {
       <table className="w-full border-collapse min-w-[600px] mb-4">
         <thead>
           <tr>
-            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Activity</th>
-            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700">Role</th>
-            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">View</th>
-            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Add</th>
-            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Edit</th>
-            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
+            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[45%]">Activity</th>
+            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[15%]">Role</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[10%]">View</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[10%]">Add</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[10%]">Edit</th>
+            <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700 w-[10%]">Delete</th>
           </tr>
         </thead>
         <tbody>
@@ -163,29 +163,29 @@ const DepartmentPermissions = (): ReactElement => {
               const permission = getPermissionForActivityAndRole(activity.id, role);
               return (
                 <tr key={`${activity.id}-${role}`} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">
+                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[45%]">
                     {activity.name}
                     {activity.description && (
                       <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
                     )}
                   </td>
-                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600">{role}</td>
-                  <td className="p-2.5 border border-gray-200 text-center">
+                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[15%]">{role}</td>
+                  <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canView ? 'text-green-600' : 'text-red-600'}>
                       {permission?.canView ? '✓' : '✗'}
                     </span>
                   </td>
-                  <td className="p-2.5 border border-gray-200 text-center">
+                  <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canAdd ? 'text-green-600' : 'text-red-600'}>
                       {permission?.canAdd ? '✓' : '✗'}
                     </span>
                   </td>
-                  <td className="p-2.5 border border-gray-200 text-center">
+                  <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canEdit ? 'text-green-600' : 'text-red-600'}>
                       {permission?.canEdit ? '✓' : '✗'}
                     </span>
                   </td>
-                  <td className="p-2.5 border border-gray-200 text-center">
+                  <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canDelete ? 'text-green-600' : 'text-red-600'}>
                       {permission?.canDelete ? '✓' : '✗'}
                     </span>

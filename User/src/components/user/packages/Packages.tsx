@@ -235,8 +235,8 @@ const PackagesPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-8 max-w-[98%] p-6 font-inter">
-        <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-6">Available Packages</h2>
+      <div className="flex flex-col gap-6 max-w-[98%] p-6 mt-6 font-inter">
+        <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-4">Available Packages</h2>
         
         {/* Loading State */}
         {isLoading ? (

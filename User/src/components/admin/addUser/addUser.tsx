@@ -728,14 +728,15 @@ const UserRegister: React.FC = () => {
                       <td className="p-2.5 text-sm border-b border-gray-100">
                         <div className="flex gap-3 justify-center">
                           <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className={`text-blue-600 hover:text-blue-700 transition-colors duration-200 ${
-                              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                            whileHover={{ scale: user.status === 'active' ? 1.1 : 1 }}
+                            whileTap={{ scale: user.status === 'active' ? 0.9 : 1 }}
+                            className={`text-blue-600 transition-colors duration-200 ${
+                              isLoading || user.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
                             }`}
-                          onClick={() => handleEdit(user)}
-                            disabled={isLoading}
-                        >
+                            onClick={() => user.status === 'active' && handleEdit(user)}
+                            disabled={isLoading || user.status !== 'active'}
+                            title={user.status !== 'active' ? 'Cannot edit inactive user' : ''}
+                          >
                             <FaEdit size={16} />
                           </motion.button>
                           <motion.button 
