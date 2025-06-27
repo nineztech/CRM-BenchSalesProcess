@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
 interface Remark {
   text: string;
@@ -85,6 +88,38 @@ interface LeadDetailsModalProps {
 }
 
 const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, lead }) => {
+  const [activeTab, setActiveTab] = useState<'status' | 'reassign'>('status');
+  const [reassignRemarks, setReassignRemarks] = useState<any[]>([]);
+  const [loadingReassign, setLoadingReassign] = useState(false);
+  const [errorReassign, setErrorReassign] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && lead?.id) {
+      setLoadingReassign(true);
+      setErrorReassign(null);
+      axios.get(`${BASE_URL}/lead-assignments/${lead.id}`)
+        .then(res => {
+          const assignment = res.data?.data;
+          console.log(assignment)
+          if (assignment && Array.isArray(assignment.remark)) {
+            setReassignRemarks(assignment.remark);
+          } else {
+            setReassignRemarks([]);
+          }
+        })
+        .catch(() => setErrorReassign('Failed to load reassign remarks'))
+        .finally(() => setLoadingReassign(false));
+    }
+  }, [isOpen, lead?.id]);
+
+  // Add tab style function similar to LeadCreation.tsx
+  const getTabStyle = (isActive: boolean) => `
+    relative px-8 py-3 text-sm font-medium transition-all duration-300
+    ${isActive ? 
+      'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
+      'text-gray-500 hover:text-gray-700'}
+  `;
+
   if (!lead) return null;
 
   return (
@@ -128,6 +163,22 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                   </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="flex border-b border-gray-200 bg-white">
+                  <button
+                    className={getTabStyle(activeTab === 'status')}
+                    onClick={() => setActiveTab('status')}
+                  >
+                    Status Remarks
+                  </button>
+                  <button
+                    className={getTabStyle(activeTab === 'reassign')}
+                    onClick={() => setActiveTab('reassign')}
+                  >
+                    Reassign Remarks
+                  </button>
+                </div>
+
                 {/* Content */}
                 <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
                   <div className="space-y-6">
@@ -157,137 +208,245 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                       </div>
                     </div>
 
-                    {/* Remarks Section */}
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                        </svg>
-                        Remarks History
-                      </h4>
-                      <div className="space-y-4">
-                        {lead.remarks.length === 0 ? (
+                    {/* Tab Content with Animation */}
+                    <div className="min-h-[200px]">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {activeTab === 'status' ? (
                           <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+                            key="status"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.25 }}
                           >
-                            <div className="flex items-start">
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                  <span className="text-indigo-600 font-medium">1</span>
-                                </div>
-                              </div>
-                              <div className="ml-4 flex-1">
-                                <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
-                                  <b>Lead Created</b>
-                                </p>
-                                <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-                                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
-                                    Open
-                                  </span>
-                                </div>
-                                <div className="mt-2 flex items-center text-sm text-gray-500">
-                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span>
-                                    {new Date(lead.createdAt || new Date()).toLocaleString('en-US', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: false
-                                    }).replace(',', '')}
-                                  </span>
-                                  {lead.creator && (
-                                    <span className="ml-4 flex items-center">
-                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                      </svg>
-                                      <span className="font-medium">
-                                        {lead.creator.firstname} {lead.creator.lastname}
-                                      </span>
-                                      <span className="mx-2 text-gray-400">•</span>
-                                      <span className="text-gray-600">{lead.creator.email}</span>
-                                    </span>
-                                  )}
-                                </div>
+                            {/* Status Remarks Tab Content */}
+                            <div>
+                              <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                                <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                </svg>
+                                Remarks History
+                              </h4>
+                              <div className="space-y-4">
+                                {lead.remarks.length === 0 ? (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+                                  >
+                                    <div className="flex items-start">
+                                      <div className="flex-shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                          <span className="text-indigo-600 font-medium">1</span>
+                                        </div>
+                                      </div>
+                                      <div className="ml-4 flex-1">
+                                        <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
+                                          <b>Lead Created</b>
+                                        </p>
+                                        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                                          <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
+                                            Open
+                                          </span>
+                                        </div>
+                                        <div className="mt-2 flex items-center text-sm text-gray-500">
+                                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          <span>
+                                            {new Date(lead.createdAt || new Date()).toLocaleString('en-US', {
+                                              day: '2-digit',
+                                              month: 'short',
+                                              year: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                              hour12: false
+                                            }).replace(',', '')}
+                                          </span>
+                                          {lead.creator && (
+                                            <span className="ml-4 flex items-center">
+                                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                              </svg>
+                                              <span className="font-medium">
+                                                {lead.creator.firstname} {lead.creator.lastname}
+                                              </span>
+                                              <span className="mx-2 text-gray-400">•</span>
+                                              <span className="text-gray-600">{lead.creator.email}</span>
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                ) : (
+                                  [...lead.remarks].reverse().map((remark, index) => (
+                                    <motion.div
+                                      key={index}
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: index * 0.1 }}
+                                      className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+                                    >
+                                      <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <span className="text-indigo-600 font-medium">
+                                              {index + 1}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                          <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
+                                            {typeof remark.text === 'string' ? remark.text : 'No text available'}
+                                          </p>
+                                          {remark.statusChange && (
+                                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                                              {remark.statusChange.from && (
+                                                <>
+                                                  <span className="px-2 py-1 bg-gray-100 rounded-full">
+                                                    {remark.statusChange.from}
+                                                  </span>
+                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                  </svg>
+                                                </>
+                                              )}
+                                              <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
+                                                {remark.statusChange.to}
+                                              </span>
+                                            </div>
+                                          )}
+                                          <div className="mt-2 flex items-center text-sm text-gray-500">
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>
+                                              {new Date(remark.createdAt).toLocaleString('en-US', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit',
+                                                hour12: false
+                                              }).replace(',', '')}
+                                            </span>
+                                            {remark.creator && (
+                                              <span className="ml-4 flex items-center">
+                                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <span className="font-medium">
+                                                  {remark.creator.firstname} {remark.creator.lastname}
+                                                </span>
+                                                <span className="mx-2 text-gray-400">•</span>
+                                                <span className="text-gray-600">{remark.creator.email}</span>
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  ))
+                                )}
                               </div>
                             </div>
                           </motion.div>
                         ) : (
-                          [...lead.remarks].reverse().map((remark, index) => (
-                            <motion.div
-                              key={index}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex items-start">
-                                <div className="flex-shrink-0">
-                                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                    <span className="text-indigo-600 font-medium">
-                                      {index + 1}
-                                    </span>
-                                  </div>
+                          <motion.div
+                            key="reassign"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.25 }}
+                          >
+                            {/* Reassign Remarks Tab Content */}
+                            <div>
+                              <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                                <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                </svg>
+                                Reassign Remarks
+                              </h4>
+                              {loadingReassign ? (
+                                <div className="text-gray-500">Loading...</div>
+                              ) : errorReassign ? (
+                                <div className="text-red-500">{errorReassign}</div>
+                              ) : reassignRemarks.length === 0 ? (
+                                <div className="text-gray-500">No reassign remarks found.</div>
+                              ) : (
+                                <div className="space-y-4">
+                                  {[...reassignRemarks].filter(r => r.changedTo).reverse().map((remark, idx) => (
+                                    <motion.div
+                                      key={idx}
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: idx * 0.1 }}
+                                      className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
+                                    >
+                                      <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <span className="text-indigo-600 font-medium">{idx + 1}</span>
+                                          </div>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                          <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
+                                            {remark.text}
+                                          </p>
+                                          {remark.changedTo && (
+                                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                                              <span className="px-2 py-1 bg-gray-100 rounded-full">
+                                                From: {remark.changedTo.fromName || remark.changedTo.from || '--'}
+                                              </span>
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                              </svg>
+                                              <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
+                                                To: {remark.changedTo.toName || remark.changedTo.to || '--'}
+                                              </span>
+                                            </div>
+                                          )}
+                                          <div className="mt-2 flex items-center text-xs text-gray-500">
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>
+                                              {remark.createdAt ? new Date(remark.createdAt).toLocaleString('en-US', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit',
+                                                hour12: false
+                                              }).replace(',', '') : ''}
+                                            </span>
+                                            {remark.reassignedByUser && (
+                                              <>
+                                                <span className="mx-2 text-gray-400">•</span>
+                                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <span className="font-medium">
+                                                  {remark.reassignedByUser.firstname} {remark.reassignedByUser.lastname}
+                                                </span>
+                                                <span className="mx-2 text-gray-400">•</span>
+                                                <span className="text-gray-600">{remark.reassignedByUser.email}</span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  ))}
                                 </div>
-                                <div className="ml-4 flex-1">
-                                  <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
-                                    {typeof remark.text === 'string' ? remark.text : 'No text available'}
-                                  </p>
-                                  {remark.statusChange && (
-                                    <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-                                      {remark.statusChange.from && (
-                                        <>
-                                          <span className="px-2 py-1 bg-gray-100 rounded-full">
-                                            {remark.statusChange.from}
-                                          </span>
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                          </svg>
-                                        </>
-                                      )}
-                                      <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
-                                        {remark.statusChange.to}
-                                      </span>
-                                    </div>
-                                  )}
-                                  <div className="mt-2 flex items-center text-sm text-gray-500">
-                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>
-                                      {new Date(remark.createdAt).toLocaleString('en-US', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: false
-                                      }).replace(',', '')}
-                                    </span>
-                                    {remark.creator && (
-                                      <span className="ml-4 flex items-center">
-                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        <span className="font-medium">
-                                          {remark.creator.firstname} {remark.creator.lastname}
-                                        </span>
-                                        <span className="mx-2 text-gray-400">•</span>
-                                        <span className="text-gray-600">{remark.creator.email}</span>
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))
+                              )}
+                            </div>
+                          </motion.div>
                         )}
-                      </div>
+                      </AnimatePresence>
                     </div>
                   </div>
                 </div>

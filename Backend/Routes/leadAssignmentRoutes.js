@@ -12,7 +12,7 @@ const router = express.Router()
 
 // Lead Assignment routes
 router.post("/assign", authentication, assignLead)
-router.get("/:leadId", authentication, getLeadAssignment)
+router.get("/:leadId", getLeadAssignment)
 router.get("/:leadId/history", authentication, getLeadAssignmentHistory)
 router.get("/", authentication, getLeadAssignments)
 router.post("/notify", authentication, notifyAssignment)

@@ -1,5 +1,6 @@
 import { Sequelize, DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
+import User from './userModel.js';
 
 const LeadAssignment = sequelize.define(
   "LeadAssignment",
@@ -69,6 +70,33 @@ const LeadAssignment = sequelize.define(
       allowNull: false,
       defaultValue: 'active',
     },
+    remark: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      validate: {
+        isValidRemark(value) {
+          if (value && !Array.isArray(value)) {
+            throw new Error('Remark must be an array');
+          }
+          if (value && value.some(item => {
+            if (typeof item !== 'object' || !item.changedTo || typeof item.text !== 'string') return true;
+            if (typeof item.changedTo !== 'object' || typeof item.changedTo.to !== 'number' || typeof item.changedTo.from !== 'number') return true;
+            return false;
+          })) {
+            throw new Error('Each remark must have a changedTo object with numeric to/from and a text string');
+          }
+        }
+      }
+    },
+    reassignedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
   },
   {
     timestamps: true,
@@ -99,5 +127,7 @@ LeadAssignment.prototype.getAssignmentHistory = function() {
     allPrevious: this.allPreviousAssignedIds
   };
 };
+
+LeadAssignment.belongsTo(User, { as: 'reassignedByUser', foreignKey: 'reassignedBy' });
 
 export default LeadAssignment; 

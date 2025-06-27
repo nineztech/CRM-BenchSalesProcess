@@ -15,6 +15,7 @@ import PermissionGuard from '../../common/PermissionGuard';
 import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
 import toast from 'react-hot-toast';
+import ReassignRemarkModal from './ReassignRemarkModal';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -262,6 +263,17 @@ const LeadCreationComponent: React.FC = () => {
     from?: string;
   } | null>(null);
 
+  // Add state for reassign modal
+  const [showReassignRemarkModal, setShowReassignRemarkModal] = useState(false);
+  const [reassignRemarkLoading, setReassignRemarkLoading] = useState(false);
+  const [pendingReassign, setPendingReassign] = useState<{ lead: Lead, user: SalesUser } | null>(null);
+
+  // Add state for call popup
+  const [showCallPopup, setShowCallPopup] = useState(false);
+  const [callOptions, setCallOptions] = useState<string[]>([]);
+  const [selectedCallNumber, setSelectedCallNumber] = useState<string>('');
+  const [callLeadName, setCallLeadName] = useState<string>('');
+
   // Fetch leads
   const fetchLeads = async () => {
     try {
@@ -341,6 +353,29 @@ const LeadCreationComponent: React.FC = () => {
   const handleAssignSalesPerson = async () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
+    // Get the user ID from the selected sales person's name
+    const selectedUser = salesUsers.find(
+      user => `${user.firstname} ${user.lastname}` === selectedSalesPerson
+    );
+    if (!selectedUser) {
+      setApiError('Selected sales person not found');
+      return;
+    }
+
+    // Find the first lead that is being reassigned (already has assignedUser)
+    const firstReassignedIndex = selectedLeads.find(index => leads[index]?.assignedUser);
+    if (firstReassignedIndex !== undefined) {
+      setPendingReassign({ lead: leads[firstReassignedIndex], user: selectedUser });
+      setShowReassignRemarkModal(true);
+      return;
+    }
+
+    // If no reassignment, proceed as before
+    await assignLeads(selectedUser, '');
+  };
+
+  // New function to handle actual assignment with remark
+  const assignLeads = async (selectedUser: SalesUser, remarkText: string) => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
@@ -348,23 +383,9 @@ const LeadCreationComponent: React.FC = () => {
         setApiError('Authentication required. Please login again.');
         return;
       }
-
-      // Get the user ID from the selected sales person's name
-      const selectedUser = salesUsers.find(
-        user => `${user.firstname} ${user.lastname}` === selectedSalesPerson
-      );
-
-      if (!selectedUser) {
-        setApiError('Selected sales person not found');
-        return;
-      }
-
-      // Assign each selected lead
       for (const leadIndex of selectedLeads) {
         const lead = leads[leadIndex];
         if (!lead || !lead.id) continue;
-
-        // First, update the lead table
         await axios.put(
           `${BASE_URL}/lead/${lead.id}`,
           {
@@ -379,13 +400,13 @@ const LeadCreationComponent: React.FC = () => {
             }
           }
         );
-
-        // Then, create the lead assignment
-        const response = await axios.post(
+        // Pass remarkText only for reassignment
+        await axios.post(
           `${BASE_URL}/lead-assignments/assign`,
           {
             leadId: lead.id,
-            assignedToId: selectedUser.id
+            assignedToId: selectedUser.id,
+            ...(remarkText ? { remarkText } : {})
           },
           {
             headers: {
@@ -394,54 +415,31 @@ const LeadCreationComponent: React.FC = () => {
             }
           }
         );
-
-        if (response.data.success) {
-          // Update the leads list with the new assignment
-          setLeads(prevLeads => 
-            prevLeads.map((l, index) => 
-              index === leadIndex ? {
-                ...l,
-                assignedUser: selectedUser,
-                previouslyAssignedUser: l.assignedUser,
-                assignTo: selectedUser.id,
-                previousAssign: l.assignTo,
-                totalAssign: (l.totalAssign || 0) + 1
-              } : l
-            )
-          );
-
-          // Send email notification
-          try {
-            await axios.post(
-              `${BASE_URL}/lead-assignments/notify`,
-              {
-                leadId: lead.id,
-                assignedToId: selectedUser.id
-              },
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                }
+        // ...existing notification logic...
+        try {
+          await axios.post(
+            `${BASE_URL}/lead-assignments/notify`,
+            {
+              leadId: lead.id,
+              assignedToId: selectedUser.id
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
               }
-            );
-          } catch (emailError) {
-            console.error('Error sending email notification:', emailError);
-            // Don't throw error here, as the lead assignment was successful
-          }
+            }
+          );
+        } catch (emailError) {
+          // ...existing error handling...
         }
       }
-
-      // Reset selection and sales person
       setSelectedSalesPerson('');
       setSelectedLeads([]);
       setCurrentSalesPerson('');
-
-      // Show success message using toast
       toast.success('Leads assigned successfully!');
-
+      fetchLeads();
     } catch (error: any) {
-      console.error('Error assigning leads:', error);
       const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
       setApiError(errorMessage);
       toast.error(errorMessage);
@@ -1741,7 +1739,18 @@ ${(() => {
                                     </button>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    {lead.primaryContact}
+                                    <button
+                                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                                      onClick={() => {
+                                        setCallOptions(lead.contactNumbers.filter(Boolean));
+                                        setCallLeadName(`${lead.firstName} ${lead.lastName}`);
+                                        setSelectedCallNumber(lead.primaryContact || lead.contactNumbers[0] || '');
+                                        setShowCallPopup(true);
+                                      }}
+                                      type="button"
+                                    >
+                                      {lead.primaryContact}
+                                    </button>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
@@ -1902,6 +1911,87 @@ ${(() => {
           emailSubject="Embark on a Success Journey with Ninez Tech"
           packages={packages}
         />
+        <ReassignRemarkModal
+          isOpen={showReassignRemarkModal}
+          onClose={() => {
+            setShowReassignRemarkModal(false);
+            setPendingReassign(null);
+          }}
+          onSubmit={async (remark) => {
+            if (pendingReassign) {
+              setReassignRemarkLoading(true);
+              await assignLeads(pendingReassign.user, remark);
+              setReassignRemarkLoading(false);
+              setShowReassignRemarkModal(false);
+              setPendingReassign(null);
+            }
+          }}
+          loading={reassignRemarkLoading}
+        />
+        {showCallPopup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
+              <h3 className="text-lg font-semibold mb-4">Call {callLeadName}</h3>
+              <div className="mb-4">
+                <div className="mb-2 text-sm text-gray-700">Select a number:</div>
+                {callOptions.map((num, idx) => (
+                  <button
+                    key={num}
+                    className={`block w-full text-left px-4 py-2 rounded-md border mb-2 ${selectedCallNumber === num ? 'bg-indigo-100 border-indigo-400' : 'bg-gray-50 border-gray-200'}`}
+                    onClick={() => setSelectedCallNumber(num)}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+              {selectedCallNumber && (
+                <div className="mb-4 text-sm text-gray-700">Selected: <span className="font-bold">{selectedCallNumber}</span></div>
+              )}
+              <div className="mb-4">
+                <div className="mb-2 text-sm text-gray-700">Choose a calling option:</div>
+                <div className="flex gap-3">
+                  <a
+                    href={`https://meet.google.com/new`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-green-100 rounded hover:bg-green-200 text-green-800 font-medium"
+                  >
+                    Google Meet
+                  </a>
+                  <a
+                    href={`https://zoom.us/start/videomeeting`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-100 rounded hover:bg-blue-200 text-blue-800 font-medium"
+                  >
+                    Zoom
+                  </a>
+                  {selectedCallNumber && (
+                    <a
+                      href={`tel:${selectedCallNumber}`}
+                      className="px-4 py-2 bg-yellow-100 rounded hover:bg-yellow-200 text-yellow-800 font-medium"
+                    >
+                      Phone
+                    </a>
+                  )}
+                  {/* Add more options as needed */}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200"
+                  onClick={() => {
+                    setShowCallPopup(false);
+                    setSelectedCallNumber('');
+                    setCallLeadName('');
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </RouteGuard>
   );
