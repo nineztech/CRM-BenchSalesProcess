@@ -305,10 +305,18 @@ const AdminRegister: React.FC = () => {
     );
 
     if (Object.keys(filteredData).length > 0) {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please login again.');
+        return;
+      }
+
       toast.promise(
         axios.put(`${UPDATE_API_URL}/${editingAdmin.id}`, filteredData, {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         }),
         {
@@ -443,7 +451,7 @@ const AdminRegister: React.FC = () => {
           
           <div className="flex flex-col space-y-6">
             {/* Form Fields Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="form-group">
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   First Name <span className="text-red-500">*</span>
@@ -480,15 +488,15 @@ const AdminRegister: React.FC = () => {
                 <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                   Mobile Number <span className="text-red-500">*</span>
                 </label>
-                <div className="max-w-[180px]">
-                  <PhoneInput
-                    country={'us'}
-                    value={formData.mobileNumber}
-                    onChange={handlePhoneChange}
-                    inputClass={` p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
-                    disabled={isLoading}
-                  />
-                </div>
+                <PhoneInput
+                  country={'us'}
+                  value={formData.mobileNumber}
+                  onChange={handlePhoneChange}
+                  containerClass="!w-full"
+                  inputClass="!w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  disabled={isLoading}
+                  dropdownClass="!w-full"
+                />
                 {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
               </div>
               
