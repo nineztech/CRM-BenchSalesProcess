@@ -4,6 +4,7 @@ import { FiEdit2, FiLogOut, FiLock, FiMail, FiKey, FiShield, FiUser, FiPhone, Fi
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import Avatar from 'react-avatar';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -552,16 +553,26 @@ const UserProfile = () => {
         className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 mt-8"
       >
         <div className="flex justify-between items-center mb-8 border-b pb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              className="p-3 rounded-full bg-blue-50"
+              className="w-16 h-16 rounded-full ring-2 ring-gray-100"
             >
-              <FiUser className="w-6 h-6 text-blue-600" />
+              <Avatar
+                name={`${userData?.firstname} ${userData?.lastname}`}
+                size="64"
+                round={true}
+                color="#6366F1"
+                textSizeRatio={2.5}
+              />
             </motion.div>
-            <h1 className="text-2xl font-semibold text-gray-800 tracking-tight">User Profile</h1>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800 tracking-tight">
+                {userData?.firstname} {userData?.lastname}
+              </h1>
+            </div>
           </div>
           <div className="flex gap-3">
             {!isEditing && (
