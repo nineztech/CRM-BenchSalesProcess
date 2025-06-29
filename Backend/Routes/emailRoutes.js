@@ -6,11 +6,13 @@ const router = express.Router();
 
 router.post('/send', auth, async (req, res) => {
   try {
-    const { to, from, subject, body, leadId, packages, userData } = req.body;
+    const { to, cc, from, subject, body, leadId, packages, userData } = req.body;
 
     // Send email using the sendPackageDetailsEmail function
     const emailSent = await sendPackageDetailsEmail(userData, packages, {
       from: from,
+      to: to,
+      cc: cc,
       subject: subject,
       customBody: body
     });

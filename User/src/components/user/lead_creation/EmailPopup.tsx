@@ -30,11 +30,18 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState(emailSubject);
   const [body, setBody] = useState(emailBody);
+  const [to, setTo] = useState(lead.primaryEmail);
+  const [cc, setCC] = useState('');
   const [from, setFrom] = useState(() => {
     const userDataString = localStorage.getItem('user');
     const userData = userDataString ? JSON.parse(userDataString) : null;
     return userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : '';
   });
+
+  // Update "to" field when lead.primaryEmail changes
+  React.useEffect(() => {
+    setTo(lead.primaryEmail);
+  }, [lead.primaryEmail]);
 
   const handleSendEmail = async () => {
     try {
@@ -46,19 +53,23 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         return;
       }
 
+      // Split CC emails by comma and trim whitespace
+      const ccEmails = cc.split(',').map(email => email.trim()).filter(email => email);
+
       const response = await axios.post(
         `${BASE_URL}/email/send`,
         {
-          to: lead.primaryEmail,
+          to: to,
+          cc: ccEmails,
           from: from,
           subject: subject,
-          body: body.replace(/\n/g, '<br>'),  // Convert newlines to HTML line breaks
+          body: body.replace(/\n/g, '<br>'),
           leadId: lead.id,
           packages: packages,
           userData: {
             firstName: lead.firstName,
             lastName: lead.lastName,
-            email: lead.primaryEmail
+            email: to
           }
         },
         {
@@ -138,8 +149,22 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
                     <span className="text-gray-500 w-12">To:</span>
                     <input
                       type="text"
-                      value={lead.primaryEmail}
-                      readOnly
+                      value={to}
+                      onChange={(e) => setTo(e.target.value)}
+                      className="flex-1 outline-none bg-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* CC Field */}
+                <div className="mb-4">
+                  <div className="flex items-center border-b py-2">
+                    <span className="text-gray-500 w-12">CC:</span>
+                    <input
+                      type="text"
+                      value={cc}
+                      onChange={(e) => setCC(e.target.value)}
+                      placeholder="Separate multiple emails with commas"
                       className="flex-1 outline-none bg-transparent"
                     />
                   </div>
