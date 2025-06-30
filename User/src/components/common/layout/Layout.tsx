@@ -12,7 +12,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Sidebar />
       <div className="flex-1">
         <Navbar />
-        <main className="p-6 mt-16">
+        <main className="p-6 mt-12">
           {children}
         </main>
       </div>

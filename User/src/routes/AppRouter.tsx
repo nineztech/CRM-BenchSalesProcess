@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserLogin } from '../components/common/UserLogin/UserLogin.tsx';
-import { ProtectedRoute } from '../Routes/ProtectedRoute/ProtectedRoute.tsx';
+import { ProtectedRoute } from '../routes/ProtectedRoute/ProtectedRoute.tsx';
 import UserProfile from '../components/common/profile/index.tsx';
 import { Navbar } from '../components/common/Navbar/Navbar.tsx';
 // import Sales from '../components/user/sales/sales.tsx';
@@ -17,6 +17,7 @@ import PackagesPage from '../components/admin/packages/packages.tsx';
 import AdminRoles from '../components/admin/adminRoles/adminRoles.tsx';
 import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions.tsx';
 import Dashboard from '../components/common/Dashboard/Dashboard.tsx';
+import EmailTemplates from '../components/admin/email_templates/EmailTemplates.tsx';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -92,7 +93,7 @@ const AppRouter: React.FC = () => {
             </UserLayout>
           </ProtectedRoute>
         } /> */}
-<Route path="/archived-leads" element={
+        <Route path="/archived-leads" element={
           <ProtectedRoute>
             <UserLayout>
               <ArchivedLeads/>
@@ -110,7 +111,7 @@ const AppRouter: React.FC = () => {
 
         {/* Admin-only routes */}
         <Route path="/users" element={
-          <ProtectedRoute >
+          <ProtectedRoute>
             <UserLayout>
               <UserRegister />
             </UserLayout>
@@ -118,7 +119,7 @@ const AppRouter: React.FC = () => {
         } />
 
         <Route path="/admins" element={
-          <ProtectedRoute >
+          <ProtectedRoute>
             <UserLayout>
               <AdminRegister />
             </UserLayout>
@@ -145,6 +146,14 @@ const AppRouter: React.FC = () => {
           <ProtectedRoute>
             <UserLayout>
               <PackagesPage />
+            </UserLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/email-templates" element={
+          <ProtectedRoute>
+            <UserLayout>
+              <EmailTemplates />
             </UserLayout>
           </ProtectedRoute>
         } />
