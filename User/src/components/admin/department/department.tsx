@@ -46,8 +46,8 @@ interface Department {
   isSalesTeam: boolean;
   status: string;
   createdAt: string;
-  updatedAt: string;
-  updatedBy: number;
+  updatedAt: string | null;
+  updatedBy: number | null;
   creator: {
     firstname: string;
     lastname: string;
@@ -57,7 +57,7 @@ interface Department {
     firstname: string;
     lastname: string;
     email: string;
-  };
+  } | null;
 }
 
 // Confirmation Dialog Component
@@ -551,17 +551,21 @@ const AddDepartment: React.FC = () => {
                         }) : 'N/A'}
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[10%] align-top">
-                        {dept.updater ? `${dept.updater.firstname} ${dept.updater.lastname}` : '-'}
+                        {dept.updater && dept.updatedAt && dept.updatedAt !== dept.createdAt
+                          ? `${dept.updater.firstname} ${dept.updater.lastname}`
+                          : '-'}
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%] align-top whitespace-nowrap">
-                        {dept.updatedAt ? new Date(dept.updatedAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        }) : 'N/A'}
+                        {dept.updatedAt && dept.updatedAt !== dept.createdAt ? 
+                          new Date(dept.updatedAt).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          }) 
+                          : '-'}
                       </td>
                       <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative w-[8%] align-top">
                         <span 
