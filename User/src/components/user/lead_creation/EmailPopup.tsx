@@ -29,7 +29,13 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
 }) => {
   const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState(emailSubject);
-  const [body, setBody] = useState(emailBody);
+  const [body, setBody] = useState(() => {
+    const greeting = `Dear ${lead.firstName} ${lead.lastName},\n\n`;
+    if (emailBody && emailBody.trim().startsWith('Dear')) {
+      return emailBody;
+    }
+    return greeting + (emailBody || '');
+  });
   const [to, setTo] = useState(lead.primaryEmail);
   const [cc, setCC] = useState('');
   const [from, setFrom] = useState(() => {
@@ -172,8 +178,8 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
 
                 {/* Subject Field */}
                 <div className="mb-4">
-                  <div className="flex items-center border-b py-2">
-                    <span className="text-gray-500 w-12">Subject:</span>
+                  <div className="flex items-center border-b py-2 ">
+                    <span className="text-gray-500 w-16">Subject:</span>
                     <input
                       type="text"
                       value={subject}
