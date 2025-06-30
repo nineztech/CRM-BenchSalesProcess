@@ -503,13 +503,15 @@ const AddDepartment: React.FC = () => {
                 <thead>
                   <tr>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[5%]">#</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Department Name</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Roles</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[12%]">Department Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[12%]">Roles</th>
                     <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[8%]">Is Sales Team</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[12%]">Created By</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[25%] min-w-[200px]">Created At</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[10%]">Status</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center w-[10%]">Actions</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[10%]">Created By</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Created At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[10%]">Updated By</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Updated At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[8%]">Status</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center w-[5%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -521,9 +523,9 @@ const AddDepartment: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className="hover:bg-gray-50 transition-colors duration-150"
                     >
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[5%]">{index + 1}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%]">{dept.departmentName}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%]">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[5%] align-top">{index + 1}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[12%] align-top">{dept.departmentName}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[12%] align-top">
                         <div className="flex flex-wrap gap-1">
                           {dept.subroles?.map((subrole, i) => (
                             <span key={i} className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
@@ -532,56 +534,45 @@ const AddDepartment: React.FC = () => {
                           ))}
                         </div>
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[8%]">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[8%] align-top">
                         {dept.isSalesTeam ? 'Yes' : 'No'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[12%]">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[10%] align-top">
                         {dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[25%] whitespace-nowrap min-w-[200px]">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%] align-top whitespace-nowrap">
                         {dept.createdAt ? new Date(dept.createdAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
                           year: 'numeric',
+                          month: 'short',
+                          day: '2-digit',
                           hour: '2-digit',
                           minute: '2-digit',
-                          second: '2-digit',
-                          hour12: false
-                        }).replace(/(\d+):(\d+):(\d+)/, (_, h, m, s) => 
-                          `${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`
-                        ) : 'N/A'}
+                          hour12: true
+                        }) : 'N/A'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative w-[10%]">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[10%] align-top">
+                        {dept.updater ? `${dept.updater.firstname} ${dept.updater.lastname}` : '-'}
+                      </td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%] align-top whitespace-nowrap">
+                        {dept.updatedAt ? new Date(dept.updatedAt).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }) : 'N/A'}
+                      </td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative w-[8%] align-top">
                         <span 
                           className={`px-2 py-1 rounded-full text-xs ${
                             dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}
-                          onMouseEnter={(e) => {
-                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
-                            if (tooltip) {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              tooltip.style.left = `${rect.left}px`;
-                              tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
-                            }
-                          }}
                         >
                           {dept.status}
                         </span>
-                        <div className="status-tooltip">
-                          <div className="tooltip-content text-xs text-gray-800">
-                            <p className="mb-1">Updated By: {dept.updatedBy && dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}</p>
-                            <p>Updated At: {dept.updatedAt ? new Date(dept.updatedAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            }) : 'N/A'}</p>
-                          </div>
-                        </div>
                       </td>
-                      <td className="p-2.5 text-sm border-b border-gray-100 w-[10%]">
+                      <td className="p-2.5 text-sm border-b border-gray-100 w-[5%] align-top">
                         <div className="flex gap-3 justify-center">
                           {checkPermission('Department Management', 'edit') && (
                             <motion.button

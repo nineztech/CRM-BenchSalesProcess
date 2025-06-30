@@ -388,21 +388,21 @@ const UserRegister: React.FC = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-5 max-w-[98%]">
+      <div className="flex flex-col gap-5 w-full">
         {/* Form Container - Only show if user has add permission */}
         {checkPermission('User Management', 'add') && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+            className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 w-full"
           >
             {/* Title and Buttons in one row */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-medium text-gray-800">
-                  {editingUserId ? "Edit User" : "User Registration"}
-                </h2>
-                
+                {editingUserId ? "Edit User" : "User Registration"}
+              </h2>
+              
               <div className="flex gap-3">
                 <motion.button 
                   whileHover={{ scale: 1.02 }}

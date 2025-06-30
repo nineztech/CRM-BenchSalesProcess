@@ -16,6 +16,7 @@ import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
 import toast from 'react-hot-toast';
 import ReassignRemarkModal from './ReassignRemarkModal';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -168,8 +169,8 @@ const LeadCreationComponent: React.FC = () => {
     primaryEmail: '',
     primaryContact: '',
     technology: [''],
-    country: '',
-    countryCode: '',
+    country: 'United States',
+    countryCode: 'US',
     visaStatus: '',
     leadSource: '',
     remarks: [{
@@ -273,6 +274,8 @@ const LeadCreationComponent: React.FC = () => {
   const [callOptions, setCallOptions] = useState<string[]>([]);
   const [selectedCallNumber, setSelectedCallNumber] = useState<string>('');
   const [callLeadName, setCallLeadName] = useState<string>('');
+
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -873,8 +876,8 @@ const LeadCreationComponent: React.FC = () => {
           primaryEmail: '',
           primaryContact: '',
           technology: [''],
-          country: '',
-          countryCode: '',
+          country: 'United States',
+          countryCode: 'US',
           visaStatus: '',
           leadSource: '',
           remarks: [{
@@ -1278,6 +1281,7 @@ ${(() => {
               {/* Main Tabs */}
               <PermissionGuard activityName="Lead Management" action="add">
                 <div className="bg-white mb-4 rounded-t-xl border-b border-gray-200">
+                  <div className="flex justify-between items-center">
                   <div className="flex">
                     <button
                       className={getTabStyle(activeMainTab === 'create')}
@@ -1300,6 +1304,17 @@ ${(() => {
                         </svg>
                         Bulk Upload
                       </span>
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setIsFormVisible(!isFormVisible)}
+                      className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      {isFormVisible ? (
+                        <FiChevronUp className="w-5 h-5 text-gray-600" />
+                      ) : (
+                        <FiChevronDown className="w-5 h-5 text-gray-600" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1307,9 +1322,10 @@ ${(() => {
 
               {/* Form Sections */}
               <AnimatePresence mode="wait">
+                {isFormVisible && (
                 <motion.div
                   key={activeMainTab}
-                  initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
@@ -1654,6 +1670,7 @@ ${(() => {
                     )}
                   </PermissionGuard>
                 </motion.div>
+                )}
               </AnimatePresence>
 
               {/* Status Tabs */}

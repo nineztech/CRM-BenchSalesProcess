@@ -594,20 +594,22 @@ const Profile: React.FC = () => {
       >
         <div className="flex justify-between items-center mb-8 border-b pb-6">
           <div className="flex items-center gap-4">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              className="w-16 h-16 rounded-full ring-2 ring-gray-100"
-            >
-              <Avatar
-                name={`${userData?.firstname} ${userData?.lastname}`}
-                size="64"
-                round={true}
-                color="#6366F1"
-                textSizeRatio={2.5}
-              />
-            </motion.div>
+            <div className="w-16 h-16">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <Avatar
+                  name={`${userData?.firstname} ${userData?.lastname}`}
+                  size="64"
+                  round={true}
+                  color="#6366F1"
+                  textSizeRatio={2}
+                />
+              </motion.div>
+            </div>
             <div>
               <h1 className="text-2xl font-semibold text-gray-800 tracking-tight">
                 {userData?.firstname} {userData?.lastname}
