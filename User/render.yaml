@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: crm-bench-sales
-    env: node
-    buildCommand: cd CRM-BenchSalesProcess/User && npm install --legacy-peer-deps && npm run build
-    startCommand: cd CRM-BenchSalesProcess/User && npm run preview
-    envVars:
-      - key: NODE_VERSION
-        value: 18.x 
