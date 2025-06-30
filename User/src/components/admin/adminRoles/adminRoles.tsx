@@ -76,6 +76,14 @@ interface AdminPermissionResponse {
   canDelete: boolean;
 }
 
+interface RolePermission {
+  activity_id: number;
+  canView: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
   const { checkPermission } = usePermissions();
@@ -449,7 +457,77 @@ const AdminRoles = (): ReactElement => {
     });
   };
 
-  // Update handleAssign function
+  // Function to sync role permissions to special permissions
+  const syncRolePermissionsToSpecial = async (deptId: string, role: string, newPermissions: any[]) => {
+    try {
+      // Get all special users for this department and role
+      const specialUsersResponse = await axios.get(
+        `${import.meta.env.VITE_API_URL}/user/special/department/${deptId}?role=${role}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (specialUsersResponse.data.success) {
+        const specialUsers = specialUsersResponse.data.data;
+
+        // For each special user
+        await Promise.all(
+          specialUsers.map(async (user: any) => {
+            // Get their existing special permissions
+            const existingPermissionsResponse = await axios.get(
+              `${import.meta.env.VITE_API_URL}/special-user-permission/${user.id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              }
+            );
+
+            if (existingPermissionsResponse.data.success) {
+              const existingPermissions = existingPermissionsResponse.data.data;
+
+              // For each new role permission
+              await Promise.all(
+                newPermissions.map(async (permission) => {
+                  const existingPermission = existingPermissions.find(
+                    (ep: any) => ep.activity_id === permission.activity_id
+                  );
+
+                  if (!existingPermission) {
+                    // If no existing special permission, create one based on role permission
+                    return axios.post(
+                      `${import.meta.env.VITE_API_URL}/special-user-permission/create/${user.id}`,
+                      {
+                        activity_id: permission.activity_id,
+                        canView: permission.canView,
+                        canAdd: permission.canAdd,
+                        canEdit: permission.canEdit,
+                        canDelete: permission.canDelete
+                      },
+                      {
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                      }
+                    );
+                  }
+                  // If special permission exists, don't modify it
+                })
+              );
+            }
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Error syncing role permissions to special permissions:', error);
+    }
+  };
+
+  // Update handleAssign function to sync permissions
   const handleAssign = async () => {
     if (isAdmin && !selectedAdminUser) {
       toast.error('Please select an admin user');
@@ -476,7 +554,7 @@ const AdminRoles = (): ReactElement => {
               canDelete: rights[activity.name]?.canDelete || false
             };
 
-                          return axios.post(
+            return axios.post(
               `${import.meta.env.VITE_API_URL}/admin-permissions/add`,
               permission,
               {
@@ -494,18 +572,6 @@ const AdminRoles = (): ReactElement => {
       } else if (isSpecial && selectedSpecialUser) {
         // Handle special user permissions
         try {
-          // First get existing permissions to determine if we need to update or create
-          const existingPermissionsResponse = await axios.get(
-            `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              }
-            }
-          );
-
-          const existingPermissions = existingPermissionsResponse.data.data;
-
           // Process each activity's permissions
           await Promise.all(
             activities.map(async (activity) => {
@@ -517,35 +583,16 @@ const AdminRoles = (): ReactElement => {
                 canDelete: rights[activity.name]?.canDelete || false
               };
 
-              const existingPermission = existingPermissions.find(
-                (p: any) => p.activity_id === activity.id
+              return axios.post(
+                `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
+                permission,
+                {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  }
+                }
               );
-
-              if (existingPermission) {
-                // Update existing permission
-                return axios.put(
-                  `${import.meta.env.VITE_API_URL}/special-user-permission/${existingPermission.id}`,
-                  permission,
-                  {
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                  }
-                );
-              } else {
-                // Create new permission
-                return axios.post(
-                  `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
-                  permission,
-                  {
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                  }
-                );
-              }
             })
           );
 
@@ -557,6 +604,7 @@ const AdminRoles = (): ReactElement => {
         }
       } else {
         // Handle role permissions
+        // The backend will automatically sync with special users
         await Promise.all(
           activities.map(activity => {
             const permission = {
@@ -630,6 +678,89 @@ const AdminRoles = (): ReactElement => {
     const activityRights = rights[activityName];
     if (!activityRights) return false;
     return activityRights.canView && activityRights.canAdd && activityRights.canEdit && activityRights.canDelete;
+  };
+
+  const handleSpecialUserChange = async (userId: string, isSpecial: boolean) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // First update the user's special status
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/user/update/${userId}`,
+        { is_special: isSpecial },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // If marked as special, get their role permissions and create special permissions
+      if (isSpecial) {
+        // Get user details
+        const userResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/user/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (userResponse.data.success) {
+          const user = userResponse.data.data;
+          
+          // Get role permissions
+          const rolePermissionsResponse = await axios.get(
+            `${import.meta.env.VITE_API_URL}/role-permissions/department/${user.departmentId}?role=${user.subrole}`,
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+
+          if (rolePermissionsResponse.data.success) {
+            const rolePermissions = rolePermissionsResponse.data.data;
+            
+            // Create special permissions from role permissions
+            await Promise.all(
+              rolePermissions.map(async (rolePermission: RolePermission) => {
+                await axios.post(
+                  `${import.meta.env.VITE_API_URL}/special-user-permission/create/${userId}`,
+                  {
+                    activity_id: rolePermission.activity_id,
+                    canView: rolePermission.canView,
+                    canAdd: rolePermission.canAdd,
+                    canEdit: rolePermission.canEdit,
+                    canDelete: rolePermission.canDelete
+                  },
+                  {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    }
+                  }
+                );
+              })
+            );
+          }
+        }
+      }
+
+      // Refresh the users list
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data.success) {
+        setAdminUsers(response.data.data);
+      }
+
+      toast.success(`User ${isSpecial ? 'marked' : 'unmarked'} as special successfully`);
+    } catch (error: any) {
+      console.error('Error updating special user status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update special user status');
+    }
   };
 
   return (

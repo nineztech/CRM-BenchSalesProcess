@@ -53,6 +53,12 @@ const usePermissions = () => {
         const userRole = finalUser ? JSON.parse(finalUser).role : null;
         const isSpecial = finalUser ? JSON.parse(finalUser).isSpecial : false;
 
+        console.log('User data:', {
+          userRole,
+          isSpecial,
+          parsedUser: finalUser ? JSON.parse(finalUser) : null
+        });
+
         if (!authToken || !finalUserId) {
           if (retryCount < 3) {
             setTimeout(() => {
@@ -86,6 +92,7 @@ const usePermissions = () => {
         
         // Check permissions based on user role and special status
         if (userRole === 'admin') {
+          console.log('Fetching admin permissions');
           // Fetch admin permissions
           permissionsResponse = await axios.get(
             `${BASE_URL}/admin-permissions/admin/${finalUserId}`,
@@ -94,6 +101,7 @@ const usePermissions = () => {
             }
           );
         } else if (isSpecial) {
+          console.log('Fetching special user permissions');
           // Fetch special user permissions
           permissionsResponse = await axios.get(
             `${BASE_URL}/special-user-permission/${finalUserId}`,
@@ -102,6 +110,7 @@ const usePermissions = () => {
             }
           );
         } else {
+          console.log('Fetching regular role permissions');
           // Fetch role permissions
           if (!finalDepartmentId || !finalSubrole) {
             throw new Error('Department or role information missing');

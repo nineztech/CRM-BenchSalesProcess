@@ -3,6 +3,7 @@ import Department from "../models/departmentModel.js";
 import User from "../models/userModel.js";
 import Activity from "../models/activityModel.js";
 import Permission from "../models/permissionsModel.js";
+import SpecialUserPermission from "../models/specialUserPermissionModel.js";
 
 // Add RolePermission
 export const addRolePermission = async (req, res) => {
@@ -42,84 +43,113 @@ export const addRolePermission = async (req, res) => {
       });
     }
 
-    // Check if a role permission already exists for this combination
-    const existingPermission = await RolePermission.findOne({
+    let rolePermissionWithDetails;
+
+    // Find or create role permission
+    const [rolePermission, created] = await RolePermission.findOrCreate({
       where: {
         activity_id,
         dept_id,
         subrole
+      },
+      defaults: {
+        canView: canView || false,
+        canAdd: canAdd || false,
+        canEdit: canEdit || false,
+        canDelete: canDelete || false,
+        createdBy: userId
       }
     });
 
-    let rolePermissionWithDetails;
-
-    if (existingPermission) {
+    if (!created) {
       // Update existing permission
-      await existingPermission.update({
+      await rolePermission.update({
         canView: canView || false,
         canAdd: canAdd || false,
         canEdit: canEdit || false,
         canDelete: canDelete || false,
         updatedBy: userId
       });
+    }
 
-      rolePermissionWithDetails = await RolePermission.findByPk(existingPermission.id, {
-        include: [
-          {
-            model: Department,
-            as: 'roleDepartment'
-          },
-          {
-            model: Activity,
-            as: 'roleActivity'
-          },
-          {
-            model: User,
-            as: 'creator',
-            attributes: ['id', 'firstname', 'lastname', 'email']
-          }
-        ]
-      });
-    } else {
-      // Create new permission
-      const newRolePermission = await RolePermission.create({
-        activity_id,
-        dept_id,
-        subrole,
-        canView: canView || false,
-        canAdd: canAdd || false,
-        canEdit: canEdit || false,
-        canDelete: canDelete || false,
-        createdBy: userId
-      });
+    // Get role permission with details
+    rolePermissionWithDetails = await RolePermission.findByPk(rolePermission.id, {
+      include: [
+        {
+          model: Department,
+          as: 'roleDepartment'
+        },
+        {
+          model: Activity,
+          as: 'roleActivity'
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
 
-      rolePermissionWithDetails = await RolePermission.findByPk(newRolePermission.id, {
-        include: [
-          {
-            model: Department,
-            as: 'roleDepartment'
+    // Find all special users in this department with this role
+    const specialUsers = await User.findAll({
+      where: {
+        departmentId: dept_id,
+        subrole: subrole,
+        is_special: true
+      }
+    });
+
+    // For each special user, create or update their special permission
+    if (specialUsers.length > 0) {
+      for (const user of specialUsers) {
+        // Check if special permission exists
+        const [specialPermission, specialCreated] = await SpecialUserPermission.findOrCreate({
+          where: {
+            user_id: user.id,
+            activity_id,
+            dept_id,
+            subrole
           },
-          {
-            model: Activity,
-            as: 'roleActivity'
-          },
-          {
-            model: User,
-            as: 'creator',
-            attributes: ['id', 'firstname', 'lastname', 'email']
+          defaults: {
+            canView: canView || false,
+            canAdd: canAdd || false,
+            canEdit: canEdit || false,
+            canDelete: canDelete || false,
+            createdBy: userId
           }
-        ]
-      });
+        });
+
+        if (!specialCreated) {
+          // If special permission exists, only update if it has less permissions than role
+          const shouldUpdate = (
+            (!specialPermission.canView && canView) ||
+            (!specialPermission.canAdd && canAdd) ||
+            (!specialPermission.canEdit && canEdit) ||
+            (!specialPermission.canDelete && canDelete)
+          );
+
+          if (shouldUpdate) {
+            await specialPermission.update({
+              canView: specialPermission.canView || canView || false,
+              canAdd: specialPermission.canAdd || canAdd || false,
+              canEdit: specialPermission.canEdit || canEdit || false,
+              canDelete: specialPermission.canDelete || canDelete || false,
+              updatedBy: userId
+            });
+          }
+        }
+      }
     }
 
     res.status(201).json({
       success: true,
-      message: existingPermission ? "Role permission updated successfully" : "Role permission created successfully",
+      message: created ? "Role permission created successfully" : "Role permission updated successfully",
       data: rolePermissionWithDetails
     });
 
   } catch (error) {
-    console.error("Error creating role permission:", error);
+    console.error("Error managing role permission:", error);
     handleError(error, res);
   }
 };

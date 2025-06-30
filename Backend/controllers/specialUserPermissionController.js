@@ -48,10 +48,20 @@ export const createSpecialUserPermissions = async (req, res) => {
       }
     });
 
+    // Get role permission as base permissions
+    const rolePermission = await RolePermission.findOne({
+      where: {
+        activity_id,
+        dept_id: user.departmentId,
+        subrole: user.subrole
+      }
+    });
+
     let specialPermission;
 
     if (existingPermission) {
-      // Update existing permission
+      // Update existing permission while preserving existing rights
+      // Only update the rights that are explicitly set in the request
       specialPermission = await existingPermission.update({
         canView: typeof canView === 'boolean' ? canView : existingPermission.canView,
         canAdd: typeof canAdd === 'boolean' ? canAdd : existingPermission.canAdd,
@@ -60,21 +70,14 @@ export const createSpecialUserPermissions = async (req, res) => {
         updatedBy: userId
       });
     } else {
-      // Get role permission as default values
-      const rolePermission = await RolePermission.findOne({
-        where: {
-          activity_id,
-          dept_id: user.departmentId,
-          subrole: user.subrole
-        }
-      });
-
       // Create new special permission
+      // Use role permissions as base and override with provided values
       specialPermission = await SpecialUserPermission.create({
         user_id: user.id,
         activity_id,
         dept_id: user.departmentId,
         subrole: user.subrole,
+        // If explicit permission is provided, use it; otherwise use role permission or false
         canView: typeof canView === 'boolean' ? canView : rolePermission?.canView || false,
         canAdd: typeof canAdd === 'boolean' ? canAdd : rolePermission?.canAdd || false,
         canEdit: typeof canEdit === 'boolean' ? canEdit : rolePermission?.canEdit || false,
