@@ -12,6 +12,37 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import usePermissions from '../../../hooks/usePermissions';
 const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
+// Add the tooltip styles
+const tooltipStyles = `
+  .status-tooltip {
+    visibility: hidden;
+    position: fixed;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    opacity: 0;
+    z-index: 9999;
+    min-width: max-content;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .status-cell {
+    position: relative;
+  }
+
+  .status-cell:hover .status-tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .tooltip-content {
+    white-space: nowrap;
+    text-align: left;
+  }
+`;
+
 // Confirmation Dialog Component
 const ConfirmationDialog: React.FC<{
   isOpen: boolean;
@@ -388,6 +419,7 @@ const UserRegister: React.FC = () => {
 
   return (
     <Layout>
+      <style>{tooltipStyles}</style>
       <div className="flex flex-col gap-5 max-w-[98%]">
         {/* Form Container - Only show if user has add permission */}
         {checkPermission('User Management', 'add') && (
@@ -713,14 +745,35 @@ const UserRegister: React.FC = () => {
                               {user.is_special ? 'Yes' : 'No'}
                             </span>
                           </td>
-                          <td className="p-2.5 text-sm border-b border-gray-100">
+                          <td className="p-2.5 text-sm border-b border-gray-100 status-cell relative">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               user.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-red-100 text-red-800'
-                            }`}>
+                            }`}
+                            onMouseEnter={(e) => {
+                              const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (tooltip) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                tooltip.style.left = `${rect.left}px`;
+                                tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
+                              }
+                            }}>
                               {user.status}
                             </span>
+                            <div className="status-tooltip">
+                              <div className="tooltip-content text-xs text-gray-800">
+                                <p className="mb-1">Updated By: {user.updater ? `${user.updater.firstname} ${user.updater.lastname}` : 'N/A'}</p>
+                                <p>Updated At: {user.updatedAt ? new Date(user.updatedAt).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A'}</p>
+                              </div>
+                            </div>
                           </td>
                           <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
                             {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
