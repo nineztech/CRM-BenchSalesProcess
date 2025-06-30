@@ -273,9 +273,14 @@ const Sidebar: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
-                className="ml-3 font-semibold text-xl"
+                className="ml-3 font-semibold text-[18px] flex items-center relative"
               >
-                OOPZ CRM PRO
+                OPPZ CRM
+                <span className="absolute -top-2 left-[95px]">
+                  <span className="inline-flex items-center justify-center rounded-full bg-purple-600 text-white text-xs font-bold px-2.5 py-0.5 shadow-md" style={{ minWidth: 28,maxHeight:17, minHeight: 15,paddingBottom:5 }}>
+                    pro
+                  </span>
+                </span>
               </motion.span>
             )}
           </AnimatePresence>
