@@ -30,6 +30,16 @@ export const createDefaultActivities = async () => {
         status: "active"
       },
       {
+        name: "View All Leads",
+        category: "Lead",
+        description: "Access to view all leads in the system regardless of assignment",
+        viewRoute: "/leadcreation",
+        addRoute: "/leadcreation",
+        editRoute: "/leadcreation",
+        deleteRoute: "/leadcreation",
+        status: "active"
+      },
+      {
         name: "Lead Assignment Management",
         category: "Lead",
         description: "Manage lead assignments and transfers between users",

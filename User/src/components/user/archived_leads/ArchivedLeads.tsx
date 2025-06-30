@@ -4,8 +4,84 @@ import { motion } from 'framer-motion';
 import RouteGuard from '../../common/RouteGuard';
 // import usePermissions from '../../../hooks/usePermissions';
 import toast from 'react-hot-toast';
+import LeadDetailsModal from '../lead_creation/LeadDetailsModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
+
+interface Remark {
+  text: string;
+  createdAt: string;
+  createdBy: number;
+  creator?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    designation: string | null;
+    department: string | null;
+  };
+  statusChange?: {
+    from: string;
+    to: string;
+  };
+}
+
+interface Lead {
+  id?: number;
+  firstName: string;
+  lastName: string;
+  contactNumbers: string[];
+  emails: string[];
+  primaryEmail: string;
+  primaryContact: string;
+  technology: string[];
+  country: string;
+  countryCode: string;
+  visaStatus: string;
+  status?: string;
+  statusGroup?: string;
+  leadSource: string;
+  remarks: Remark[];
+  reference?: string | null;
+  linkedinId: string;
+  assignTo?: number;
+  previousAssign?: number;
+  totalAssign?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  assignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  previouslyAssignedUser?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  } | null;
+  creator?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  };
+  updater?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+    subrole: string | null;
+    departmentId: number | null;
+  };
+}
 
 interface ArchivedLead {
   id: number;
@@ -24,15 +100,7 @@ interface ArchivedLead {
   statusGroup: string;
   leadSource: string;
   reference?: string;
-  remarks: Array<{
-    text: string;
-    createdAt: string;
-    createdBy: number;
-    statusChange?: {
-      from: string;
-      to: string;
-    };
-  }>;
+  remarks: Remark[];
   archivedAt: string;
   reopenedAt?: string;
   archiveReason: string;
@@ -44,29 +112,29 @@ interface ArchivedLead {
     firstname: string;
     lastname: string;
     email: string;
-    subrole: string;
-    departmentId: number;
+    subrole: string | null;
+    departmentId: number | null;
   };
   creator?: {
     id: number;
     firstname: string;
     lastname: string;
     email: string;
-    subrole: string;
-    departmentId: number;
+    subrole: string | null;
+    departmentId: number | null;
   };
   updater?: {
     id: number;
     firstname: string;
     lastname: string;
     email: string;
-    subrole: string;
-    departmentId: number;
+    subrole: string | null;
+    departmentId: number | null;
   };
   status: string;
 }
 
-const ArchivedLeads: React.FC = () => {
+const ArchivedLeadsComponent: React.FC = () => {
   const [archivedLeads, setArchivedLeads] = useState<ArchivedLead[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +144,8 @@ const ArchivedLeads: React.FC = () => {
   const [reopenRemark, setReopenRemark] = useState('');
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [showReopenModal, setShowReopenModal] = useState(false);
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<ArchivedLead | null>(null);
 
   // const { checkPermission } = usePermissions();
 
@@ -191,6 +261,17 @@ const ArchivedLeads: React.FC = () => {
       setError(null);
     }
   }, [error]);
+
+  // Add handler for info icon click
+  const handleInfoClick = (lead: ArchivedLead) => {
+    setSelectedLead(lead);
+    setShowInfoDialog(true);
+  };
+
+  const handleCloseInfoDialog = () => {
+    setShowInfoDialog(false);
+    setSelectedLead(null);
+  };
 
   return (
     <RouteGuard activityName="Archived Lead Management">
@@ -317,7 +398,20 @@ const ArchivedLeads: React.FC = () => {
                               hour12: false
                             }).replace(',', '')}
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.archiveReason}</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                            <div className="flex items-center justify-between">
+          
+                              <button 
+                                onClick={() => handleInfoClick(lead)}
+                                className="p-1 hover:bg-gray-100 rounded-full transition-colors ml-2"
+                                title="View details"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -393,10 +487,33 @@ const ArchivedLeads: React.FC = () => {
               </motion.div>
             </div>
           )}
+
+          {/* Add Lead Details Modal */}
+          <LeadDetailsModal
+            isOpen={showInfoDialog}
+            onClose={handleCloseInfoDialog}
+            lead={selectedLead ? {
+              ...selectedLead,
+              linkedinId: selectedLead.linkedinId || '',
+              status: selectedLead.status || 'archived',
+              statusGroup: selectedLead.statusGroup || 'archived',
+              remarks: selectedLead.remarks.map(remark => ({
+                ...remark,
+                creator: remark.creator || {
+                  id: selectedLead.updater?.id || 0,
+                  firstname: selectedLead.updater?.firstname || '',
+                  lastname: selectedLead.updater?.lastname || '',
+                  email: selectedLead.updater?.email || '',
+                  designation: selectedLead.updater?.subrole || null,
+                  department: selectedLead.updater?.departmentId ? String(selectedLead.updater.departmentId) : null
+                }
+              }))
+            } as Lead : null}
+          />
         </div>
       </div>
     </RouteGuard>
   );
 };
 
-export default ArchivedLeads; 
+export default ArchivedLeadsComponent; 

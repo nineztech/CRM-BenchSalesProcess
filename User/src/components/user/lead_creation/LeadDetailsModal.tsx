@@ -100,17 +100,23 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
       axios.get(`${BASE_URL}/lead-assignments/${lead.id}`)
         .then(res => {
           const assignment = res.data?.data;
-          console.log(assignment)
           if (assignment && Array.isArray(assignment.remark)) {
             setReassignRemarks(assignment.remark);
           } else {
             setReassignRemarks([]);
           }
         })
-        .catch(() => setErrorReassign('Failed to load reassign remarks'))
+        .catch((error) => {
+          if (error.response?.status === 404) {
+            // If 404, it means no assignment exists yet - this is a valid state
+            setReassignRemarks([]);
+          } else {
+            setErrorReassign('Failed to load reassignment history. Please try again later.');
+          }
+        })
         .finally(() => setLoadingReassign(false));
     }
-  }, [isOpen, lead?.id]);
+  }, [isOpen, lead?.id, lead?.remarks, lead?.status]);
 
   // Add tab style function similar to LeadCreation.tsx
   const getTabStyle = (isActive: boolean) => `
@@ -370,11 +376,19 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                 Reassign Remarks
                               </h4>
                               {loadingReassign ? (
-                                <div className="text-gray-500">Loading...</div>
+                                <div className="flex items-center justify-center min-h-[200px]">
+                                  <div className="text-gray-500">Loading...</div>
+                                </div>
                               ) : errorReassign ? (
-                                <div className="text-red-500">{errorReassign}</div>
+                                <div className="flex items-center justify-center min-h-[200px]">
+                                  <div className="text-red-500">{errorReassign}</div>
+                                </div>
                               ) : reassignRemarks.length === 0 ? (
-                                <div className="text-gray-500">No reassign remarks found.</div>
+                                <div className="flex items-center justify-center min-h-[200px]">
+                                  <div className="text-gray-600 text-lg font-medium">
+                                    Lead is not assigned
+                                  </div>
+                                </div>
                               ) : (
                                 <div className="space-y-4">
                                   {[...reassignRemarks].filter(r => r.changedTo).reverse().map((remark, idx) => (
@@ -393,20 +407,24 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                         </div>
                                         <div className="ml-4 flex-1">
                                           <p className="text-gray-900 text-left whitespace-pre-wrap break-words">
-                                            {remark.text}
+                                            {idx === reassignRemarks.length - 1 ? 'Lead Assigned' : remark.text}
                                           </p>
                                           {remark.changedTo && (
                                             <div className="mt-2 flex flex-col gap-2">
                                               <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                <span className="px-2 py-1 bg-gray-100 rounded-full flex items-center gap-1">
-                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                  </svg>
-                                                  <span className="font-medium">{remark.changedTo.fromName || remark.changedTo.from || '--'}</span>
-                                                </span>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                </svg>
+                                                {idx !== reassignRemarks.length - 1 && (
+                                                  <>
+                                                    <span className="px-2 py-1 bg-gray-100 rounded-full flex items-center gap-1">
+                                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                      </svg>
+                                                      <span className="font-medium">{remark.changedTo.fromName || remark.changedTo.from || '--'}</span>
+                                                    </span>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                    </svg>
+                                                  </>
+                                                )}
                                                 <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full flex items-center gap-1">
                                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -429,7 +447,7 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             <span>
-                                              {remark.createdAt ? new Date(remark.createdAt).toLocaleString('en-US', {
+                                              {(remark.timestamp || remark.createdAt) ? new Date(remark.timestamp || remark.createdAt).toLocaleString('en-US', {
                                                 day: '2-digit',
                                                 month: 'short',
                                                 year: 'numeric',

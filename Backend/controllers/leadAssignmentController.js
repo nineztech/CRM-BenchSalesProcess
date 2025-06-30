@@ -60,14 +60,27 @@ export const assignLead = async (req, res) => {
       const previousAssignedId = existingAssignment.assignedToId;
       const allPreviousAssignedIds = [...(existingAssignment.allPreviousAssignedIds || []), previousAssignedId];
 
-      // Create remark for reassignment
-      const remark = [{
+      // Get existing remarks and ensure they have all required fields
+      const existingRemarks = (existingAssignment.remark || []).map(oldRemark => ({
+        changedTo: {
+          to: Number(oldRemark.changedTo?.to || 0),
+          from: Number(oldRemark.changedTo?.from || 0)
+        },
+        text: oldRemark.text || '',
+        timestamp: oldRemark.timestamp || oldRemark.createdAt || new Date().toISOString()
+      }));
+
+      // Create new remark
+      const newRemark = {
         changedTo: {
           to: Number(assignedToId),
           from: Number(existingAssignment.assignedToId)
         },
-        text: remarkText || 'Lead reassigned'
-      }];
+        text: remarkText || 'Lead reassigned',
+        timestamp: new Date().toISOString()
+      };
+      
+      const remark = [...existingRemarks, newRemark];
 
       await existingAssignment.update({
         assignedToId,
@@ -81,13 +94,14 @@ export const assignLead = async (req, res) => {
       newAssignment = existingAssignment;
     } else {
       // Create new assignment
-      // Create remark for new assignment
+      // Create initial remark for new assignment
       const remark = [{
         changedTo: {
           to: Number(assignedToId),
           from: 0
         },
-        text: remarkText || 'Lead assigned'
+        text: remarkText || 'Lead assigned',
+        timestamp: new Date().toISOString()
       }];
 
       newAssignment = await LeadAssignment.create({
