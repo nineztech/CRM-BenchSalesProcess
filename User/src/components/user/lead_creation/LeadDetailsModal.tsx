@@ -396,16 +396,32 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                             {remark.text}
                                           </p>
                                           {remark.changedTo && (
-                                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-                                              <span className="px-2 py-1 bg-gray-100 rounded-full">
-                                                From: {remark.changedTo.fromName || remark.changedTo.from || '--'}
-                                              </span>
-                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                              </svg>
-                                              <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full">
-                                                To: {remark.changedTo.toName || remark.changedTo.to || '--'}
-                                              </span>
+                                            <div className="mt-2 flex flex-col gap-2">
+                                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                <span className="px-2 py-1 bg-gray-100 rounded-full flex items-center gap-1">
+                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                  </svg>
+                                                  <span className="font-medium">{remark.changedTo.fromName || remark.changedTo.from || '--'}</span>
+                                                </span>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                </svg>
+                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full flex items-center gap-1">
+                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                  </svg>
+                                                  <span className="font-medium">{remark.changedTo.toName || remark.changedTo.to || '--'}</span>
+                                                </span>
+                                              </div>
+                                              {remark.changedTo.toEmail && (
+                                                <div className="text-sm text-gray-500 flex items-center gap-1 ml-2">
+                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                  </svg>
+                                                  <span>{remark.changedTo.toEmail}</span>
+                                                </div>
+                                              )}
                                             </div>
                                           )}
                                           <div className="mt-2 flex items-center text-xs text-gray-500">

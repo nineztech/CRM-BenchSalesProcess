@@ -315,22 +315,26 @@ export const getAllLeads = async (req, res) => {
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false  // Make this a LEFT JOIN
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false  // Make this a LEFT JOIN
         },
         {
           model: User,
           as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
         },
         {
           model: User,
           as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
         }
       ],
       order: [[sortBy, sortOrder]],
@@ -338,17 +342,29 @@ export const getAllLeads = async (req, res) => {
       offset: offset
     });
 
-    // Calculate pagination info
-    const totalPages = Math.ceil(leads.count / parseInt(limit));
+    // Process the leads to ensure assignment data is accurate
+    const processedLeads = leads.rows.map(lead => {
+      const leadData = lead.toJSON();
+      // Only include assignment data if there's actually an assigned user
+      if (!leadData.assignedUser) {
+        leadData.assignedUser = null;
+        leadData.assignTo = null;
+      }
+      if (!leadData.previouslyAssignedUser) {
+        leadData.previouslyAssignedUser = null;
+        leadData.previousAssign = null;
+      }
+      return leadData;
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Leads fetched successfully',
       data: {
-        leads: leads.rows,
+        leads: processedLeads,
         pagination: {
           total: leads.count,
-          totalPages,
+          totalPages: Math.ceil(leads.count / parseInt(limit)),
           currentPage: parseInt(page),
           limit: parseInt(limit)
         }
