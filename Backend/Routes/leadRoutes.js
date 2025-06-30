@@ -5,7 +5,8 @@ import {
   getLeadsByStatusGroup,
   updateLead,
   updateLeadStatus,
-  archiveLead
+  archiveLead,
+  getAssignedLeads
 } from '../controllers/leadController.js'
 import express from 'express'
 import authenticate from '../middleware/auth.js'
@@ -17,6 +18,9 @@ leadRoute.post("/add",authenticate, createLead)
 
 // Get all leads with filtering and pagination
 leadRoute.get("/", getAllLeads)
+
+// Get leads assigned to logged-in user
+leadRoute.get("/assigned", authenticate, getAssignedLeads)
 
 // Get leads by status group (open, converted, archived, inProcess)
 leadRoute.get("/group/:statusGroup", getLeadsByStatusGroup)

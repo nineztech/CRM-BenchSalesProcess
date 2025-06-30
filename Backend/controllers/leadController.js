@@ -380,6 +380,125 @@ export const getAllLeads = async (req, res) => {
   }
 };
 
+// Get Leads Assigned to Logged-in User
+export const getAssignedLeads = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC'
+    } = req.query;
+
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        errors: [{
+          field: 'authentication',
+          message: 'User must be authenticated to view assigned leads'
+        }]
+      });
+    }
+
+    // Build where clause
+    const whereClause = {
+      assignTo: req.user.id // Only get leads assigned to the logged-in user
+    };
+    
+    // Add status filter if provided
+    if (status && ['open', 'converted', 'archive'].includes(status)) {
+      whereClause.status = status;
+    }
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.or] = [
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { emails: { [Op.like]: `%${search}%` } },
+        { technology: { [Op.like]: `%${search}%` } },
+        { country: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Calculate offset
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get leads with pagination
+    const leads = await Lead.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
+        },
+        {
+          model: User,
+          as: 'previouslyAssignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          required: false
+        }
+      ],
+      order: [[sortBy, sortOrder]],
+      limit: parseInt(limit),
+      offset: offset
+    });
+
+    // Process the leads to ensure assignment data is accurate
+    const processedLeads = leads.rows.map(lead => {
+      const leadData = lead.toJSON();
+      if (!leadData.assignedUser) {
+        leadData.assignedUser = null;
+        leadData.assignTo = null;
+      }
+      if (!leadData.previouslyAssignedUser) {
+        leadData.previouslyAssignedUser = null;
+        leadData.previousAssign = null;
+      }
+      return leadData;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Assigned leads fetched successfully',
+      data: {
+        leads: processedLeads,
+        pagination: {
+          total: leads.count,
+          totalPages: Math.ceil(leads.count / parseInt(limit)),
+          currentPage: parseInt(page),
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching assigned leads:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while fetching assigned leads'
+    });
+  }
+};
+
 // Get Leads by Status
 export const getLeadsByStatus = async (req, res) => {
   try {
@@ -729,7 +848,8 @@ export const updateLeadStatus = async (req, res) => {
         status: 'inactive',
         archivedAt: new Date(),
         remarks: updatedRemarks,
-        updatedBy: req.user.id
+        updatedBy: req.user.id,
+        archivedBy: req.user.id // This will be used to track who archived the lead
       };
 
       // Remove fields that shouldn't be copied

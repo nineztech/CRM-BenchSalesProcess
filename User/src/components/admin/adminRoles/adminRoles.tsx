@@ -474,8 +474,8 @@ const AdminRoles = (): ReactElement => {
               canDelete: rights[activity.name]?.canDelete || false
             };
 
-            return axios.post(
-              `${import.meta.env.VITE_API_URL}/admin-permissions/create`,
+                          return axios.post(
+              `${import.meta.env.VITE_API_URL}/admin-permissions/add`,
               permission,
               {
                 headers: {

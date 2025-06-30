@@ -279,7 +279,25 @@ const LeadCreationComponent: React.FC = () => {
     try {
       setIsLoading(true);
       setApiError(null);
-      const response = await axios.get(`${BASE_URL}/lead`);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      // Check if user has permission to view all leads
+      const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
+      
+      // Use the appropriate endpoint based on permission
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       setLeads(response.data.data.leads);
       // Update pagination info from API response if available
       if (response.data.data.pagination) {
@@ -294,10 +312,12 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Effect to fetch leads when component mounts
+  // Effect to fetch leads when component mounts and when permissions change
   useEffect(() => {
-    fetchLeads();
-  }, []);
+    if (!permissionsLoading) {
+      fetchLeads();
+    }
+  }, [permissionsLoading]);
 
   // Filter leads based on status
   // const getLeadsByStatus = (status: string) => {
@@ -974,45 +994,59 @@ const LeadCreationComponent: React.FC = () => {
         }
       } else {
         // Regular status update
-      const response = await axios.patch(
-        `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-        { 
-          status: newStatus,
-          remark 
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+        const response = await axios.patch(
+          `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
+          { 
+            status: newStatus,
+            remark 
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
           }
-        }
-      );
-
-      if (response.data.success) {
-        // Update the leads list with the new data
-        setLeads(prevLeads => 
-          prevLeads.map(lead => 
-            lead.id === selectedLeadForStatus.id ? {
-              ...lead,
-              status: newStatus,
-              statusGroup: response.data.data.statusGroup
-            } : lead
-          )
         );
 
-        // Show status change notification
-        setStatusNotificationData({
-          leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
-          newStatus: newStatus,
-          statusGroup: response.data.data.statusGroup
-        });
-        setShowStatusNotification(true);
+        if (response.data.success) {
+          // Update the leads list with the new data
+          setLeads(prevLeads => 
+            prevLeads.map(lead => 
+              lead.id === selectedLeadForStatus.id ? {
+                ...lead,
+                status: newStatus,
+                statusGroup: response.data.data.statusGroup,
+                remarks: response.data.data.remarks || lead.remarks
+              } : lead
+            )
+          );
 
-        setShowStatusRemarkModal(false);
-        setSelectedLeadForStatus(null);
-        setNewStatus('');
-      } else {
-        setApiError('Failed to update status. Please try again.');
+          // If this lead is currently selected in the details modal, update it
+          if (selectedLead?.id === selectedLeadForStatus.id) {
+            setSelectedLead(prevLead => {
+              if (!prevLead) return null;
+              return {
+                ...prevLead,
+                status: newStatus,
+                statusGroup: response.data.data.statusGroup,
+                remarks: response.data.data.remarks || prevLead.remarks
+              };
+            });
+          }
+
+          // Show status change notification
+          setStatusNotificationData({
+            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
+            newStatus: newStatus,
+            statusGroup: response.data.data.statusGroup
+          });
+          setShowStatusNotification(true);
+
+          setShowStatusRemarkModal(false);
+          setSelectedLeadForStatus(null);
+          setNewStatus('');
+        } else {
+          setApiError('Failed to update status. Please try again.');
         }
       }
     } catch (error: any) {
@@ -1799,7 +1833,8 @@ ${(() => {
                                         <select
                                           value={lead.status || 'open'}
                                           onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                          disabled={lead.status === 'closed'}
+                                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
                                         >
                                           <option value="open">Open</option>
                                           <option value="DNR1">DNR1</option>

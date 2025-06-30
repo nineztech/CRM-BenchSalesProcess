@@ -57,16 +57,43 @@ export const getArchivedLeads = async (req, res) => {
       offset: offset
     });
 
-    const totalPages = Math.ceil(archivedLeads.count / parseInt(limit));
+    // Process the leads to ensure all user information is included
+    const processedLeads = archivedLeads.rows.map(lead => {
+      const leadData = lead.toJSON();
+      // Ensure the remarks have creator information
+      if (leadData.remarks && Array.isArray(leadData.remarks)) {
+        leadData.remarks = leadData.remarks.map(remark => {
+          if (!remark.creator && remark.createdBy) {
+            // Try to find the creator from the included users
+            const creator = leadData.updater && leadData.updater.id === remark.createdBy ? leadData.updater :
+                          leadData.creator && leadData.creator.id === remark.createdBy ? leadData.creator :
+                          leadData.assignedUser && leadData.assignedUser.id === remark.createdBy ? leadData.assignedUser : null;
+            
+            if (creator) {
+              remark.creator = {
+                id: creator.id,
+                firstname: creator.firstname,
+                lastname: creator.lastname,
+                email: creator.email,
+                subrole: creator.subrole,
+                departmentId: creator.departmentId
+              };
+            }
+          }
+          return remark;
+        });
+      }
+      return leadData;
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Archived leads fetched successfully',
       data: {
-        leads: archivedLeads.rows,
+        leads: processedLeads,
         pagination: {
           total: archivedLeads.count,
-          totalPages,
+          totalPages: Math.ceil(archivedLeads.count / parseInt(limit)),
           currentPage: parseInt(page),
           limit: parseInt(limit)
         }
@@ -99,25 +126,35 @@ export const reopenArchivedLead = async (req, res) => {
       });
     }
 
+    const now = new Date();
+    
     // Create a new lead from the archived data
     const leadData = {
       ...archivedLead.toJSON(),
       status: 'open',
       createdBy: req.user.id,
+      updatedBy: null,
+      createdAt: now,
+      updatedAt: now,
       assignTo: null,
       previousAssign: null,
       totalAssign: 0,
-      remarks: [
-        {
-          text: remark || 'Lead reopened from archive',
-          createdAt: new Date().toISOString(),
-          createdBy: req.user.id,
-          statusChange: {
-            from: 'archived',
-            to: 'open'
-          }
+      remarks: [{
+        text: 'Lead Created',  // Fixed text, ignoring any user input
+        createdAt: now.toISOString(),
+        createdBy: req.user.id,
+        creator: {
+          id: req.user.id,
+          firstname: req.user.firstname,
+          lastname: req.user.lastname,
+          email: req.user.email,
+          subrole: req.user.subrole,
+          departmentId: req.user.departmentId
+        },
+        statusChange: {
+          to: 'open'
         }
-      ]
+      }]
     };
 
     // Remove fields that shouldn't be copied
@@ -291,17 +328,22 @@ export const bulkReopenArchivedLeads = async (req, res) => {
           continue;
         }
 
+        const now = new Date();
+        
         // Create a new lead from the archived data
         const leadData = {
           ...archivedLead.toJSON(),
           status: 'open',
           createdBy: reopeningUser.id,
+          updatedBy: null,
+          createdAt: now,
+          updatedAt: now,
           assignTo: null,
           previousAssign: null,
           totalAssign: 0,
           remarks: [{
-            text: 'Lead Created',
-            createdAt: new Date().toISOString(),
+            text: 'Lead Created',  // Fixed text, ignoring any user input
+            createdAt: now.toISOString(),
             createdBy: reopeningUser.id,
             creator: {
               id: reopeningUser.id,
