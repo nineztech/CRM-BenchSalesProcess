@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import RouteGuard from '../../common/RouteGuard';
-// import usePermissions from '../../../hooks/usePermissions';
+import usePermissions from '../../../hooks/usePermissions';
 import toast from 'react-hot-toast';
 import LeadDetailsModal from '../lead_creation/LeadDetailsModal';
 
@@ -147,7 +147,8 @@ const ArchivedLeadsComponent: React.FC = () => {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState<ArchivedLead | null>(null);
 
-  // const { checkPermission } = usePermissions();
+  const { checkPermission } = usePermissions();
+  const canReopenLeads = checkPermission('Reopen Lead Management', 'add') || checkPermission('Reopen Lead Management', 'edit');
 
   const fetchArchivedLeads = async () => {
     try {
@@ -296,7 +297,7 @@ const ArchivedLeadsComponent: React.FC = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Archived Leads List</h2>
                 <div className="flex items-center gap-4">
-                  {selectedLeads.length > 0 && (
+                  {canReopenLeads && selectedLeads.length > 0 && (
                     <button
                       onClick={() => setShowReopenModal(true)}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-all duration-200"
@@ -327,7 +328,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">
-                          {activeLeadsCount > 0 && (
+                          {canReopenLeads && activeLeadsCount > 0 && (
                             <input 
                               type="checkbox" 
                               checked={selectedLeads.length === activeLeadsCount}
@@ -359,7 +360,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                         .map((lead, index) => (
                         <tr key={lead.id} className="hover:bg-gray-50">
                           <td className="px-6 py-3 text-sm text-gray-900 border-b">
-                            {lead.status === 'active' && (
+                            {canReopenLeads && lead.status === 'active' && (
                               <input
                                 type="checkbox"
                                 checked={selectedLeads.includes(index)}

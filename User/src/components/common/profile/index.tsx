@@ -585,12 +585,12 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8 font-['Inter']">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 py-6 font-inter">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 mt-8"
+        className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 mx-4"
       >
         <div className="flex justify-between items-center mb-8 border-b pb-6">
           <div className="flex items-center gap-4">
