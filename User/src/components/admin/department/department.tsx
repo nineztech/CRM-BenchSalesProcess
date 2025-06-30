@@ -6,6 +6,7 @@ import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DepartmentRolesPopup from './DepartmentRolesPopup';
+import usePermissions from '../../../hooks/usePermissions';
 
 // Add the styles
 const tooltipStyles = `
@@ -103,6 +104,7 @@ const ConfirmationDialog: React.FC<{
 
 const AddDepartment: React.FC = () => {
   const navigate = useNavigate();
+  const { checkPermission } = usePermissions();
   const [departmentName, setDepartmentName] = useState('');
   const [subroles, setSubroles] = useState<string[]>([]);
   const [isSalesTeam, setIsSalesTeam] = useState(false);
@@ -333,140 +335,142 @@ const AddDepartment: React.FC = () => {
       <style>{tooltipStyles}</style>
       <div className="flex flex-col gap-5 max-w-[98%]">
         {/* Form Container */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
-        >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-medium text-gray-800">
-              {editingDepartment ? "Edit Department" : "Add Department"}
-            </h2>
-          </div>
+        {checkPermission('Department Management', 'add') && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-medium text-gray-800">
+                {editingDepartment ? "Edit Department" : "Add Department"}
+              </h2>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                  Department Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={departmentName}
-                  onChange={(e) => setDepartmentName(e.target.value)}
-                  placeholder="Enter department name"
-                  className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                  Add Roles <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Department Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    value={currentRole}
-                    onChange={(e) => setCurrentRole(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && currentRole.trim()) {
-                        e.preventDefault();
-                        setSubroles([...subroles, currentRole.trim()]);
-                        setCurrentRole('');
-                      }
-                    }}
-                    placeholder="Enter subrole"
-                    className="flex-1 p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                    value={departmentName}
+                    onChange={(e) => setDepartmentName(e.target.value)}
+                    placeholder="Enter department name"
+                    className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                     disabled={isLoading}
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={handleAddSubrole}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400"
-                  >
-                    <FaPlus />
-                  </motion.button>
                 </div>
-                <span className="text-xs text-gray-500 mt-1 block">Minimum one role is required</span>
-                {subroles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-100">
-                    {subroles.map((subrole, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full text-sm shadow-sm border border-gray-200"
-                      >
-                        <span className="text-gray-700">{subrole}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSubrole(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          ×
-                        </button>
-                      </motion.div>
-                    ))}
+
+                <div className="form-group">
+                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                    Add Roles <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={currentRole}
+                      onChange={(e) => setCurrentRole(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && currentRole.trim()) {
+                          e.preventDefault();
+                          setSubroles([...subroles, currentRole.trim()]);
+                          setCurrentRole('');
+                        }
+                      }}
+                      placeholder="Enter subrole"
+                      className="flex-1 p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                      disabled={isLoading}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      onClick={handleAddSubrole}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400"
+                    >
+                      <FaPlus />
+                    </motion.button>
                   </div>
-                )}
+                  <span className="text-xs text-gray-500 mt-1 block">Minimum one role is required</span>
+                  {subroles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-100">
+                      {subroles.map((subrole, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full text-sm shadow-sm border border-gray-200"
+                        >
+                          <span className="text-gray-700">{subrole}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSubrole(index)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="form-group flex flex-row gap-2">
-                <input
-                   type="checkbox"
-                   checked={isSalesTeam}
-                   onChange={(e) => setIsSalesTeam(e.target.checked)}
-                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
-                   disabled={isLoading || (salesTeamExists && !editingDepartment?.isSalesTeam)}
-                 />
-                   <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
-                
-                  Is Sales Team
-                </label>
-                {salesTeamExists && !editingDepartment?.isSalesTeam && (
-                  <span className="text-xs text-red-500 ml-2">
-                    (Sales team already exists: {existingSalesTeamDept?.departmentName})
-                  </span>
-                )}
+              <div className="form-group flex flex-row gap-2">
+                  <input
+                     type="checkbox"
+                     checked={isSalesTeam}
+                     onChange={(e) => setIsSalesTeam(e.target.checked)}
+                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
+                     disabled={isLoading || (salesTeamExists && !editingDepartment?.isSalesTeam)}
+                   />
+                     <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
+                  
+                    Is Sales Team
+                  </label>
+                  {salesTeamExists && !editingDepartment?.isSalesTeam && (
+                    <span className="text-xs text-red-500 ml-2">
+                      (Sales team already exists: {existingSalesTeamDept?.departmentName})
+                    </span>
+                  )}
+                </div>
+
+              <div className="flex justify-end gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={isLoading}
+                  className={`px-4 py-2 text-sm font-medium rounded-md text-white transition-colors duration-200 ${
+                    isLoading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {isLoading ? 'Processing...' : (editingDepartment ? 'Update' : 'Save')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={() => {
+                    setDepartmentName('');
+                    setSubroles([]);
+                    setIsSalesTeam(false);
+                    setEditingDepartment(null);
+                    checkSalesTeamExists();
+                  }}
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 transition-colors duration-200 disabled:bg-gray-400"
+                >
+                  Cancel
+                </motion.button>
               </div>
-
-            <div className="flex justify-end gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isLoading}
-                className={`px-4 py-2 text-sm font-medium rounded-md text-white transition-colors duration-200 ${
-                  isLoading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {isLoading ? 'Processing...' : (editingDepartment ? 'Update' : 'Save')}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="button"
-                onClick={() => {
-                  setDepartmentName('');
-                  setSubroles([]);
-                  setIsSalesTeam(false);
-                  setEditingDepartment(null);
-                  checkSalesTeamExists();
-                }}
-                disabled={isLoading}
-                className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 transition-colors duration-200 disabled:bg-gray-400"
-              >
-                Cancel
-              </motion.button>
-            </div>
-          </form>
-        </motion.div>
+            </form>
+          </motion.div>
+        )}
 
         {/* Search Container */}
         <div className="flex mb-4">
@@ -498,14 +502,14 @@ const AddDepartment: React.FC = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department Name</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Is Sales Team</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created By</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
-                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[5%]">#</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Department Name</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[15%]">Roles</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[8%]">Is Sales Team</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[12%]">Created By</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[25%] min-w-[200px]">Created At</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left w-[10%]">Status</th>
+                    <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center w-[10%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -517,9 +521,9 @@ const AddDepartment: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className="hover:bg-gray-50 transition-colors duration-150"
                     >
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{dept.departmentName}</td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[5%]">{index + 1}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%]">{dept.departmentName}</td>
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[15%]">
                         <div className="flex flex-wrap gap-1">
                           {dept.subroles?.map((subrole, i) => (
                             <span key={i} className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
@@ -528,13 +532,13 @@ const AddDepartment: React.FC = () => {
                           ))}
                         </div>
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[8%]">
                         {dept.isSalesTeam ? 'Yes' : 'No'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[12%]">
                         {dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 w-[25%] whitespace-nowrap min-w-[200px]">
                         {dept.createdAt ? new Date(dept.createdAt).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -547,7 +551,7 @@ const AddDepartment: React.FC = () => {
                           `${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`
                         ) : 'N/A'}
                       </td>
-                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative">
+                      <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 status-cell relative w-[10%]">
                         <span 
                           className={`px-2 py-1 rounded-full text-xs ${
                             dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -577,42 +581,46 @@ const AddDepartment: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="p-2.5 text-sm border-b border-gray-100">
+                      <td className="p-2.5 text-sm border-b border-gray-100 w-[10%]">
                         <div className="flex gap-3 justify-center">
-                          <motion.button
-                            whileHover={{ scale: dept.status === 'active' ? 1.1 : 1 }}
-                            whileTap={{ scale: dept.status === 'active' ? 0.9 : 1 }}
-                            onClick={() => dept.status === 'active' && handleEdit(dept)}
-                            disabled={isLoading || dept.status !== 'active'}
-                            className={`text-blue-600 transition-colors duration-200 ${
-                              isLoading || dept.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
-                            }`}
-                            title={dept.status !== 'active' ? 'Cannot edit inactive department' : ''}
-                          >
-                            <FaEdit size={16} />
-                          </motion.button>
-                          {dept.status === 'active' ? (
+                          {checkPermission('Department Management', 'edit') && (
                             <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleStatusUpdate(dept.id, dept.status)}
-                              disabled={isLoading}
-                              className="text-red-500 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
-                              title="Deactivate Department"
+                              whileHover={{ scale: dept.status === 'active' ? 1.1 : 1 }}
+                              whileTap={{ scale: dept.status === 'active' ? 0.9 : 1 }}
+                              onClick={() => dept.status === 'active' && handleEdit(dept)}
+                              disabled={isLoading || dept.status !== 'active'}
+                              className={`text-blue-600 transition-colors duration-200 ${
+                                isLoading || dept.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
+                              }`}
+                              title={dept.status !== 'active' ? 'Cannot edit inactive department' : ''}
                             >
-                              <FaUserTimes size={16} />
+                              <FaEdit size={16} />
                             </motion.button>
-                          ) : (
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleStatusUpdate(dept.id, dept.status)}
-                              disabled={isLoading}
-                              className="text-green-500 hover:text-green-600 transition-colors duration-200 disabled:opacity-50"
-                              title="Activate Department"
-                            >
-                              <FaUserCheck size={16} />
-                            </motion.button>
+                          )}
+                          {checkPermission('Department Management', 'delete') && (
+                            dept.status === 'active' ? (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleStatusUpdate(dept.id, dept.status)}
+                                disabled={isLoading}
+                                className="text-red-500 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
+                                title="Deactivate Department"
+                              >
+                                <FaUserTimes size={16} />
+                              </motion.button>
+                            ) : (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleStatusUpdate(dept.id, dept.status)}
+                                disabled={isLoading}
+                                className="text-green-500 hover:text-green-600 transition-colors duration-200 disabled:opacity-50"
+                                title="Activate Department"
+                              >
+                                <FaUserCheck size={16} />
+                              </motion.button>
+                            )
                           )}
                         </div>
                       </td>

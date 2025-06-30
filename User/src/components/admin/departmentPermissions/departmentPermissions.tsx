@@ -2,6 +2,7 @@ import  { useState, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import Layout from '../../common/layout/Layout';
 import axios from 'axios';
+import usePermissions from '../../../hooks/usePermissions';
 
 interface Department {
   id: number;
@@ -30,6 +31,7 @@ interface RolePermission {
 }
 
 const DepartmentPermissions = (): ReactElement => {
+  const { checkPermission } = usePermissions();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -202,65 +204,73 @@ const DepartmentPermissions = (): ReactElement => {
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[98%]">
-        <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-          <h2 className="text-xl font-medium text-gray-800 m-0">Department Permissions</h2>
-          <div className="flex gap-4">
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.departmentName}
-                </option>
-              ))}
-            </select>
-            
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              disabled={!selectedDepartment}
-            >
-              <option value="">All Roles</option>
-              {availableRoles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {checkPermission('Role Permission Management', 'view') ? (
+          <>
+            <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+              <h2 className="text-xl font-medium text-gray-800 m-0">Department Permissions</h2>
+              <div className="flex gap-4">
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.departmentName}
+                    </option>
+                  ))}
+                </select>
+                
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                  disabled={!selectedDepartment}
+                >
+                  <option value="">All Roles</option>
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-        {loading && (
-          <div className="text-center p-4 bg-white rounded-lg">
-            <p className="text-gray-600">Loading permissions...</p>
-          </div>
-        )}
+            {loading && (
+              <div className="text-center p-4 bg-white rounded-lg">
+                <p className="text-gray-600">Loading permissions...</p>
+              </div>
+            )}
 
-        {!loading && selectedDepartment && activities.length > 0 && (
-          <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-            {Array.from(new Set(activities.map(a => a.category))).map(category => {
-              const categoryActivities = activities.filter(a => a.category === category);
-              return (
-                <div key={category} className="mb-8">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-medium text-gray-800 border-b-2 border-blue-100 inline-block">
-                      {category}
-                    </h2>
-                  </div>
-                  {renderPermissionsTable(categoryActivities)}
-                </div>
-              );
-            })}
-          </div>
-        )}
+            {!loading && selectedDepartment && activities.length > 0 && (
+              <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                {Array.from(new Set(activities.map(a => a.category))).map(category => {
+                  const categoryActivities = activities.filter(a => a.category === category);
+                  return (
+                    <div key={category} className="mb-8">
+                      <div className="mb-4">
+                        <h2 className="text-xl font-medium text-gray-800 border-b-2 border-blue-100 inline-block">
+                          {category}
+                        </h2>
+                      </div>
+                      {renderPermissionsTable(categoryActivities)}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-        {!loading && !selectedDepartment && (
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">Please select a department to view permissions.</p>
+            {!loading && !selectedDepartment && (
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-gray-600">Please select a department to view permissions.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
+            <p className="text-yellow-700">You don't have permission to view department permissions.</p>
           </div>
         )}
       </div>

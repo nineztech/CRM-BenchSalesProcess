@@ -5,6 +5,7 @@ import Layout from '../../common/layout/Layout';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import usePermissions from '../../../hooks/usePermissions';
 
 interface Department {
   id: number;
@@ -77,6 +78,7 @@ interface AdminPermissionResponse {
 
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
+  const { checkPermission } = usePermissions();
   const specialUserData = location.state as { 
     isSpecialUser: boolean; 
     specialUserId: number; 
@@ -633,180 +635,124 @@ const AdminRoles = (): ReactElement => {
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[98%]">
-        <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-          <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
-          <div className="flex gap-3 items-center">
-            <div className="flex items-center gap-3">
-              {/* Is Admin Checkbox */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isAdmin"
-                  checked={isAdmin}
-                  onChange={(e) => setIsAdmin(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="isAdmin" className="text-sm text-gray-600">
-                  Is Admin
-                </label>
-              </div>
+        {/* Header section with controls - only show if user has view permission */}
+        {checkPermission('Activity Management', 'view') && (
+          <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+            <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
+            <div className="flex gap-3 items-center">
+              {/* Is Admin Checkbox - only show if user has edit permission */}
+              {checkPermission('Activity Management', 'edit') && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isAdmin"
+                      checked={isAdmin}
+                      onChange={(e) => setIsAdmin(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <label htmlFor="isAdmin" className="text-sm text-gray-600">
+                      Is Admin
+                    </label>
+                  </div>
 
-              {/* Admin Users Dropdown - Moved next to checkbox */}
-              {isAdmin && (
-                <select 
-                  value={selectedAdminUser} 
-                  onChange={(e) => setSelectedAdminUser(e.target.value)}
-                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                >
-                  <option value="" disabled hidden>Select Admin User *</option>
-                  {adminUsers.map((admin) => (
-                    <option key={admin.id} value={admin.id}>
-                      {admin.firstname} {admin.lastname}
-                    </option>
-                  ))}
-                </select>
+                  {/* Admin Users Dropdown */}
+                  {isAdmin && (
+                    <select 
+                      value={selectedAdminUser} 
+                      onChange={(e) => setSelectedAdminUser(e.target.value)}
+                      className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    >
+                      <option value="" disabled hidden>Select Admin User *</option>
+                      {adminUsers.map((admin) => (
+                        <option key={admin.id} value={admin.id}>
+                          {admin.firstname} {admin.lastname}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               )}
-            </div>
 
-            {/* Department Dropdown */}
-            <select 
-              value={selectedDepartment} 
-              onChange={(e) => {
-                console.log('Selected department:', e.target.value);
-                setSelectedDepartment(e.target.value);
-                setSelectedRole(''); // Reset role when department changes
-                setRights({}); // Reset rights when department changes
-              }}
-              className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              disabled={!!(isAdmin || (navState && navState.selectedDepartment))}
-            >
-              <option value="" disabled hidden>Select Department *</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-              ))}
-            </select>
-
-            {/* Role Dropdown */}
-            <select 
-              value={selectedRole} 
-              onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              disabled={!!(isAdmin || !selectedDepartment || (navState && navState.selectedDepartment))}
-            >
-              <option value="" disabled hidden>Select Role *</option>
-              {currentDepartmentSubroles.map((role) => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-
-            {/* Is Special Checkbox */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isSpecial"
-                checked={isSpecial}
-                onChange={(e) => {
-                  setIsSpecial(e.target.checked);
-                  if (!e.target.checked) {
-                    setSelectedSpecialUser('');
-                  }
-                }}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                disabled={isAdmin}
-              />
-              <label htmlFor="isSpecial" className="text-sm text-gray-600">
-                Is Special
-              </label>
-            </div>
-
-            {/* Special Users Dropdown */}
-            {isSpecial && (
-              <select 
-                value={selectedSpecialUser} 
-                onChange={(e) => setSelectedSpecialUser(e.target.value)}
-                className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-              >
-                <option value="" disabled hidden>Select Special User *</option>
-                {specialUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstname} {user.lastname}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-
-        {showNewRoleForm && (
-          <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-[999]">
-            <div className="relative bg-white py-4 px-6 rounded-lg w-[480px] max-h-[90vh] overflow-y-auto shadow-xl">
-              <span
-                onClick={() => {
-                  setShowNewRoleForm(false);
-                  setNewRoleName('');
-                  setEditIndex(null);
-                }}
-                className="absolute top-2 right-3 text-xl font-medium text-gray-600 cursor-pointer select-none hover:text-gray-800"
-                title="Close"
-              >
-                &times;
-              </span>
-
-              <h3 className="text-lg font-medium mb-4 text-gray-800">Add New Role</h3>
-
-              <div className="flex gap-2.5 mb-4">
-                <input
-                  type="text"
-                  placeholder="Enter new role name"
-                  value={newRoleName}
-                  onChange={(e) => setNewRoleName(e.target.value)}
-                  className="h-8 text-[13px] w-[280px] rounded-md border border-gray-300 px-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none"
-                />
-                <button 
-                  className="px-4 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200"
-                  onClick={handleAddNewRole}
-                >
-                  {editIndex !== null ? 'Update Role' : 'Add Role'}
-                </button>
-              </div>
-
-              {roleList.length > 0 && (
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Sr. No.</th>
-                      <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Created At</th>
-                      <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Role Name</th>
-                      <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roleList.map((item, index) => (
-                      <tr key={index} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                        <td className="p-2.5 border border-gray-200 text-center text-[13px] text-gray-600">{index + 1}</td>
-                        <td className="p-2.5 border border-gray-200 text-center text-[13px] text-gray-600">{item.createdAt}</td>
-                        <td className="p-2.5 border border-gray-200 text-center text-[13px] text-gray-600">{item.role}</td>
-                        <td className="p-2.5 border border-gray-200 text-center text-[13px]">
-                          <button 
-                            className="bg-transparent border-none cursor-pointer text-gray-600 hover:text-blue-600 transition-colors duration-200"
-                            onClick={() => handleEditRole(index)}
-                          >
-                            <FaEdit className="text-sm" />
-                          </button>
-                        </td>
-                      </tr>
+              {/* Department and Role Dropdowns - only show if user has edit permission */}
+              {checkPermission('Activity Management', 'edit') && (
+                <>
+                  <select 
+                    value={selectedDepartment} 
+                    onChange={(e) => {
+                      console.log('Selected department:', e.target.value);
+                      setSelectedDepartment(e.target.value);
+                      setSelectedRole('');
+                      setRights({});
+                    }}
+                    className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    disabled={!!(isAdmin || (navState && navState.selectedDepartment))}
+                  >
+                    <option value="" disabled hidden>Select Department *</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
                     ))}
-                  </tbody>
-                </table>
+                  </select>
+
+                  <select 
+                    value={selectedRole} 
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    disabled={!!(isAdmin || !selectedDepartment || (navState && navState.selectedDepartment))}
+                  >
+                    <option value="" disabled hidden>Select Role *</option>
+                    {currentDepartmentSubroles.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {/* Special User Controls - only show if user has edit permission */}
+              {checkPermission('Activity Management', 'edit') && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isSpecial"
+                      checked={isSpecial}
+                      onChange={(e) => {
+                        setIsSpecial(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedSpecialUser('');
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      disabled={isAdmin}
+                    />
+                    <label htmlFor="isSpecial" className="text-sm text-gray-600">
+                      Is Special
+                    </label>
+                  </div>
+
+                  {isSpecial && (
+                    <select 
+                      value={selectedSpecialUser} 
+                      onChange={(e) => setSelectedSpecialUser(e.target.value)}
+                      className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    >
+                      <option value="" disabled hidden>Select Special User *</option>
+                      {specialUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.firstname} {user.lastname}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </>
               )}
             </div>
           </div>
         )}
 
-        {/* Show activities table */}
-        {activities.length > 0 && (
+        {/* Activities Table Section - only show if user has view permission */}
+        {checkPermission('Activity Management', 'view') && activities.length > 0 && (
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-            {/* Group activities by category */}
             {Array.from(new Set(activities.map(a => a.category))).map(category => {
               const categoryActivities = activities.filter(a => a.category === category);
               return (
@@ -817,7 +763,6 @@ const AdminRoles = (): ReactElement => {
                     </h2>
                   </div>
 
-                  {/* Activities Table */}
                   <table className="w-full border-collapse min-w-[600px] mb-4">
                     <thead>
                       <tr>
@@ -844,7 +789,7 @@ const AdminRoles = (): ReactElement => {
                               checked={isAllSelected(activity.name)}
                               onChange={() => handleSelectAllRow(activity.name)}
                               className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!selectedRole && !selectedAdminUser}
+                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
                             />
                           </td>
                           <td className="p-2.5 border border-gray-200 text-center">
@@ -853,7 +798,7 @@ const AdminRoles = (): ReactElement => {
                               checked={rights[activity.name]?.canView || false}
                               onChange={() => handlePermissionChange(activity.name, 'canView')}
                               className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!selectedRole && !selectedAdminUser}
+                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
                             />
                           </td>
                           <td className="p-2.5 border border-gray-200 text-center">
@@ -862,7 +807,7 @@ const AdminRoles = (): ReactElement => {
                               checked={rights[activity.name]?.canAdd || false}
                               onChange={() => handlePermissionChange(activity.name, 'canAdd')}
                               className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!selectedRole && !selectedAdminUser}
+                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
                             />
                           </td>
                           <td className="p-2.5 border border-gray-200 text-center">
@@ -871,7 +816,7 @@ const AdminRoles = (): ReactElement => {
                               checked={rights[activity.name]?.canEdit || false}
                               onChange={() => handlePermissionChange(activity.name, 'canEdit')}
                               className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!selectedRole && !selectedAdminUser}
+                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
                             />
                           </td>
                           <td className="p-2.5 border border-gray-200 text-center">
@@ -880,7 +825,7 @@ const AdminRoles = (): ReactElement => {
                               checked={rights[activity.name]?.canDelete || false}
                               onChange={() => handlePermissionChange(activity.name, 'canDelete')}
                               className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!selectedRole && !selectedAdminUser}
+                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
                             />
                           </td>
                         </tr>
@@ -891,8 +836,8 @@ const AdminRoles = (): ReactElement => {
               );
             })}
 
-            {/* Show Assign button when either role or admin is selected */}
-            {(selectedRole || (isAdmin && selectedAdminUser)) && (
+            {/* Assign button - only show if user has edit permission */}
+            {checkPermission('Activity Management', 'edit') && (selectedRole || (isAdmin && selectedAdminUser)) && (
               <button 
                 className={`mt-4 px-5 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleAssign}
@@ -904,10 +849,17 @@ const AdminRoles = (): ReactElement => {
           </div>
         )}
 
-        {/* Show message when no activities are found */}
-        {activities.length === 0 && (
+        {/* No activities message - only show if user has view permission */}
+        {checkPermission('Activity Management', 'view') && activities.length === 0 && (
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-gray-600">No activities found.</p>
+          </div>
+        )}
+
+        {/* Show message if user doesn't have view permission */}
+        {!checkPermission('Activity Management', 'view') && (
+          <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
+            <p className="text-yellow-700">You don't have permission to view roles and permissions.</p>
           </div>
         )}
       </div>
