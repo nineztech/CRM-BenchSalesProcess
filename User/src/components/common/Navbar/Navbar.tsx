@@ -94,7 +94,7 @@ export const Navbar: React.FC = () => {
                   name={userName}
                   size="32"
                   round={true}
-                  colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
+                  color="#6366F1"
                   textSizeRatio={2.5}
                 />
               </div>
@@ -116,7 +116,7 @@ export const Navbar: React.FC = () => {
                         name={userName}
                         size="48"
                         round={true}
-                        colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
+                        color="#6366F1"
                         textSizeRatio={2.5}
                       />
                     </div>

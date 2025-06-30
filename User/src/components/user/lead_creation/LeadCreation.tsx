@@ -1976,7 +1976,7 @@ ${(() => {
               <h3 className="text-lg font-semibold mb-4">Call {callLeadName}</h3>
               <div className="mb-4">
                 <div className="mb-2 text-sm text-gray-700">Select a number:</div>
-                {callOptions.map((num, idx) => (
+                {callOptions.map((num: string) => (
                   <button
                     key={num}
                     className={`block w-full text-left px-4 py-2 rounded-md border mb-2 ${selectedCallNumber === num ? 'bg-indigo-100 border-indigo-400' : 'bg-gray-50 border-gray-200'}`}

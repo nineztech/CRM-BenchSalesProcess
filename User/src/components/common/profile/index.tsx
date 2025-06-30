@@ -31,7 +31,7 @@ const modalVariants = {
     y: 0, 
     scale: 1, 
     transition: { 
-      type: "spring",
+      type: "spring" as const,
       duration: 0.4,
       bounce: 0.3 
     } 
@@ -46,25 +46,65 @@ const modalVariants = {
 
 const overlayVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.3 } },
-  exit: { opacity: 0, transition: { duration: 0.2 } }
+  visible: { 
+    opacity: 1, 
+    transition: { 
+      duration: 0.3 
+    } 
+  },
+  exit: { 
+    opacity: 0, 
+    transition: { 
+      duration: 0.2 
+    } 
+  }
 };
 
 const inputVariants = {
-  focus: { scale: 1.02, transition: { type: "spring", stiffness: 300 } }
+  focus: { 
+    scale: 1.02, 
+    transition: { 
+      type: "spring" as const, 
+      stiffness: 300 
+    } 
+  }
 };
 
 const buttonVariants = {
-  hover: { scale: 1.05, transition: { type: "spring", stiffness: 400 } },
-  tap: { scale: 0.95 }
+  hover: { 
+    scale: 1.05, 
+    transition: { 
+      type: "spring" as const,
+      stiffness: 400,
+      duration: 0.2
+    } 
+  },
+  tap: { 
+    scale: 0.95,
+    transition: {
+      duration: 0.1
+    }
+  }
 };
 
 const iconVariants = {
-  hover: { rotate: 15, scale: 1.1 },
-  tap: { scale: 0.9 }
+  hover: { 
+    rotate: 15, 
+    scale: 1.1,
+    transition: {
+      type: "spring" as const,
+      duration: 0.2
+    }
+  },
+  tap: { 
+    scale: 0.9,
+    transition: {
+      duration: 0.1
+    }
+  }
 };
 
-const UserProfile = () => {
+const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -835,5 +875,5 @@ const UserProfile = () => {
   );
 };
 
-export default UserProfile;
+export default Profile;
  
