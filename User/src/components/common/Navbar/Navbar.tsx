@@ -89,10 +89,10 @@ export const Navbar: React.FC = () => {
               onClick={() => setShowDropdown(!showDropdown)}
               className="cursor-pointer focus:outline-none flex items-center gap-3 px-2 py-1 rounded-full hover:bg-gray-50 transition-all duration-200"
             >
-              <div className="w-12 h-12 rounded-full ring-2 ring-gray-100">
+              <div className="w-8 h-8 rounded-full ring-2 ring-gray-100">
                 <Avatar
                   name={userName}
-                  size="48"
+                  size="32"
                   round={true}
                   colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
                   textSizeRatio={2.5}
@@ -111,10 +111,10 @@ export const Navbar: React.FC = () => {
               >
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-16 h-16">
+                    <div className="w-12 h-12">
                       <Avatar
                         name={userName}
-                        size="64"
+                        size="48"
                         round={true}
                         colors={['#6366F1', '#818CF8', '#4F46E5', '#4338CA', '#3730A3']}
                         textSizeRatio={2.5}

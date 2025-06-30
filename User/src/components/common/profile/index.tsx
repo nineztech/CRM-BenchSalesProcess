@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiEdit2, FiLogOut, FiLock, FiMail, FiKey, FiShield } from 'react-icons/fi';
+import { FiEdit2, FiLogOut, FiLock, FiMail, FiKey, FiShield, FiUser, FiPhone, FiAtSign, FiBriefcase, FiUsers } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import Avatar from 'react-avatar';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -24,15 +25,43 @@ interface UserData {
 }
 
 const modalVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.2 } },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.1 } }
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1, 
+    transition: { 
+      type: "spring",
+      duration: 0.4,
+      bounce: 0.3 
+    } 
+  },
+  exit: { 
+    opacity: 0, 
+    y: 20, 
+    scale: 0.95, 
+    transition: { duration: 0.2 } 
+  }
 };
 
 const overlayVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
-  exit: { opacity: 0, transition: { duration: 0.1 } }
+  visible: { opacity: 1, transition: { duration: 0.3 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } }
+};
+
+const inputVariants = {
+  focus: { scale: 1.02, transition: { type: "spring", stiffness: 300 } }
+};
+
+const buttonVariants = {
+  hover: { scale: 1.05, transition: { type: "spring", stiffness: 400 } },
+  tap: { scale: 0.95 }
+};
+
+const iconVariants = {
+  hover: { rotate: 15, scale: 1.1 },
+  tap: { scale: 0.9 }
 };
 
 const UserProfile = () => {
@@ -516,159 +545,246 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8 mt-8">
-        <div className="flex justify-between items-center mb-8 border-b pb-4">
-          <h1 className="text-2xl font-semibold text-gray-800">User Profile</h1>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8 font-['Inter']">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 mt-8"
+      >
+        <div className="flex justify-between items-center mb-8 border-b pb-6">
+          <div className="flex items-center gap-4">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="w-16 h-16 rounded-full ring-2 ring-gray-100"
+            >
+              <Avatar
+                name={`${userData?.firstname} ${userData?.lastname}`}
+                size="64"
+                round={true}
+                color="#6366F1"
+                textSizeRatio={2.5}
+              />
+            </motion.div>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800 tracking-tight">
+                {userData?.firstname} {userData?.lastname}
+              </h1>
+            </div>
+          </div>
           <div className="flex gap-3">
             {!isEditing && (
               <>
-                <button
+                <motion.button
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
                   onClick={handleEdit}
-                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 transition-colors duration-200"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
                 >
-                  <FiEdit2 size={14} /> Edit
-                </button>
-                <button
+                  <motion.div variants={iconVariants}>
+                    <FiEdit2 size={14} />
+                  </motion.div>
+                  Edit
+                </motion.button>
+                <motion.button
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
                   onClick={handleForgotPassword}
-                  className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-md text-sm hover:bg-amber-600 transition-colors duration-200"
+                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-amber-600 transition-all duration-200 shadow-md hover:shadow-lg"
                 >
-                  <FiLock size={14} /> Password
-                </button>
+                  <motion.div variants={iconVariants}>
+                    <FiLock size={14} />
+                  </motion.div>
+                  Password
+                </motion.button>
               </>
             )}
-            <button
+            <motion.button
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-1.5 rounded-md text-sm hover:bg-red-600 transition-colors duration-200"
+              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              <FiLogOut size={14} /> Logout
-            </button>
+              <motion.div variants={iconVariants}>
+                <FiLogOut size={14} />
+              </motion.div>
+              Logout
+            </motion.button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2.5 rounded-md mb-4 text-sm">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2"
+          >
+            <FiShield className="w-4 h-4" />
             {error}
-          </div>
+          </motion.div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-2.5 rounded-md mb-4 text-sm">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2"
+          >
+            <FiShield className="w-4 h-4" />
             {success}
-          </div>
+          </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">First Name</label>
+            <motion.div whileHover={{ scale: 1.01 }} className="group">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FiUser className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                First Name
+              </label>
               {isEditing ? (
-                <input
+                <motion.input
+                  variants={inputVariants}
+                  whileFocus="focus"
                   type="text"
                   name="firstname"
                   value={editedData.firstname || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
               ) : (
-                <p className="text-gray-800 text-sm py-2">{userData.firstname}</p>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.firstname}</p>
               )}
-            </div>
+            </motion.div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Last Name</label>
+            <motion.div whileHover={{ scale: 1.01 }} className="group">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FiUser className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                Last Name
+              </label>
               {isEditing ? (
-                <input
+                <motion.input
+                  variants={inputVariants}
+                  whileFocus="focus"
                   type="text"
                   name="lastname"
                   value={editedData.lastname || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
               ) : (
-                <p className="text-gray-800 text-sm py-2">{userData.lastname}</p>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.lastname}</p>
               )}
-            </div>
+            </motion.div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Email</label>
+            <motion.div whileHover={{ scale: 1.01 }} className="group">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FiMail className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                Email
+              </label>
               {isEditing ? (
-                <input
+                <motion.input
+                  variants={inputVariants}
+                  whileFocus="focus"
                   type="email"
                   name="email"
                   value={editedData.email || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
               ) : (
-                <p className="text-gray-800 text-sm py-2">{userData.email}</p>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.email}</p>
               )}
-            </div>
+            </motion.div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Phone Number</label>
+            <motion.div whileHover={{ scale: 1.01 }} className="group">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FiPhone className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                Phone Number
+              </label>
               {isEditing ? (
-                <input
+                <motion.input
+                  variants={inputVariants}
+                  whileFocus="focus"
                   type="text"
                   name="phoneNumber"
                   value={editedData.phoneNumber || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
               ) : (
-                <p className="text-gray-800 text-sm py-2">{userData.phoneNumber}</p>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.phoneNumber}</p>
               )}
-            </div>
+            </motion.div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Username</label>
-              <p className="text-gray-800 text-sm py-2">{userData.username}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Role</label>
-              <p className="text-gray-800 text-sm py-2 capitalize">{userData.role}</p>
-            </div>
+            <motion.div whileHover={{ scale: 1.01 }} className="group">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <FiAtSign className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                Username
+              </label>
+              <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.username}</p>
+            </motion.div>
 
             {userData.department && (
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Department</label>
-                <p className="text-gray-800 text-sm py-2">{userData.department.departmentName}</p>
-              </div>
+              <motion.div whileHover={{ scale: 1.01 }} className="group">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <FiBriefcase className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  Department
+                </label>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg">{userData.department.departmentName}</p>
+              </motion.div>
             )}
 
             {userData.subrole && (
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Sub Role</label>
-                <p className="text-gray-800 text-sm py-2 capitalize">{userData.subrole}</p>
-              </div>
+              <motion.div whileHover={{ scale: 1.01 }} className="group">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <FiUsers className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  Sub Role
+                </label>
+                <p className="text-gray-800 text-sm py-2.5 px-4 bg-gray-50 rounded-lg capitalize">{userData.subrole}</p>
+              </motion.div>
             )}
           </div>
 
           {isEditing && (
-            <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
-              <button
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-end gap-3 mt-8 pt-6 border-t"
+            >
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
                 type="button"
                 onClick={() => {
                   setIsEditing(false);
                   setEditedData(userData);
                 }}
-                className="px-4 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                className="px-6 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200"
               >
                 Cancel
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
                 type="submit"
-                className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+                className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 Save Changes
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
         </form>
 
         {/* Password Reset Button */}
-        {!isEditing && (
+        {/* {!isEditing && (
           <div className="mt-8 pt-4 border-t">
             <div className="flex flex-col items-center justify-center">
               <p className="text-sm text-gray-600 mb-3">Want to change your password?</p>
@@ -681,7 +797,7 @@ const UserProfile = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Modals */}
         {renderModal(
@@ -714,7 +830,7 @@ const UserProfile = () => {
           "Set New Password",
           newPasswordModalContent
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };

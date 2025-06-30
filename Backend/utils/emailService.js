@@ -234,7 +234,7 @@ export const sendOtpEmail = async (userData) => {
 };
 
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
-  console.log('Attempting to send package details email to:', userData.email);
+  console.log('Attempting to send package details email to:', options.to || userData.email);
 
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
@@ -310,7 +310,8 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
 
   const mailOptions = {
     from: options.from || `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
-    to: userData.email,
+    to: options.to || userData.email,
+    cc: options.cc || [],
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
     html: options.customBody ? `
       <!DOCTYPE html>
