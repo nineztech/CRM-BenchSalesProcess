@@ -275,7 +275,7 @@ const Sidebar: React.FC = () => {
                 transition={{ duration: 0.2 }}
                 className="ml-3 font-semibold text-xl"
               >
-                CRM
+                OOPZ CRM PRO
               </motion.span>
             )}
           </AnimatePresence>
