@@ -63,6 +63,9 @@ const Department = sequelize.define(
   {
     timestamps: true,
     hooks: {
+      beforeCreate: async (department) => {
+        department.setDataValue('updatedAt', null);
+      },
       beforeUpdate: async (department) => {
         // Auto-set updatedBy if not provided (handled in controller if needed)
       },
@@ -87,6 +90,17 @@ Department.prototype.removeSubrole = function(subroleToRemove) {
     this.subroles = this.subroles.filter(r => r !== subroleToRemove);
   }
   return this.subroles;
+};
+
+Department.associate = (models) => {
+  Department.belongsTo(models.User, {
+    foreignKey: 'createdBy',
+    as: 'creator'
+  });
+  Department.belongsTo(models.User, {
+    foreignKey: 'updatedBy',
+    as: 'updater'
+  });
 };
 
 export default Department;

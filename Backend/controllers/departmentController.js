@@ -80,6 +80,11 @@ export const getAllDepartments = async (req, res) => {
           model: User,
           as: 'creator',
           attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -156,7 +161,10 @@ export const updateDepartment = async (req, res) => {
       subroles: subrolesArray,
       isSalesTeam: isSalesTeam !== undefined ? isSalesTeam : department.isSalesTeam,
       status: status || department.status,
-      updatedBy: userId
+      updatedBy: userId,
+      updatedAt: new Date()
+    }, {
+      silent: false
     });
 
     const updatedDepartment = await Department.findByPk(id, {
@@ -164,6 +172,11 @@ export const updateDepartment = async (req, res) => {
         {
           model: User,
           as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'updater',
           attributes: ['id', 'firstname', 'lastname', 'email']
         }
       ]
