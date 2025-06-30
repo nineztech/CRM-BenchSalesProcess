@@ -19,6 +19,7 @@ interface LoginResponse {
       subrole: string;
       departmentId: number;
       status: string;
+      is_special: boolean;
       createdAt: string;
       updatedAt: string;
       department?: {
@@ -109,7 +110,12 @@ export const UserLogin = () => {
         localStorage.setItem('departmentId', data.data.user.departmentId?.toString() || '');
         localStorage.setItem('subrole', data.data.user.subrole || '');
         localStorage.setItem('role', data.data.user.role || '');
-        localStorage.setItem('user', JSON.stringify(data.data.user));
+        // Store user data with isSpecial flag
+        const userData = {
+          ...data.data.user,
+          isSpecial: data.data.user.is_special // Convert snake_case to camelCase
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
         const state = location.state as LocationState;
         // Redirect based on user role
         const redirectPath = data.data.user.role === 'admin' ? '/dashbaord' : '/dashboard';
@@ -323,8 +329,8 @@ export const UserLogin = () => {
               
               <div className="text-center mt-4 text-xs bg-red-100 p-2.5 rounded-md">
                 <p className="text-black">
-                  Having trouble logging in? Please contact support.
-                </p>
+                Having trouble logging in? Please contact support.
+              </p>
               </div>
             </form>
           </div>
