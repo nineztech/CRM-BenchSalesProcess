@@ -119,10 +119,10 @@ export const createDefaultActivities = async () => {
         name: "Package Management",
         category: "Package",
         description: "Manage service packages, pricing, and configurations",
-        viewRoute: "/adminpackages",
-        addRoute: "/adminpackages",
-        editRoute: "/adminpackages",
-        deleteRoute: "/adminpackages",
+        viewRoute: "/packages",
+        addRoute: "/packages",
+        editRoute: "/packages",
+        deleteRoute: "/packages",
         status: "active"
       },
 

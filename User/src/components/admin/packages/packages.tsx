@@ -6,6 +6,7 @@ import Layout from '../../common/layout/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import Countdown from 'react-countdown';
 import toast from 'react-hot-toast';
+import usePermissions from '../../../hooks/usePermissions';
 
 interface Package {
   id: number;
@@ -142,6 +143,7 @@ const getActiveDiscounts = (discounts: Package['discounts']): Package['discounts
 // };
 
 const PackagesPage: React.FC = () => {
+  const { checkPermission } = usePermissions();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -625,207 +627,209 @@ const PackagesPage: React.FC = () => {
   return (
     <Layout>
       <div className="flex flex-col gap-8 max-w-[98%] p-6 font-inter">
-        {/* Form Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-gray-100 p-8"
-        >
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800 tracking-tight">
-              {editingPackage ? 'Edit Package' : 'Add New Package'}
-            </h2>
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleSubmit}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl font-medium disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Processing...' : editingPackage ? 'Update Package' : 'Save Package'}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={resetForm}
-                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
-              >
-                Cancel
-              </motion.button>
-            </div>
-          </div>
-
-          {/* Display any submit error */}
-          {errors.submit && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {errors.submit}
-            </div>
-          )}
-
-          {/* Basic Fields Section */}
-          <div className="grid grid-cols-4 gap-6">
-            <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="planName"
-                value={formData.planName}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.planName ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter plan name"
-              />
-              {errors.planName && (
-                <p className="mt-1 text-xs text-red-500">{errors.planName}</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Initial Price <span className="text-red-500">*</span></label>
-              <input
-                type="number"
-                name="initialPrice"
-                value={formData.initialPrice || ''}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.initialPrice ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter initial price"
-                min="0"
-                required
-              />
-              {errors.initialPrice && (
-                <p className="mt-1 text-xs text-red-500">{errors.initialPrice}</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Enrollment Charge <span className="text-red-500">*</span></label>
-              <input
-                type="number"
-                name="enrollmentCharge"
-                value={formData.enrollmentCharge || ''}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.enrollmentCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter enrollment charge"
-                min="0"
-              />
-              {errors.enrollmentCharge && (
-                <p className="mt-1 text-xs text-red-500">{errors.enrollmentCharge}</p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Offer Letter Charge <span className="text-red-500">*</span></label>
-              <input
-                type="number"
-                name="offerLetterCharge"
-                value={formData.offerLetterCharge || ''}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.offerLetterCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter offer letter charge"
-                min="0"
-              />
-              {errors.offerLetterCharge && (
-                <p className="mt-1 text-xs text-red-500">{errors.offerLetterCharge}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Features error message */}
-          {errors.features && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {errors.features}
-            </div>
-          )}
-
-          {/* First Year Percentage and Features Section */}
-          <div className="mt-6 flex items-center gap-4">
-            <div className="form-group w-1/4">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
-              <input
-                type="number"
-                name="firstYearSalaryPercentage"
-                value={formData.firstYearSalaryPercentage || ''}
-                onChange={handleInputChange}
-                className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
-                placeholder="Enter first year salary percentage"
-                min="0"
-                max="100"
-                step="0.01"
-              />
-              {errors.firstYearSalaryPercentage && (
-                <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
-              )}
-            </div>
-
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
+        {/* Form Section - Only show if user has add permission */}
+        {checkPermission('Package Management', 'add') && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-lg border border-gray-100 p-8"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-800 tracking-tight">
+                {editingPackage ? 'Edit Package' : 'Add New Package'}
+              </h2>
               <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={featureInput}
-                  onChange={(e) => setFeatureInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (featureInput.trim()) {
-                        setFormData(prev => ({
-                          ...prev,
-                          features: [...prev.features, featureInput.trim()]
-                        }));
-                        setFeatureInput('');
-                      }
-                    }
-                  }}
-                  className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                  placeholder="Add a feature"
-                />
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={addFeature}
-                  className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
+                  onClick={handleSubmit}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl font-medium disabled:opacity-50"
+                  disabled={isLoading}
                 >
-                  <FaCheck size={14} />
-                  Add Feature
+                  {isLoading ? 'Processing...' : editingPackage ? 'Update Package' : 'Save Package'}
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowDiscountForm(!showDiscountForm)}
-                  disabled={!editingPackage && !selectedPackageId}
-                  className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={resetForm}
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
                 >
-                  <FaGift size={14} />
-                  {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
+                  Cancel
                 </motion.button>
               </div>
             </div>
-          </div>
 
-          {/* Features Display */}
-          <div className="flex flex-wrap gap-3 mt-4">
-            {formData.features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
-              >
-                <span className="text-sm font-medium text-blue-800">{feature}</span>
-                <button
-                  onClick={() => removeFeature(index)}
-                  className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
+            {/* Display any submit error */}
+            {errors.submit && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {errors.submit}
+              </div>
+            )}
+
+            {/* Basic Fields Section */}
+            <div className="grid grid-cols-4 gap-6">
+              <div className="form-group">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Plan Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  name="planName"
+                  value={formData.planName}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.planName ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  placeholder="Enter plan name"
+                />
+                {errors.planName && (
+                  <p className="mt-1 text-xs text-red-500">{errors.planName}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Initial Price <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="initialPrice"
+                  value={formData.initialPrice || ''}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.initialPrice ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  placeholder="Enter initial price"
+                  min="0"
+                  required
+                />
+                {errors.initialPrice && (
+                  <p className="mt-1 text-xs text-red-500">{errors.initialPrice}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Enrollment Charge <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="enrollmentCharge"
+                  value={formData.enrollmentCharge || ''}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.enrollmentCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  placeholder="Enter enrollment charge"
+                  min="0"
+                />
+                {errors.enrollmentCharge && (
+                  <p className="mt-1 text-xs text-red-500">{errors.enrollmentCharge}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Offer Letter Charge <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="offerLetterCharge"
+                  value={formData.offerLetterCharge || ''}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.offerLetterCharge ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  placeholder="Enter offer letter charge"
+                  min="0"
+                />
+                {errors.offerLetterCharge && (
+                  <p className="mt-1 text-xs text-red-500">{errors.offerLetterCharge}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Features error message */}
+            {errors.features && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {errors.features}
+              </div>
+            )}
+
+            {/* First Year Percentage and Features Section */}
+            <div className="mt-6 flex items-center gap-4">
+              <div className="form-group w-1/4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
+                <input
+                  type="number"
+                  name="firstYearSalaryPercentage"
+                  value={formData.firstYearSalaryPercentage || ''}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  placeholder="Enter first year salary percentage"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                />
+                {errors.firstYearSalaryPercentage && (
+                  <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
+                )}
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (featureInput.trim()) {
+                          setFormData(prev => ({
+                            ...prev,
+                            features: [...prev.features, featureInput.trim()]
+                          }));
+                          setFeatureInput('');
+                        }
+                      }
+                    }}
+                    className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                    placeholder="Add a feature"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={addFeature}
+                    className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
+                  >
+                    <FaCheck size={14} />
+                    Add Feature
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowDiscountForm(!showDiscountForm)}
+                    disabled={!editingPackage && !selectedPackageId}
+                    className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <FaGift size={14} />
+                    {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+
+            {/* Features Display */}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {formData.features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
                 >
-                  ×
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                  <span className="text-sm font-medium text-blue-800">{feature}</span>
+                  <button
+                    onClick={() => removeFeature(index)}
+                    className="text-blue-600 hover:text-blue-800 font-bold text-lg leading-none"
+                  >
+                    ×
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
-        {/* Discount Form */}
+        {/* Discount Form - Only show if user has add permission */}
         <AnimatePresence>
-          {showDiscountForm && (
+          {showDiscountForm && checkPermission('Package Management', 'add') && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -962,207 +966,220 @@ const PackagesPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence>
-            {packages.map((pkg, index) => {
-              const theme = colorThemes[index % colorThemes.length];
-              const activeDiscounts = getActiveDiscounts(pkg.discounts);
-              const nearestEndDate = getNearestDiscountEndDate(activeDiscounts);
-              const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
-              
-              // Calculate the current valid discounted price
-              let currentDiscountedPrice = pkg.enrollmentCharge;
-              if (hasActiveDiscount && activeDiscounts.length > 0) {
-                const highestDiscount = Math.max(...activeDiscounts.map(d => d.percentage));
-                const discountAmount = (pkg.enrollmentCharge * highestDiscount) / 100;
-                currentDiscountedPrice = pkg.enrollmentCharge - discountAmount;
-              }
-              
-              return (
-                <motion.div
-                  key={pkg.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: index * 0.1 }}
-                  onHoverStart={() => setIsAnyCardHovered(true)}
-                  onHoverEnd={() => setIsAnyCardHovered(false)}
-                  className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
-                >
-                  {/* Countdown Timer - Only show if there are active discounts */}
-                  {hasActiveDiscount && nearestEndDate && (
-                    <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FaClock className="text-red-500" size={14} />
-                        <Countdown
-                          date={nearestEndDate}
-                          renderer={countdownRenderer}
-                        />
-                        <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
-                      </div>
-                      <span className="text-sm font-bold text-red-600">${currentDiscountedPrice}</span>
-                    </div>
-                  )}
-
-                  {/* Add margin top to card content if countdown is present */}
-                  <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
-                    {/* Discounted Price Section - Only show when there's an active discount */}
-                    {hasActiveDiscount && (
-                      <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
-                        <div className="text-xs font-semibold text-gray-600 mb-1">Price</div>
-                        <div className="flex items-center justify-center gap-3">
-                          <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
-                          <span className={`text-2xl font-bold ${theme.accent}`}>
-                            ${currentDiscountedPrice}
-                          </span>
+        {/* Packages Grid - Only show if user has view permission */}
+        {checkPermission('Package Management', 'view') ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <AnimatePresence>
+              {packages.map((pkg, index) => {
+                const theme = colorThemes[index % colorThemes.length];
+                const activeDiscounts = getActiveDiscounts(pkg.discounts);
+                const nearestEndDate = getNearestDiscountEndDate(activeDiscounts);
+                const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
+                
+                // Calculate the current valid discounted price
+                let currentDiscountedPrice = pkg.enrollmentCharge;
+                if (hasActiveDiscount && activeDiscounts.length > 0) {
+                  const highestDiscount = Math.max(...activeDiscounts.map(d => d.percentage));
+                  const discountAmount = (pkg.enrollmentCharge * highestDiscount) / 100;
+                  currentDiscountedPrice = pkg.enrollmentCharge - discountAmount;
+                }
+                
+                return (
+                  <motion.div
+                    key={pkg.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: index * 0.1 }}
+                    onHoverStart={() => setIsAnyCardHovered(true)}
+                    onHoverEnd={() => setIsAnyCardHovered(false)}
+                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
+                  >
+                    {/* Countdown Timer - Only show if there are active discounts */}
+                    {hasActiveDiscount && nearestEndDate && (
+                      <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FaClock className="text-red-500" size={14} />
+                          <Countdown
+                            date={nearestEndDate}
+                            renderer={countdownRenderer}
+                          />
+                          <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
                         </div>
-                        <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
-                          <span className="text-xs font-medium text-red-600">
-                            Save ${(pkg.enrollmentCharge - currentDiscountedPrice).toFixed(2)}
-                          </span>
-                        </div>
+                        <span className="text-sm font-bold text-red-600">${currentDiscountedPrice}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
-                          {pkg.planName}
-                        </h3>
-                        {/* <div className="flex items-center gap-1">
-                          <FaStar className={`${theme.icon} text-xs`} />
-                          <span className="text-xs text-gray-600 font-medium">Premium Plan</span>
-                        </div> */}
-                      </div>
-                      <div className="flex gap-1.5">
-                        <motion.button
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(pkg)}
-                          className={`p-1.5 ${theme.icon} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
-                        >
-                          <FaEdit size={14} />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1, rotate: -5 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(pkg.id)}
-                          className="p-1.5 text-red-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
-                        >
-                          <FaTrash size={14} />
-                        </motion.button>
-                      </div>
-                    </div>
-                    {/* Pricing Section - Always Visible */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaMoneyBillWave size={12} />
+                    {/* Add margin top to card content if countdown is present */}
+                    <div className={`p-5 ${hasActiveDiscount ? 'mt-12' : ''}`}>
+                      {/* Discounted Price Section - Only show when there's an active discount */}
+                      {hasActiveDiscount && (
+                        <div className="mb-6 text-center p-4 bg-gradient-to-r from-white/80 to-white/60 rounded-xl shadow-sm border border-white/80">
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Price</div>
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
+                            <span className={`text-2xl font-bold ${theme.accent}`}>
+                              ${currentDiscountedPrice}
+                            </span>
                           </div>
-                          <span className="font-medium text-gray-700 text-xs">Enrollment</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 line-through">${pkg.initialPrice}</span>
-                          <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaGift size={12} />
+                          <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
+                            <span className="text-xs font-medium text-red-600">
+                              Save ${(pkg.enrollmentCharge - currentDiscountedPrice).toFixed(2)}
+                            </span>
                           </div>
-                          <span className="font-medium text-gray-700 text-xs">Offer Letter</span>
                         </div>
-                        <span className={`font-bold ${theme.accent} text-sm`}>${pkg.offerLetterCharge}</span>
-                      </div>
+                      )}
 
-                      <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                            <FaMoneyBillWave size={12} />
-                          </div>
-                          <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className={`text-lg font-bold ${theme.accent} mb-1 tracking-tight`}>
+                            {pkg.planName}
+                          </h3>
+                          {/* <div className="flex items-center gap-1">
+                            <FaStar className={`${theme.icon} text-xs`} />
+                            <span className="text-xs text-gray-600 font-medium">Premium Plan</span>
+                          </div> */}
                         </div>
-                        <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
-                      </div>
-                    </div>
-
-                    {/* Features Section - Always Visible */}
-                    {pkg.features && pkg.features.length > 0 && (
-                      <div className="space-y-2 mb-4">
-                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
-                          <FaUserGraduate size={12} />
-                          Package Features
-                        </h4>
-                        <div className="space-y-1.5">
-                          {pkg.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-white/80">
-                              <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
-                                <FaCheck size={10} />
-                              </div>
-                              <span className="text-xs font-medium text-gray-700">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Special Offers Section - Show only active discounts */}
-                    {activeDiscounts.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
-                          <FaClock size={12} />
-                          Special Offers
-                        </h4>
-                        <div className="space-y-1.5">
-                          {activeDiscounts.map((discount, idx) => {
-                            const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
-                            const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
-                            
-                            return (
-                              <div
-                                key={idx}
-                                className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
+                        {/* Edit/Delete buttons - Only show if user has respective permissions */}
+                        {(checkPermission('Package Management', 'edit') || checkPermission('Package Management', 'delete')) && (
+                          <div className="flex gap-1.5">
+                            {checkPermission('Package Management', 'edit') && (
+                              <motion.button
+                                whileHover={{ scale: 1.1, rotate: 5 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleEdit(pkg)}
+                                className={`p-1.5 ${theme.icon} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
                               >
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    {discount.name}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-semibold text-purple-600">
-                                      {discount.percentage}% OFF
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      (Save ${discountAmount.toFixed(2)})
-                                    </span>
-                                    <span className="text-xs font-medium text-green-600">
-                                      Final: ${priceAfterDiscount.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => handleEditDiscount(pkg, idx)}
-                                  className="p-1.5 text-blue-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
-                                >
-                                  <FaEdit size={14} />
-                                </motion.button>
-                              </div>
-                            );
-                          })}
+                                <FaEdit size={14} />
+                              </motion.button>
+                            )}
+                            {checkPermission('Package Management', 'delete') && (
+                              <motion.button
+                                whileHover={{ scale: 1.1, rotate: -5 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDelete(pkg.id)}
+                                className="p-1.5 text-red-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                              >
+                                <FaTrash size={14} />
+                              </motion.button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Pricing Section - Always Visible */}
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaMoneyBillWave size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">Enrollment</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 line-through">${pkg.initialPrice}</span>
+                            <span className={`font-bold ${theme.accent} text-sm`}>${pkg.enrollmentCharge}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaGift size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">Offer Letter</span>
+                          </div>
+                          <span className={`font-bold ${theme.accent} text-sm`}>${pkg.offerLetterCharge}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2.5 bg-white/60 backdrop-blur-sm rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                              <FaMoneyBillWave size={12} />
+                            </div>
+                            <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
+                          </div>
+                          <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+
+                      {/* Features Section - Always Visible */}
+                      {pkg.features && pkg.features.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                            <FaUserGraduate size={12} />
+                            Package Features
+                          </h4>
+                          <div className="space-y-1.5">
+                            {pkg.features.map((feature, idx) => (
+                              <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-white/80">
+                                <div className={`p-1 ${theme.icon} bg-white rounded-lg shadow-sm`}>
+                                  <FaCheck size={10} />
+                                </div>
+                                <span className="text-xs font-medium text-gray-700">{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Special Offers Section - Show only active discounts */}
+                      {activeDiscounts.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className={`text-xs font-bold ${theme.accent} mb-2 flex items-center gap-2`}>
+                            <FaClock size={12} />
+                            Special Offers
+                          </h4>
+                          <div className="space-y-1.5">
+                            {activeDiscounts.map((discount, idx) => {
+                              const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
+                              const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
+                              
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center justify-between p-2 bg-white/60 backdrop-blur-sm rounded-lg`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {discount.name}
+                                    </span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs font-semibold text-purple-600">
+                                        {discount.percentage}% OFF
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        (Save ${discountAmount.toFixed(2)})
+                                      </span>
+                                      <span className="text-xs font-medium text-green-600">
+                                        Final: ${priceAfterDiscount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleEditDiscount(pkg, idx)}
+                                    className="p-1.5 text-blue-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                                  >
+                                    <FaEdit size={14} />
+                                  </motion.button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
+            <p className="text-yellow-700">You don't have permission to view packages.</p>
+          </div>
+        )}
       </div>
     </Layout>
   );
