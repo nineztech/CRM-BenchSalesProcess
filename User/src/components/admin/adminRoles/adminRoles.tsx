@@ -554,7 +554,7 @@ const AdminRoles = (): ReactElement => {
               canDelete: rights[activity.name]?.canDelete || false
             };
 
-            return axios.post(
+                          return axios.post(
               `${import.meta.env.VITE_API_URL}/admin-permissions/add`,
               permission,
               {
@@ -583,16 +583,16 @@ const AdminRoles = (): ReactElement => {
                 canDelete: rights[activity.name]?.canDelete || false
               };
 
-              return axios.post(
-                `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
-                permission,
-                {
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                return axios.post(
+                  `${import.meta.env.VITE_API_URL}/special-user-permission/create/${selectedSpecialUser}`,
+                  permission,
+                  {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
                   }
-                }
-              );
+                );
             })
           );
 

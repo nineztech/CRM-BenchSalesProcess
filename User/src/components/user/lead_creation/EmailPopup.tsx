@@ -30,11 +30,10 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState(emailSubject);
   const [body, setBody] = useState(() => {
-    const greeting = `Dear ${lead.firstName} ${lead.lastName},\n\n`;
     if (emailBody && emailBody.trim().startsWith('Dear')) {
       return emailBody;
     }
-    return greeting + (emailBody || '');
+    return `Dear ${lead.firstName} ${lead.lastName},\n\n${emailBody || ''}`;
   });
   const [to, setTo] = useState(lead.primaryEmail);
   const [cc, setCC] = useState('');
