@@ -1,6 +1,6 @@
 import  { useState, useEffect } from 'react';
 import type { ReactElement } from 'react';
-import { FaEdit } from 'react-icons/fa';
+// import { FaEdit } from 'react-icons/fa';
 import Layout from '../../common/layout/Layout';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
@@ -37,10 +37,10 @@ interface Activity {
   };
 }
 
-interface RoleEntry {
-  role: string;
-  createdAt: string;
-}
+// interface RoleEntry {
+//   role: string;
+//   createdAt: string;
+// }
 
 
 interface AdminUser {
@@ -100,10 +100,10 @@ const AdminRoles = (): ReactElement => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [currentDepartmentSubroles, setCurrentDepartmentSubroles] = useState<string[]>([]);
 
-  const [showNewRoleForm, setShowNewRoleForm] = useState(false);
-  const [newRoleName, setNewRoleName] = useState('');
-  const [roleList, setRoleList] = useState<RoleEntry[]>([]);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  // const [showNewRoleForm, setShowNewRoleForm] = useState(false);
+  // const [newRoleName, setNewRoleName] = useState('');
+  // const [roleList, setRoleList] = useState<RoleEntry[]>([]);
+  // const [editIndex, setEditIndex] = useState<number | null>(null);
 
 
   const [isSpecial, setIsSpecial] = useState(false);
@@ -592,38 +592,38 @@ const AdminRoles = (): ReactElement => {
     }
   };
 
-  const handleAddNewRole = () => {
-    if (newRoleName.trim() === '') {
-      toast.error('Please enter a role name.');
-      return;
-    }
+  // const handleAddNewRole = () => {
+  //   if (newRoleName.trim() === '') {
+  //     toast.error('Please enter a role name.');
+  //     return;
+  //   }
 
-    const now = new Date();
-    const formattedTime = now.toLocaleString();
+  //   const now = new Date();
+  //   const formattedTime = now.toLocaleString();
 
-    const newEntry: RoleEntry = {
-      role: newRoleName.trim(),
-      createdAt: formattedTime,
-    };
+  //   const newEntry: RoleEntry = {
+  //     role: newRoleName.trim(),
+  //     createdAt: formattedTime,
+  //   };
 
-    if (editIndex !== null) {
-      const updatedList = [...roleList];
-      updatedList[editIndex] = newEntry;
-      setRoleList(updatedList);
-      setEditIndex(null);
-      toast.success('Role updated successfully!');
-    } else {
-      setRoleList(prev => [...prev, newEntry]);
-      toast.success('New role added successfully!');
-    }
+  //   if (editIndex !== null) {
+  //     const updatedList = [...roleList];
+  //     updatedList[editIndex] = newEntry;
+  //     setRoleList(updatedList);
+  //     setEditIndex(null);
+  //     toast.success('Role updated successfully!');
+  //   } else {
+  //     setRoleList(prev => [...prev, newEntry]);
+  //     toast.success('New role added successfully!');
+  //   }
 
-    setNewRoleName('');
-  };
+  //   setNewRoleName('');
+  // };
 
-  const handleEditRole = (index: number) => {
-    setEditIndex(index);
-    setNewRoleName(roleList[index].role);
-  };
+  // const handleEditRole = (index: number) => {
+  //   setEditIndex(index);
+  //   setNewRoleName(roleList[index].role);
+  // };
 
   // Check if all permissions in a row are selected
   const isAllSelected = (activityName: string): boolean => {
