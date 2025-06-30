@@ -383,9 +383,28 @@ const LeadCreationComponent: React.FC = () => {
         setApiError('Authentication required. Please login again.');
         return;
       }
+
       for (const leadIndex of selectedLeads) {
         const lead = leads[leadIndex];
         if (!lead || !lead.id) continue;
+
+        // First create the lead assignment
+        await axios.post(
+          `${BASE_URL}/lead-assignments/assign`,
+          {
+            leadId: lead.id,
+            assignedToId: selectedUser.id,
+            remarkText: remarkText || (lead.assignedUser ? 'Lead reassigned' : 'Lead assigned')
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        // Then update the lead table
         await axios.put(
           `${BASE_URL}/lead/${lead.id}`,
           {
@@ -400,22 +419,8 @@ const LeadCreationComponent: React.FC = () => {
             }
           }
         );
-        // Pass remarkText only for reassignment
-        await axios.post(
-          `${BASE_URL}/lead-assignments/assign`,
-          {
-            leadId: lead.id,
-            assignedToId: selectedUser.id,
-            ...(remarkText ? { remarkText } : {})
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-        // ...existing notification logic...
+
+        // Send notification
         try {
           await axios.post(
             `${BASE_URL}/lead-assignments/notify`,
@@ -431,9 +436,10 @@ const LeadCreationComponent: React.FC = () => {
             }
           );
         } catch (emailError) {
-          // ...existing error handling...
+          console.error('Error sending notification:', emailError);
         }
       }
+
       setSelectedSalesPerson('');
       setSelectedLeads([]);
       setCurrentSalesPerson('');
@@ -443,6 +449,7 @@ const LeadCreationComponent: React.FC = () => {
       const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
       setApiError(errorMessage);
       toast.error(errorMessage);
+      console.error('Assignment error:', error.response?.data || error);
     } finally {
       setIsLoading(false);
     }

@@ -6,7 +6,7 @@ import { sendLeadAssignmentEmail } from '../utils/emailService.js';
 // Assign Lead
 export const assignLead = async (req, res) => {
   try {
-    const { leadId, assignedToId } = req.body;
+    const { leadId, assignedToId, remarkText } = req.body;
     const userId = req.user?.id;
 
     if (!leadId || !assignedToId) {
@@ -60,12 +60,14 @@ export const assignLead = async (req, res) => {
       const previousAssignedId = existingAssignment.assignedToId;
       const allPreviousAssignedIds = [...(existingAssignment.allPreviousAssignedIds || []), previousAssignedId];
 
-      // Add remark for assignment change
-      const remarkEntry = {
-        changedTo: { to: assignedToId, from: previousAssignedId },
-        text: req.body.remarkText || 'Lead reassigned'
-      };
-      const remark = Array.isArray(existingAssignment.remark) ? [...existingAssignment.remark, remarkEntry] : [remarkEntry];
+      // Create remark for reassignment
+      const remark = [{
+        changedTo: {
+          to: Number(assignedToId),
+          from: Number(existingAssignment.assignedToId)
+        },
+        text: remarkText || 'Lead reassigned'
+      }];
 
       await existingAssignment.update({
         assignedToId,
@@ -79,11 +81,15 @@ export const assignLead = async (req, res) => {
       newAssignment = existingAssignment;
     } else {
       // Create new assignment
-      // Add remark for assignment change
-      const remarkEntry = {
-        changedTo: { to: assignedToId, from: null },
-        text: req.body.remarkText || 'Lead assigned'
-      };
+      // Create remark for new assignment
+      const remark = [{
+        changedTo: {
+          to: Number(assignedToId),
+          from: 0
+        },
+        text: remarkText || 'Lead assigned'
+      }];
+
       newAssignment = await LeadAssignment.create({
         leadId,
         assignedToId,
@@ -91,7 +97,7 @@ export const assignLead = async (req, res) => {
         allPreviousAssignedIds: [],
         createdBy: userId,
         status: 'active',
-        remark: [remarkEntry],
+        remark,
         reassignedBy: null
       });
     }
