@@ -110,7 +110,6 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<Partial<UserData>>({});
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Password reset states
@@ -199,7 +198,6 @@ const Profile: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -251,7 +249,6 @@ const Profile: React.FC = () => {
 
   const handleForgotPassword = async () => {
     setError('');
-    setSuccess('');
     if (!userData?.email) {
       toast.error('Email not found');
       return;
