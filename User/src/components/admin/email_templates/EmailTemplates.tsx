@@ -106,10 +106,10 @@ Ninez Tech Team`,
   };
 
   return (
-    <div className="min-h-screen bg-gray-50"> {/* Added pt-16 for topbar spacing */}
+    <div className="min-h-screen bg-gray-50 pt-16 pl-16"> {/* Added pt-16 for topbar spacing */}
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="flex items-center mb-8" >
+          <h1 className="text-3xl font-semibold text-gray-900">
             <FaEnvelope className="inline-block mr-3 text-blue-600" />
             Email Templates
           </h1>
