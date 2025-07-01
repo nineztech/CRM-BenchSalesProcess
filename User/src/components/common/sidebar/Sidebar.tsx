@@ -255,7 +255,7 @@ const Sidebar: React.FC = () => {
   return (
     <>
       <motion.div
-        className="fixed top-0 left-0 h-full bg-white border-r border-gray-200 shadow-sm z-50"
+        className="fixed top-0 left-0 h-full bg-white border-r border-gray-200 shadow-sm z-50 flex flex-col"
         animate={{
           width: isExpanded ? 256 : 56,
           transition: { duration: 0.3, ease: "easeOut" }
@@ -264,7 +264,7 @@ const Sidebar: React.FC = () => {
         onMouseLeave={handleMouseLeave}
       >
         {/* Logo Section */}
-        <div className="flex items-center h-16 px-3">
+        <div className="flex items-center h-16 px-3 flex-shrink-0">
           <img src={logoIcon} alt="Logo" className="h-8 w-8" />
           <AnimatePresence>
             {isExpanded && (
@@ -286,10 +286,12 @@ const Sidebar: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        {/* Menu List */}
-        <ul className="mt-4">
-          {menuItems.map((item, index) => renderMenuItem(item, index))}
-        </ul>
+        {/* Menu List - Now in a scrollable container with hidden scrollbar */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:none]">
+          <ul className="mt-4">
+            {menuItems.map((item, index) => renderMenuItem(item, index))}
+          </ul>
+        </div>
       </motion.div>
 
       {/* Overlay when sidebar is expanded */}

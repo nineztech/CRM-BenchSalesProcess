@@ -285,6 +285,9 @@ const LeadCreationComponent: React.FC = () => {
   const [selectedEmailForPopup, setSelectedEmailForPopup] = useState<string>('');
   const [currentLeadForEmail, setCurrentLeadForEmail] = useState<Lead | null>(null);
 
+  // Add isEditing state
+  const [isEditing, setIsEditing] = useState(false);
+
   // Fetch leads
   const fetchLeads = async () => {
     try {
@@ -853,29 +856,35 @@ const LeadCreationComponent: React.FC = () => {
         reference: null
       };
 
-      console.log('Sending lead data to API:', leadData);
-
-      const response = await axios.post(`${BASE_URL}/lead/add`, leadData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('API Response:', response.data);
+      let response;
+      if (isEditing && selectedLead?.id) {
+        // Update existing lead
+        response = await axios.put(
+          `${BASE_URL}/lead/${selectedLead.id}`,
+          leadData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+      } else {
+        // Create new lead
+        response = await axios.post(
+          `${BASE_URL}/lead/add`,
+          leadData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+      }
 
       if (response.data.success) {
-        // Add the new lead to the leads list with all fields from response
-        const newLead = {
-          ...response.data.data,
-          primaryContact: response.data.data.contactNumbers[0],
-          statusGroup: response.data.data.statusGroup
-        };
-        
-        setLeads(prev => [newLead, ...prev]);
-        
-        // Reset form
+        // Reset form and states
         setFormData({
           firstName: '',
           lastName: '',
@@ -898,21 +907,23 @@ const LeadCreationComponent: React.FC = () => {
           updatedAt: new Date().toISOString()
         });
         setErrors({});
+        setIsEditing(false);
+        setSelectedLead(null);
 
-        // Show success message using toast
-        toast.success('Lead created successfully!');
+        // Show success message
+        toast.success(isEditing ? 'Lead updated successfully!' : 'Lead created successfully!');
 
         // Refresh the leads list
         fetchLeads();
       } else {
-        const errorMessage = response.data.message || 'Failed to create lead. Please try again.';
+        const errorMessage = response.data.message || 'Failed to process lead. Please try again.';
         console.error('API Error:', errorMessage);
         setApiError(errorMessage);
         toast.error(errorMessage);
       }
     } catch (error: any) {
-      console.error('Error creating lead:', error.response || error);
-      const errorMessage = error.response?.data?.message || 'Failed to create lead. Please try again.';
+      console.error('Error processing lead:', error.response || error);
+      const errorMessage = error.response?.data?.message || 'Failed to process lead. Please try again.';
       setApiError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -1254,14 +1265,45 @@ ${(() => {
           )}
         </select>
         <button 
-          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow`}
+          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleAssignSalesPerson}
           disabled={!selectedSalesPerson || selectedLeads.length === 0}
+          title={!selectedSalesPerson ? 'Please select sales person to assign' : ''}
         >
           {getButtonProps().text}
         </button>
       </>
     );
+  };
+
+  // Add handleEditClick function near other handler functions
+  const handleEditClick = async (lead: Lead) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      // Set editing mode and populate form
+      setIsEditing(true);
+      setSelectedLead(lead);
+      setFormData({
+        ...lead,
+        remarks: lead.remarks || [{
+          text: '',
+          createdAt: new Date().toISOString(),
+          createdBy: 0
+        }]
+      });
+      setIsFormVisible(true);
+      setActiveMainTab('create');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (error) {
+      console.error('Error preparing lead edit:', error);
+      toast.error('Failed to prepare lead edit. Please try again.');
+    }
   };
 
   return (
@@ -1926,6 +1968,17 @@ ${(() => {
                                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                         </svg>
                                       </button>
+                                      {checkPermission('View All Leads', 'edit') || checkPermission('Lead Management', 'edit') ? (
+                                        <button 
+                                          onClick={() => handleEditClick(lead)}
+                                          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                          title="Edit lead"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                          </svg>
+                                        </button>
+                                      ) : null}
                                     </div>
                                   </td>
                                 </tr>
@@ -2057,7 +2110,7 @@ ${(() => {
                   </a>
                   {selectedCallNumber && (
                     <a
-                      href={`tel:${selectedCallNumber}`}
+                      href={`tel://${selectedCallNumber.replace(/[^0-9+]/g, '')}`}
                       className="px-4 py-2 bg-yellow-100 rounded hover:bg-yellow-200 text-yellow-800 font-medium"
                     >
                       Phone
