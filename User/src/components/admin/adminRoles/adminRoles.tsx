@@ -802,41 +802,83 @@ const AdminRoles = (): ReactElement => {
           <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
             <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
             <div className="flex gap-3 items-center">
-              {/* Is Admin Checkbox - only show if user has edit permission */}
+              {/* Admin and Special User Controls - only show if user has edit permission */}
               {checkPermission('Activity Management', 'edit') && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                  {/* Admin Section */}
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isAdmin"
-                      checked={isAdmin}
-                      onChange={(e) => setIsAdmin(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <label htmlFor="isAdmin" className="text-sm text-gray-600">
-                      Is Admin
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isAdmin"
+                        checked={isAdmin}
+                        onChange={(e) => setIsAdmin(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        disabled={isSpecial}
+                      />
+                      <label htmlFor="isAdmin" className="text-sm text-gray-600">
+                        Is Admin
+                      </label>
+                    </div>
+
+                    {isAdmin && (
+                      <select 
+                        value={selectedAdminUser} 
+                        onChange={(e) => setSelectedAdminUser(e.target.value)}
+                        className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                      >
+                        <option value="" disabled hidden>Select Admin User *</option>
+                        {adminUsers.map((admin) => (
+                          <option key={admin.id} value={admin.id}>
+                            {admin.firstname} {admin.lastname}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
-                  {/* Admin Users Dropdown */}
-                  {isAdmin && (
-                    <select 
-                      value={selectedAdminUser} 
-                      onChange={(e) => setSelectedAdminUser(e.target.value)}
-                      className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                    >
-                      <option value="" disabled hidden>Select Admin User *</option>
-                      {adminUsers.map((admin) => (
-                        <option key={admin.id} value={admin.id}>
-                          {admin.firstname} {admin.lastname}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  {/* Special User Section */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isSpecial"
+                        checked={isSpecial}
+                        onChange={(e) => {
+                          setIsSpecial(e.target.checked);
+                          if (!e.target.checked) {
+                            setSelectedSpecialUser('');
+                            setSelectedDepartment('');
+                            setSelectedRole('');
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        disabled={isAdmin}
+                      />
+                      <label htmlFor="isSpecial" className="text-sm text-gray-600">
+                        Is Special
+                      </label>
+                    </div>
+
+                    {isSpecial && (
+                      <select 
+                        value={selectedSpecialUser} 
+                        onChange={(e) => setSelectedSpecialUser(e.target.value)}
+                        className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                      >
+                        <option value="" disabled hidden>Select Special User *</option>
+                        {specialUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.firstname} {user.lastname}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Department and Role Dropdowns - only show if user has edit permission */}
+              {/* Department and Role Dropdowns */}
               {checkPermission('Activity Management', 'edit') && (
                 <>
                   <select 
@@ -849,8 +891,8 @@ const AdminRoles = (): ReactElement => {
                         setRights({});
                       }
                     }}
-                    className={`px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
-                    disabled={!!(isAdmin || isSpecial || (navState && navState.selectedDepartment))}
+                    className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
+                    disabled={Boolean(isAdmin || isSpecial || (navState && navState.selectedDepartment))}
                   >
                     <option value="" disabled hidden>Select Department *</option>
                     {departments.map((dept) => (
@@ -865,55 +907,14 @@ const AdminRoles = (): ReactElement => {
                         setSelectedRole(e.target.value);
                       }
                     }}
-                    className={`px-3 py-1.5 min-w-[160px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
-                    disabled={!!(isAdmin || !selectedDepartment || isSpecial || (navState && navState.selectedDepartment))}
+                    className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
+                    disabled={Boolean(isAdmin || !selectedDepartment || isSpecial || (navState && navState.selectedDepartment))}
                   >
                     <option value="" disabled hidden>Select Role *</option>
                     {currentDepartmentSubroles.map((role) => (
                       <option key={role} value={role}>{role}</option>
                     ))}
                   </select>
-                </>
-              )}
-
-              {/* Special User Controls - only show if user has edit permission */}
-              {checkPermission('Activity Management', 'edit') && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isSpecial"
-                      checked={isSpecial}
-                      onChange={(e) => {
-                        setIsSpecial(e.target.checked);
-                        if (!e.target.checked) {
-                          setSelectedSpecialUser('');
-                          setSelectedDepartment('');
-                          setSelectedRole('');
-                        }
-                      }}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                      disabled={isAdmin}
-                    />
-                    <label htmlFor="isSpecial" className="text-sm text-gray-600">
-                      Is Special
-                    </label>
-                  </div>
-
-                  {isSpecial && (
-                    <select 
-                      value={selectedSpecialUser} 
-                      onChange={(e) => setSelectedSpecialUser(e.target.value)}
-                      className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                    >
-                      <option value="" disabled hidden>Select Special User *</option>
-                      {specialUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.firstname} {user.lastname}
-                        </option>
-                      ))}
-                    </select>
-                  )}
                 </>
               )}
             </div>
