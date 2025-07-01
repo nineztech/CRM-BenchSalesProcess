@@ -64,7 +64,7 @@ const Department = sequelize.define(
     timestamps: true,
     hooks: {
       beforeCreate: async (department) => {
-        department.setDataValue('updatedAt', null);
+        department.setDataValue('updatedAt', department.getDataValue('createdAt'));
       },
       beforeUpdate: async (department) => {
         // Auto-set updatedBy if not provided (handled in controller if needed)
