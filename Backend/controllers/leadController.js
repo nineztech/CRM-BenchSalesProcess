@@ -406,7 +406,10 @@ export const getAssignedLeads = async (req, res) => {
 
     // Build where clause
     const whereClause = {
-      assignTo: req.user.id // Only get leads assigned to the logged-in user
+      [Op.or]: [
+        { assignTo: req.user.id },  // Leads assigned to the user
+        { createdBy: req.user.id }  // Leads created by the user
+      ]
     };
     
     // Add status filter if provided
