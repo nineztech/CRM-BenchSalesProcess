@@ -10,7 +10,7 @@ const router = express.Router();
 
 // Special User Permission routes (protected with authentication)
 router.post("/create/:user_id", authentication, createSpecialUserPermissions);
-router.get("/:user_id", authentication, getSpecialUserPermissions);
+router.get("/:user_id", getSpecialUserPermissions);
 router.put("/:id", authentication, updateSpecialUserPermission);
 
 export default router; 

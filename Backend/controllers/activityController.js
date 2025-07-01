@@ -146,6 +146,18 @@ export const createDefaultActivities = async () => {
         editRoute: "/department-permissions",
         deleteRoute: "/department-permissions",
         status: "active"
+      },
+
+      // Email Template Activities
+      {
+        name: "Email Template Management",
+        category: "System",
+        description: "Manage system email templates including welcome emails, lead assignments, OTP, and package details",
+        viewRoute: "/email-templates",
+        addRoute: "/email-templates",
+        editRoute: "/email-templates",
+        deleteRoute: "/email-templates",
+        status: "active"
       }
     ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome } from 'react-icons/fa';
+import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -123,13 +123,13 @@ const Sidebar: React.FC = () => {
       activity: 'Archived Lead Management',
       permission: 'view'
     },
-    // {
-    //   icon: <FaChartLine />,
-    //   to: '/sales',
-    //   text: 'Sales',
-    //   activity: 'Lead Status Management',
-    //   permission: 'view'
-    // },
+    {
+      icon: <FaEnvelope />,
+      to: '/email-templates',
+      text: 'Email Templates',
+      activity: 'Email Template Management',
+      permission: 'view'
+    },
     {
       icon: <FaGift />,
       to: '/packages',
