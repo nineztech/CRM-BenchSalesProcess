@@ -275,7 +275,15 @@ const LeadCreationComponent: React.FC = () => {
   const [selectedCallNumber, setSelectedCallNumber] = useState<string>('');
   const [callLeadName, setCallLeadName] = useState<string>('');
 
+  // const [showEmailSelectionPopup, setShowEmailSelectionPopup] = useState(false);
+  // const [selectedEmailForPopup, setSelectedEmailForPopup] = useState<string>('');
+  // const [currentLeadForEmail, setCurrentLeadForEmail] = useState<Lead | null>(null);
+
   const [isFormVisible, setIsFormVisible] = useState(false);
+
+  const [showEmailSelectionPopup, setShowEmailSelectionPopup] = useState(false);
+  const [selectedEmailForPopup, setSelectedEmailForPopup] = useState<string>('');
+  const [currentLeadForEmail, setCurrentLeadForEmail] = useState<Lead | null>(null);
 
   // Fetch leads
   const fetchLeads = async () => {
@@ -1183,21 +1191,21 @@ ${(() => {
   };
 
   // Update handleEmailClick function
-  const handleEmailClick = (lead: Lead) => {
-    const userDataString = localStorage.getItem('user');
-    const userData = userDataString ? JSON.parse(userDataString) : null;
+  // const handleEmailClick = (lead: Lead) => {
+  //   const userDataString = localStorage.getItem('user');
+  //   const userData = userDataString ? JSON.parse(userDataString) : null;
     
-    const emailLead: EmailLead = {
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      primaryEmail: lead.primaryEmail,
-      id: lead.id,
-      from: userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : ''
-    };
+  //   const emailLead: EmailLead = {
+  //     firstName: lead.firstName,
+  //     lastName: lead.lastName,
+  //     primaryEmail: lead.primaryEmail,
+  //     id: lead.id,
+  //     from: userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : ''
+  //   };
     
-    setSelectedLeadForEmail(emailLead);
-    setShowEmailPopup(true);
-  };
+  //   setSelectedLeadForEmail(emailLead);
+  //   setShowEmailPopup(true);
+  // };
 
   useEffect(() => {
     if (permissionError) {
@@ -1281,11 +1289,17 @@ ${(() => {
               {/* Main Tabs */}
               <PermissionGuard activityName="Lead Management" action="add">
                 <div className="bg-white mb-4 rounded-t-xl border-b border-gray-200">
-                  <div className="flex justify-between items-center">
+                  <div 
+                    className="flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+                    onClick={() => setIsFormVisible(!isFormVisible)}
+                  >
                   <div className="flex">
                     <button
                       className={getTabStyle(activeMainTab === 'create')}
-                      onClick={() => setActiveMainTab('create')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMainTab('create');
+                        }}
                     >
                       <span className="flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1296,7 +1310,10 @@ ${(() => {
                     </button>
                     <button
                       className={getTabStyle(activeMainTab === 'bulk')}
-                      onClick={() => setActiveMainTab('bulk')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMainTab('bulk');
+                        }}
                     >
                       <span className="flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1304,18 +1321,15 @@ ${(() => {
                         </svg>
                         Bulk Upload
                       </span>
-                      </button>
+                    </button>
                     </div>
-                    <button
-                      onClick={() => setIsFormVisible(!isFormVisible)}
-                      className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
+                    <div className="mr-4 p-2">
                       {isFormVisible ? (
                         <FiChevronUp className="w-5 h-5 text-gray-600" />
                       ) : (
                         <FiChevronDown className="w-5 h-5 text-gray-600" />
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
               </PermissionGuard>
@@ -1748,7 +1762,6 @@ ${(() => {
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Send Email</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
@@ -1786,19 +1799,30 @@ ${(() => {
                                     {lead.firstName} {lead.lastName}
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    {lead.primaryEmail}
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                                        onClick={() => {
+                                          setCurrentLeadForEmail(lead);
+                                          setSelectedEmailForPopup(lead.primaryEmail);
+                                          setShowEmailSelectionPopup(true);
+                                        }}
+                                        type="button"
+                                        title="Email options"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                        </svg>
+                                      </button>
+                                      <span>{lead.primaryEmail}</span>
+                                      
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    <button
-                                      onClick={() => handleEmailClick(lead)}
-                                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
-                                    >
-                                      Send Email
-                                    </button>
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    <button
-                                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                                    <div className="flex items-center gap-2">
+                                       <button
+                                        className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
                                       onClick={() => {
                                         setCallOptions(lead.contactNumbers.filter(Boolean));
                                         setCallLeadName(`${lead.firstName} ${lead.lastName}`);
@@ -1806,9 +1830,15 @@ ${(() => {
                                         setShowCallPopup(true);
                                       }}
                                       type="button"
+                                        title="Call options"
                                     >
-                                      {lead.primaryContact}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                        </svg>
                                     </button>
+                                      <span>{lead.primaryContact}</span>
+                                   
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
@@ -2046,6 +2076,61 @@ ${(() => {
                   }}
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Add the Email Selection Popup */}
+        {showEmailSelectionPopup && currentLeadForEmail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
+              <h3 className="text-lg font-semibold mb-4">Select Email Address</h3>
+              <div className="mb-4">
+                <div className="mb-2 text-sm text-gray-700">Available email addresses:</div>
+                {[...new Set([currentLeadForEmail.primaryEmail, ...currentLeadForEmail.emails.filter(Boolean)])].map((email: string) => (
+                  <button
+                    key={email}
+                    className={`block w-full text-left px-4 py-2 rounded-md border mb-2 ${
+                      selectedEmailForPopup === email ? 'bg-indigo-100 border-indigo-400' : 'bg-gray-50 border-gray-200'
+                    }`}
+                    onClick={() => setSelectedEmailForPopup(email)}
+                  >
+                    {email} {email === currentLeadForEmail.primaryEmail && <span className="text-xs text-gray-500">(Primary)</span>}
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200"
+                  onClick={() => {
+                    setShowEmailSelectionPopup(false);
+                    setSelectedEmailForPopup('');
+                    setCurrentLeadForEmail(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
+                  onClick={() => {
+                    setShowEmailSelectionPopup(false);
+                    const emailLead: EmailLead = {
+                      firstName: currentLeadForEmail.firstName,
+                      lastName: currentLeadForEmail.lastName,
+                      primaryEmail: selectedEmailForPopup,
+                      id: currentLeadForEmail.id,
+                      from: (() => {
+                        const userDataString = localStorage.getItem('user');
+                        const userData = userDataString ? JSON.parse(userDataString) : null;
+                        return userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : '';
+                      })()
+                    };
+                    setSelectedLeadForEmail(emailLead);
+                    setShowEmailPopup(true);
+                  }}
+                >
+                  Send Email
                 </button>
               </div>
             </div>
