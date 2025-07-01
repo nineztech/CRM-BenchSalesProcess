@@ -261,7 +261,7 @@ const DepartmentPermissions = (): ReactElement => {
 
       setLoading(true);
       try {
-        let response: { data: { success: boolean; data: any } };
+        let response: { data: { success: boolean; data: any[] } };
         
         if (isAdmin && selectedAdminUser) {
           response = await axios.get<{ success: boolean; data: AdminPermissionResponse[] }>(
@@ -274,37 +274,36 @@ const DepartmentPermissions = (): ReactElement => {
           );
 
           if (response.data.success) {
-            const initialRights: PermissionRights = {};
-            activities.forEach(activity => {
+            const formattedPermissions = activities.map(activity => {
               const permission = response.data.data.find(
                 (p: AdminPermissionResponse) => p.permissionActivity.id === activity.id
               );
               
-              if (permission) {
-                initialRights[activity.name] = {
-                  canView: permission.canView || false,
-                  canAdd: permission.canAdd || false,
-                  canEdit: permission.canEdit || false,
-                  canDelete: permission.canDelete || false
-                };
-              }
+              return {
+                id: permission?.id || 0,
+                activity_id: activity.id,
+                dept_id: 0,
+                subrole: 'admin',
+                canView: permission?.canView || false,
+                canAdd: permission?.canAdd || false,
+                canEdit: permission?.canEdit || false,
+                canDelete: permission?.canDelete || false
+              };
             });
-
-            const formattedPermissions = activities.map(activity => ({
-              id: 0,
-              activity_id: activity.id,
-              dept_id: 0,
-              subrole: 'admin',
-              canView: initialRights[activity.name]?.canView || false,
-              canAdd: initialRights[activity.name]?.canAdd || false,
-              canEdit: initialRights[activity.name]?.canEdit || false,
-              canDelete: initialRights[activity.name]?.canDelete || false
-            }));
 
             setPermissions(formattedPermissions);
           }
         } else if (isSpecial && selectedSpecialUser) {
-          response = await axios.get(
+          interface SpecialUserPermission {
+            id: number;
+            activity_id: number;
+            canView: boolean;
+            canAdd: boolean;
+            canEdit: boolean;
+            canDelete: boolean;
+          }
+
+          response = await axios.get<{ success: boolean; data: SpecialUserPermission[] }>(
             `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
             {
               headers: {
@@ -314,7 +313,31 @@ const DepartmentPermissions = (): ReactElement => {
           );
 
           if (response.data.success) {
-            setPermissions(response.data.data);
+            // Format special user permissions to match our permissions structure
+            const specialUserPermissions = response.data.data;
+            const formattedPermissions = activities.map(activity => {
+              const permission = specialUserPermissions.find(
+                (p: SpecialUserPermission) => p.activity_id === activity.id
+              );
+              
+              return {
+                id: permission?.id || 0,
+                activity_id: activity.id,
+                dept_id: selectedSpecialUserData?.departmentId || 0,
+                subrole: selectedSpecialUserData?.subrole || '',
+                canView: permission?.canView || false,
+                canAdd: permission?.canAdd || false,
+                canEdit: permission?.canEdit || false,
+                canDelete: permission?.canDelete || false
+              };
+            });
+
+            setPermissions(formattedPermissions);
+            // Auto-select department and role from special user data
+            if (selectedSpecialUserData) {
+              setSelectedDepartment(selectedSpecialUserData.departmentId.toString());
+              setSelectedRole(selectedSpecialUserData.subrole);
+            }
           }
         } else {
           let url = `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`;
@@ -341,7 +364,7 @@ const DepartmentPermissions = (): ReactElement => {
     };
 
     fetchPermissions();
-  }, [selectedDepartment, selectedRole, isAdmin, selectedAdminUser, isSpecial, selectedSpecialUser, activities]);
+  }, [selectedDepartment, selectedRole, isAdmin, selectedAdminUser, isSpecial, selectedSpecialUser, activities, selectedSpecialUserData]);
 
   // Helper function to get permission for specific activity and role
   const getPermissionForActivityAndRole = (activityId: number, role: string): RolePermission | null => {
@@ -377,8 +400,14 @@ const DepartmentPermissions = (): ReactElement => {
         </thead>
         <tbody>
           {categoryActivities.map((activity) => {
-            // If admin is selected, only show admin role, otherwise show selected or all roles
-            const rolesToShow = isAdmin ? ['admin'] : (selectedRole ? [selectedRole] : availableRoles);
+            // For special users and admins, only show their specific role
+            const rolesToShow = isAdmin 
+              ? ['admin'] 
+              : isSpecial && selectedSpecialUserData
+                ? [selectedSpecialUserData.subrole]
+                : selectedRole 
+                  ? [selectedRole] 
+                  : availableRoles;
             
             return rolesToShow.map((role) => {
               const permission = getPermissionForActivityAndRole(activity.id, role);
@@ -391,7 +420,7 @@ const DepartmentPermissions = (): ReactElement => {
                     )}
                   </td>
                   <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[15%]">
-                    {isAdmin ? 'admin' : role}
+                    {role}
                   </td>
                   <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canView ? 'text-green-600' : 'text-red-600'}>
@@ -522,13 +551,13 @@ const DepartmentPermissions = (): ReactElement => {
                       ? 'bg-gray-100 cursor-not-allowed'
                       : 'focus:ring-2 focus:ring-blue-100 focus:border-blue-400'
                   }`}
-                  disabled={isAdmin || isSpecial || !selectedDepartment}
+                  disabled={true}
                 >
-                  {isSpecial && selectedSpecialUser ? (
-                    <option value={selectedSpecialUserData?.subrole || ""}>
-                      {selectedSpecialUserData?.subrole || "Loading..."}
+                  {isSpecial && selectedSpecialUserData ? (
+                    <option value={selectedSpecialUserData.subrole}>
+                      {selectedSpecialUserData.subrole}
                     </option>
-                  ) : (
+                  ) : !isAdmin && selectedDepartment ? (
                     <>
                       <option value="">All Roles</option>
                       {availableRoles.map((role) => (
@@ -537,6 +566,8 @@ const DepartmentPermissions = (): ReactElement => {
                         </option>
                       ))}
                     </>
+                  ) : (
+                    <option value="">Select Role</option>
                   )}
                 </select>
               </div>
