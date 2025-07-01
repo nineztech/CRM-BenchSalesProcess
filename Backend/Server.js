@@ -50,10 +50,7 @@ app.use((req, res) => {
     message: "Route not found"
   });
 });
- app.listen(PORT, () => {
-          console.log(colors.cyan(`🚀 Server running on port ${PORT}`));
-          console.log(colors.yellow(`📝 Environment: ${process.env.NODE_ENV || 'development'}`));
-        });
+
 // Start server after DB connection
 const startServer = async () => {
   try {
@@ -80,7 +77,10 @@ const startServer = async () => {
         await createDefaultActivities();
         console.log(colors.green("✅ Default activities created successfully!"));
         
-       
+        app.listen(PORT, () => {
+          console.log(colors.cyan(`🚀 Server running on port ${PORT}`));
+          console.log(colors.yellow(`📝 Environment: ${process.env.NODE_ENV || 'development'}`));
+        });
       })
       .catch((error) => {
         console.error('❌ Unable to connect to the database:', error);
