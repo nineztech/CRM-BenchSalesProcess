@@ -203,8 +203,12 @@ const Profile: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
+      const endpoint = userData?.role === 'admin' 
+        ? `${BASE_URL}/admin/${userData?.id}`
+        : `${BASE_URL}/user/${userData?.id}`;
+
       const response = await axios.put(
-        `${BASE_URL}/user/${userData?.id}`,
+        endpoint,
         editedData,
         {
           headers: {
@@ -215,17 +219,14 @@ const Profile: React.FC = () => {
       );
 
       if (response.data.success) {
-        toast.success('Profile updated successfully');
-        setSuccess('Profile updated successfully');
+        toast.success(response.data.message || 'Profile updated successfully');
         setUserData(prev => ({ ...prev!, ...editedData }));
         localStorage.setItem('user', JSON.stringify({ ...userData, ...editedData }));
         setIsEditing(false);
       }
     } catch (err: any) {
       console.error('Error updating profile:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to update profile';
-      toast.error(errorMessage);
-      setError(errorMessage);
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     }
   };
 
@@ -659,28 +660,6 @@ const Profile: React.FC = () => {
             </motion.button>
           </div>
         </div>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2"
-          >
-            <FiShield className="w-4 h-4" />
-            {error}
-          </motion.div>
-        )}
-
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2"
-          >
-            <FiShield className="w-4 h-4" />
-            {success}
-          </motion.div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-x-8 gap-y-6">
