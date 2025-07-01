@@ -269,7 +269,7 @@ const PackagesPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? Number(value) : value;
+    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? parseFloat(value) : value;
     
     setFormData(prev => {
       const updatedData = {
@@ -279,10 +279,11 @@ const PackagesPage: React.FC = () => {
 
       // Real-time validation for initial price and enrollment charge
       if (name === 'initialPrice' || name === 'enrollmentCharge') {
-        const initialPrice = name === 'initialPrice' ? Number(value) : updatedData.initialPrice;
-        const enrollmentCharge = name === 'enrollmentCharge' ? Number(value) : updatedData.enrollmentCharge;
+        const initialPrice = name === 'initialPrice' ? parseFloat(value) : updatedData.initialPrice;
+        const enrollmentCharge = name === 'enrollmentCharge' ? parseFloat(value) : updatedData.enrollmentCharge;
 
-        if (initialPrice <= enrollmentCharge) {
+        // Only show error if both values are valid numbers and initial price is less than enrollment charge
+        if (!isNaN(initialPrice) && !isNaN(enrollmentCharge) && initialPrice < enrollmentCharge) {
           setErrors(prev => ({
             ...prev,
             initialPrice: 'Initial price must be greater than enrollment charge'
@@ -322,7 +323,10 @@ const PackagesPage: React.FC = () => {
     }
 
     // Add validation for initial price being greater than enrollment charge
-    if (formData.initialPrice <= formData.enrollmentCharge) {
+    // Only validate if both values are valid numbers
+    const initialPrice = parseFloat(String(formData.initialPrice));
+    const enrollmentCharge = parseFloat(String(formData.enrollmentCharge));
+    if (!isNaN(initialPrice) && !isNaN(enrollmentCharge) && initialPrice < enrollmentCharge) {
       newErrors.initialPrice = 'Initial price must be greater than enrollment charge';
     }
     
