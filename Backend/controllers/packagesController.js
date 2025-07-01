@@ -82,6 +82,61 @@ export const addPackage = async (req, res) => {
   }
 };
 
+// Add this helper function at the top with other imports
+const removeExpiredDiscounts = async (package_) => {
+  const now = new Date();
+  const currentDiscounts = package_.discounts || [];
+  
+  const activeDiscounts = currentDiscounts.filter(discount => {
+    const endDateTime = new Date(`${discount.endDate}T${discount.endTime}`);
+    return endDateTime > now;
+  });
+
+  if (activeDiscounts.length < currentDiscounts.length) {
+    // Calculate new discounted price with remaining active discounts
+    const enrollmentCharge = parseFloat(package_.enrollmentCharge);
+    let totalDiscountPercentage = 0;
+    activeDiscounts.forEach(discount => {
+      totalDiscountPercentage += discount.percentage;
+    });
+    const discountAmount = (enrollmentCharge * totalDiscountPercentage) / 100;
+    const newDiscountedPrice = Math.max(0, enrollmentCharge - discountAmount);
+
+    // Update package with active discounts only
+    await package_.update({
+      discounts: activeDiscounts,
+      discountedPrice: newDiscountedPrice,
+      updatedAt: new Date()
+    });
+    return true;
+  }
+  return false;
+};
+
+// Add new cleanup endpoint
+export const cleanupExpiredDiscounts = async (req, res) => {
+  try {
+    const packages = await Packages.findAll();
+    let updatedCount = 0;
+
+    for (const package_ of packages) {
+      const wasUpdated = await removeExpiredDiscounts(package_);
+      if (wasUpdated) {
+        updatedCount++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Cleaned up expired discounts from ${updatedCount} packages`,
+      updatedPackages: updatedCount
+    });
+  } catch (error) {
+    console.error("Error cleaning up expired discounts:", error);
+    handleError(error, res);
+  }
+};
+
 // Get All Packages
 export const getAllPackages = async (req, res) => {
   try {
@@ -96,9 +151,30 @@ export const getAllPackages = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Check and remove expired discounts for each package
+    let hasUpdates = false;
+    for (const package_ of packages) {
+      const wasUpdated = await removeExpiredDiscounts(package_);
+      if (wasUpdated) {
+        hasUpdates = true;
+      }
+    }
+
+    // If any packages were updated, fetch them again
+    const finalPackages = hasUpdates ? await Packages.findAll({
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    }) : packages;
+
     res.status(200).json({
       success: true,
-      data: packages
+      data: finalPackages
     });
   } catch (error) {
     console.error("Error fetching packages:", error);
@@ -127,6 +203,12 @@ export const getPackageById = async (req, res) => {
         message: "Package not found"
       });
     }
+
+    // Check and remove expired discounts
+    await removeExpiredDiscounts(packageData);
+
+    // Reload the package to get fresh data
+    await packageData.reload();
 
     res.status(200).json({
       success: true,
@@ -271,7 +353,7 @@ export const deletePackage = async (req, res) => {
   }
 };
 
-// Add Discount to Package
+// Update the addDiscount function to handle multiple discounts
 export const addDiscount = async (req, res) => {
   try {
     const { packageId } = req.params;
@@ -320,7 +402,10 @@ export const addDiscount = async (req, res) => {
       });
     }
 
-    // Get current discounts
+    // Remove any expired discounts first
+    await removeExpiredDiscounts(package_);
+
+    // Get current active discounts
     const currentDiscounts = package_.discounts || [];
 
     // Generate a unique ID for the new discount
@@ -339,13 +424,13 @@ export const addDiscount = async (req, res) => {
       createdAt: new Date()
     };
 
-    // Calculate new discounted price
+    // Calculate cumulative discount percentage
     let totalDiscountPercentage = 0;
     [...currentDiscounts, newDiscount].forEach(discount => {
       totalDiscountPercentage += discount.percentage;
     });
 
-    // Calculate discounted price (subtract all discounts from enrollment charge)
+    // Calculate discounted price with all active discounts
     const enrollmentCharge = parseFloat(package_.enrollmentCharge);
     const discountAmount = (enrollmentCharge * totalDiscountPercentage) / 100;
     const newDiscountedPrice = Math.max(0, enrollmentCharge - discountAmount);

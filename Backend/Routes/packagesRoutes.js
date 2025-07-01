@@ -7,7 +7,8 @@ import {
   addDiscount,
   removeDiscount,
   getPackageDiscounts,
-  updateDiscount
+  updateDiscount,
+  cleanupExpiredDiscounts
 } from '../controllers/packagesController.js'
 import authentication from '../middleware/auth.js'
 import express from 'express'
@@ -26,5 +27,8 @@ router.post("/:packageId/discounts", authentication, addDiscount)
 router.get("/:packageId/discounts", getPackageDiscounts)
 router.put("/:packageId/discounts/:discountId", authentication, updateDiscount)
 router.delete("/:packageId/discounts/:discountId", authentication, removeDiscount)
+
+// Cleanup route
+router.post("/cleanup-expired-discounts", authentication, cleanupExpiredDiscounts)
 
 export default router 

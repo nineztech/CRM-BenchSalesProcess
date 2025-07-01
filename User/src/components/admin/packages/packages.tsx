@@ -105,14 +105,19 @@ const getNearestDiscountEndDate = (discounts: Package['discounts']): Date | null
   return nearestEndDate;
 };
 
-// Add a new function to filter active discounts
-const getActiveDiscounts = (discounts: Package['discounts']): Package['discounts'] => {
+// Update the getActiveDiscounts function to also calculate cumulative discount
+const getActiveDiscounts = (discounts: Package['discounts']): { activeDiscounts: Package['discounts'], cumulativeDiscountPercentage: number } => {
   const now = new Date();
-  return discounts.filter(discount => {
+  const activeDiscounts = discounts.filter(discount => {
     if (!discount.endDate || !discount.endTime) return false;
     const endDate = new Date(`${discount.endDate}T${discount.endTime}`);
     return endDate.getTime() > now.getTime();
   });
+
+  // Calculate cumulative discount percentage
+  const cumulativeDiscountPercentage = activeDiscounts.reduce((total, discount) => total + discount.percentage, 0);
+
+  return { activeDiscounts, cumulativeDiscountPercentage };
 };
 
 // const CountdownTimer: React.FC<{ endDate: string; endTime: string }> = ({ endDate, endTime }) => {
@@ -220,6 +225,29 @@ const PackagesPage: React.FC = () => {
     fetchPackages();
   }, [navigate]);
 
+  // Add cleanup interval function
+  useEffect(() => {
+    // Initial cleanup
+    cleanupExpiredDiscounts();
+
+    // Set up periodic cleanup every minute
+    const cleanupInterval = setInterval(cleanupExpiredDiscounts, 60000);
+
+    // Cleanup on component unmount
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
+  // Add cleanup function
+  const cleanupExpiredDiscounts = async () => {
+    try {
+      await axiosInstance.post('/cleanup-expired-discounts');
+      // Fetch packages again to get updated data
+      fetchPackages();
+    } catch (error) {
+      console.error('Error cleaning up expired discounts:', error);
+    }
+  };
+
   // Color themes for different cards
   const colorThemes = [
     {
@@ -253,8 +281,22 @@ const PackagesPage: React.FC = () => {
       setIsLoading(true);
       const response = await axiosInstance.get('/all');
       if (response.data.success) {
-        setPackages(response.data.data);
-        console.log(packages)
+        // Check if any package has expired discounts
+        const packagesData = response.data.data;
+        const now = new Date();
+        const hasExpiredDiscounts = packagesData.some((pkg: Package) => 
+          pkg.discounts?.some((discount: { endDate: string; endTime: string }) => {
+            const endDateTime = new Date(`${discount.endDate}T${discount.endTime}`);
+            return endDateTime <= now;
+          })
+        );
+
+        // If there are expired discounts, trigger cleanup
+        if (hasExpiredDiscounts) {
+          await cleanupExpiredDiscounts();
+        } else {
+          setPackages(packagesData);
+        }
       }
     } catch (error: unknown) {
       console.error('Error fetching packages:', error);
@@ -269,7 +311,7 @@ const PackagesPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? parseFloat(value) : value;
+    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? Number(value) : value;
     
     setFormData(prev => {
       const updatedData = {
@@ -279,11 +321,10 @@ const PackagesPage: React.FC = () => {
 
       // Real-time validation for initial price and enrollment charge
       if (name === 'initialPrice' || name === 'enrollmentCharge') {
-        const initialPrice = name === 'initialPrice' ? parseFloat(value) : updatedData.initialPrice;
-        const enrollmentCharge = name === 'enrollmentCharge' ? parseFloat(value) : updatedData.enrollmentCharge;
+        const initialPrice = name === 'initialPrice' ? Number(value) : updatedData.initialPrice;
+        const enrollmentCharge = name === 'enrollmentCharge' ? Number(value) : updatedData.enrollmentCharge;
 
-        // Only show error if both values are valid numbers and initial price is less than enrollment charge
-        if (!isNaN(initialPrice) && !isNaN(enrollmentCharge) && initialPrice < enrollmentCharge) {
+        if (initialPrice <= enrollmentCharge) {
           setErrors(prev => ({
             ...prev,
             initialPrice: 'Initial price must be greater than enrollment charge'
@@ -323,10 +364,7 @@ const PackagesPage: React.FC = () => {
     }
 
     // Add validation for initial price being greater than enrollment charge
-    // Only validate if both values are valid numbers
-    const initialPrice = parseFloat(String(formData.initialPrice));
-    const enrollmentCharge = parseFloat(String(formData.enrollmentCharge));
-    if (!isNaN(initialPrice) && !isNaN(enrollmentCharge) && initialPrice < enrollmentCharge) {
+    if (formData.initialPrice <= formData.enrollmentCharge) {
       newErrors.initialPrice = 'Initial price must be greater than enrollment charge';
     }
     
@@ -543,7 +581,11 @@ const PackagesPage: React.FC = () => {
       updatedDiscounts[discountFormData.discountIndex] = {
         ...updatedDiscounts[discountFormData.discountIndex],
         name: discountFormData.name,
-        percentage: discountFormData.percentage
+        percentage: discountFormData.percentage,
+        startDate: discountFormData.startDate,
+        startTime: discountFormData.startTime,
+        endDate: discountFormData.endDate,
+        endTime: discountFormData.endTime
       };
 
       toast.promise(
@@ -976,15 +1018,13 @@ const PackagesPage: React.FC = () => {
             <AnimatePresence>
               {packages.map((pkg, index) => {
                 const theme = colorThemes[index % colorThemes.length];
-                const activeDiscounts = getActiveDiscounts(pkg.discounts);
-                const nearestEndDate = getNearestDiscountEndDate(activeDiscounts);
-                const hasActiveDiscount = nearestEndDate instanceof Date && nearestEndDate > new Date();
+                const { activeDiscounts, cumulativeDiscountPercentage } = getActiveDiscounts(pkg.discounts);
+                const hasActiveDiscount = activeDiscounts.length > 0;
                 
-                // Calculate the current valid discounted price
+                // Calculate the current valid discounted price with all active discounts
                 let currentDiscountedPrice = pkg.enrollmentCharge;
-                if (hasActiveDiscount && activeDiscounts.length > 0) {
-                  const highestDiscount = Math.max(...activeDiscounts.map(d => d.percentage));
-                  const discountAmount = (pkg.enrollmentCharge * highestDiscount) / 100;
+                if (hasActiveDiscount) {
+                  const discountAmount = (pkg.enrollmentCharge * cumulativeDiscountPercentage) / 100;
                   currentDiscountedPrice = pkg.enrollmentCharge - discountAmount;
                 }
                 
@@ -1000,17 +1040,22 @@ const PackagesPage: React.FC = () => {
                     className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
                   >
                     {/* Countdown Timer - Only show if there are active discounts */}
-                    {hasActiveDiscount && nearestEndDate && (
+                    {hasActiveDiscount && (
                       <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <FaClock className="text-red-500" size={14} />
-                          <Countdown
-                            date={nearestEndDate}
-                            renderer={countdownRenderer}
-                          />
+                          {(() => {
+                            const endDate = getNearestDiscountEndDate(activeDiscounts);
+                            return endDate ? (
+                              <Countdown
+                                date={endDate}
+                                renderer={countdownRenderer}
+                              />
+                            ) : null;
+                          })()}
                           <span className="text-xs text-red-600 font-medium ml-1">until offer ends</span>
                         </div>
-                        <span className="text-sm font-bold text-red-600">${currentDiscountedPrice}</span>
+                        <span className="text-sm font-bold text-red-600">${currentDiscountedPrice.toFixed(2)}</span>
                       </div>
                     )}
 
@@ -1023,12 +1068,12 @@ const PackagesPage: React.FC = () => {
                           <div className="flex items-center justify-center gap-3">
                             <span className="text-sm text-gray-500 line-through">${pkg.enrollmentCharge}</span>
                             <span className={`text-2xl font-bold ${theme.accent}`}>
-                              ${currentDiscountedPrice}
+                              ${currentDiscountedPrice.toFixed(2)}
                             </span>
                           </div>
                           <div className="mt-1 inline-block px-3 py-1 bg-red-50 rounded-full">
                             <span className="text-xs font-medium text-red-600">
-                              Save ${(pkg.enrollmentCharge - currentDiscountedPrice).toFixed(2)}
+                              Save ${(pkg.enrollmentCharge - currentDiscountedPrice).toFixed(2)} ({cumulativeDiscountPercentage}% OFF)
                             </span>
                           </div>
                         </div>
@@ -1136,7 +1181,6 @@ const PackagesPage: React.FC = () => {
                           <div className="space-y-1.5">
                             {activeDiscounts.map((discount, idx) => {
                               const discountAmount = (pkg.enrollmentCharge * discount.percentage) / 100;
-                              const priceAfterDiscount = pkg.enrollmentCharge - discountAmount;
                               
                               return (
                                 <div
@@ -1153,9 +1197,6 @@ const PackagesPage: React.FC = () => {
                                       </span>
                                       <span className="text-xs text-gray-500">
                                         (Save ${discountAmount.toFixed(2)})
-                                      </span>
-                                      <span className="text-xs font-medium text-green-600">
-                                        Final: ${priceAfterDiscount.toFixed(2)}
                                       </span>
                                     </div>
                                   </div>
