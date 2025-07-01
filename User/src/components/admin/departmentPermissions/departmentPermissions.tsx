@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import Layout from '../../common/layout/Layout';
 import axios from 'axios';
 import usePermissions from '../../../hooks/usePermissions';
+import toast from 'react-hot-toast';
 
 interface Department {
   id: number;
@@ -30,6 +31,46 @@ interface RolePermission {
   canDelete: boolean;
 }
 
+interface AdminUser {
+  id: number;
+  firstname: string;
+  lastname: string;
+  username: string;
+  email: string;
+  status: string;
+  is_special?: boolean;
+}
+
+interface SpecialUser extends AdminUser {
+  departmentId: number;
+  subrole: string;
+  department?: {
+    departmentName: string;
+  };
+}
+
+// Add interface for admin permission response
+interface AdminPermissionResponse {
+  id: number;
+  permissionActivity: {
+    id: number;
+    name: string;
+  };
+  canView: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+interface PermissionRights {
+  [key: string]: {
+    canView: boolean;
+    canAdd: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  };
+}
+
 const DepartmentPermissions = (): ReactElement => {
   const { checkPermission } = usePermissions();
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -39,6 +80,15 @@ const DepartmentPermissions = (): ReactElement => {
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // New states for admin and special user functionality
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSpecial, setIsSpecial] = useState(false);
+  const [selectedAdminUser, setSelectedAdminUser] = useState('');
+  const [selectedSpecialUser, setSelectedSpecialUser] = useState('');
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [specialUsers, setSpecialUsers] = useState<SpecialUser[]>([]);
+  const [selectedSpecialUserData, setSelectedSpecialUserData] = useState<SpecialUser | null>(null);
 
   // Fetch departments
   useEffect(() => {
@@ -59,13 +109,120 @@ const DepartmentPermissions = (): ReactElement => {
     fetchDepartments();
   }, []);
 
+  // Fetch admin users
+  useEffect(() => {
+    const fetchAdminUsers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/all`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.data.success) {
+          setAdminUsers(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching admin users:', error);
+      }
+    };
+
+    fetchAdminUsers();
+  }, []);
+
+  // Fetch special users
+  useEffect(() => {
+    const fetchSpecialUsers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/special`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.data.success) {
+          setSpecialUsers(response.data.data.users);
+        }
+      } catch (error) {
+        console.error('Error fetching special users:', error);
+        toast.error('Failed to fetch special users');
+      }
+    };
+
+    if (isSpecial) {
+      fetchSpecialUsers();
+    }
+  }, [isSpecial]);
+
+  // New effect to handle special user selection
+  useEffect(() => {
+    const fetchSpecialUserDetails = async () => {
+      if (!selectedSpecialUser) {
+        setSelectedSpecialUserData(null);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          const specialUser = specialUsers.find(user => user.id.toString() === selectedSpecialUser);
+          if (specialUser) {
+            setSelectedSpecialUserData(specialUser);
+            // Auto-select department and role
+            setSelectedDepartment(specialUser.departmentId.toString());
+            setSelectedRole(specialUser.subrole);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching special user details:', error);
+        toast.error('Failed to fetch special user details');
+      }
+    };
+
+    if (isSpecial && selectedSpecialUser) {
+      fetchSpecialUserDetails();
+    }
+  }, [selectedSpecialUser, specialUsers]);
+
+  // Modified effect to reset selections
+  useEffect(() => {
+    if (isAdmin) {
+      // Clear all other selections when admin is selected
+      setSelectedDepartment('');
+      setSelectedRole('');
+      setIsSpecial(false);
+      setSelectedSpecialUser('');
+      setSelectedSpecialUserData(null);
+    } else if (isSpecial) {
+      // Clear admin selection when special is selected
+      setIsAdmin(false);
+      setSelectedAdminUser('');
+    } else {
+      // Clear both admin and special selections when neither is selected
+      setSelectedAdminUser('');
+      setSelectedSpecialUser('');
+      setSelectedSpecialUserData(null);
+      setSelectedDepartment('');
+      setSelectedRole('');
+    }
+  }, [isAdmin, isSpecial]);
+
   // Update available roles when department changes
   useEffect(() => {
     if (selectedDepartment) {
       const department = departments.find(dept => dept.id.toString() === selectedDepartment);
       if (department) {
         setAvailableRoles(department.subroles);
-        setSelectedRole(''); // Reset role selection when department changes
+        setSelectedRole('');
       }
     } else {
       setAvailableRoles([]);
@@ -92,52 +249,112 @@ const DepartmentPermissions = (): ReactElement => {
     fetchActivities();
   }, []);
 
-  // Fetch permissions when department or role is selected/changed
+  // Modify only the fetchPermissions useEffect
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (!selectedDepartment) {
+      if ((!selectedDepartment && !isAdmin && !isSpecial) || 
+          (isAdmin && !selectedAdminUser) || 
+          (isSpecial && !selectedSpecialUser)) {
         setPermissions([]);
         return;
       }
 
       setLoading(true);
       try {
-        let url = `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`;
-        if (selectedRole && selectedRole.trim() !== '') {
-          url += `?role=${encodeURIComponent(selectedRole)}`;
-        }
-        const token = localStorage.getItem('token');
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (response.data.success) {
-          const sortedPermissions = response.data.data.sort((a: RolePermission, b: RolePermission) => 
-            a.subrole.localeCompare(b.subrole)
+        let response: { data: { success: boolean; data: any } };
+        
+        if (isAdmin && selectedAdminUser) {
+          response = await axios.get<{ success: boolean; data: AdminPermissionResponse[] }>(
+            `${import.meta.env.VITE_API_URL}/admin-permissions/admin/${selectedAdminUser}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
           );
-          setPermissions(sortedPermissions);
+
+          if (response.data.success) {
+            const initialRights: PermissionRights = {};
+            activities.forEach(activity => {
+              const permission = response.data.data.find(
+                (p: AdminPermissionResponse) => p.permissionActivity.id === activity.id
+              );
+              
+              if (permission) {
+                initialRights[activity.name] = {
+                  canView: permission.canView || false,
+                  canAdd: permission.canAdd || false,
+                  canEdit: permission.canEdit || false,
+                  canDelete: permission.canDelete || false
+                };
+              }
+            });
+
+            const formattedPermissions = activities.map(activity => ({
+              id: 0,
+              activity_id: activity.id,
+              dept_id: 0,
+              subrole: 'admin',
+              canView: initialRights[activity.name]?.canView || false,
+              canAdd: initialRights[activity.name]?.canAdd || false,
+              canEdit: initialRights[activity.name]?.canEdit || false,
+              canDelete: initialRights[activity.name]?.canDelete || false
+            }));
+
+            setPermissions(formattedPermissions);
+          }
+        } else if (isSpecial && selectedSpecialUser) {
+          response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/special-user-permission/${selectedSpecialUser}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+              },
+            }
+          );
+
+          if (response.data.success) {
+            setPermissions(response.data.data);
+          }
+        } else {
+          let url = `${import.meta.env.VITE_API_URL}/role-permissions/department/${selectedDepartment}`;
+          if (selectedRole && selectedRole.trim() !== '') {
+            url += `?role=${encodeURIComponent(selectedRole)}`;
+          }
+          response = await axios.get(url, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+          });
+
+          if (response.data.success) {
+            setPermissions(response.data.data);
+          }
         }
       } catch (error) {
         console.error('Error fetching permissions:', error);
         setPermissions([]);
+        toast.error('Failed to fetch permissions');
       } finally {
         setLoading(false);
       }
     };
 
     fetchPermissions();
-  }, [selectedDepartment, selectedRole]);
+  }, [selectedDepartment, selectedRole, isAdmin, selectedAdminUser, isSpecial, selectedSpecialUser, activities]);
 
-  // Helper function to get permission for specific activity and role (case-insensitive, trimmed)
+  // Helper function to get permission for specific activity and role
   const getPermissionForActivityAndRole = (activityId: number, role: string): RolePermission | null => {
-    return (
-      permissions.find(
-        (p) =>
-          p.activity_id === activityId &&
-          p.subrole.trim().toLowerCase() === role.trim().toLowerCase()
-      ) || null
-    );
+    if (isAdmin) {
+      // For admin permissions, just match by activity_id
+      return permissions.find(p => p.activity_id === activityId) || null;
+    }
+    // For other cases, use the existing logic
+    return permissions.find(
+      (p) =>
+        p.activity_id === activityId &&
+        p.subrole.trim().toLowerCase() === role.trim().toLowerCase()
+    ) || null;
   };
 
   console.log("permissions", permissions);
@@ -160,7 +377,9 @@ const DepartmentPermissions = (): ReactElement => {
         </thead>
         <tbody>
           {categoryActivities.map((activity) => {
-            const rolesToShow = selectedRole ? [selectedRole] : availableRoles;
+            // If admin is selected, only show admin role, otherwise show selected or all roles
+            const rolesToShow = isAdmin ? ['admin'] : (selectedRole ? [selectedRole] : availableRoles);
+            
             return rolesToShow.map((role) => {
               const permission = getPermissionForActivityAndRole(activity.id, role);
               return (
@@ -171,7 +390,9 @@ const DepartmentPermissions = (): ReactElement => {
                       <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
                     )}
                   </td>
-                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[15%]">{role}</td>
+                  <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[15%]">
+                    {isAdmin ? 'admin' : role}
+                  </td>
                   <td className="p-2.5 border border-gray-200 text-center w-[10%]">
                     <span className={permission?.canView ? 'text-green-600' : 'text-red-600'}>
                       {permission?.canView ? '✓' : '✗'}
@@ -208,11 +429,81 @@ const DepartmentPermissions = (): ReactElement => {
           <>
             <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
               <h2 className="text-xl font-medium text-gray-800 m-0">Department Permissions</h2>
-              <div className="flex gap-4">
+              <div className="flex items-center space-x-4">
+                {/* Admin Section */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <input
+                      type="checkbox"
+                      id="isAdmin"
+                      checked={isAdmin}
+                      onChange={(e) => setIsAdmin(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      disabled={isSpecial}
+                    />
+                    <label htmlFor="isAdmin" className="text-sm text-gray-600 whitespace-nowrap">
+                      Is Admin
+                    </label>
+                  </div>
+
+                  {isAdmin && (
+                    <select
+                      value={selectedAdminUser}
+                      onChange={(e) => setSelectedAdminUser(e.target.value)}
+                      className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    >
+                      <option value="">Select Admin User</option>
+                      {adminUsers.map((admin) => (
+                        <option key={admin.id} value={admin.id}>
+                          {admin.firstname} {admin.lastname}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Special User Section */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <input
+                      type="checkbox"
+                      id="isSpecial"
+                      checked={isSpecial}
+                      onChange={(e) => setIsSpecial(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      disabled={isAdmin}
+                    />
+                    <label htmlFor="isSpecial" className="text-sm text-gray-600 whitespace-nowrap">
+                      Is Special
+                    </label>
+                  </div>
+
+                  {isSpecial && (
+                    <select
+                      value={selectedSpecialUser}
+                      onChange={(e) => setSelectedSpecialUser(e.target.value)}
+                      className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                    >
+                      <option value="">Select Special User</option>
+                      {specialUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.firstname} {user.lastname}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Department Dropdown */}
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                  className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none transition-all duration-200 ${
+                    isAdmin || isSpecial
+                      ? 'bg-gray-100 cursor-not-allowed'
+                      : 'focus:ring-2 focus:ring-blue-100 focus:border-blue-400'
+                  }`}
+                  disabled={isAdmin || isSpecial}
                 >
                   <option value="">Select Department</option>
                   {departments.map((dept) => (
@@ -221,19 +512,32 @@ const DepartmentPermissions = (): ReactElement => {
                     </option>
                   ))}
                 </select>
-                
+
+                {/* Role Dropdown */}
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                  className="px-3 py-1.5 min-w-[200px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                  disabled={!selectedDepartment}
+                  className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none transition-all duration-200 ${
+                    isAdmin || isSpecial || !selectedDepartment
+                      ? 'bg-gray-100 cursor-not-allowed'
+                      : 'focus:ring-2 focus:ring-blue-100 focus:border-blue-400'
+                  }`}
+                  disabled={isAdmin || isSpecial || !selectedDepartment}
                 >
-                  <option value="">All Roles</option>
-                  {availableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
+                  {isSpecial && selectedSpecialUser ? (
+                    <option value={selectedSpecialUserData?.subrole || ""}>
+                      {selectedSpecialUserData?.subrole || "Loading..."}
                     </option>
-                  ))}
+                  ) : (
+                    <>
+                      <option value="">All Roles</option>
+                      {availableRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
             </div>
@@ -244,7 +548,7 @@ const DepartmentPermissions = (): ReactElement => {
               </div>
             )}
 
-            {!loading && selectedDepartment && activities.length > 0 && (
+            {!loading && activities.length > 0 && (
               <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
                 {Array.from(new Set(activities.map(a => a.category))).map(category => {
                   const categoryActivities = activities.filter(a => a.category === category);
@@ -262,10 +566,26 @@ const DepartmentPermissions = (): ReactElement => {
               </div>
             )}
 
-            {!loading && !selectedDepartment && (
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-600">Please select a department to view permissions.</p>
-              </div>
+            {!loading && (
+              <>
+                {isAdmin && !selectedAdminUser && (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600">Please select an admin user to view permissions.</p>
+                  </div>
+                )}
+
+                {isSpecial && !selectedSpecialUser && (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600">Please select a special user to view permissions.</p>
+                  </div>
+                )}
+
+                {!isAdmin && !isSpecial && !selectedDepartment && (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600">Please select a department to view permissions.</p>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
