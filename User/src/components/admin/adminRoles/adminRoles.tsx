@@ -76,13 +76,13 @@ interface AdminPermissionResponse {
   canDelete: boolean;
 }
 
-interface RolePermission {
-  activity_id: number;
-  canView: boolean;
-  canAdd: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-}
+// interface RolePermission {
+//   activity_id: number;
+//   canView: boolean;
+//   canAdd: boolean;
+//   canEdit: boolean;
+//   canDelete: boolean;
+// }
 
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
