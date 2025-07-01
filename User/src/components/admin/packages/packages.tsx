@@ -733,12 +733,7 @@ const PackagesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Features error message */}
-            {errors.features && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {errors.features}
-              </div>
-            )}
+           
 
             {/* First Year Percentage and Features Section */}
             <div className="mt-6 flex items-center gap-4">
@@ -761,7 +756,7 @@ const PackagesPage: React.FC = () => {
               </div>
 
               <div className="flex-1">
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-2 ml-2 text-start">Features</label>
                 <div className="flex gap-3">
                   <input
                     type="text"
@@ -804,7 +799,12 @@ const PackagesPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
+ {/* Features error message */}
+            {errors.features && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {errors.features}
+              </div>
+            )}
             {/* Features Display */}
             <div className="flex flex-wrap gap-3 mt-4">
               {formData.features.map((feature, index) => (
