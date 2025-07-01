@@ -87,13 +87,13 @@ interface AdminPermissionResponse {
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
   const { checkPermission } = usePermissions();
-  const specialUserData = location.state as { 
-    isSpecialUser: boolean; 
-    specialUserId: number; 
-    specialUserName: string;
-    departmentId?: number;
-    userRole?: string;
-  } | null;
+  // const specialUserData = location.state as { 
+  //   isSpecialUser: boolean; 
+  //   specialUserId: number; 
+  //   specialUserName: string;
+  //   departmentId?: number;
+  //   userRole?: string;
+  // } | null;
 
   // Check for department selection from navigation state
   const navState = location.state as { selectedDepartment?: number } | null;
