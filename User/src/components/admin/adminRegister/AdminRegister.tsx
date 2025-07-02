@@ -632,17 +632,17 @@ const AdminRegister: React.FC = () => {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">#</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">First Name</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Last Name</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Mobile</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Username</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Email</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Status</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Created At</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left whitespace-nowrap">Updated At</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">#</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">First Name</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Last Name</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Mobile</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Username</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Email</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Status</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Created At</th>
+                        <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 whitespace-nowrap">Updated At</th>
                         {(checkPermission('Admin Management', 'edit') || checkPermission('Admin Management', 'delete')) && (
-                          <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center whitespace-nowrap">Actions</th>
+                          <th className=" p-2.5 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  whitespace-nowrap">Actions</th>
                         )}
                       </tr>
                     </thead>
@@ -655,13 +655,13 @@ const AdminRegister: React.FC = () => {
                           transition={{ duration: 0.3, delay: index * 0.05 }}
                           className={`hover:bg-gray-50 transition-colors duration-150`}
                         >
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{index + 1}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.firstname}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.lastname}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.phoneNumber}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.username}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.email}</td>
-                          <td className={`p-2.5 text-sm border-b border-gray-100 whitespace-nowrap`}>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{index + 1}</td>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.firstname}</td>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.lastname}</td>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.phoneNumber}</td>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.username}</td>
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">{admin.email}</td>
+                          <td className={` p-2.5 text-start text-sm border-b border-gray-100 whitespace-nowrap`}>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               admin.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 
@@ -670,7 +670,7 @@ const AdminRegister: React.FC = () => {
                               {admin.status}
                             </span>
                           </td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
                             {admin.createdAt ? new Date(admin.createdAt).toLocaleString('en-US', {
                               month: 'short',
                               day: '2-digit',
@@ -681,7 +681,7 @@ const AdminRegister: React.FC = () => {
                               hour12: false
                             }).replace(',', '') : ''}
                           </td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
+                          <td className=" p-2.5 text-start text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
                             {admin.updatedAt ? new Date(admin.updatedAt).toLocaleString('en-US', {
                               month: 'short',
                               day: '2-digit',
@@ -693,7 +693,7 @@ const AdminRegister: React.FC = () => {
                             }).replace(',', '') : ''}
                           </td>
                           {(checkPermission('Admin Management', 'edit') || checkPermission('Admin Management', 'delete')) && (
-                            <td className="p-2.5 text-sm border-b border-gray-100 whitespace-nowrap">
+                            <td className=" p-2.5 text-start text-sm border-b border-gray-100 whitespace-nowrap">
                               <div className="flex gap-3 justify-center">
                                 {checkPermission('Admin Management', 'edit') && (
                                   <motion.button 

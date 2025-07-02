@@ -323,7 +323,7 @@ const LeadCreationComponent: React.FC = () => {
       if (response.data.success) {
         setLeads(response.data.data.leads);
         // Update pagination info from API response
-        const { total, totalPages, currentPage: serverPage } = response.data.data.pagination;
+        const {  totalPages } = response.data.data.pagination;
         setTotalPages(totalPages);
       }
     } catch (error) {
@@ -946,14 +946,14 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab styling
   const getTabStyle = (isActive: boolean) => `
-    relative px-6 py-3 text-sm font-medium transition-all duration-300
+    relative  px-6 text-start py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
   `;
 
   const getStatusTabStyle = (isActive: boolean) => `
-    relative px-6 py-3 text-sm font-medium transition-all duration-300
+    relative  px-6 text-start py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
@@ -1661,7 +1661,7 @@ ${(() => {
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className={`px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                            className={` px-6 text-start py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                           >
@@ -1793,7 +1793,7 @@ ${(() => {
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead>
                               <tr className="bg-gray-50">
-                                <th className="px-6 py-4 border-b">
+                                <th className=" px-6 text-start py-4 border-b">
                                   <PermissionGuard 
                                     activityName="Lead Assignment Management" 
                                     action="edit"
@@ -1806,26 +1806,26 @@ ${(() => {
                                     />
                                   </PermissionGuard>
                                 </th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
-                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
+                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {paginatedLeads.map((lead: Lead, index: number) => (
                                 <tr key={lead.id || index} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 border-b">
+                                  <td className=" px-6 text-start py-4 border-b">
                                     <PermissionGuard 
                                       activityName="Lead Assignment Management" 
                                       action="edit"
@@ -1839,13 +1839,13 @@ ${(() => {
                                       />
                                     </PermissionGuard>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {(currentPage - 1) * pageSize + index + 1}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.firstName} {lead.lastName}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                       <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -1866,7 +1866,7 @@ ${(() => {
                                       
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                        <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -1887,10 +1887,10 @@ ${(() => {
                                    
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
                                   </td>
-                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
                                     <a 
                                       href={lead.linkedinId} 
                                       target="_blank" 
@@ -1900,16 +1900,16 @@ ${(() => {
                                       LinkedIn
                                     </a>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.visaStatus}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.country}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                                   </td>
-                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
                                     <PermissionGuard 
                                       activityName="Lead Status Management" 
                                       action="view"
@@ -1945,7 +1945,7 @@ ${(() => {
                                       </PermissionGuard>
                                     </PermissionGuard>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
                                       day: '2-digit',
                                       month: 'short',
@@ -1956,13 +1956,13 @@ ${(() => {
                                       hour12: false
                                     }).replace(',', '') : '-'}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
                                   </td>
-                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
                                     <div className="flex items-center space-x-2">
                                       <button 
                                         onClick={() => handleInfoClick(lead)}
