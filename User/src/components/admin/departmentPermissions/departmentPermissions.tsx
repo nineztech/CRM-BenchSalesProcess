@@ -62,14 +62,14 @@ interface AdminPermissionResponse {
   canDelete: boolean;
 }
 
-interface PermissionRights {
-  [key: string]: {
-    canView: boolean;
-    canAdd: boolean;
-    canEdit: boolean;
-    canDelete: boolean;
-  };
-}
+// interface PermissionRights {
+//   [key: string]: {
+//     canView: boolean;
+//     canAdd: boolean;
+//     canEdit: boolean;
+//     canDelete: boolean;
+//   };
+// }
 
 const DepartmentPermissions = (): ReactElement => {
   const { checkPermission, loading: permissionsLoading } = usePermissions();

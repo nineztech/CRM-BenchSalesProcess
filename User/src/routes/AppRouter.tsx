@@ -1,23 +1,23 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { UserLogin } from '../components/common/UserLogin/UserLogin.tsx';
-import { ProtectedRoute } from '../routes/ProtectedRoute/ProtectedRoute.tsx';
-import UserProfile from '../components/common/profile/index.tsx';
-import { Navbar } from '../components/common/Navbar/Navbar.tsx';
-// import Sales from '../components/user/sales/sales.tsx';
-import LeadCreationComponent from '../components/user/lead_creation/LeadCreation.tsx';
-// import SaleCreationComponent from '../components/user/sales/sales.tsx';
-import Sidebar from '../components/common/sidebar/Sidebar.tsx';
-// import Packages from '../components/user/packages/Packages.tsx';
-import ArchivedLeads from '../components/user/archived_leads/ArchivedLeads.tsx';
-import AddDepartment from '../components/admin/department/department.tsx';
-import UserRegister from '../components/admin/addUser/addUser.tsx';
-import AdminRegister from '../components/admin/adminRegister/AdminRegister.tsx';
-import PackagesPage from '../components/admin/packages/packages.tsx';
-import AdminRoles from '../components/admin/adminRoles/adminRoles.tsx';
-import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions.tsx';
-import Dashboard from '../components/common/Dashboard/Dashboard.tsx';
-import EmailTemplates from '../components/admin/email_templates/EmailTemplates.tsx';
+import { UserLogin } from '../components/common/UserLogin/UserLogin';
+import { ProtectedRoute } from '../Routes/ProtectedRoute/ProtectedRoute';
+import UserProfile from '../components/common/profile';
+import { Navbar } from '../components/common/Navbar/Navbar';
+// import Sales from '../components/user/sales/sales';
+import LeadCreationComponent from '../components/user/lead_creation/LeadCreation';
+// import SaleCreationComponent from '../components/user/sales/sales';
+import Sidebar from '../components/common/sidebar/Sidebar';
+// import Packages from '../components/user/packages/Packages';
+import ArchivedLeads from '../components/user/archived_leads/ArchivedLeads';
+import AddDepartment from '../components/admin/department/department';
+import UserRegister from '../components/admin/addUser/addUser';
+import AdminRegister from '../components/admin/adminRegister/AdminRegister';
+import PackagesPage from '../components/admin/packages/packages';
+import AdminRoles from '../components/admin/adminRoles/adminRoles';
+import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions';
+import Dashboard from '../components/common/Dashboard/Dashboard';
+import EmailTemplates from '../components/admin/email_templates/EmailTemplates';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
