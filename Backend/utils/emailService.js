@@ -233,15 +233,40 @@ export const sendOtpEmail = async (userData) => {
   }
 };
 
+const getEmailHeader = () => `
+  <div style="padding: 20px 0; margin-bottom: 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+      <tr>
+        <td width="150" style="vertical-align: top;">
+          <img src="cid:companyLogo" alt="Ninez Tech Logo" style="width: 150px; height: auto;"/>
+        </td>
+        <td style="vertical-align: top; padding-left: 20px;">
+          <h2 style="margin: 0 0 10px 0; color: #e65c00; font-size: 24px;">RANJIT SINGH</h2>
+          <p style="margin: 0 0 5px 0; font-size: 16px;">Founder & Managing Director</p>
+          <p style="margin: 0 0 5px 0; color: #0066cc;">
+            <strong>C:</strong> +1 (339) 365 5999, +91 - 98249 99898
+          </p>
+          <p style="margin: 0 0 5px 0;">
+            <strong>W:</strong> <a href="http://www.nineztech.com" style="color: #0066cc; text-decoration: none;">www.nineztech.com</a>
+          </p>
+          <p style="margin: 0; color: #666;">
+            <strong>A:</strong> Sharidan, WY -USA| Ahmedabad, Vadodara, IN
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', options.to || userData.email);
 
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
     return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold text
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')  // Italic text
-      .replace(/\n/g, '<br>');  // Line breaks
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
   };
 
   // Function to format currency
@@ -313,7 +338,12 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
     to: options.to || userData.email,
     cc: options.cc || [],
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
-    html: options.customBody ? `
+    attachments: [{
+      filename: 'Logo.webp',
+      path: '../User/src/assets/Logo.webp',
+      cid: 'companyLogo'
+    }],
+    html: `
       <!DOCTYPE html>
       <html>
         <head>
@@ -326,43 +356,30 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
           </style>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-            ${formatText(options.customBody)}
-          </div>
-        </body>
-      </html>
-    ` : `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            @media only screen and (max-width: 600px) {
-              .container { width: 100% !important; padding: 15px !important; }
-              .content { padding: 20px !important; }
-            }
-          </style>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-            <h1 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Welcome to Ninez Tech</h1>
-
-            <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
-            <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
-
-            <div style="margin-bottom: 30px;">
-              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Why Choose Ninez Tech?</h2>
-              <p style="color: #333333; line-height: 1.6;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Our Available Plans</h2>
+          <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
+            ${getEmailHeader()}
+            
+            <div style="border-top: 1px solid #ccc; margin: 20px 0;"></div>
+            
+            <div style="color: #666; margin-bottom: 20px;">---------- Forwarded message ---------</div>
+            
+            ${options.customBody ? formatText(options.customBody) : `
+              <div style="padding: 20px 0;">
+                <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
+                <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+                
+                <!-- Rest of your existing email content -->
                 ${getPackageCards(packages)}
-            </div>
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5;">
-              <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
-              <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
+                
+                <div style="margin-top: 30px;">
+                  <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
+                  <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
+                </div>
+              </div>
+            `}
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+              <p style="color: #666; margin: 0;">Thanks and Regards,</p>
             </div>
           </div>
         </body>
