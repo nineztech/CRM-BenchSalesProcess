@@ -275,6 +275,7 @@ export const login = async (req, res) => {
       departmentId: user.departmentId,
       subrole: user.subrole,
       department: user.userDepartment,
+      designation:user.designation,
       status: user.status,
       is_special: user.is_special,
       createdAt: user.createdAt,

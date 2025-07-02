@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify transporter configuration
-transporter.verify(function(error, success) {
+transporter.verify(function (error, success) {
   if (error) {
     console.error('Email configuration error:', error);
   } else {
@@ -233,15 +233,46 @@ export const sendOtpEmail = async (userData) => {
   }
 };
 
+const getEmailHeader = () => `
+  <div style="padding: 20px 0; margin-bottom: 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+      <tr>
+        <td width="150" style="vertical-align: top;">
+          <img src="cid:companyLogo" alt="Ninez Tech Logo" style="width: 150px; margin-left: 2px"; height: auto;"/>
+        </td>
+
+        <!-- Vertical line separator -->
+        <td width="1" style="background-color: #ccc; width: 1px;"></td>
+
+        <td style="vertical-align: top; padding-left: 20px;">
+          <h2 style="margin: 0 0 10px 0; color: #e65c00; font-size: 24px;">RANJIT SINGH</h2>
+          <p style="margin: 0 0 5px 0; font-size: 16px;">Founder & Managing Director</p>
+          <p style="margin: 0 0 5px 0; color: #0066cc;">
+            <strong>C:</strong> +1 (339) 365 5999, +91 - 98249 99898
+          </p>
+          <p style="margin: 0 0 5px 0;">
+            <strong>W:</strong> <a href="http://www.nineztech.com" style="color: #0066cc; text-decoration: none;">www.nineztech.com</a>
+          </p>
+          <p style="margin: 0; color: #666;">
+            <strong>A:</strong> Sharidan, WY -USA| Ahmedabad, Vadodara, IN
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
+
+
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', options.to || userData.email);
 
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
     return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold text
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')  // Italic text
-      .replace(/\n/g, '<br>');  // Line breaks
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
   };
 
   // Function to format currency
@@ -260,49 +291,38 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
   // Generate package cards HTML
   const getPackageCards = (packages) => {
     return packages.map(pkg => `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 20px;">
-        <h3 style="color: #0369a1; font-size: 20px; margin: 0 0 16px 0;">${pkg.planName}</h3>
+      <div style="margin-bottom: 24px;">
+        <h3 style="font-size: 18px; font-weight: bold; color: #333333; margin: 0 0 16px 0;">🔹 ${pkg.planName}</h3>
         
-        <div style="margin-bottom: 16px;">
-          <p style="font-size: 24px; font-weight: bold; color: #334155; margin: 0;">
-           <b> ${formatCurrency(pkg.enrollmentCharge)}</b>
+        <ul style="list-style-type: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+            • <b>${formatCurrency(pkg.enrollmentCharge)}</b> at enrollment
             ${pkg.discountedPrice ? `
-            <b>  <span style="text-decoration: line-through; font-size: 16px; color: #64748b; margin-left: 8px;">
-                ${formatCurrency(pkg.initialPrice)}
-              </span></b>
+              <span style="text-decoration: line-through; color: #666666; margin-left: 8px;">
+                <b>${formatCurrency(pkg.initialPrice)}</b>
+              </span>
             ` : ''}
-          </p>
-          <p style="color: #64748b; margin: 8px 0 0 0;">at enrollment</p>
-        </div>
+          </li>
 
-        <div style="margin-bottom: 16px;">
-          <p style="font-size: 18px; font-weight: bold; color: #334155; margin: 0;">
-            ${formatCurrency(pkg.offerLetterCharge)}
-          </p>
-          <p style="color: #64748b; margin: 8px 0 0 0;">at offer letter</p>
-        </div>
+          <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+            • <b>${formatCurrency(pkg.offerLetterCharge)}</b> at offer letter
+          </li>
 
-        <div style="margin-bottom: 24px;">
-          <p style="font-size: 16px; color: #334155; margin: 0;">
-            <strong>${pkg.firstYearSalaryPercentage}%</strong> of first-year salary
-          </p>
-        </div>
+          <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+            • <b>${pkg.firstYearSalaryPercentage}%</b> of first-year salary (from first 4 paychecks)
+          </li>
 
-        ${pkg.features.length > 0 ? `
-          <div style="margin-bottom: 24px;">
-            <h4 style="color: #334155; font-size: 16px; margin: 0 0 12px 0;">Features:</h4>
-            <ul style="list-style-type: none; padding: 0; margin: 0;">
-              ${getFeaturesList(pkg.features)}
-            </ul>
-          </div>
-        ` : ''}
+          ${pkg.features.map(feature => `
+            <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+              • ${feature}
+            </li>
+          `).join('')}
+        </ul>
 
         ${pkg.discounts && pkg.discounts.length > 0 ? `
-          <div style="background-color: #fee2e2; border-radius: 6px; padding: 12px; margin-top: 16px;">
-            <p style="color: #ef4444; font-weight: 500; margin: 0;">
-              Active Discount: Up to ${Math.max(...pkg.discounts.map(d => d.percentage))}% off
-            </p>
-          </div>
+          <p style="color: #666666; margin: 16px 0 0 20px;">
+            Active Discount: Up to <b>${Math.max(...pkg.discounts.map(d => d.percentage))}% off</b>
+          </p>
         ` : ''}
       </div>
     `).join('');
@@ -313,7 +333,12 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
     to: options.to || userData.email,
     cc: options.cc || [],
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
-    html: options.customBody ? `
+    attachments: [{
+      filename: 'Logo.webp',
+      path: '../User/src/assets/Logo.webp',
+      cid: 'companyLogo'
+    }],
+    html: `
       <!DOCTYPE html>
       <html>
         <head>
@@ -326,44 +351,59 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
           </style>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-            ${formatText(options.customBody)}
-          </div>
-        </body>
-      </html>
-    ` : `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            @media only screen and (max-width: 600px) {
-              .container { width: 100% !important; padding: 15px !important; }
-              .content { padding: 20px !important; }
-            }
-          </style>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          <div class="container" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-            <h1 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">Welcome to Ninez Tech</h1>
+          <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
+            
+            
+            <div style="border-top: 1px solid #ccc; margin: 20px 0;"></div>
+            
+            ${options.customBody ? formatText(options.customBody) : `
+              <div style="padding: 20px 0;">
+                <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
+                <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+               
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Please visit our online presence and plans:</strong><br/>
+              <a href="https://taplink.cc/nineztech" style="color: #0066cc; text-decoration: none;">Nineztech | Online Presence</a><br/>
+              <span style="font-size: 13px;">Please find discounted pricing below in this email*</span><br/></p><br/>
+              
 
-            <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
-            <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Why Choose Ninez Tech?</strong><br/>
+              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies</p>
+              
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Program Highlights:</strong></p><br/>
+              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px;">
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Our recruiter will work full-time for you according to your time zone, coordinating with you to meet your expectations and requirements.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Search for positions to submit your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Source passive positions suitable for your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Carefully scan each position and select the most suitable ones that match your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Our recruiters have formal training in various technical skills and can handle preliminary technical interviews with technical recruiters.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• The recruiter will coordinate with the client's technical recruiter for various discussions.</li>
+              </ul>
 
-            <div style="margin-bottom: 30px;">
-              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Why Choose Ninez Tech?</h2>
-              <p style="color: #333333; line-height: 1.6;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
-            </div>
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Topics Covered in Our Placement Program:</strong></p><br/>
+              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px;">
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Skill & Technology Guidance</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Resume Writing (ATS optimized)</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Resume Marketing (through a dedicated technical recruiter)</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Placement</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Compliance</li>
+              </ul>
 
-            <div style="margin-bottom: 30px;">
-              <h2 style="color: #333333; font-size: 20px; margin: 0 0 15px 0;">Our Available Plans</h2>
-                ${getPackageCards(packages)}
-            </div>
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5;">
-              <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
-              <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
-            </div>
+              ${getPackageCards(packages)}
+                
+                <div style="margin-top: 30px;">
+                  <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
+                  <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
+                </div><br/><br/>  --
+              <div style="margin-top: 20px; padding-top: 20px; ;">
+                <b><p style="color: #333333; margin: 0;">Thanks and Regards,</p></b>
+                </div>
+              </div>
+            `}
+            
+            ${getEmailHeader()}
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+                <p style="color: #666; margin: 0;">“Empowering Career, Enriching Future”</p>
+              </div>
           </div>
         </body>
       </html>
