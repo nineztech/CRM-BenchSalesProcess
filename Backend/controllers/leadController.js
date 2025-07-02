@@ -295,7 +295,7 @@ export const getAllLeads = async (req, res) => {
     if (status) {
       // Define status mappings for status groups
       const statusMappings = {
-        open: ['open'],
+        open: ['open', 'Numb'],
         converted: ['closed'],
         archived: ['Dead', 'notinterested'],
         inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
@@ -605,7 +605,7 @@ export const getLeadsByStatusGroup = async (req, res) => {
 
     // Define status mappings
     const statusMappings = {
-      open: ['Numb'],
+      open: ['open', 'Numb'],
       converted: ['closed'],
       archived: ['Dead', 'notinterested'],
       inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']

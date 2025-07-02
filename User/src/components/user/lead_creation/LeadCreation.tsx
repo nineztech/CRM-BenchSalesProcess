@@ -305,13 +305,15 @@ const LeadCreationComponent: React.FC = () => {
       const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
       
       // Use the appropriate endpoint based on permission
-      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      
+      // Use the group endpoint for status filtering
+      const endpoint = activeStatusTab ? `${BASE_URL}/lead/group/${activeStatusTab}` : baseEndpoint;
       
       // Add query parameters for pagination
       const queryParams = new URLSearchParams({
         page: currentPage.toString(),
-        limit: pageSize.toString(),
-        status: activeStatusTab
+        limit: pageSize.toString()
       });
 
       const response = await axios.get(`${endpoint}?${queryParams}`, {
@@ -323,7 +325,7 @@ const LeadCreationComponent: React.FC = () => {
       if (response.data.success) {
         setLeads(response.data.data.leads);
         // Update pagination info from API response
-        const {  totalPages } = response.data.data.pagination;
+        const { totalPages } = response.data.data.pagination;
         setTotalPages(totalPages);
       }
     } catch (error) {
