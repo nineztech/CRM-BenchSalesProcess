@@ -276,6 +276,7 @@ export const createLead = async (req, res) => {
 };
 
 // Get All Leads with filtering and pagination
+// Get All Leads with filtering and pagination
 export const getAllLeads = async (req, res) => {
   try {
     const { 
@@ -292,8 +293,20 @@ export const getAllLeads = async (req, res) => {
     
     // Add status filter if provided
     if (status) {
-      if (status === 'open' || status === 'converted' || status === 'inProcess') {
-        whereClause.statusGroup = status;
+      // Define status mappings for status groups
+      const statusMappings = {
+        open: ['open'],
+        converted: ['closed'],
+        archived: ['Dead', 'notinterested'],
+        inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+      };
+
+      // If status is a status group, map it to actual status values
+      if (statusMappings[status]) {
+        whereClause.status = { [Op.in]: statusMappings[status] };
+      } else {
+        // If it's a direct status value, use it as is
+        whereClause.status = status;
       }
     }
 
