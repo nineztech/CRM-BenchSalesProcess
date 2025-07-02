@@ -18,6 +18,7 @@ interface LoginResponse {
       role: string;
       subrole: string;
       departmentId: number;
+      designation:string;
       status: string;
       is_special: boolean;
       createdAt: string;
@@ -103,13 +104,15 @@ export const UserLogin = () => {
       });
 
       const data: LoginResponse = await response.json();
-
+console.log("User Login data",data)
       if (data.success && data.data?.token) {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('userId', data.data.user.id.toString());
         localStorage.setItem('departmentId', data.data.user.departmentId?.toString() || '');
         localStorage.setItem('subrole', data.data.user.subrole || '');
         localStorage.setItem('role', data.data.user.role || '');
+        localStorage.setItem('designation', data.data.user.designation || '');
+
         // Store user data with isSpecial flag
         const userData = {
           ...data.data.user,

@@ -61,6 +61,10 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       // Split CC emails by comma and trim whitespace
       const ccEmails = cc.split(',').map(email => email.trim()).filter(email => email);
 
+      // Get user data for email signature
+      const userDataString = localStorage.getItem('user');
+      const userData = userDataString ? JSON.parse(userDataString) : null;
+
       const response = await axios.post(
         `${BASE_URL}/email/send`,
         {
@@ -68,13 +72,20 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
           cc: ccEmails,
           from: from,
           subject: subject,
-          body: body.replace(/\n/g, '<br>'),
+          customBody: body,
           leadId: lead.id,
           packages: packages,
           userData: {
             firstName: lead.firstName,
             lastName: lead.lastName,
             email: to
+          },
+          options: {
+            from: from,
+            to: to,
+            cc: ccEmails,
+            subject: subject,
+            customBody: body
           }
         },
         {
