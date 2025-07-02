@@ -291,15 +291,18 @@ export const getAllLeads = async (req, res) => {
     const whereClause = {};
     
     // Add status filter if provided
-    if (status && ['open', 'converted', 'archive'].includes(status)) {
-      whereClause.status = status;
+    if (status) {
+      if (status === 'open' || status === 'converted' || status === 'inProcess') {
+        whereClause.statusGroup = status;
+      }
     }
 
     // Add search functionality
     if (search) {
       whereClause[Op.or] = [
-        { candidateName: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { emails: { [Op.like]: `%${search}%` } },
         { technology: { [Op.like]: `%${search}%` } },
         { country: { [Op.like]: `%${search}%` } }
       ];

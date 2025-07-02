@@ -307,16 +307,23 @@ const LeadCreationComponent: React.FC = () => {
       // Use the appropriate endpoint based on permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       
-      const response = await axios.get(endpoint, {
+      // Add query parameters for pagination
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        status: activeStatusTab
+      });
+
+      const response = await axios.get(`${endpoint}?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      setLeads(response.data.data.leads);
-      // Update pagination info from API response if available
-      if (response.data.data.pagination) {
-        const {totalPages } = response.data.data.pagination;
+      if (response.data.success) {
+        setLeads(response.data.data.leads);
+        // Update pagination info from API response
+        const { total, totalPages, currentPage: serverPage } = response.data.data.pagination;
         setTotalPages(totalPages);
       }
     } catch (error) {
@@ -327,12 +334,12 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Effect to fetch leads when component mounts and when permissions change
+  // Effect to fetch leads when component mounts, permissions change, or pagination changes
   useEffect(() => {
     if (!permissionsLoading) {
       fetchLeads();
     }
-  }, [permissionsLoading]);
+  }, [permissionsLoading, currentPage, pageSize, activeStatusTab]);
 
   // Filter leads based on status
   // const getLeadsByStatus = (status: string) => {
@@ -354,10 +361,7 @@ const LeadCreationComponent: React.FC = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const paginatedLeads = filteredLeads.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const paginatedLeads = leads;
 
   // Export to Excel function
   const exportToExcel = () => {
