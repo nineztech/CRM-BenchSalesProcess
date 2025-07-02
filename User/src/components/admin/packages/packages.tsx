@@ -148,7 +148,7 @@ const getActiveDiscounts = (discounts: Package['discounts']): { activeDiscounts:
 // };
 
 const PackagesPage: React.FC = () => {
-  const { checkPermission } = usePermissions();
+  const { checkPermission, loading: permissionsLoading } = usePermissions();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -1012,8 +1012,15 @@ const PackagesPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Packages Grid - Only show if user has view permission */}
-        {checkPermission('Package Management', 'view') ? (
+        {/* Packages Grid - Show loader while checking permissions */}
+        {permissionsLoading ? (
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              {/* <p className="mt-2 text-gray-600">Loading permissions...</p> */}
+            </div>
+          </div>
+        ) : checkPermission('Package Management', 'view') ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <AnimatePresence>
               {packages.map((pkg, index) => {

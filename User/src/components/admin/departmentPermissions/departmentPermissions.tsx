@@ -72,7 +72,7 @@ interface PermissionRights {
 }
 
 const DepartmentPermissions = (): ReactElement => {
-  const { checkPermission } = usePermissions();
+  const { checkPermission, loading: permissionsLoading } = usePermissions();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -454,7 +454,14 @@ const DepartmentPermissions = (): ReactElement => {
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[98%]">
-        {checkPermission('Role Permission Management', 'view') ? (
+        {/* Show loader while checking permissions */}
+        {permissionsLoading ? (
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          </div>
+        ) : checkPermission('Role Permission Management', 'view') ? (
           <>
             <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
               <h2 className="text-xl font-medium text-gray-800 m-0">Department Permissions</h2>

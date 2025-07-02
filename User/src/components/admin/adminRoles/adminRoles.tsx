@@ -86,7 +86,7 @@ interface AdminPermissionResponse {
 
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
-  const { checkPermission } = usePermissions();
+  const { checkPermission, loading: permissionsLoading } = usePermissions();
   // const specialUserData = location.state as { 
   //   isSpecialUser: boolean; 
   //   specialUserId: number; 
@@ -797,238 +797,244 @@ const AdminRoles = (): ReactElement => {
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[98%]">
-        {/* Header section with controls - only show if user has view permission */}
-        {checkPermission('Activity Management', 'view') && (
-          <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-            <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
-            <div className="flex gap-3 items-center">
-              {/* Admin and Special User Controls - only show if user has edit permission */}
-              {checkPermission('Activity Management', 'edit') && (
-                <div className="flex items-center gap-4">
-                  {/* Admin Section */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="isAdmin"
-                        checked={isAdmin}
-                        onChange={(e) => setIsAdmin(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        disabled={isSpecial}
-                      />
-                      <label htmlFor="isAdmin" className="text-sm text-gray-600">
-                        Is Admin
-                      </label>
-                    </div>
-
-                    {isAdmin && (
-                      <select 
-                        value={selectedAdminUser} 
-                        onChange={(e) => setSelectedAdminUser(e.target.value)}
-                        className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                      >
-                        <option value="" disabled hidden>Select Admin User *</option>
-                        {adminUsers.map((admin) => (
-                          <option key={admin.id} value={admin.id}>
-                            {admin.firstname} {admin.lastname}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Special User Section */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="isSpecial"
-                        checked={isSpecial}
-                        onChange={(e) => {
-                          setIsSpecial(e.target.checked);
-                          if (!e.target.checked) {
-                            setSelectedSpecialUser('');
-                            setSelectedDepartment('');
-                            setSelectedRole('');
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        disabled={isAdmin}
-                      />
-                      <label htmlFor="isSpecial" className="text-sm text-gray-600">
-                        Is Special
-                      </label>
-                    </div>
-
-                    {isSpecial && (
-                      <select 
-                        value={selectedSpecialUser} 
-                        onChange={(e) => setSelectedSpecialUser(e.target.value)}
-                        className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
-                      >
-                        <option value="" disabled hidden>Select Special User *</option>
-                        {specialUsers.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.firstname} {user.lastname}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Department and Role Dropdowns */}
-              {checkPermission('Activity Management', 'edit') && (
-                <>
-                  <select 
-                    value={selectedDepartment} 
-                    onChange={(e) => {
-                      if (!isSpecial) {
-                        console.log('Selected department:', e.target.value);
-                        setSelectedDepartment(e.target.value);
-                        setSelectedRole('');
-                        setRights({});
-                      }
-                    }}
-                    className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
-                    disabled={Boolean(isAdmin || isSpecial || (navState && navState.selectedDepartment))}
-                  >
-                    <option value="" disabled hidden>Select Department *</option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-                    ))}
-                  </select>
-
-                  <select 
-                    value={selectedRole} 
-                    onChange={(e) => {
-                      if (!isSpecial) {
-                        setSelectedRole(e.target.value);
-                      }
-                    }}
-                    className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
-                    disabled={Boolean(isAdmin || !selectedDepartment || isSpecial || (navState && navState.selectedDepartment))}
-                  >
-                    <option value="" disabled hidden>Select Role *</option>
-                    {currentDepartmentSubroles.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                </>
-              )}
+        {/* Show loader while checking permissions */}
+        {permissionsLoading ? (
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
           </div>
-        )}
+        ) : checkPermission('Activity Management', 'view') ? (
+          <>
+            {/* Header section with controls - only show if user has view permission */}
+            <div className="flex justify-between items-center border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+              <h2 className="text-xl font-medium text-gray-800 m-0">Roles & Rights</h2>
+              <div className="flex gap-3 items-center">
+                {/* Admin and Special User Controls - only show if user has edit permission */}
+                {checkPermission('Activity Management', 'edit') && (
+                  <div className="flex items-center gap-4">
+                    {/* Admin Section */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isAdmin"
+                          checked={isAdmin}
+                          onChange={(e) => setIsAdmin(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                          disabled={isSpecial}
+                        />
+                        <label htmlFor="isAdmin" className="text-sm text-gray-600">
+                          Is Admin
+                        </label>
+                      </div>
 
-        {/* Activities Table Section - only show if user has view permission */}
-        {checkPermission('Activity Management', 'view') && activities.length > 0 && (
-          <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-            {Array.from(new Set(activities.map(a => a.category))).map(category => {
-              const categoryActivities = activities.filter(a => a.category === category);
-              return (
-                <div key={category} className="mb-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-medium text-gray-800 border-b-2 border-blue-100 inline-block">
-                      {category}
-                    </h2>
+                      {isAdmin && (
+                        <select 
+                          value={selectedAdminUser} 
+                          onChange={(e) => setSelectedAdminUser(e.target.value)}
+                          className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                        >
+                          <option value="" disabled hidden>Select Admin User *</option>
+                          {adminUsers.map((admin) => (
+                            <option key={admin.id} value={admin.id}>
+                              {admin.firstname} {admin.lastname}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Special User Section */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isSpecial"
+                          checked={isSpecial}
+                          onChange={(e) => {
+                            setIsSpecial(e.target.checked);
+                            if (!e.target.checked) {
+                              setSelectedSpecialUser('');
+                              setSelectedDepartment('');
+                              setSelectedRole('');
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                          disabled={isAdmin}
+                        />
+                        <label htmlFor="isSpecial" className="text-sm text-gray-600">
+                          Is Special
+                        </label>
+                      </div>
+
+                      {isSpecial && (
+                        <select 
+                          value={selectedSpecialUser} 
+                          onChange={(e) => setSelectedSpecialUser(e.target.value)}
+                          className="px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                        >
+                          <option value="" disabled hidden>Select Special User *</option>
+                          {specialUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.firstname} {user.lastname}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
+                )}
 
-                  <table className="w-full border-collapse min-w-[600px] mb-4">
-                    <thead>
-                      <tr>
-                        <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Select All</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Read</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Create</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Update</th>
-                        <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Delete</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categoryActivities.map((activity) => (
-                        <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
-                          <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">
-                            {activity.name}
-                            {activity.description && (
-                              <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
-                            )}
-                          </td>
-                          <td className="p-2.5 border border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isAllSelected(activity.name)}
-                              onChange={() => handleSelectAllRow(activity.name)}
-                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
-                            />
-                          </td>
-                          <td className="p-2.5 border border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={rights[activity.name]?.canView || false}
-                              onChange={() => handlePermissionChange(activity.name, 'canView')}
-                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
-                            />
-                          </td>
-                          <td className="p-2.5 border border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={rights[activity.name]?.canAdd || false}
-                              onChange={() => handlePermissionChange(activity.name, 'canAdd')}
-                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
-                            />
-                          </td>
-                          <td className="p-2.5 border border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={rights[activity.name]?.canEdit || false}
-                              onChange={() => handlePermissionChange(activity.name, 'canEdit')}
-                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
-                            />
-                          </td>
-                          <td className="p-2.5 border border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={rights[activity.name]?.canDelete || false}
-                              onChange={() => handlePermissionChange(activity.name, 'canDelete')}
-                              className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
-                              disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
-                            />
-                          </td>
-                        </tr>
+                {/* Department and Role Dropdowns */}
+                {checkPermission('Activity Management', 'edit') && (
+                  <>
+                    <select 
+                      value={selectedDepartment} 
+                      onChange={(e) => {
+                        if (!isSpecial) {
+                          console.log('Selected department:', e.target.value);
+                          setSelectedDepartment(e.target.value);
+                          setSelectedRole('');
+                          setRights({});
+                        }
+                      }}
+                      className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
+                      disabled={Boolean(isAdmin || isSpecial || (navState && navState.selectedDepartment))}
+                    >
+                      <option value="" disabled hidden>Select Department *</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
+                    </select>
 
-            {/* Assign button - only show if user has edit permission */}
-            {checkPermission('Activity Management', 'edit') && (selectedRole || (isAdmin && selectedAdminUser)) && (
-              <button 
-                className={`mt-4 px-5 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={handleAssign}
-                disabled={(!selectedDepartment || !selectedRole) && (!isAdmin || !selectedAdminUser) || isLoading}
-              >
-                {isLoading ? 'Updating...' : 'Assign'}
-              </button>
+                    <select 
+                      value={selectedRole} 
+                      onChange={(e) => {
+                        if (!isSpecial) {
+                          setSelectedRole(e.target.value);
+                        }
+                      }}
+                      className={`px-3 py-1.5 w-[180px] border border-gray-300 rounded-md text-[13px] outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 ${isSpecial ? 'bg-gray-100' : ''}`}
+                      disabled={Boolean(isAdmin || !selectedDepartment || isSpecial || (navState && navState.selectedDepartment))}
+                    >
+                      <option value="" disabled hidden>Select Role *</option>
+                      {currentDepartmentSubroles.map((role) => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Activities Table Section - only show if user has view permission */}
+            {checkPermission('Activity Management', 'view') && activities.length > 0 && (
+              <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                {Array.from(new Set(activities.map(a => a.category))).map(category => {
+                  const categoryActivities = activities.filter(a => a.category === category);
+                  return (
+                    <div key={category} className="mb-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-medium text-gray-800 border-b-2 border-blue-100 inline-block">
+                          {category}
+                        </h2>
+                      </div>
+
+                      <table className="w-full border-collapse min-w-[600px] mb-4">
+                        <thead>
+                          <tr>
+                            <th className="p-2.5 border border-gray-200 text-left text-[13px] bg-gray-50 font-medium text-gray-700 w-[35%]">Activity</th>
+                              <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Select All</th>
+                              <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">View</th>
+                              <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Create</th>
+                              <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Update</th>
+                              <th className="p-2.5 border border-gray-200 text-center text-[13px] bg-gray-50 font-medium text-gray-700">Deactivate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoryActivities.map((activity) => (
+                            <tr key={activity.id} className="even:bg-gray-50 hover:bg-gray-50 transition-colors duration-150">
+                              <td className="p-2.5 border border-gray-200 text-left text-[13px] text-gray-600 w-[35%]">
+                                {activity.name}
+                                {activity.description && (
+                                  <span className="block text-[11px] text-gray-500 mt-1">{activity.description}</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 border border-gray-200 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isAllSelected(activity.name)}
+                                  onChange={() => handleSelectAllRow(activity.name)}
+                                  className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                                  disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
+                                />
+                              </td>
+                              <td className="p-2.5 border border-gray-200 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={rights[activity.name]?.canView || false}
+                                  onChange={() => handlePermissionChange(activity.name, 'canView')}
+                                  className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                                  disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
+                                />
+                              </td>
+                              <td className="p-2.5 border border-gray-200 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={rights[activity.name]?.canAdd || false}
+                                  onChange={() => handlePermissionChange(activity.name, 'canAdd')}
+                                  className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                                  disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
+                                />
+                              </td>
+                              <td className="p-2.5 border border-gray-200 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={rights[activity.name]?.canEdit || false}
+                                  onChange={() => handlePermissionChange(activity.name, 'canEdit')}
+                                  className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                                  disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
+                                />
+                              </td>
+                              <td className="p-2.5 border border-gray-200 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={rights[activity.name]?.canDelete || false}
+                                  onChange={() => handlePermissionChange(activity.name, 'canDelete')}
+                                  className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                                  disabled={!checkPermission('Activity Management', 'edit') || (!selectedRole && !selectedAdminUser)}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+
+                {/* Assign button - only show if user has edit permission */}
+                {checkPermission('Activity Management', 'edit') && (selectedRole || (isAdmin && selectedAdminUser)) && (
+                  <button 
+                    className={`mt-4 px-5 py-1.5 bg-blue-600 text-white border-none rounded-md text-[13px] cursor-pointer block ml-auto hover:bg-blue-700 transition-colors duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={handleAssign}
+                    disabled={(!selectedDepartment || !selectedRole) && (!isAdmin || !selectedAdminUser) || isLoading}
+                  >
+                    {isLoading ? 'Updating...' : 'Assign'}
+                  </button>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {/* No activities message - only show if user has view permission */}
-        {checkPermission('Activity Management', 'view') && activities.length === 0 && (
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">No activities found.</p>
-          </div>
-        )}
-
-        {/* Show message if user doesn't have view permission */}
-        {!checkPermission('Activity Management', 'view') && (
+            {/* No activities message - only show if user has view permission */}
+            {checkPermission('Activity Management', 'view') && activities.length === 0 && (
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-gray-600">No activities found.</p>
+              </div>
+            )}
+          </>
+        ) : (
           <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
             <p className="text-yellow-700">You don't have permission to view roles and permissions.</p>
           </div>

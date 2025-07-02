@@ -86,7 +86,7 @@ const ConfirmationDialog: React.FC<{
 };
 
 const UserRegister: React.FC = () => {
-  const { checkPermission } = usePermissions();
+  const { checkPermission, loading: permissionsLoading } = usePermissions();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -421,447 +421,458 @@ const UserRegister: React.FC = () => {
     <Layout>
       <style>{tooltipStyles}</style>
       <div className="flex flex-col gap-5 max-w-[98%]">
-        {/* Form Container - Only show if user has add permission */}
-        {checkPermission('User Management', 'add') && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 w-full"
-          >
-            {/* Title and Buttons in one row */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-medium text-gray-800">
-                {editingUserId ? "Edit User" : "User Registration"}
-              </h2>
-              
-              <div className="flex gap-3">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    onClick={handleSubmit}
-                  disabled={isLoading}
-                  className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
-                    isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                  >
-                    {editingUserId ? "Update" : "Save"}
-                </motion.button>
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                    type="reset"
-                    onClick={handleReset}
-                  disabled={isLoading}
-                  className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
-                    isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
-                  }`}
-                  >
-                    Discard
-                </motion.button>
-                </div>
-              </div>
-              
-            <div className="flex flex-col space-y-6">
-                {/* Form Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      First Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      placeholder="First Name"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                    />
-                    {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Last Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      placeholder="Last Name"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                    />
-                    {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Department <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                    >
-                      <option value="">Select Department</option>
-                      {departments.map((dept) => (
-                        <option key={dept.id} value={dept.id}>
-                          {dept.departmentName}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.department && <div className="text-red-500 text-xs mt-1">{errors.department}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Roles <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="subrole"
-                      value={formData.subrole}
-                      onChange={handleChange}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                    >
-                      <option value="">Select Roles</option>
-                      {subroles.filter((role) => typeof role === 'string').map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.subrole && <div className="text-red-500 text-xs mt-1">{errors.subrole}</div>}
-                  </div>
-                </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Mobile Number <span className="text-red-500">*</span>
-                    </label>
-                    <div className="max-w-[180px]">
-                      <PhoneInput
-                        country={'us'}
-                        value={formData.mobileNumber}
-                        onChange={handlePhoneChange}
-                        inputClass={`p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Email ID"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                    />
-                    {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                  </div>
-
-                  <div className="form-group flex gap-4">
-                    <div className="flex-grow">
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                        Designation <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="designation"
-                        placeholder="Enter Designation"
-                        value={formData.designation}
-                        onChange={handleChange}
-                        className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                      />
-                      {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
-                    </div>
-                    <div className="flex items-end mb-[6px]">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="is_special"
-                          checked={formData.is_special}
-                          onChange={(e) => setFormData(prev => ({ ...prev, is_special: e.target.checked }))}
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="text-xs font-medium text-gray-600">Special User</span>
-                      </label>
-                    </div>
-                  </div>
-              </div>
-
-              <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Username <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="username"
-                      placeholder="Username"
-                      value={formData.username}
-                      onChange={handleChange}
-                      disabled={editingUserId !== null}
-                      className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                    />
-                    {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Password <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        placeholder="Password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      >
-                        {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                      </button>
-                    </div>
-                    {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                      Confirm Password <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        name="confirmPassword"
-                        placeholder="Confirm Password"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      >
-                        {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                      </button>
-                    </div>
-                    {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
-                  </div>
-                </div>
+        {/* Show loader while checking permissions */}
+        {permissionsLoading ? (
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
-          </motion.div>
-        )}
-
-        {checkPermission('User Management', 'view') ? (
+          </div>
+        ) : (
           <>
-            {/* Search Container */}
-            <div className="flex mb-4">
-              <motion.input
-                whileFocus={{ scale: 1.01 }}
-                type="text"
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="p-2 w-64 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-              />
-            </div>
-
-            {/* Table Container */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm"
-            >
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Registered Users</h3>
-              {isLoading ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-600">Loading...</p>
-                </div>
-              ) : filteredUsers.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
-                        <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
-                        {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
-                          <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((user, index) => (
-                        <motion.tr 
-                          key={user.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className={`hover:bg-gray-50 transition-colors duration-150`}
+            {/* Form Container - Only show if user has add permission */}
+            {checkPermission('User Management', 'add') && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 w-full"
+              >
+                {/* Title and Buttons in one row */}
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-medium text-gray-800">
+                    {editingUserId ? "Edit User" : "User Registration"}
+                  </h2>
+                  
+                  <div className="flex gap-3">
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        onClick={handleSubmit}
+                      disabled={isLoading}
+                      className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                        isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                      >
+                        {editingUserId ? "Update" : "Save"}
+                    </motion.button>
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                        type="reset"
+                        onClick={handleReset}
+                      disabled={isLoading}
+                      className={`px-4 py-2 text-sm font-medium border-none cursor-pointer rounded-md text-white transition-colors duration-200 ${
+                        isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
+                      }`}
+                      >
+                        Discard
+                    </motion.button>
+                    </div>
+                  </div>
+                  
+                <div className="flex flex-col space-y-6">
+                    {/* Form Fields Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          placeholder="First Name"
+                          value={formData.firstName}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        />
+                        {errors.firstName && <div className="text-red-500 text-xs mt-1">{errors.firstName}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          placeholder="Last Name"
+                          value={formData.lastName}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        />
+                        {errors.lastName && <div className="text-red-500 text-xs mt-1">{errors.lastName}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Department <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="department"
+                          value={formData.department}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
                         >
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.firstname}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.lastname}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.userDepartment?.departmentName || ''}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              user.is_special 
-                                ? 'bg-purple-100 text-purple-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {user.is_special ? 'Yes' : 'No'}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-sm border-b border-gray-100 status-cell relative">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              user.status === 'active' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                            onMouseEnter={(e) => {
-                              const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (tooltip) {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                tooltip.style.left = `${rect.left}px`;
-                                tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
-                              }
-                            }}>
-                              {user.status}
-                            </span>
-                            <div className="status-tooltip">
-                              <div className="tooltip-content text-xs text-gray-800">
-                                <p className="mb-1">Updated By: {user.updater ? `${user.updater.firstname} ${user.updater.lastname}` : 'N/A'}</p>
-                                <p>Updated At: {user.updatedAt ? new Date(user.updatedAt).toLocaleString('en-US', {
+                          <option value="">Select Department</option>
+                          {departments.map((dept) => (
+                            <option key={dept.id} value={dept.id}>
+                              {dept.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.department && <div className="text-red-500 text-xs mt-1">{errors.department}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Roles <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="subrole"
+                          value={formData.subrole}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        >
+                          <option value="">Select Roles</option>
+                          {subroles.filter((role) => typeof role === 'string').map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.subrole && <div className="text-red-500 text-xs mt-1">{errors.subrole}</div>}
+                      </div>
+                    </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Mobile Number <span className="text-red-500">*</span>
+                        </label>
+                        <div className="max-w-[180px]">
+                          <PhoneInput
+                            country={'us'}
+                            value={formData.mobileNumber}
+                            onChange={handlePhoneChange}
+                            inputClass={`p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          placeholder="Email ID"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        />
+                        {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
+                      </div>
+
+                      <div className="form-group flex gap-4">
+                        <div className="flex-grow">
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                            Designation <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="designation"
+                            placeholder="Enter Designation"
+                            value={formData.designation}
+                            onChange={handleChange}
+                            className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                          />
+                          {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
+                        </div>
+                        <div className="flex items-end mb-[6px]">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="is_special"
+                              checked={formData.is_special}
+                              onChange={(e) => setFormData(prev => ({ ...prev, is_special: e.target.checked }))}
+                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="text-xs font-medium text-gray-600">Special User</span>
+                          </label>
+                        </div>
+                      </div>
+                  </div>
+
+                  <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Username <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="username"
+                          placeholder="Username"
+                          value={formData.username}
+                          onChange={handleChange}
+                          disabled={editingUserId !== null}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                        />
+                        {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            placeholder="Password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          >
+                            {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                          </button>
+                        </div>
+                        {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Confirm Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            placeholder="Confirm Password"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          >
+                            {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                          </button>
+                        </div>
+                        {errors.confirmPassword && <div className="text-red-500 text-xs mt-1">{errors.confirmPassword}</div>}
+                      </div>
+                    </div>
+                </div>
+              </motion.div>
+            )}
+
+            {checkPermission('User Management', 'view') ? (
+              <>
+                {/* Search Container */}
+                <div className="flex mb-4">
+                  <motion.input
+                    whileFocus={{ scale: 1.01 }}
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="p-2 w-64 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                  />
+                </div>
+
+                {/* Table Container */}
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm"
+                >
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">Registered Users</h3>
+                  {isLoading ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-600">Loading...</p>
+                    </div>
+                  ) : filteredUsers.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
+                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
+                            {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
+                              <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredUsers.map((user, index) => (
+                            <motion.tr 
+                              key={user.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3, delay: index * 0.05 }}
+                              className={`hover:bg-gray-50 transition-colors duration-150`}
+                            >
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{index + 1}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.firstname}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.lastname}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.userDepartment?.departmentName || ''}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.username}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.email}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  user.is_special 
+                                    ? 'bg-purple-100 text-purple-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {user.is_special ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-sm border-b border-gray-100 status-cell relative">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  user.status === 'active' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                                onMouseEnter={(e) => {
+                                  const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (tooltip) {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    tooltip.style.left = `${rect.left}px`;
+                                    tooltip.style.top = `${rect.top - tooltip.offsetHeight - 5}px`;
+                                  }
+                                }}>
+                                  {user.status}
+                                </span>
+                                <div className="status-tooltip">
+                                  <div className="tooltip-content text-xs text-gray-800">
+                                    <p className="mb-1">Updated By: {user.updater ? `${user.updater.firstname} ${user.updater.lastname}` : 'N/A'}</p>
+                                    <p>Updated At: {user.updatedAt ? new Date(user.updatedAt).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    }) : 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
+                                {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
                                   month: 'short',
-                                  day: '2-digit',
+                                  day: 'numeric',
                                   year: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit',
-                                  hour12: true
-                                }) : 'N/A'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-2.5 text-sm text-gray-600 border-b border-gray-100 whitespace-nowrap">
-                            {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit',
-                              hour12: false
-                            }) : ''}
-                          </td>
-                          {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
-                            <td className="p-2.5 text-sm border-b border-gray-100">
-                              <div className="flex gap-3 justify-center">
-                                {checkPermission('User Management', 'edit') && (
-                                  <motion.button 
-                                    whileHover={{ scale: user.status === 'active' ? 1.1 : 1 }}
-                                    whileTap={{ scale: user.status === 'active' ? 0.9 : 1 }}
-                                    className={`text-blue-600 transition-colors duration-200 ${
-                                      isLoading || user.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
-                                    }`}
-                                    onClick={() => user.status === 'active' && handleEdit(user)}
-                                    disabled={isLoading || user.status !== 'active'}
-                                    title={user.status !== 'active' ? 'Cannot edit inactive user' : ''}
-                                  >
-                                    <FaEdit size={16} />
-                                  </motion.button>
-                                )}
-                                {checkPermission('User Management', 'delete') && (
-                                  <motion.button 
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    className={`transition-colors duration-200 ${
-                                      user.status === 'active' 
-                                        ? 'text-red-500 hover:text-red-600'
-                                        : 'text-green-500 hover:text-green-600'
-                                    } ${
-                                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                    onClick={() => handleStatusChange(user.id, user.status)}
-                                    disabled={isLoading}
-                                    title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
-                                  >
-                                    {user.status === 'active' ? (
-                                      <FaUserXmark size={16} />
-                                    ) : (
-                                      <FaUserCheck size={16} />
+                                  second: '2-digit',
+                                  hour12: false
+                                }) : ''}
+                              </td>
+                              {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
+                                <td className="p-2.5 text-sm border-b border-gray-100">
+                                  <div className="flex gap-3 justify-center">
+                                    {checkPermission('User Management', 'edit') && (
+                                      <motion.button 
+                                        whileHover={{ scale: user.status === 'active' ? 1.1 : 1 }}
+                                        whileTap={{ scale: user.status === 'active' ? 0.9 : 1 }}
+                                        className={`text-blue-600 transition-colors duration-200 ${
+                                          isLoading || user.status !== 'active' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'
+                                        }`}
+                                        onClick={() => user.status === 'active' && handleEdit(user)}
+                                        disabled={isLoading || user.status !== 'active'}
+                                        title={user.status !== 'active' ? 'Cannot edit inactive user' : ''}
+                                      >
+                                        <FaEdit size={16} />
+                                      </motion.button>
                                     )}
-                                  </motion.button>
-                                )}
-                              </div>
-                            </td>
-                          )}
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600 text-center py-4">No users found.</p>
-              )}
-            </motion.div>
+                                    {checkPermission('User Management', 'delete') && (
+                                      <motion.button 
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        className={`transition-colors duration-200 ${
+                                          user.status === 'active' 
+                                            ? 'text-red-500 hover:text-red-600'
+                                            : 'text-green-500 hover:text-green-600'
+                                        } ${
+                                          isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
+                                        onClick={() => handleStatusChange(user.id, user.status)}
+                                        disabled={isLoading}
+                                        title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
+                                      >
+                                        {user.status === 'active' ? (
+                                          <FaUserXmark size={16} />
+                                        ) : (
+                                          <FaUserCheck size={16} />
+                                        )}
+                                      </motion.button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600 text-center py-4">No users found.</p>
+                  )}
+                </motion.div>
+              </>
+            ) : (
+              <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                <p className="text-yellow-700">You don't have permission to view user information.</p>
+              </div>
+            )}
+
+            {/* Add the SpecialUserRolesPopup */}
+            <SpecialUserRolesPopup
+              isOpen={showSpecialUserPopup}
+              onClose={handleSpecialUserPopupClose}
+              userName={`${formData.firstName} ${formData.lastName}`}
+              userId={newUserId || 0}
+              departmentId={Number(formData.department)}
+              userRole={formData.subrole}
+            />
+
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+              isOpen={confirmDialog.isOpen}
+              onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+              onConfirm={confirmDialog.onConfirm}
+              title={confirmDialog.title}
+              message={confirmDialog.message}
+            />
           </>
-        ) : (
-          <div className="text-center p-4 bg-yellow-50 border-l-4 border-yellow-400">
-            <p className="text-yellow-700">You don't have permission to view user information.</p>
-          </div>
         )}
-
-        {/* Add the SpecialUserRolesPopup */}
-        <SpecialUserRolesPopup
-          isOpen={showSpecialUserPopup}
-          onClose={handleSpecialUserPopupClose}
-          userName={`${formData.firstName} ${formData.lastName}`}
-          userId={newUserId || 0}
-          departmentId={Number(formData.department)}
-          userRole={formData.subrole}
-        />
-
-        {/* Confirmation Dialog */}
-        <ConfirmationDialog
-          isOpen={confirmDialog.isOpen}
-          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-          onConfirm={confirmDialog.onConfirm}
-          title={confirmDialog.title}
-          message={confirmDialog.message}
-        />
       </div>
     </Layout>
   );
