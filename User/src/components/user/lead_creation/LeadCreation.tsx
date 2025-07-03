@@ -199,7 +199,9 @@ const LeadCreationComponent: React.FC = () => {
     }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    followUpDate: '', // Added default value
+    followUpTime: ''  // Added default value
   });
 
   const [errors, setErrors] = useState<Partial<Lead>>({});
@@ -214,7 +216,7 @@ const LeadCreationComponent: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   // Add status counts state
-  const [statusCounts, setStatusCounts] = useState({
+  const [statusCounts, setStatusCounts] = useState<Record<'open' | 'inProcess' | 'converted' | 'followUp', number>>({
     open: 0,
     inProcess: 0,
     converted: 0,
@@ -371,7 +373,7 @@ const LeadCreationComponent: React.FC = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
+      // const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
       // const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       // Fetch counts for all status groups
@@ -411,9 +413,9 @@ const LeadCreationComponent: React.FC = () => {
   // };
 
   // Get leads count by status
-  const getLeadsCountByStatus = (status: string) => {
-    return leads.filter(lead => lead.statusGroup === status).length;
-  };
+  // const getLeadsCountByStatus = (status: string) => {
+  //   return leads.filter(lead => lead.statusGroup === status).length;
+  // };
 
   // Filter leads based on active status tab and search term
   const filteredLeads = leads.filter((lead: Lead) => {
@@ -712,9 +714,11 @@ const LeadCreationComponent: React.FC = () => {
             })) || [],
             leadSource: row['Lead Source'],
             linkedinId: row['LinkedIn'],
+            followUpDate: '', // Added default value
+            followUpTime: ''  // Added default value
           }));
           
-          setLeads(prev => [...prev, ...newLeads]);
+          setLeads(prev => [...prev, ...newLeads as Lead[]]);
           setUploadSuccess(true);
           setFile(null); // Clear the file input
           toast.success('File uploaded successfully!');
@@ -973,7 +977,9 @@ const LeadCreationComponent: React.FC = () => {
           }],
           linkedinId: '',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          followUpDate: '', // Added default value
+          followUpTime: ''  // Added default value
         });
         setErrors({});
         setIsEditing(false);
@@ -1126,8 +1132,8 @@ const LeadCreationComponent: React.FC = () => {
             // Update status counts
             setStatusCounts(prev => ({
               ...prev,
-              [selectedLeadForStatus.statusGroup || 'open']: prev[selectedLeadForStatus.statusGroup || 'open'] - 1,
-              [updatedLead.statusGroup]: prev[updatedLead.statusGroup] + 1
+              [(selectedLeadForStatus.statusGroup as keyof typeof prev) || 'open']: prev[(selectedLeadForStatus.statusGroup as keyof typeof prev) || 'open'] - 1,
+              [updatedLead.statusGroup as keyof typeof prev]: prev[updatedLead.statusGroup as keyof typeof prev] + 1
             }));
 
             // If the new status group matches the active tab, add the lead to the list
@@ -1870,8 +1876,7 @@ ${(() => {
                           <AssignmentSection />
                         </PermissionGuard>
                         <select 
-                          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={pageSize}
+className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"                          value={pageSize}
                           onChange={(e) => setPageSize(Number(e.target.value))}
                         >
                           <option value="10">10 per page</option>
@@ -1884,7 +1889,7 @@ ${(() => {
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess', 'converted', 'followUp'] as const).map(tab => (
+                        {(['open', 'inProcess', 'followUp','converted'] as const).map(tab => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1915,7 +1920,7 @@ ${(() => {
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead>
                               <tr className="bg-gray-50 m-0 p-0">
-                                <th className=" px-6 text-start py-4 border-b">
+                                <th className=" px-6 text-start py-1.5 border-b">
                                   <PermissionGuard 
                                     activityName="Lead Assignment Management" 
                                     action="edit"
@@ -1928,20 +1933,20 @@ ${(() => {
                                     />
                                   </PermissionGuard>
                                 </th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                                <th className=" px-6 text-start py-4 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
-                                <th className=" px-6 text-start py-4  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
+                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1979,7 +1984,7 @@ ${(() => {
                                         type="button"
                                         title="Email options"
                                       >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
                                           <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                                           <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                                         </svg>
@@ -2001,7 +2006,7 @@ ${(() => {
                                       type="button"
                                         title="Call options"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
                                           <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                                         </svg>
                                     </button>
