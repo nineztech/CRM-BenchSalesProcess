@@ -136,12 +136,36 @@ const Lead = sequelize.define(
         'not working',
         'wrong no',
         'closed',
-        'call again later'
+        'call again later',
+        'follow-up'
       ),
       allowNull: false,
       defaultValue: 'open',
       validate: {
         notEmpty: true
+      }
+    },
+    followUpDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      validate: {
+        isDate: true,
+        followUpDateRequired(value) {
+          if (this.status === 'follow-up' && !value) {
+            throw new Error('Follow-up date is required when status is follow-up');
+          }
+        }
+      }
+    },
+    followUpTime: {
+      type: DataTypes.TIME,
+      allowNull: true,
+      validate: {
+        followUpTimeRequired(value) {
+          if (this.status === 'follow-up' && !value) {
+            throw new Error('Follow-up time is required when status is follow-up');
+          }
+        }
       }
     },
     leadSource: {
@@ -173,11 +197,28 @@ const Lead = sequelize.define(
         const status = this.getDataValue('status');
         if (!status) return 'open';
         
+        if (status === 'follow-up') {
+          const followUpDate = this.getDataValue('followUpDate');
+          const followUpTime = this.getDataValue('followUpTime');
+          
+          if (followUpDate && followUpTime) {
+            const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+            const now = new Date();
+            const timeDiff = followUpDateTime.getTime() - now.getTime();
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+            
+            if (hoursDiff <= 24) {
+              return 'followUp';
+            }
+          }
+        }
+        
         const statusGroups = {
           open: ['open'],
           converted: ['closed'],
           archived: ['Dead', 'notinterested'],
-          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow-up'],
+          followUp: []
         };
 
         for (const [group, statuses] of Object.entries(statusGroups)) {
@@ -251,7 +292,6 @@ const Lead = sequelize.define(
     ],
     hooks: {
       beforeValidate: (lead) => {
-        // Set primaryEmail from emails array
         if (Array.isArray(lead.emails) && lead.emails.length > 0) {
           lead.primaryEmail = lead.emails[0].toLowerCase();
         }
@@ -260,7 +300,6 @@ const Lead = sequelize.define(
   }
 );
 
-// Add a virtual field for technology search
 Lead.addHook('afterSync', async () => {
   try {
     await sequelize.query(`

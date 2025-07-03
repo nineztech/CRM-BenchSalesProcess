@@ -772,7 +772,7 @@ export const updateLeadStatus = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { status, remark } = req.body;
+    const { status, remark, followUpDate, followUpTime } = req.body;
 
     // Validate status
     const validStatuses = [
@@ -786,7 +786,8 @@ export const updateLeadStatus = async (req, res) => {
       'not working',
       'wrong no',
       'closed',
-      'call again later'
+      'call again later',
+      'follow-up'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -796,12 +797,46 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // Validate remark
-    if (!remark || typeof remark !== 'string' || !remark.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Remark is required for status change'
-      });
+    // Validate follow-up date and time if status is follow-up
+    if (status === 'follow-up') {
+      if (!followUpDate || !followUpTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time are required when status is follow-up',
+          errors: [
+            !followUpDate && { field: 'followUpDate', message: 'Follow-up date is required' },
+            !followUpTime && { field: 'followUpTime', message: 'Follow-up time is required' }
+          ].filter(Boolean)
+        });
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(followUpDate)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up date format. Use YYYY-MM-DD',
+          errors: [{ field: 'followUpDate', message: 'Invalid date format' }]
+        });
+      }
+
+      // Validate time format (HH:mm or HH:mm:ss)
+      if (!/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/.test(followUpTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up time format. Use HH:mm or HH:mm:ss',
+          errors: [{ field: 'followUpTime', message: 'Invalid time format' }]
+        });
+      }
+
+      // Validate that follow-up date/time is in the future
+      const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+      if (followUpDateTime <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time must be in the future',
+          errors: [{ field: 'followUpDate', message: 'Must be a future date and time' }]
+        });
+      }
     }
 
     // Find the lead
@@ -852,6 +887,14 @@ export const updateLeadStatus = async (req, res) => {
       }
     };
 
+    // Add follow-up details to remark if status is follow-up
+    if (status === 'follow-up') {
+      remarkObject.followUp = {
+        date: followUpDate,
+        time: followUpTime
+      };
+    }
+
     // Get current remarks array and append new remark
     const currentRemarks = Array.isArray(lead.remarks) ? lead.remarks : [];
     const updatedRemarks = [...currentRemarks, remarkObject];
@@ -868,7 +911,7 @@ export const updateLeadStatus = async (req, res) => {
         archivedAt: new Date(),
         remarks: updatedRemarks,
         updatedBy: req.user.id,
-        archivedBy: req.user.id // This will be used to track who archived the lead
+        archivedBy: req.user.id
       };
 
       // Remove fields that shouldn't be copied
@@ -887,12 +930,16 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // If not archiving, just update the status and remarks
-    await lead.update({
+    // If not archiving, update the status, remarks, and follow-up details
+    const updateData = {
       status,
       remarks: updatedRemarks,
-      updatedBy: req.user.id
-    }, { transaction });
+      updatedBy: req.user.id,
+      followUpDate: status === 'follow-up' ? followUpDate : null,
+      followUpTime: status === 'follow-up' ? followUpTime : null
+    };
+
+    await lead.update(updateData, { transaction });
 
     await transaction.commit();
 
