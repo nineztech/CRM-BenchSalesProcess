@@ -710,20 +710,20 @@ const UserRegister: React.FC = () => {
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
-                            <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">#</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">First Name</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Last Name</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Department</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Roles</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Mobile</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                             {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
-                              <th className="p-2.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
+                              <th className="p-1.5 text-xsfont-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                             )}
                           </tr>
                         </thead>
@@ -736,16 +736,16 @@ const UserRegister: React.FC = () => {
                               transition={{ duration: 0.3, delay: index * 0.05 }}
                               className={`hover:bg-gray-50 transition-colors duration-150`}
                             >
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{index + 1}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.firstname}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.lastname}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.userDepartment?.departmentName || ''}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.username}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.email}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100">
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{index + 1}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.firstname}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.lastname}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.userDepartment?.departmentName || ''}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.subrole || ''}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.phoneNumber}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.username}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.email}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   user.is_special 
                                     ? 'bg-purple-100 text-purple-800' 
@@ -754,7 +754,7 @@ const UserRegister: React.FC = () => {
                                   {user.is_special ? 'Yes' : 'No'}
                                 </span>
                               </td>
-                              <td className="p-2.5 text-sm text-start border-b border-gray-100 status-cell relative">
+                              <td className="p-1.5 text-sm text-start border-b border-gray-100 status-cell relative">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   user.status === 'active' 
                                     ? 'bg-green-100 text-green-800' 
@@ -784,7 +784,7 @@ const UserRegister: React.FC = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="p-2.5 text-sm text-start text-gray-600 border-b border-gray-100 whitespace-nowrap">
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100 whitespace-nowrap">
                                 {user.createdAt ? new Date(user.createdAt).toLocaleString('en-US', {
                                   month: 'short',
                                   day: 'numeric',

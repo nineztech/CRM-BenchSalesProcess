@@ -333,7 +333,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead>
                           <tr className="bg-gray-50">
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">
                               {canReopenLeads && activeLeadsCount > 0 && (
                                 <input 
                                   type="checkbox" 
@@ -343,17 +343,17 @@ const ArchivedLeadsComponent: React.FC = () => {
                                 />
                               )}
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">#</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Contact</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Technology</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Country</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Visa Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Lead Source</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Last Assigned To</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Archived At</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 border-b">Archive Reason</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">#</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Lead Name</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Email</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Contact</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Technology</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Country</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Visa Status</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Lead Source</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Last Assigned To</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Archived At</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Archive Reason</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -365,7 +365,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                             })
                             .map((lead, index) => (
                             <tr key={lead.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b">
                                 {canReopenLeads && lead.status === 'active' && (
                                   <input
                                     type="checkbox"
@@ -375,26 +375,26 @@ const ArchivedLeadsComponent: React.FC = () => {
                                   />
                                 )}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {((currentPage - 1) * pageSize) + index + 1}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {lead.firstName} {lead.lastName}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryEmail}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryContact}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryEmail}</td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryContact}</td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {lead.country} ({lead.countryCode})
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">{lead.leadSource}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.leadSource}</td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '-'}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {new Date(lead.archivedAt).toLocaleString('en-US', {
                                   month: 'short',
                                   day: '2-digit',
@@ -405,7 +405,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                                   hour12: false
                                 }).replace(',', '')}
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 border-b whitespace-nowrap">
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 <div className="flex items-center justify-between">
               
                                   <button 
