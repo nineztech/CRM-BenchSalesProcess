@@ -339,7 +339,7 @@ const LeadCreationComponent: React.FC = () => {
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       
       // Use the group endpoint for status filtering
-      const endpoint = baseEndpoint;
+      const endpoint = activeStatusTab ? `${BASE_URL}/lead/group/${activeStatusTab}` : baseEndpoint;
       
       // Add query parameters for pagination
       const queryParams = new URLSearchParams({
@@ -374,11 +374,11 @@ const LeadCreationComponent: React.FC = () => {
       if (!token) return;
 
       const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      // const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       // Fetch counts for all status groups
       const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
-        axios.get(baseEndpoint, {
+        axios.get(`${BASE_URL}/lead/group/${group}?page=1&limit=1`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
