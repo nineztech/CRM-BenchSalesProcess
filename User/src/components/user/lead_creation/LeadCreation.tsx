@@ -374,7 +374,7 @@ const LeadCreationComponent: React.FC = () => {
       if (!token) return;
 
       const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      // const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       // Fetch counts for all status groups
       const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
