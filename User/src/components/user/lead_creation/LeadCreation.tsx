@@ -35,6 +35,8 @@ const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 import countryList from 'react-select-country-list';
 
 interface Lead {
+  followUpTime: any;
+  followUpDate: any;
   id?: number;
   firstName: string;
   lastName: string;
@@ -208,7 +210,7 @@ const LeadCreationComponent: React.FC = () => {
   var searchTerm='';
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   // Add status counts state
@@ -370,7 +372,7 @@ const LeadCreationComponent: React.FC = () => {
       if (!token) return;
 
       const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      // const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       // Fetch counts for all status groups
       const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
@@ -1447,7 +1449,7 @@ ${(() => {
               )}
               
               {/* Header */}
-              <div className="mb-8">
+              <div className="mb-2">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
                 <p className="text-gray-600">Create and manage your leads efficiently</p>
               </div>
@@ -1856,8 +1858,8 @@ ${(() => {
               {/* Status Tabs */}
               <PermissionGuard activityName="Lead Management" action="view">
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                  <div className="px-8 py-6">
-                    <div className="flex items-center justify-between mb-6">
+                  <div className="px-8 py-4">
+                    <div className="flex items-center justify-between mb-2">
                       <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
                       <div className="flex items-center gap-4">
                         <PermissionGuard 
@@ -1872,6 +1874,7 @@ ${(() => {
                           value={pageSize}
                           onChange={(e) => setPageSize(Number(e.target.value))}
                         >
+                          <option value="10">10 per page</option>
                           <option value="25">25 per page</option>
                           <option value="50">50 per page</option>
                           <option value="100">100 per page</option>
@@ -1911,7 +1914,7 @@ ${(() => {
                         <div className="inline-block min-w-full align-middle">
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead>
-                              <tr className="bg-gray-50">
+                              <tr className="bg-gray-50 m-0 p-0">
                                 <th className=" px-6 text-start py-4 border-b">
                                   <PermissionGuard 
                                     activityName="Lead Assignment Management" 
@@ -1943,8 +1946,8 @@ ${(() => {
                             </thead>
                             <tbody>
                               {paginatedLeads.map((lead: Lead, index: number) => (
-                                <tr key={lead.id || index} className="hover:bg-gray-50">
-                                  <td className=" px-6 text-start py-4 border-b">
+                                <tr key={lead.id || index} className="hover:bg-gray-50 p-0 m-0">
+                                  <td className=" px-4 text-start py-0 border-b">
                                     <PermissionGuard 
                                       activityName="Lead Assignment Management" 
                                       action="edit"
@@ -1958,13 +1961,13 @@ ${(() => {
                                       />
                                     </PermissionGuard>
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-4 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {(currentPage - 1) * pageSize + index + 1}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.firstName} {lead.lastName}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                       <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -1985,7 +1988,7 @@ ${(() => {
                                       
                                     </div>
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                        <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -2006,10 +2009,10 @@ ${(() => {
                                    
                                     </div>
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
                                     <a 
                                       href={lead.linkedinId} 
                                       target="_blank" 
@@ -2019,16 +2022,16 @@ ${(() => {
                                       LinkedIn
                                     </a>
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.visaStatus}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.country}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
                                     <PermissionGuard 
                                       activityName="Lead Status Management" 
                                       action="view"
@@ -2086,7 +2089,7 @@ ${(() => {
                                       </PermissionGuard>
                                     </PermissionGuard>
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
                                       day: '2-digit',
                                       month: 'short',
@@ -2097,13 +2100,13 @@ ${(() => {
                                       hour12: false
                                     }).replace(',', '') : '-'}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-4 text-sm border-b whitespace-nowrap">
+                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
                                     <div className="flex items-center space-x-2">
                                       <button 
                                         onClick={() => handleInfoClick(lead)}

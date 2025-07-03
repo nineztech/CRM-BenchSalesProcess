@@ -276,7 +276,6 @@ export const createLead = async (req, res) => {
 };
 
 // Get All Leads with filtering and pagination
-// Get All Leads with filtering and pagination
 export const getAllLeads = async (req, res) => {
   try {
     const { 
