@@ -377,7 +377,7 @@ const LeadCreationComponent: React.FC = () => {
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       // Fetch counts for all status groups
-      const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
+      const promises = ['open', 'inProcess', 'converted', 'followUp'].map(() =>
         axios.get(baseEndpoint, {
           headers: {
             'Authorization': `Bearer ${token}`
