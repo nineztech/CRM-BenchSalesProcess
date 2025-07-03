@@ -291,15 +291,30 @@ export const getAllLeads = async (req, res) => {
     const whereClause = {};
     
     // Add status filter if provided
-    if (status && ['open', 'converted', 'archive'].includes(status)) {
-      whereClause.status = status;
+    if (status) {
+      // Define status mappings for status groups
+      const statusMappings = {
+        open: ['open', 'Numb'],
+        converted: ['closed'],
+        archived: ['Dead', 'notinterested'],
+        inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+      };
+
+      // If status is a status group, map it to actual status values
+      if (statusMappings[status]) {
+        whereClause.status = { [Op.in]: statusMappings[status] };
+      } else {
+        // If it's a direct status value, use it as is
+        whereClause.status = status;
+      }
     }
 
     // Add search functionality
     if (search) {
       whereClause[Op.or] = [
-        { candidateName: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { emails: { [Op.like]: `%${search}%` } },
         { technology: { [Op.like]: `%${search}%` } },
         { country: { [Op.like]: `%${search}%` } }
       ];
@@ -577,7 +592,6 @@ export const getLeadsByStatusGroup = async (req, res) => {
   try {
     const { statusGroup } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const user = req.user; // Get the authenticated user
 
     // Validate status group
     const validStatusGroups = ['open', 'converted', 'archived', 'inProcess', 'followUp'];
@@ -599,20 +613,76 @@ export const getLeadsByStatusGroup = async (req, res) => {
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Base query conditions
-    const whereConditions = {
-      status: {
-        [Op.in]: statusMappings[statusGroup]
-      }
-    };
+    let whereClause = {};
 
-    // If user doesn't have "View All Leads" permission, only show their assigned leads
-    if (!user?.permissions?.includes('View All Leads')) {
-      whereConditions.assignTo = user.id;
+    if (statusGroup === 'followUp') {
+      // Get current time
+      const now = new Date();
+      // Get time 24 hours from now
+      const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+
+      whereClause = {
+        [Op.or]: [
+          // Case 1: Follow-up date is within next 24 hours
+          {
+            status: 'follow-up',
+            followUpDate: {
+              [Op.not]: null
+            },
+            [Op.and]: sequelize.literal(`
+              CONCAT(followUpDate, ' ', followUpTime) <= '${twentyFourHoursFromNow.toISOString()}'
+              AND CONCAT(followUpDate, ' ', followUpTime) >= '${now.toISOString()}'
+            `)
+          },
+          // Case 2: Follow-up date has passed and status hasn't been updated
+          {
+            status: 'follow-up',
+            followUpDate: {
+              [Op.not]: null
+            },
+            [Op.and]: sequelize.literal(`
+              CONCAT(followUpDate, ' ', followUpTime) < '${now.toISOString()}'
+            `)
+          }
+        ]
+      };
+    } else {
+      whereClause = {
+        status: {
+          [Op.in]: statusMappings[statusGroup]
+        }
+      };
+
+      // For inProcess, include leads that are follow-up but more than 24 hours away
+      if (statusGroup === 'inProcess') {
+        const now = new Date();
+        const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+
+        whereClause = {
+          [Op.or]: [
+            // Original inProcess statuses
+            {
+              status: {
+                [Op.in]: statusMappings[statusGroup]
+              }
+            },
+            // Follow-up leads with dates more than 24 hours away
+            {
+              status: 'follow-up',
+              followUpDate: {
+                [Op.not]: null
+              },
+              [Op.and]: sequelize.literal(`
+                CONCAT(followUpDate, ' ', followUpTime) > '${twentyFourHoursFromNow.toISOString()}'
+              `)
+            }
+          ]
+        };
+      }
     }
 
     const leads = await Lead.findAndCountAll({
-      where: whereConditions,
+      where: whereClause,
       include: [
         {
           model: User,
@@ -766,7 +836,7 @@ export const updateLeadStatus = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { status, remark } = req.body;
+    const { status, remark, followUpDate, followUpTime } = req.body;
 
     // Validate status
     const validStatuses = [
@@ -780,7 +850,8 @@ export const updateLeadStatus = async (req, res) => {
       'not working',
       'wrong no',
       'closed',
-      'call again later'
+      'call again later',
+      'follow-up'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -790,12 +861,46 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // Validate remark
-    if (!remark || typeof remark !== 'string' || !remark.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Remark is required for status change'
-      });
+    // Validate follow-up date and time if status is follow-up
+    if (status === 'follow-up') {
+      if (!followUpDate || !followUpTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time are required when status is follow-up',
+          errors: [
+            !followUpDate && { field: 'followUpDate', message: 'Follow-up date is required' },
+            !followUpTime && { field: 'followUpTime', message: 'Follow-up time is required' }
+          ].filter(Boolean)
+        });
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(followUpDate)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up date format. Use YYYY-MM-DD',
+          errors: [{ field: 'followUpDate', message: 'Invalid date format' }]
+        });
+      }
+
+      // Validate time format (HH:mm or HH:mm:ss)
+      if (!/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/.test(followUpTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up time format. Use HH:mm or HH:mm:ss',
+          errors: [{ field: 'followUpTime', message: 'Invalid time format' }]
+        });
+      }
+
+      // Validate that follow-up date/time is in the future
+      const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+      if (followUpDateTime <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time must be in the future',
+          errors: [{ field: 'followUpDate', message: 'Must be a future date and time' }]
+        });
+      }
     }
 
     // Find the lead
@@ -846,6 +951,14 @@ export const updateLeadStatus = async (req, res) => {
       }
     };
 
+    // Add follow-up details to remark if status is follow-up
+    if (status === 'follow-up') {
+      remarkObject.followUp = {
+        date: followUpDate,
+        time: followUpTime
+      };
+    }
+
     // Get current remarks array and append new remark
     const currentRemarks = Array.isArray(lead.remarks) ? lead.remarks : [];
     const updatedRemarks = [...currentRemarks, remarkObject];
@@ -862,7 +975,7 @@ export const updateLeadStatus = async (req, res) => {
         archivedAt: new Date(),
         remarks: updatedRemarks,
         updatedBy: req.user.id,
-        archivedBy: req.user.id // This will be used to track who archived the lead
+        archivedBy: req.user.id
       };
 
       // Remove fields that shouldn't be copied
@@ -881,12 +994,16 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // If not archiving, just update the status and remarks
-    await lead.update({
+    // If not archiving, update the status, remarks, and follow-up details
+    const updateData = {
       status,
       remarks: updatedRemarks,
-      updatedBy: req.user.id
-    }, { transaction });
+      updatedBy: req.user.id,
+      followUpDate: status === 'follow-up' ? followUpDate : null,
+      followUpTime: status === 'follow-up' ? followUpTime : null
+    };
+
+    await lead.update(updateData, { transaction });
 
     await transaction.commit();
 

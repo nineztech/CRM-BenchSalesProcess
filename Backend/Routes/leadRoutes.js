@@ -23,7 +23,7 @@ leadRoute.get("/", getAllLeads)
 leadRoute.get("/assigned", authenticate, getAssignedLeads)
 
 // Get leads by status group (open, converted, archived, inProcess, followUp)
-leadRoute.get("/group/:statusGroup", authenticate, getLeadsByStatusGroup)
+leadRoute.get("/group/:statusGroup", getLeadsByStatusGroup)
 
 // Get leads by specific status
 leadRoute.get("/status/:status", getLeadsByStatus)
