@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface StatusRemarkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (remark: string) => void;
+  onSubmit: (remark: string, followUpDate?: string, followUpTime?: string) => void;
   currentStatus: string;
   newStatus: string;
 }
@@ -17,6 +17,8 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   newStatus
 }) => {
   const [remark, setRemark] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const [followUpTime, setFollowUpTime] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +43,19 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
         }
       };
 
-      onSubmit(JSON.stringify(remarkWithCreator));
+      onSubmit(
+        JSON.stringify(remarkWithCreator),
+        newStatus === 'follow-up' ? followUpDate : undefined,
+        newStatus === 'follow-up' ? followUpTime : undefined
+      );
       setRemark('');
+      setFollowUpDate('');
+      setFollowUpTime('');
     }
   };
+
+  const isFollowUp = newStatus === 'follow-up';
+  const today = new Date().toISOString().split('T')[0];
 
   if (!isOpen) return null;
 
@@ -122,6 +133,41 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                       />
                     </div>
 
+                    {/* Follow-up Date and Time Fields */}
+                    <div className={`mb-4 ${isFollowUp ? 'opacity-100' : 'opacity-50'}`}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="followUpDate" className="block text-sm font-medium text-gray-700 mb-2">
+                            Follow-up Date {isFollowUp && '*'}
+                          </label>
+                          <input
+                            type="date"
+                            id="followUpDate"
+                            value={followUpDate}
+                            onChange={(e) => setFollowUpDate(e.target.value)}
+                            min={today}
+                            required={isFollowUp}
+                            disabled={!isFollowUp}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="followUpTime" className="block text-sm font-medium text-gray-700 mb-2">
+                            Follow-up Time {isFollowUp && '*'}
+                          </label>
+                          <input
+                            type="time"
+                            id="followUpTime"
+                            value={followUpTime}
+                            onChange={(e) => setFollowUpTime(e.target.value)}
+                            required={isFollowUp}
+                            disabled={!isFollowUp}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end gap-3">
                       <button
                         type="button"
@@ -132,7 +178,7 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                       </button>
                       <button
                         type="submit"
-                        disabled={!remark.trim()}
+                        disabled={!remark.trim() || (isFollowUp && (!followUpDate || !followUpTime))}
                         className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Submit

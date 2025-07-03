@@ -595,7 +595,7 @@ export const getLeadsByStatusGroup = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     // Validate status group
-    const validStatusGroups = ['open', 'converted', 'archived', 'inProcess'];
+    const validStatusGroups = ['open', 'converted', 'archived', 'inProcess', 'followUp'];
     if (!validStatusGroups.includes(statusGroup)) {
       return res.status(400).json({
         success: false,
@@ -608,17 +608,82 @@ export const getLeadsByStatusGroup = async (req, res) => {
       open: ['open', 'Numb'],
       converted: ['closed'],
       archived: ['Dead', 'notinterested'],
-      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later'],
+      followUp: ['follow-up']
     };
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const leads = await Lead.findAndCountAll({
-      where: {
+    let whereClause = {};
+
+    if (statusGroup === 'followUp') {
+      // Get current time
+      const now = new Date();
+      // Get time 24 hours from now
+      const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+
+      whereClause = {
+        [Op.or]: [
+          // Case 1: Follow-up date is within next 24 hours
+          {
+            status: 'follow-up',
+            followUpDate: {
+              [Op.not]: null
+            },
+            [Op.and]: sequelize.literal(`
+              CONCAT(followUpDate, ' ', followUpTime) <= '${twentyFourHoursFromNow.toISOString()}'
+              AND CONCAT(followUpDate, ' ', followUpTime) >= '${now.toISOString()}'
+            `)
+          },
+          // Case 2: Follow-up date has passed and status hasn't been updated
+          {
+            status: 'follow-up',
+            followUpDate: {
+              [Op.not]: null
+            },
+            [Op.and]: sequelize.literal(`
+              CONCAT(followUpDate, ' ', followUpTime) < '${now.toISOString()}'
+            `)
+          }
+        ]
+      };
+    } else {
+      whereClause = {
         status: {
           [Op.in]: statusMappings[statusGroup]
         }
-      },
+      };
+
+      // For inProcess, include leads that are follow-up but more than 24 hours away
+      if (statusGroup === 'inProcess') {
+        const now = new Date();
+        const twentyFourHoursFromNow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+
+        whereClause = {
+          [Op.or]: [
+            // Original inProcess statuses
+            {
+              status: {
+                [Op.in]: statusMappings[statusGroup]
+              }
+            },
+            // Follow-up leads with dates more than 24 hours away
+            {
+              status: 'follow-up',
+              followUpDate: {
+                [Op.not]: null
+              },
+              [Op.and]: sequelize.literal(`
+                CONCAT(followUpDate, ' ', followUpTime) > '${twentyFourHoursFromNow.toISOString()}'
+              `)
+            }
+          ]
+        };
+      }
+    }
+
+    const leads = await Lead.findAndCountAll({
+      where: whereClause,
       include: [
         {
           model: User,

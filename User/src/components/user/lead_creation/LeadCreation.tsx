@@ -16,7 +16,7 @@ import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
 import toast from 'react-hot-toast';
 import ReassignRemarkModal from './ReassignRemarkModal';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiClock } from 'react-icons/fi';
 import { FaEdit } from 'react-icons/fa';
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
@@ -134,6 +134,15 @@ interface SalesUser {
   };
 }
 
+// Add new interfaces for timer
+interface CountdownRendererProps {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  completed: boolean;
+}
+
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'open':
@@ -152,6 +161,13 @@ const getStatusIcon = (status: string) => {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'followUp':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       );
     default:
@@ -195,6 +211,14 @@ const LeadCreationComponent: React.FC = () => {
   const [pageSize, setPageSize] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Add status counts state
+  const [statusCounts, setStatusCounts] = useState({
+    open: 0,
+    inProcess: 0,
+    converted: 0,
+    followUp: 0
+  });
+
   // // Edit states
   // const [editingLead, setEditingLead] = useState<number | null>(null);
   // const [editFormData, setEditFormData] = useState<Lead>({
@@ -227,7 +251,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followUp'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -289,6 +313,9 @@ const LeadCreationComponent: React.FC = () => {
   // Add isEditing state
   const [isEditing, setIsEditing] = useState(false);
 
+  // Add new state for timer
+  const [showTimer, setShowTimer] = useState<number | null>(null);
+
   // Fetch leads
   const fetchLeads = async () => {
     try {
@@ -336,10 +363,43 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  // Add new function to fetch status counts
+  const fetchStatusCounts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
+      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      // Fetch counts for all status groups
+      const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
+        axios.get(`${BASE_URL}/lead/group/${group}?page=1&limit=1`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      );
+
+      const responses = await Promise.all(promises);
+      const counts = {
+        open: responses[0].data.data.pagination.total || 0,
+        inProcess: responses[1].data.data.pagination.total || 0,
+        converted: responses[2].data.data.pagination.total || 0,
+        followUp: responses[3].data.data.pagination.total || 0
+      };
+
+      setStatusCounts(counts);
+    } catch (error) {
+      console.error('Error fetching status counts:', error);
+    }
+  };
+
   // Effect to fetch leads when component mounts, permissions change, or pagination changes
   useEffect(() => {
     if (!permissionsLoading) {
       fetchLeads();
+      fetchStatusCounts(); // Add this line to fetch counts
     }
   }, [permissionsLoading, currentPage, pageSize, activeStatusTab]);
 
@@ -962,7 +1022,7 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   // Handle status tab change
-  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess') => {
+  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess' | 'followUp') => {
     setActiveStatusTab(status);
     setCurrentPage(1); // Reset to first page when changing status
   };
@@ -978,7 +1038,7 @@ const LeadCreationComponent: React.FC = () => {
   };
 
   // Update the handleStatusRemarkSubmit function
-  const handleStatusRemarkSubmit = async (remark: string) => {
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1009,6 +1069,12 @@ const LeadCreationComponent: React.FC = () => {
             prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
           );
 
+          // Update status counts
+          setStatusCounts(prev => ({
+            ...prev,
+            [activeStatusTab]: prev[activeStatusTab] - 1
+          }));
+
           // Show status change notification
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
@@ -1027,7 +1093,9 @@ const LeadCreationComponent: React.FC = () => {
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
           { 
             status: newStatus,
-            remark 
+            remark,
+            followUpDate,
+            followUpTime
           },
           {
             headers: {
@@ -1038,36 +1106,51 @@ const LeadCreationComponent: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Update the leads list with the new data
-          setLeads(prevLeads => 
-            prevLeads.map(lead => 
-              lead.id === selectedLeadForStatus.id ? {
-                ...lead,
-                status: newStatus,
-                statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || lead.remarks
-              } : lead
-            )
-          );
+          const updatedLead = {
+            ...selectedLeadForStatus,
+            status: newStatus,
+            statusGroup: response.data.data.statusGroup,
+            remarks: response.data.data.remarks || selectedLeadForStatus.remarks,
+            followUpDate,
+            followUpTime
+          };
+
+          // If the status group has changed, remove the lead from the current list
+          if (updatedLead.statusGroup !== selectedLeadForStatus.statusGroup) {
+            setLeads(prevLeads => 
+              prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            );
+
+            // Update status counts
+            setStatusCounts(prev => ({
+              ...prev,
+              [selectedLeadForStatus.statusGroup || 'open']: prev[selectedLeadForStatus.statusGroup || 'open'] - 1,
+              [updatedLead.statusGroup]: prev[updatedLead.statusGroup] + 1
+            }));
+
+            // If the new status group matches the active tab, add the lead to the list
+            if (updatedLead.statusGroup === activeStatusTab) {
+              setLeads(prevLeads => [...prevLeads, updatedLead]);
+            }
+          } else {
+            // Just update the lead in the current list
+            setLeads(prevLeads => 
+              prevLeads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? updatedLead : lead
+              )
+            );
+          }
 
           // If this lead is currently selected in the details modal, update it
           if (selectedLead?.id === selectedLeadForStatus.id) {
-            setSelectedLead(prevLead => {
-              if (!prevLead) return null;
-              return {
-                ...prevLead,
-                status: newStatus,
-                statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || prevLead.remarks
-              };
-            });
+            setSelectedLead(updatedLead);
           }
 
           // Show status change notification
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: response.data.data.statusGroup
+            statusGroup: updatedLead.statusGroup
           });
           setShowStatusNotification(true);
 
@@ -1312,6 +1395,40 @@ ${(() => {
       toast.error('Failed to prepare lead edit. Please try again.');
     }
   };
+
+  // Add countdown renderer function
+  const countdownRenderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+    if (completed) {
+      return <span className="text-red-600 text-xs">Follow-up time passed</span>;
+    }
+    
+    return (
+      <span className="text-red-600 text-sm font-semibold whitespace-nowrap">
+        {days > 0 && `${days}d `}
+        {hours > 0 && `${hours}h `}
+        {minutes > 0 && `${minutes}m `}
+        {`${seconds}s`}
+      </span>
+    );
+  };
+
+  // Add click handler for timer icon
+  const handleTimerClick = (e: React.MouseEvent, leadId: number) => {
+    e.stopPropagation();
+    setShowTimer(showTimer === leadId ? null : leadId);
+  };
+
+  // Add useEffect to close timer when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowTimer(null);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   return (
     <RouteGuard activityName="Lead Management">
@@ -1764,7 +1881,7 @@ ${(() => {
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess','converted'] as const).map(tab => (
+                        {(['open', 'inProcess', 'converted', 'followUp'] as const).map(tab => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1772,9 +1889,9 @@ ${(() => {
                           >
                             <span className="flex items-center gap-2">
                               {getStatusIcon(tab)}
-                              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              {tab === 'followUp' ? 'Follow-up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
-                                {getLeadsCountByStatus(tab)}
+                                {statusCounts[tab]}
                               </span>
                             </span>
                           </button>
@@ -1926,24 +2043,46 @@ ${(() => {
                                           </div>
                                         }
                                       >
-                                        <select
-                                          value={lead.status || 'open'}
-                                          onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                          disabled={lead.status === 'closed'}
-                                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                        >
-                                          <option value="open">Open</option>
-                                          <option value="DNR1">DNR1</option>
-                                          <option value="DNR2">DNR2</option>
-                                          <option value="DNR3">DNR3</option>
-                                          <option value="interested">Interested</option>
-                                          <option value="not working">Not Working</option>
-                                          <option value="wrong no">Wrong No</option>
-                                          <option value="call again later">Call Again Later</option>
-                                          <option value="closed">Closed</option>
-                                          <option value="Dead">Dead</option>
-                                          <option value="notinterested">Not Interested</option>
-                                        </select>
+                                        <div className="flex items-center gap-2">
+                                          <select
+                                            value={lead.status || 'open'}
+                                            onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                            disabled={lead.status === 'closed'}
+                                            className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                          >
+                                            <option value="open">Open</option>
+                                            <option value="DNR1">DNR1</option>
+                                            <option value="DNR2">DNR2</option>
+                                            <option value="DNR3">DNR3</option>
+                                            <option value="interested">Interested</option>
+                                            <option value="not working">Not Working</option>
+                                            <option value="wrong no">Wrong No</option>
+                                            <option value="call again later">Call Again Later</option>
+                                            <option value="closed">Closed</option>
+                                            <option value="Dead">Dead</option>
+                                            <option value="notinterested">Not Interested</option>
+                                            <option value="follow-up">Follow-up</option>
+                                          </select>
+                                          {lead.status === 'follow-up' && lead.followUpDate && lead.followUpTime && (
+                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                              <FiClock 
+                                                className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600"
+                                                onClick={(e) => handleTimerClick(e, lead.id || 0)}
+                                              />
+                                              {showTimer === lead.id && (
+                                                <div className="absolute left-6 top-0 z-10 bg-white shadow-lg rounded-md p-2 border border-gray-200">
+                                                  {countdownRenderer({
+                                                    days: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+                                                    hours: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60 * 60) % 24),
+                                                    minutes: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60) % 60),
+                                                    seconds: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / 1000 % 60),
+                                                    completed: new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() < new Date().getTime()
+                                                  })}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
                                       </PermissionGuard>
                                     </PermissionGuard>
                                   </td>
@@ -1998,7 +2137,7 @@ ${(() => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {leads.length} leads
+                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {statusCounts[activeStatusTab]} leads
                     </div>
                     <div className="flex items-center gap-2">
                       <button
