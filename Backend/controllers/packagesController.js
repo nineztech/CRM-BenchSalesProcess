@@ -9,7 +9,8 @@ export const addPackage = async (req, res) => {
       initialPrice,
       enrollmentCharge, 
       offerLetterCharge, 
-      firstYearSalaryPercentage, 
+      firstYearSalaryPercentage,
+      firstYearFixedPrice, 
       features, 
       discounts 
     } = req.body;
@@ -27,6 +28,15 @@ export const addPackage = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Enrollment charge and offer letter charge are required"
+      });
+    }
+
+    // Validate that only one of firstYearSalaryPercentage or firstYearFixedPrice is provided
+    if (firstYearSalaryPercentage !== undefined && firstYearSalaryPercentage !== null && 
+        firstYearFixedPrice !== undefined && firstYearFixedPrice !== null) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot set both firstYearSalaryPercentage and firstYearFixedPrice"
       });
     }
 
@@ -53,7 +63,8 @@ export const addPackage = async (req, res) => {
       initialPrice: Number(initialPrice),
       enrollmentCharge: Number(enrollmentCharge),
       offerLetterCharge: Number(offerLetterCharge),
-      firstYearSalaryPercentage: Number(firstYearSalaryPercentage) || 0,
+      firstYearSalaryPercentage: firstYearSalaryPercentage ? Number(firstYearSalaryPercentage) : null,
+      firstYearFixedPrice: firstYearFixedPrice ? Number(firstYearFixedPrice) : null,
       features: features || [],
       discounts: discounts || [],
       createdBy: userId,
@@ -229,7 +240,8 @@ export const updatePackage = async (req, res) => {
       initialPrice,
       enrollmentCharge, 
       offerLetterCharge, 
-      firstYearSalaryPercentage, 
+      firstYearSalaryPercentage,
+      firstYearFixedPrice, 
       features, 
       discounts,
       status 
@@ -269,6 +281,23 @@ export const updatePackage = async (req, res) => {
       });
     }
 
+    // Validate that only one of firstYearSalaryPercentage or firstYearFixedPrice is provided
+    let newFirstYearSalaryPercentage = null;
+    let newFirstYearFixedPrice = null;
+
+    // Only set the value that is being updated
+    if (firstYearSalaryPercentage !== undefined) {
+      newFirstYearSalaryPercentage = firstYearSalaryPercentage ? Number(firstYearSalaryPercentage) : null;
+      newFirstYearFixedPrice = null;
+    } else if (firstYearFixedPrice !== undefined) {
+      newFirstYearFixedPrice = firstYearFixedPrice ? Number(firstYearFixedPrice) : null;
+      newFirstYearSalaryPercentage = null;
+    } else {
+      // If neither is provided in update, keep existing values
+      newFirstYearSalaryPercentage = packageData.firstYearSalaryPercentage;
+      newFirstYearFixedPrice = packageData.firstYearFixedPrice;
+    }
+
     // Check if plan name is being changed and if it already exists
     if (planName && planName.trim() !== packageData.planName) {
       const existingPackage = await Packages.findOne({
@@ -283,24 +312,14 @@ export const updatePackage = async (req, res) => {
       }
     }
 
-    // Validate firstYearSalaryPercentage
-    if (firstYearSalaryPercentage !== undefined) {
-      const newPercentage = Number(firstYearSalaryPercentage);
-      if (newPercentage < 0 || newPercentage > 100) {
-        return res.status(400).json({
-          success: false,
-          message: "First year salary percentage must be between 0 and 100"
-        });
-      }
-    }
-
     // Update the package
     await packageData.update({
       planName: planName?.trim() || packageData.planName,
       initialPrice: newInitialPrice,
       enrollmentCharge: newEnrollmentCharge,
       offerLetterCharge: offerLetterCharge !== undefined ? Number(offerLetterCharge) : packageData.offerLetterCharge,
-      firstYearSalaryPercentage: firstYearSalaryPercentage !== undefined ? Number(firstYearSalaryPercentage) : packageData.firstYearSalaryPercentage,
+      firstYearSalaryPercentage: newFirstYearSalaryPercentage,
+      firstYearFixedPrice: newFirstYearFixedPrice,
       features: features || packageData.features,
       discounts: discounts || packageData.discounts,
       status: status || packageData.status,
@@ -689,4 +708,4 @@ const handleError = (error, res) => {
     success: false,
     message: "Internal server error"
   });
-}; 
+};

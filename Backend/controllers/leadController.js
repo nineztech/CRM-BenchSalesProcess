@@ -136,11 +136,12 @@ export const createLead = async (req, res) => {
         'DNR2',
         'DNR3',
         'Dead',
-        'Numb',
+        'open',
         'not working',
         'wrong no',
         'closed',
-        'call again later'
+        'call again later',
+        'follow up'
       ];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
@@ -756,7 +757,7 @@ export const updateLeadStatus = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { status, remark } = req.body;
+    const { status, remark, followUpDate, followUpTime } = req.body;
 
     // Validate status
     const validStatuses = [
@@ -770,7 +771,8 @@ export const updateLeadStatus = async (req, res) => {
       'not working',
       'wrong no',
       'closed',
-      'call again later'
+      'call again later',
+      'follow up'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -795,6 +797,27 @@ export const updateLeadStatus = async (req, res) => {
         success: false,
         message: 'Lead not found'
       });
+    }
+
+    // Validate follow-up date and time for inProcess statuses
+    const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
+    if (inProcessStatuses.includes(status)) {
+      if (!followUpDate || !followUpTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time are required for in-process status changes'
+        });
+      }
+
+      // Validate that follow-up time is in the future
+      const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+      const now = new Date();
+      if (followUpDateTime <= now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time must be in the future'
+        });
+      }
     }
 
     // Get creator details
@@ -852,13 +875,11 @@ export const updateLeadStatus = async (req, res) => {
         archivedAt: new Date(),
         remarks: updatedRemarks,
         updatedBy: req.user.id,
-        archivedBy: req.user.id // This will be used to track who archived the lead
+        archivedBy: req.user.id
       };
 
-      // Remove fields that shouldn't be copied
       delete archivedLeadData.id;
 
-      // Create archived lead and delete original lead
       await ArchivedLead.create(archivedLeadData, { transaction });
       await lead.destroy({ transaction });
 
@@ -871,12 +892,55 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // If not archiving, just update the status and remarks
-    await lead.update({
+    // Prepare update data
+    const updateData = {
       status,
       remarks: updatedRemarks,
-      updatedBy: req.user.id
-    }, { transaction });
+      updatedBy: req.user.id,
+      followUpDate: null,
+      followUpTime: null,
+      followUpDateTime: null
+    };
+
+    // Add follow-up data if provided
+    if (followUpDate && followUpTime) {
+      try {
+        // Ensure proper date format
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        
+        if (!dateRegex.test(followUpDate) || !timeRegex.test(followUpTime)) {
+          throw new Error('Invalid date or time format');
+        }
+
+        // Format the time to ensure HH:mm:ss format
+        const [hours, minutes] = followUpTime.split(':');
+        const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+        
+        // Create the datetime string in MySQL format
+        const mysqlDateTime = `${followUpDate} ${formattedTime}`;
+        const followUpDateTimeObj = new Date(mysqlDateTime);
+
+        // Validate the created date
+        if (isNaN(followUpDateTimeObj.getTime())) {
+          throw new Error('Invalid date/time combination');
+        }
+
+        updateData.followUpDate = followUpDate;
+        updateData.followUpTime = formattedTime;
+        updateData.followUpDateTime = followUpDateTimeObj;
+      } catch (error) {
+        console.error('Error formatting follow-up date/time:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up date or time format',
+          error: error.message
+        });
+      }
+    }
+
+    // Update the lead with the prepared data
+    await lead.update(updateData, { transaction });
 
     await transaction.commit();
 

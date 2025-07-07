@@ -17,7 +17,33 @@ import RouteGuard from '../../common/RouteGuard';
 import toast from 'react-hot-toast';
 import ReassignRemarkModal from './ReassignRemarkModal';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { FaEdit } from 'react-icons/fa';
+import { FaEdit, FaClock } from 'react-icons/fa';
+import Countdown from 'react-countdown';
+
+// Add countdown renderer interface
+interface CountdownRendererProps {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  completed: boolean;
+}
+
+// Add countdown renderer component
+const countdownRenderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+  if (completed) {
+    return <span className="text-red-600 font-semibold">Now</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-white font-medium">
+      {days > 0 && <span>{days}d</span>}
+      {hours > 0 && <span>{hours}h</span>}
+      <span>{minutes}m</span>
+      <span>{seconds}s</span>
+    </div>
+  );
+};
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -47,7 +73,7 @@ interface Lead {
   countryCode: string;
   visaStatus: string;
   status?: string;
-  statusGroup?: string;
+  statusGroup?: 'open' | 'converted' | 'archived' | 'inProcess';
   leadSource: string;
   remarks: Remark[];
   reference?: string | null;
@@ -92,6 +118,8 @@ interface Lead {
     subrole: string | null;
     departmentId: number | null;
   };
+  followUpDate?: string;
+  followUpTime?: string;
 }
 
 interface Remark {
@@ -159,6 +187,20 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+// Add this helper function to map status to groups
+const mapStatusToGroup = (status: string): string => {
+  if (['Numb'].includes(status)) {
+    return 'open';
+  } else if (['closed'].includes(status)) {
+    return 'converted';
+  } else if (['Dead', 'notinterested'].includes(status)) {
+    return 'archived';
+  } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later'].includes(status)) {
+    return 'inProcess';
+  }
+  return status;
+};
+
 const LeadCreationComponent: React.FC = () => {
   const { checkPermission, error: permissionError, loading: permissionsLoading } = usePermissions();
   // Form and error states
@@ -193,7 +235,9 @@ const LeadCreationComponent: React.FC = () => {
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [totalLeads, setTotalLeads] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
 
   // // Edit states
   // const [editingLead, setEditingLead] = useState<number | null>(null);
@@ -227,7 +271,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followUp'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -289,7 +333,7 @@ const LeadCreationComponent: React.FC = () => {
   // Add isEditing state
   const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch leads
+  // Fetch leads with proper permission check
   const fetchLeads = async () => {
     try {
       setIsLoading(true);
@@ -301,63 +345,167 @@ const LeadCreationComponent: React.FC = () => {
         return;
       }
 
-      // Check if user has permission to view all leads
-      const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      
-      // Use the appropriate endpoint based on permission
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      console.log('Has View All Leads Permission:', hasViewAllLeadsPermission);
+
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+      console.log('Has Lead Management Permission:', hasLeadManagementPermission);
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      
+      console.log('Using endpoint:', endpoint);
+
+      // Use consistent pagination for all users
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: currentPage,
+          limit: pageSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
         }
       });
 
-      setLeads(response.data.data.leads);
-      // Update pagination info from API response if available
-      if (response.data.data.pagination) {
-        const {totalPages } = response.data.data.pagination;
-        setTotalPages(totalPages);
+      if (response.data.success) {
+        const { leads, pagination } = response.data.data;
+        setLeads(leads);
+        setTotalLeads(pagination.total);
+        setTotalPages(pagination.totalPages);
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
       }
-    } catch (error) {
-      setApiError('Failed to fetch leads. Please try again.');
-      console.error('Error fetching leads:', error);
+    } catch (error: any) {
+      console.error('Error in fetchLeads:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Effect to fetch leads when component mounts and when permissions change
+  // Effect to fetch leads when component mounts or when permissions change
   useEffect(() => {
     if (!permissionsLoading) {
       fetchLeads();
     }
   }, [permissionsLoading]);
 
+  // Update handlePageChange to fetch new data
+  const handlePageChange = async (newPage: number) => {
+    setCurrentPage(newPage);
+    await fetchLeads();
+  };
+
+  // Update handlePageSizeChange to reset to first page and fetch new data
+  const handlePageSizeChange = async (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    await fetchLeads();
+  };
+
   // Filter leads based on status
   // const getLeadsByStatus = (status: string) => {
   //   return leads.filter(lead => lead.statusGroup === status);
   // };
 
+  // Add helper function to calculate time remaining
+  const getTimeRemaining = (followUpDate: string, followUpTime: string) => {
+    const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+    const now = new Date();
+    const timeDiff = followUpDateTime.getTime() - now.getTime();
+    const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+    const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    
+    if (hoursDiff > 24) {
+      const days = Math.floor(hoursDiff / 24);
+      const remainingHours = hoursDiff % 24;
+      return `${days}d ${remainingHours}h ${minutesDiff}m ${secondsDiff}s`;
+    } else if (hoursDiff > 0) {
+      return `${hoursDiff}h ${minutesDiff}m ${secondsDiff}s`;
+    } else if (minutesDiff > 0) {
+      return `${minutesDiff}m ${secondsDiff}s`;
+    } else if (secondsDiff > 0) {
+      return `${secondsDiff}s`;
+    } else {
+      return 'Now';
+    }
+  };
+
+  // Update getFollowUpLeads function
+  const getFollowUpLeads = () => {
+    return leads.filter(lead => {
+      if (lead.followUpDate && lead.followUpTime) {
+        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
+        const now = new Date();
+        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        // Only show in follow-up tab if:
+        // 1. Time is in the future
+        // 2. Time is within next 24 hours
+        // 3. Lead is in inProcess status group
+        return lead.statusGroup === 'inProcess' && diffHours > 0 && diffHours <= 24;
+      }
+      return false;
+    });
+  };
+
+  // Add useEffect to refresh leads periodically for follow-up timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (activeStatusTab === 'followUp') {
+        fetchLeads();
+      }
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(timer);
+  }, [activeStatusTab]);
+
   // Get leads count by status
   const getLeadsCountByStatus = (status: string) => {
-    return leads.filter(lead => lead.statusGroup === status).length;
+    if (status === 'followUp') {
+      return getFollowUpLeads().length;
+    }
+    return leads.filter(lead => {
+      if (lead.statusGroup === 'inProcess' && lead.followUpDate && lead.followUpTime) {
+        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
+        const now = new Date();
+        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        // Don't show in inProcess if it's in follow-up time range
+        if (diffHours > 0 && diffHours <= 24) {
+          return false;
+        }
+      }
+      return lead.statusGroup === status;
+    }).length;
   };
 
   // Filter leads based on active status tab and search term
-  const filteredLeads = leads.filter((lead: Lead) => {
-    const matchesStatus = lead.statusGroup === activeStatusTab;
-    const matchesSearch = searchTerm === '' || 
-      lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.technology.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  const filteredLeads = activeStatusTab === 'followUp' ? 
+    getFollowUpLeads() : 
+    leads.filter((lead: Lead) => {
+      if (lead.statusGroup === 'inProcess' && lead.followUpDate && lead.followUpTime) {
+        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
+        const now = new Date();
+        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        // Don't show in inProcess if it's in follow-up time range
+        if (diffHours > 0 && diffHours <= 24) {
+          return false;
+        }
+      }
 
-  const paginatedLeads = filteredLeads.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+      return lead.statusGroup === activeStatusTab;
+    });
+
+  // Use the filtered leads directly since we're using server-side pagination
+  const paginatedLeads = filteredLeads;
 
   // Export to Excel function
   const exportToExcel = () => {
@@ -956,9 +1104,10 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   // Handle status tab change
-  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess') => {
+  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess' | 'followUp') => {
     setActiveStatusTab(status);
-    setCurrentPage(1); // Reset to first page when changing status
+    setCurrentPage(1); // Reset to first page when changing tabs
+    setSelectedLeads([]); // Clear selected leads when changing tabs
   };
 
   // Update the handleStatusChange function
@@ -972,7 +1121,7 @@ const LeadCreationComponent: React.FC = () => {
   };
 
   // Update the handleStatusRemarkSubmit function
-  const handleStatusRemarkSubmit = async (remark: string) => {
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1016,13 +1165,16 @@ const LeadCreationComponent: React.FC = () => {
           setNewStatus('');
         }
       } else {
-        // Regular status update
+        // Regular status update with follow-up data if provided
+        const updateData = {
+          status: newStatus,
+          remark,
+          ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {})
+        };
+
         const response = await axios.patch(
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-          { 
-            status: newStatus,
-            remark 
-          },
+          updateData,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -1039,7 +1191,9 @@ const LeadCreationComponent: React.FC = () => {
                 ...lead,
                 status: newStatus,
                 statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || lead.remarks
+                remarks: response.data.data.remarks || lead.remarks,
+                followUpDate: response.data.data.followUpDate,
+                followUpTime: response.data.data.followUpTime
               } : lead
             )
           );
@@ -1052,16 +1206,24 @@ const LeadCreationComponent: React.FC = () => {
                 ...prevLead,
                 status: newStatus,
                 statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || prevLead.remarks
+                remarks: response.data.data.remarks || prevLead.remarks,
+                followUpDate: response.data.data.followUpDate,
+                followUpTime: response.data.data.followUpTime
               };
             });
           }
+
+          // Check if the lead will be in follow-up tab
+          const followUpDateTime = followUpDate && followUpTime ? new Date(`${followUpDate}T${followUpTime}`) : null;
+          const now = new Date();
+          const diffHours = followUpDateTime ? (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
+          const isInFollowUp = diffHours !== null && diffHours > 0 && diffHours <= 24;
 
           // Show status change notification
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: response.data.data.statusGroup
+            statusGroup: isInFollowUp ? 'followUp' : response.data.data.statusGroup
           });
           setShowStatusNotification(true);
 
@@ -1201,23 +1363,6 @@ ${(() => {
   return userData ? `${userData.firstname} ${userData.lastname}` : '';
 })()}`;
   };
-
-  // Update handleEmailClick function
-  // const handleEmailClick = (lead: Lead) => {
-  //   const userDataString = localStorage.getItem('user');
-  //   const userData = userDataString ? JSON.parse(userDataString) : null;
-    
-  //   const emailLead: EmailLead = {
-  //     firstName: lead.firstName,
-  //     lastName: lead.lastName,
-  //     primaryEmail: lead.primaryEmail,
-  //     id: lead.id,
-  //     from: userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : ''
-  //   };
-    
-  //   setSelectedLeadForEmail(emailLead);
-  //   setShowEmailPopup(true);
-  // };
 
   useEffect(() => {
     if (permissionError) {
@@ -1747,18 +1892,19 @@ ${(() => {
                         <select 
                           className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           value={pageSize}
-                          onChange={(e) => setPageSize(Number(e.target.value))}
+                          onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                         >
                           <option value="25">25 per page</option>
                           <option value="50">50 per page</option>
                           <option value="100">100 per page</option>
+                          <option value="200">200 per page</option>
                         </select>
                       </div>
                     </div>
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess','converted'] as const).map(tab => (
+                        {(['open', 'inProcess', 'followUp', 'converted'] as const).map(tab => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1766,7 +1912,7 @@ ${(() => {
                           >
                             <span className="flex items-center gap-2">
                               {getStatusIcon(tab)}
-                              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              {tab === 'followUp' ? 'Follow Up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
                                 {getLeadsCountByStatus(tab)}
                               </span>
@@ -1906,40 +2052,64 @@ ${(() => {
                                     {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                                   </td>
                                   <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
-                                    <PermissionGuard 
-                                      activityName="Lead Status Management" 
-                                      action="view"
-                                      fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
-                                    >
-                                      <PermissionGuard
-                                        activityName="Lead Status Management"
-                                        action="edit"
-                                        fallback={
-                                          <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
-                                            {lead.status || 'open'}
-                                          </div>
-                                        }
+                                    <div className="flex flex-col gap-1">
+                                      <PermissionGuard 
+                                        activityName="Lead Status Management" 
+                                        action="view"
+                                        fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
                                       >
-                                        <select
-                                          value={lead.status || 'open'}
-                                          onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                          disabled={lead.status === 'closed'}
-                                          className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                        <PermissionGuard
+                                          activityName="Lead Status Management"
+                                          action="edit"
+                                          fallback={
+                                            <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                              {lead.status || 'open'}
+                                            </div>
+                                          }
                                         >
-                                          <option value="open">Open</option>
-                                          <option value="DNR1">DNR1</option>
-                                          <option value="DNR2">DNR2</option>
-                                          <option value="DNR3">DNR3</option>
-                                          <option value="interested">Interested</option>
-                                          <option value="not working">Not Working</option>
-                                          <option value="wrong no">Wrong No</option>
-                                          <option value="call again later">Call Again Later</option>
-                                          <option value="closed">Closed</option>
-                                          <option value="Dead">Dead</option>
-                                          <option value="notinterested">Not Interested</option>
-                                        </select>
+                                          <div className="flex items-center gap-2">
+                                            <select
+                                              value={lead.status || 'open'}
+                                              onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                              disabled={lead.status === 'closed'}
+                                              className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                            >
+                                              <option value="open">Open</option>
+                                              <option value="DNR1">DNR1</option>
+                                              <option value="DNR2">DNR2</option>
+                                              <option value="DNR3">DNR3</option>
+                                              <option value="interested">Interested</option>
+                                              <option value="not working">Not Working</option>
+                                              <option value="wrong no">Wrong No</option>
+                                              <option value="call again later">Call Again Later</option>
+                                              <option value="follow up">Follow Up</option>
+                                              <option value="closed">Closed</option>
+                                              <option value="Dead">Dead</option>
+                                              <option value="notinterested">Not Interested</option>
+                                            </select>
+                                            {lead.followUpDate && lead.followUpTime && (
+                                              <div className="group relative">
+                                                <FaClock 
+                                                  className={`h-4 w-4 cursor-help ${
+                                                    new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                      ? 'text-red-500' 
+                                                      : 'text-gray-500'
+                                                  }`} 
+                                                />
+                                                <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
+                                                  <span className="text-indigo-200">Follow up in:</span>
+                                                  <Countdown
+                                                    date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                    renderer={countdownRenderer}
+                                                  />
+                                                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </PermissionGuard>
                                       </PermissionGuard>
-                                    </PermissionGuard>
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
@@ -1992,26 +2162,38 @@ ${(() => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {leads.length} leads
+                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalLeads)} of {totalLeads} leads
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                    <div className="flex items-center gap-4">
+                      <select 
+                        className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={pageSize}
+                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                       >
-                        Previous
-                      </button>
-                      <span className="px-4 py-2 mx-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        Next
-                      </button>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                        <option value="200">200 per page</option>
+                      </select>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-4 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

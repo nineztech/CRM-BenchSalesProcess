@@ -34,11 +34,33 @@ const Packages = sequelize.define(
     },
     firstYearSalaryPercentage: {
       type: DataTypes.DECIMAL(5, 2),
-      allowNull: false,
-      defaultValue: 0,
+      allowNull: true,
+      defaultValue: null,
       validate: {
         min: 0,
-        max: 100
+        max: 100,
+        cannotCoexistWithFixedPrice(value) {
+          if (value === null) return;
+          
+          if (value && this.firstYearFixedPrice) {
+            throw new Error('Cannot set both firstYearSalaryPercentage and firstYearFixedPrice');
+          }
+        }
+      }
+    },
+    firstYearFixedPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        min: 0,
+        cannotCoexistWithPercentage(value) {
+          if (value === null) return;
+          
+          if (value && this.firstYearSalaryPercentage) {
+            throw new Error('Cannot set both firstYearSalaryPercentage and firstYearFixedPrice');
+          }
+        }
       }
     },
     initialPrice: {
@@ -150,4 +172,4 @@ Packages.prototype.addDiscount = function(newDiscount) {
   return this.discounts;
 };
 
-export default Packages; 
+export default Packages;
