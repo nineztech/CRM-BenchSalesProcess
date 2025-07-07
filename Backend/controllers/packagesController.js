@@ -9,7 +9,8 @@ export const addPackage = async (req, res) => {
       initialPrice,
       enrollmentCharge, 
       offerLetterCharge, 
-      firstYearSalaryPercentage, 
+      firstYearSalaryPercentage,
+      firstYearFixedPrice, 
       features, 
       discounts 
     } = req.body;
@@ -27,6 +28,15 @@ export const addPackage = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Enrollment charge and offer letter charge are required"
+      });
+    }
+
+    // Validate that only one of firstYearSalaryPercentage or firstYearFixedPrice is provided
+    if (firstYearSalaryPercentage !== undefined && firstYearSalaryPercentage !== null && 
+        firstYearFixedPrice !== undefined && firstYearFixedPrice !== null) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot set both firstYearSalaryPercentage and firstYearFixedPrice"
       });
     }
 
@@ -53,7 +63,8 @@ export const addPackage = async (req, res) => {
       initialPrice: Number(initialPrice),
       enrollmentCharge: Number(enrollmentCharge),
       offerLetterCharge: Number(offerLetterCharge),
-      firstYearSalaryPercentage: Number(firstYearSalaryPercentage) || 0,
+      firstYearSalaryPercentage: firstYearSalaryPercentage ? Number(firstYearSalaryPercentage) : null,
+      firstYearFixedPrice: firstYearFixedPrice ? Number(firstYearFixedPrice) : null,
       features: features || [],
       discounts: discounts || [],
       createdBy: userId,
@@ -229,7 +240,8 @@ export const updatePackage = async (req, res) => {
       initialPrice,
       enrollmentCharge, 
       offerLetterCharge, 
-      firstYearSalaryPercentage, 
+      firstYearSalaryPercentage,
+      firstYearFixedPrice, 
       features, 
       discounts,
       status 
@@ -269,6 +281,53 @@ export const updatePackage = async (req, res) => {
       });
     }
 
+    // Handle firstYearSalaryPercentage and firstYearFixedPrice
+    let newFirstYearSalaryPercentage = packageData.firstYearSalaryPercentage;
+    let newFirstYearFixedPrice = packageData.firstYearFixedPrice;
+
+    // Check if firstYearSalaryPercentage is provided in the request
+    if (firstYearSalaryPercentage !== undefined) {
+      if (firstYearSalaryPercentage === null || firstYearSalaryPercentage === '') {
+        newFirstYearSalaryPercentage = null;
+      } else {
+        newFirstYearSalaryPercentage = Number(firstYearSalaryPercentage);
+        newFirstYearFixedPrice = null; // Set the other field to null when this is set
+      }
+    }
+    
+    // Check if firstYearFixedPrice is provided in the request
+    if (firstYearFixedPrice !== undefined) {
+      if (firstYearFixedPrice === null || firstYearFixedPrice === '') {
+        newFirstYearFixedPrice = null;
+      } else {
+        newFirstYearFixedPrice = Number(firstYearFixedPrice);
+        newFirstYearSalaryPercentage = null; // Set the other field to null when this is set
+      }
+    }
+
+    // Validate that at least one of the first year fields has a value
+    if (newFirstYearSalaryPercentage === null && newFirstYearFixedPrice === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Either firstYearSalaryPercentage or firstYearFixedPrice must be provided"
+      });
+    }
+
+    // Validate ranges
+    if (newFirstYearSalaryPercentage !== null && (newFirstYearSalaryPercentage <= 0 || newFirstYearSalaryPercentage > 100)) {
+      return res.status(400).json({
+        success: false,
+        message: "First year salary percentage must be between 0 and 100"
+      });
+    }
+
+    if (newFirstYearFixedPrice !== null && newFirstYearFixedPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "First year fixed price must be greater than 0"
+      });
+    }
+
     // Check if plan name is being changed and if it already exists
     if (planName && planName.trim() !== packageData.planName) {
       const existingPackage = await Packages.findOne({
@@ -283,29 +342,21 @@ export const updatePackage = async (req, res) => {
       }
     }
 
-    // Validate firstYearSalaryPercentage
-    if (firstYearSalaryPercentage !== undefined) {
-      const newPercentage = Number(firstYearSalaryPercentage);
-      if (newPercentage < 0 || newPercentage > 100) {
-        return res.status(400).json({
-          success: false,
-          message: "First year salary percentage must be between 0 and 100"
-        });
-      }
-    }
-
     // Update the package
-    await packageData.update({
+    const updatedPackageData = {
       planName: planName?.trim() || packageData.planName,
       initialPrice: newInitialPrice,
       enrollmentCharge: newEnrollmentCharge,
       offerLetterCharge: offerLetterCharge !== undefined ? Number(offerLetterCharge) : packageData.offerLetterCharge,
-      firstYearSalaryPercentage: firstYearSalaryPercentage !== undefined ? Number(firstYearSalaryPercentage) : packageData.firstYearSalaryPercentage,
+      firstYearSalaryPercentage: newFirstYearSalaryPercentage,
+      firstYearFixedPrice: newFirstYearFixedPrice,
       features: features || packageData.features,
       discounts: discounts || packageData.discounts,
       status: status || packageData.status,
       updatedBy: userId
-    });
+    };
+
+    await packageData.update(updatedPackageData);
 
     const updatedPackage = await Packages.findByPk(id, {
       include: [
@@ -327,13 +378,15 @@ export const updatePackage = async (req, res) => {
     handleError(error, res);
   }
 };
-
 // Delete Package
-export const deletePackage = async (req, res) => {
+export const togglePackageStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    
+    const userId = req.user?.id;
+
+    // Find the package by ID
     const packageData = await Packages.findByPk(id);
+    
     if (!packageData) {
       return res.status(404).json({
         success: false,
@@ -341,14 +394,47 @@ export const deletePackage = async (req, res) => {
       });
     }
 
-    await packageData.destroy();
+    // Toggle the status
+    const newStatus = packageData.status === 'active' ? 'inactive' : 'active';
+
+    // Update the package with new status
+    await packageData.update({
+      status: newStatus,
+      updatedBy: userId,
+      updatedAt: new Date()
+    });
+
+    // Fetch the updated package with relations
+    const updatedPackage = await Packages.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
 
     res.status(200).json({
       success: true,
-      message: "Package deleted successfully"
+      message: `Package status changed to ${newStatus} successfully`,
+      data: {
+        id: updatedPackage.id,
+        planName: updatedPackage.planName,
+        status: updatedPackage.status,
+        previousStatus: packageData.status,
+        updatedAt: updatedPackage.updatedAt,
+        updatedBy: updatedPackage.updater
+      }
     });
+
   } catch (error) {
-    console.error("Error deleting package:", error);
+    console.error("Error toggling package status:", error);
     handleError(error, res);
   }
 };
@@ -689,4 +775,4 @@ const handleError = (error, res) => {
     success: false,
     message: "Internal server error"
   });
-}; 
+};

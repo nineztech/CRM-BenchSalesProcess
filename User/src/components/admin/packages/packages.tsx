@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck } from 'react-icons/fa';
+import { FaEdit, FaLock, FaUnlock, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck } from 'react-icons/fa';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../common/layout/Layout';
@@ -14,7 +14,8 @@ interface Package {
   enrollmentCharge: number;
   initialPrice:number;
   offerLetterCharge: number;
-  firstYearSalaryPercentage: number;
+  firstYearSalaryPercentage: number | null;
+  firstYearFixedPrice: number | null;
   features: string[];
   discounts: {
     planName: string;
@@ -35,7 +36,8 @@ interface FormData {
   initialPrice: number;
   enrollmentCharge: number;
   offerLetterCharge: number;
-  firstYearSalaryPercentage: number;
+  firstYearSalaryPercentage: number | null;
+  firstYearFixedPrice: number | null;
   features: string[];
   discounts: {
     planName: string;
@@ -158,7 +160,8 @@ const PackagesPage: React.FC = () => {
     initialPrice: 0,
     enrollmentCharge: 0,
     offerLetterCharge: 0,
-    firstYearSalaryPercentage: 0,
+    firstYearSalaryPercentage: null,
+    firstYearFixedPrice: null,
     features: [],
     discounts: []
   });
@@ -311,13 +314,22 @@ const PackagesPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'initialPrice' ? Number(value) : value;
+    const newValue = name.includes('Charge') || name === 'firstYearSalaryPercentage' || name === 'firstYearFixedPrice' || name === 'initialPrice' 
+      ? value === '' ? null : Number(value) 
+      : value;
     
     setFormData(prev => {
       const updatedData = {
         ...prev,
         [name]: newValue
       };
+
+      // Handle mutual exclusivity between firstYearSalaryPercentage and firstYearFixedPrice
+      if (name === 'firstYearSalaryPercentage' && newValue !== null) {
+        updatedData.firstYearFixedPrice = null;
+      } else if (name === 'firstYearFixedPrice' && newValue !== null) {
+        updatedData.firstYearSalaryPercentage = null;
+      }
 
       // Real-time validation for initial price and enrollment charge
       if (name === 'initialPrice' || name === 'enrollmentCharge') {
@@ -372,13 +384,31 @@ const PackagesPage: React.FC = () => {
       newErrors.offerLetterCharge = 'Valid offer letter charge is required';
     }
 
-    if (!formData.firstYearSalaryPercentage || formData.firstYearSalaryPercentage < 0 || formData.firstYearSalaryPercentage > 100) {
-      newErrors.firstYearSalaryPercentage = 'First year salary percentage must be between 0 and 100';
+    // Validate that at least one of firstYearSalaryPercentage or firstYearFixedPrice is provided
+    if (formData.firstYearSalaryPercentage === null && formData.firstYearFixedPrice === null) {
+      newErrors.firstYearSalaryPercentage = 'Either First Year Salary Percentage or Fixed Price is required';
+      newErrors.firstYearFixedPrice = 'Either First Year Salary Percentage or Fixed Price is required';
+    } else {
+      // Validate firstYearSalaryPercentage if it's provided
+      if (formData.firstYearSalaryPercentage !== null) {
+        if (formData.firstYearSalaryPercentage < 0 || formData.firstYearSalaryPercentage > 100) {
+          newErrors.firstYearSalaryPercentage = 'First year salary percentage must be between 0 and 100';
+        }
+      }
+      // Validate firstYearFixedPrice if it's provided
+      if (formData.firstYearFixedPrice !== null) {
+        if (formData.firstYearFixedPrice <= 0) {
+          newErrors.firstYearFixedPrice = 'First year fixed price must be greater than 0';
+        }
+      }
     }
     
     if (formData.features.length === 0) {
       newErrors.features = 'At least one feature is required';
     }
+
+    console.log('Form data being validated:', formData); // Add logging
+    console.log('Validation errors:', newErrors); // Add logging
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -409,11 +439,14 @@ const PackagesPage: React.FC = () => {
       return;
     }
 
+    // Create a clean package data object
     const packageData = {
-      ...formData,
+      planName: formData.planName.trim(),
       initialPrice: Number(formData.initialPrice),
       enrollmentCharge: Number(formData.enrollmentCharge),
       offerLetterCharge: Number(formData.offerLetterCharge),
+      firstYearSalaryPercentage: formData.firstYearSalaryPercentage !== null ? Number(formData.firstYearSalaryPercentage) : null,
+      firstYearFixedPrice: formData.firstYearFixedPrice !== null ? Number(formData.firstYearFixedPrice) : null,
       features: formData.features.map(feature => feature.trim()).filter(Boolean),
       discounts: formData.discounts.map(discount => ({
         ...discount,
@@ -421,17 +454,21 @@ const PackagesPage: React.FC = () => {
       }))
     };
 
+    console.log('Package data being submitted:', packageData); // Debug log
+
     if (editingPackage) {
       toast.promise(
         axiosInstance.put(`/${editingPackage.id}`, packageData),
         {
           loading: 'Updating package...',
-          success: () => {
+          success: (response) => {
+            console.log('Update response:', response); // Debug log
             fetchPackages();
             resetForm();
             return 'Package updated successfully';
           },
           error: (err: any) => {
+            console.error('Update error:', err, err.response?.data); // Debug log
             if (err.response?.data?.errors) {
               setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
                 acc[curr.field] = curr.message;
@@ -453,6 +490,7 @@ const PackagesPage: React.FC = () => {
             return 'Package created successfully';
           },
           error: (err: any) => {
+            console.error('Create error:', err); // Add logging
             if (err.response?.data?.errors) {
               setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
                 acc[curr.field] = curr.message;
@@ -467,15 +505,17 @@ const PackagesPage: React.FC = () => {
   };
 
   const handleEdit = (pkg: Package) => {
+    console.log('Package data received for edit:', pkg); // Debug log
     setEditingPackage(pkg);
     setFormData({
       planName: pkg.planName,
       initialPrice: pkg.initialPrice || 0,
       enrollmentCharge: pkg.enrollmentCharge,
       offerLetterCharge: pkg.offerLetterCharge,
-      firstYearSalaryPercentage: pkg.firstYearSalaryPercentage,
-      features: pkg.features,
-      discounts: pkg.discounts
+      firstYearSalaryPercentage: pkg.firstYearSalaryPercentage !== undefined ? pkg.firstYearSalaryPercentage : null,
+      firstYearFixedPrice: pkg.firstYearFixedPrice !== undefined ? pkg.firstYearFixedPrice : null,
+      features: pkg.features || [],
+      discounts: pkg.discounts || []
     });
     setSelectedPackageId(pkg.id);
     
@@ -503,16 +543,18 @@ const PackagesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, currentStatus: string) => {
+    const action = currentStatus === 'active' ? 'deactivate' : 'activate';
+    
     toast.promise(
-      axiosInstance.delete(`/${id}`),
+      axiosInstance.patch(`/${id}`),
       {
-        loading: 'Deleting package...',
+        loading: `${action === 'activate' ? 'Activating' : 'Deactivating'} package...`,
         success: () => {
           fetchPackages();
-          return 'Package deleted successfully';
+          return `Package ${action}d successfully`;
         },
-        error: (err: any) => err.response?.data?.message || 'Failed to delete package'
+        error: (err: any) => err.response?.data?.message || `Failed to ${action} package`
       }
     );
   };
@@ -523,7 +565,8 @@ const PackagesPage: React.FC = () => {
       initialPrice: 0,
       enrollmentCharge: 0,
       offerLetterCharge: 0,
-      firstYearSalaryPercentage: 0,
+      firstYearSalaryPercentage: null,
+      firstYearFixedPrice: null,
       features: [],
       discounts: []
     });
@@ -786,7 +829,7 @@ const PackagesPage: React.FC = () => {
               </div>
             )}
 
-            {/* First Year Percentage and Features Section */}
+            {/* First Year Percentage and Fixed Price Section */}
             <div className="mt-6 flex items-center gap-4">
               <div className="form-group w-1/4">
                 <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Salary Percentage</label>
@@ -795,62 +838,83 @@ const PackagesPage: React.FC = () => {
                   name="firstYearSalaryPercentage"
                   value={formData.firstYearSalaryPercentage || ''}
                   onChange={handleInputChange}
-                  className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300`}
+                  className={`w-full p-2.5 text-sm border ${errors.firstYearSalaryPercentage ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.firstYearFixedPrice !== null ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Enter first year salary percentage"
                   min="0"
                   max="100"
                   step="0.01"
+                  disabled={formData.firstYearFixedPrice !== null}
                 />
                 {errors.firstYearSalaryPercentage && (
                   <p className="mt-1 text-xs text-red-500">{errors.firstYearSalaryPercentage}</p>
                 )}
               </div>
 
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Features</label>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={featureInput}
-                    onChange={(e) => setFeatureInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (featureInput.trim()) {
-                          setFormData(prev => ({
-                            ...prev,
-                            features: [...prev.features, featureInput.trim()]
-                          }));
-                          setFeatureInput('');
-                        }
-                      }
-                    }}
-                    className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                    placeholder="Add a feature"
-                  />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={addFeature}
-                    className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
-                  >
-                    <FaCheck size={14} />
-                    Add Feature
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowDiscountForm(!showDiscountForm)}
-                    disabled={!editingPackage && !selectedPackageId}
-                    className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <FaGift size={14} />
-                    {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
-                  </motion.button>
-                </div>
+              <div className="form-group w-1/4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">First Year Fixed Price</label>
+                <input
+                  type="number"
+                  name="firstYearFixedPrice"
+                  value={formData.firstYearFixedPrice || ''}
+                  onChange={handleInputChange}
+                  className={`w-full p-2.5 text-sm border ${errors.firstYearFixedPrice ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.firstYearSalaryPercentage !== null ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  placeholder="Enter first year fixed price"
+                  min="0"
+                  step="0.01"
+                  disabled={formData.firstYearSalaryPercentage !== null}
+                />
+                {errors.firstYearFixedPrice && (
+                  <p className="mt-1 text-xs text-red-500">{errors.firstYearFixedPrice}</p>
+                )}
               </div>
-            </div>
 
+            </div>
+<div className="mt-6 flex items-center gap-4"> 
+  
+                <div className="flex-1">
+                  <label className="block text-xs text-start font-semibold ml-6 text-gray-700 mb-2">Features</label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={featureInput}
+                      onChange={(e) => setFeatureInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (featureInput.trim()) {
+                            setFormData(prev => ({
+                              ...prev,
+                              features: [...prev.features, featureInput.trim()]
+                            }));
+                            setFeatureInput('');
+                          }
+                        }
+                      }}
+                      className="flex-1 p-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Add a feature"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={addFeature}
+                      className="px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg flex items-center gap-2"
+                    >
+                      <FaCheck size={14} />
+                      Add Feature
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowDiscountForm(!showDiscountForm)}
+                      disabled={!editingPackage && !selectedPackageId}
+                      className={`px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg flex items-center gap-2 ${(!editingPackage && !selectedPackageId) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <FaGift size={14} />
+                      {showDiscountForm ? 'Hide Discount' : 'Add Discount'}
+                    </motion.button>
+                  </div>
+                </div>
+</div>
             {/* Features Display */}
             <div className="flex flex-wrap gap-3 mt-4">
               {formData.features.map((feature, index) => (
@@ -858,7 +922,7 @@ const PackagesPage: React.FC = () => {
                   key={index}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
+                  className="flex  gap-2 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full"
                 >
                   <span className="text-sm font-medium text-blue-800">{feature}</span>
                   <button
@@ -1039,12 +1103,12 @@ const PackagesPage: React.FC = () => {
                   <motion.div
                     key={pkg.id}
                     initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: pkg.status === 'active' ? 1 : 0.7, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: index * 0.1 }}
                     onHoverStart={() => setIsAnyCardHovered(true)}
                     onHoverEnd={() => setIsAnyCardHovered(false)}
-                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
+                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''} ${pkg.status !== 'active' ? 'grayscale' : ''}`}
                   >
                     {/* Countdown Timer - Only show if there are active discounts */}
                     {hasActiveDiscount && (
@@ -1101,10 +1165,11 @@ const PackagesPage: React.FC = () => {
                           <div className="flex gap-1.5">
                             {checkPermission('Package Management', 'edit') && (
                               <motion.button
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleEdit(pkg)}
-                                className={`p-1.5 ${theme.icon} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
+                                whileHover={{ scale: pkg.status === 'active' ? 1.1 : 1, rotate: pkg.status === 'active' ? 5 : 0 }}
+                                whileTap={{ scale: pkg.status === 'active' ? 0.9 : 1 }}
+                                onClick={() => pkg.status === 'active' ? handleEdit(pkg) : null}
+                                className={`p-1.5 ${pkg.status === 'active' ? `${theme.icon} hover:bg-white hover:shadow-sm` : 'text-gray-400 cursor-not-allowed'} rounded-lg transition-all duration-300`}
+                                disabled={pkg.status !== 'active'}
                               >
                                 <FaEdit size={14} />
                               </motion.button>
@@ -1113,10 +1178,10 @@ const PackagesPage: React.FC = () => {
                               <motion.button
                                 whileHover={{ scale: 1.1, rotate: -5 }}
                                 whileTap={{ scale: 0.9 }}
-                                onClick={() => handleDelete(pkg.id)}
-                                className="p-1.5 text-red-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                                onClick={() => handleDelete(pkg.id, pkg.status)}
+                                className={`p-1.5 ${pkg.status === 'active' ? 'text-orange-500' : 'text-green-500'} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
                               >
-                                <FaTrash size={14} />
+                                {pkg.status === 'active' ? <FaLock size={14} /> : <FaUnlock size={14} />}
                               </motion.button>
                             )}
                           </div>
@@ -1152,9 +1217,15 @@ const PackagesPage: React.FC = () => {
                             <div className={`p-1.5 ${theme.icon} bg-white rounded-lg shadow-sm`}>
                               <FaMoneyBillWave size={12} />
                             </div>
-                            <span className="font-medium text-gray-700 text-xs">First Year Salary</span>
+                            <span className="font-medium text-gray-700 text-xs">First Year</span>
                           </div>
-                          <span className={`font-bold ${theme.accent} text-sm`}>{pkg.firstYearSalaryPercentage}%</span>
+                          <span className={`font-bold ${theme.accent} text-sm`}>
+                            {pkg.firstYearSalaryPercentage !== null 
+                              ? `${pkg.firstYearSalaryPercentage}%` 
+                              : pkg.firstYearFixedPrice !== null 
+                                ? `$${pkg.firstYearFixedPrice}` 
+                                : '-'}
+                          </span>
                         </div>
                       </div>
 

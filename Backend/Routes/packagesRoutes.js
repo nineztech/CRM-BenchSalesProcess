@@ -3,7 +3,7 @@ import {
   getAllPackages,
   getPackageById,
   updatePackage,
-  deletePackage,
+  togglePackageStatus,
   addDiscount,
   removeDiscount,
   getPackageDiscounts,
@@ -20,7 +20,7 @@ router.post("/add", authentication, addPackage)
 router.get("/all", getAllPackages)
 router.get("/:id", getPackageById)
 router.put("/:id", authentication, updatePackage)
-router.delete("/:id", authentication, deletePackage)
+router.patch("/:id", authentication, togglePackageStatus)
 
 // Discount routes
 router.post("/:packageId/discounts", authentication, addDiscount)
@@ -31,4 +31,4 @@ router.delete("/:packageId/discounts/:discountId", authentication, removeDiscoun
 // Cleanup route
 router.post("/cleanup-expired-discounts", authentication, cleanupExpiredDiscounts)
 
-export default router 
+export default router
