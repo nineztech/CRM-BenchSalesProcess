@@ -162,7 +162,11 @@ interface SalesUser {
   };
 }
 
-const getStatusIcon = (status: string) => {
+// Add type definition for tab status
+type TabStatus = 'open' | 'converted' | 'inProcess' | 'followup';
+
+// Update the getStatusIcon function
+const getStatusIcon = (status: TabStatus) => {
   switch (status) {
     case 'open':
       return (
@@ -230,13 +234,23 @@ const LeadCreationComponent: React.FC = () => {
   const [countries] = useState(countryList().getData());
 
   // Table states
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsData, setLeadsData] = useState<{
+    open: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    inProcess: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    converted: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    archived: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
+  }>({
+    open: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    inProcess: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    converted: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    archived: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
+  });
+
   var searchTerm='';
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [totalLeads, setTotalLeads] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
 
   // // Edit states
@@ -271,7 +285,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followUp'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -346,10 +360,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      console.log('Has View All Leads Permission:', hasViewAllLeadsPermission);
-
       const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-      console.log('Has Lead Management Permission:', hasLeadManagementPermission);
 
       if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
         setApiError('You do not have permission to view leads.');
@@ -357,15 +368,13 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      console.log('Using endpoint:', endpoint);
 
-      // Use consistent pagination for all users
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
         params: {
-          page: currentPage,
+          page: leadsData[activeStatusTab].pagination.currentPage,
           limit: pageSize,
           sortBy: 'createdAt',
           sortOrder: 'DESC'
@@ -373,10 +382,15 @@ const LeadCreationComponent: React.FC = () => {
       });
 
       if (response.data.success) {
-        const { leads, pagination } = response.data.data;
-        setLeads(leads);
-        setTotalLeads(pagination.total);
-        setTotalPages(pagination.totalPages);
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          open: data.open,
+          inProcess: data.inProcess,
+          converted: data.converted,
+          archived: data.archived,
+          followup: data.followup
+        }));
       } else {
         setApiError('Failed to fetch leads. Please try again.');
       }
@@ -397,15 +411,115 @@ const LeadCreationComponent: React.FC = () => {
 
   // Update handlePageChange to fetch new data
   const handlePageChange = async (newPage: number) => {
-    setCurrentPage(newPage);
-    await fetchLeads();
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: newPage,
+          limit: pageSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [activeStatusTab]: {
+            ...data[activeStatusTab],
+            pagination: {
+              ...data[activeStatusTab].pagination,
+              currentPage: newPage
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handlePageChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Update handlePageSizeChange to reset to first page and fetch new data
   const handlePageSizeChange = async (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
-    await fetchLeads();
+    try {
+      setIsLoading(true);
+      setPageSize(newSize);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: 1, // Reset to first page when changing page size
+          limit: newSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [activeStatusTab]: {
+            ...data[activeStatusTab],
+            pagination: {
+              ...data[activeStatusTab].pagination,
+              currentPage: 1,
+              limit: newSize
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handlePageSizeChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filter leads based on status
@@ -439,26 +553,13 @@ const LeadCreationComponent: React.FC = () => {
 
   // Update getFollowUpLeads function
   const getFollowUpLeads = () => {
-    return leads.filter(lead => {
-      if (lead.followUpDate && lead.followUpTime) {
-        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
-        const now = new Date();
-        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-        
-        // Only show in follow-up tab if:
-        // 1. Time is in the future
-        // 2. Time is within next 24 hours
-        // 3. Lead is in inProcess status group
-        return lead.statusGroup === 'inProcess' && diffHours > 0 && diffHours <= 24;
-      }
-      return false;
-    });
+    return leadsData.followup.leads;
   };
 
   // Add useEffect to refresh leads periodically for follow-up timer
   useEffect(() => {
     const timer = setInterval(() => {
-      if (activeStatusTab === 'followUp') {
+      if (activeStatusTab === 'followup') {
         fetchLeads();
       }
     }, 60000); // Refresh every minute
@@ -466,43 +567,18 @@ const LeadCreationComponent: React.FC = () => {
     return () => clearInterval(timer);
   }, [activeStatusTab]);
 
-  // Get leads count by status
+  // Update the getLeadsCountByStatus function
   const getLeadsCountByStatus = (status: string) => {
-    if (status === 'followUp') {
-      return getFollowUpLeads().length;
+    if (status === 'followup') {
+      return leadsData.followup.pagination.total;
     }
-    return leads.filter(lead => {
-      if (lead.statusGroup === 'inProcess' && lead.followUpDate && lead.followUpTime) {
-        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
-        const now = new Date();
-        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-        
-        // Don't show in inProcess if it's in follow-up time range
-        if (diffHours > 0 && diffHours <= 24) {
-          return false;
-        }
-      }
-      return lead.statusGroup === status;
-    }).length;
+    return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
   };
 
   // Filter leads based on active status tab and search term
-  const filteredLeads = activeStatusTab === 'followUp' ? 
-    getFollowUpLeads() : 
-    leads.filter((lead: Lead) => {
-      if (lead.statusGroup === 'inProcess' && lead.followUpDate && lead.followUpTime) {
-        const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
-        const now = new Date();
-        const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-        
-        // Don't show in inProcess if it's in follow-up time range
-        if (diffHours > 0 && diffHours <= 24) {
-          return false;
-        }
-      }
-
-      return lead.statusGroup === activeStatusTab;
-    });
+  const filteredLeads = activeStatusTab === 'followup' 
+    ? leadsData.followup.leads 
+    : leadsData[activeStatusTab]?.leads || [];
 
   // Use the filtered leads directly since we're using server-side pagination
   const paginatedLeads = filteredLeads;
@@ -513,7 +589,7 @@ const LeadCreationComponent: React.FC = () => {
     const filename = `leads_${date}`;
     
     // Format the leads data for Excel
-    const excelData = leads.map(lead => ({
+    const excelData = leadsData.open.leads.map(lead => ({
       'Candidate Name': lead.firstName + ' ' + lead.lastName,
       'Contact Number': lead.primaryContact,
       'Email': lead.primaryEmail,
@@ -546,9 +622,9 @@ const LeadCreationComponent: React.FC = () => {
     }
 
     // Find the first lead that is being reassigned (already has assignedUser)
-    const firstReassignedIndex = selectedLeads.find(index => leads[index]?.assignedUser);
+    const firstReassignedIndex = selectedLeads.find(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
     if (firstReassignedIndex !== undefined) {
-      setPendingReassign({ lead: leads[firstReassignedIndex], user: selectedUser });
+      setPendingReassign({ lead: leadsData[activeStatusTab].leads[firstReassignedIndex], user: selectedUser });
       setShowReassignRemarkModal(true);
       return;
     }
@@ -568,7 +644,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       for (const leadIndex of selectedLeads) {
-        const lead = leads[leadIndex];
+        const lead = leadsData[activeStatusTab].leads[leadIndex];
         if (!lead || !lead.id) continue;
 
         // First create the lead assignment
@@ -643,7 +719,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leads[firstSelectedLead]?.assignedUser ? `${leads[firstSelectedLead].assignedUser.firstname} ${leads[firstSelectedLead].assignedUser.lastname}` : '';
+    return leadsData[activeStatusTab].leads[firstSelectedLead]?.assignedUser ? `${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.firstname} ${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.lastname}` : '';
   };
 
   React.useEffect(() => {
@@ -657,7 +733,7 @@ const LeadCreationComponent: React.FC = () => {
   const getButtonProps = () => {
     if (selectedLeads.length === 0) return { text: 'Assign', color: 'bg-indigo-600' };
     
-    const hasSalesPerson = selectedLeads.some(index => leads[index].assignedUser);
+    const hasSalesPerson = selectedLeads.some(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
     
     if (hasSalesPerson) {
       return { 
@@ -794,7 +870,13 @@ const LeadCreationComponent: React.FC = () => {
             linkedinId: row['LinkedIn'],
           }));
           
-          setLeads(prev => [...prev, ...newLeads]);
+          setLeadsData(prev => ({
+            ...prev,
+            open: {
+              ...prev.open,
+              leads: [...prev.open.leads, ...newLeads]
+            }
+          }));
           setUploadSuccess(true);
           setFile(null); // Clear the file input
           toast.success('File uploaded successfully!');
@@ -901,7 +983,7 @@ const LeadCreationComponent: React.FC = () => {
   // };
 
   const handleCheckboxChange = (index: number) => {
-    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((currentPage - 1) * pageSize));
+    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize));
     setSelectedLeads(prev =>
       prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
     );
@@ -1096,23 +1178,76 @@ const LeadCreationComponent: React.FC = () => {
       'text-gray-500 hover:text-gray-700'}
   `;
 
-  const getStatusTabStyle = (isActive: boolean) => `
+  // Update the getStatusTabStyle function
+  const getStatusTabStyle = (isActive: boolean): string => `
     relative px-6 py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
   `;
 
-  // Handle status tab change
-  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess' | 'followUp') => {
-    setActiveStatusTab(status);
-    setCurrentPage(1); // Reset to first page when changing tabs
-    setSelectedLeads([]); // Clear selected leads when changing tabs
+  // Update the handleStatusTabChange function
+  const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup') => {
+    try {
+      setIsLoading(true);
+      setActiveStatusTab(status);
+      setSelectedLeads([]); // Clear selected leads when changing tabs
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: 1,
+          limit: pageSize, // Use current pageSize when switching tabs
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [status]: {
+            ...data[status],
+            pagination: {
+              ...data[status].pagination,
+              currentPage: 1,
+              limit: pageSize // Ensure the page size is consistent
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handleStatusTabChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Update the handleStatusChange function
   const handleStatusChange = async (leadId: number, newStatus: string) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = leadsData[activeStatusTab].leads.find(l => l.id === leadId);
     if (!lead) return;
 
     setSelectedLeadForStatus(lead);
@@ -1148,9 +1283,29 @@ const LeadCreationComponent: React.FC = () => {
 
         if (response.data.success) {
           // Remove the lead from the list
-          setLeads(prevLeads => 
-            prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
-          );
+          setLeadsData(prev => ({
+            ...prev,
+            open: {
+              ...prev.open,
+              leads: prev.open.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            },
+            inProcess: {
+              ...prev.inProcess,
+              leads: prev.inProcess.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            },
+            converted: {
+              ...prev.converted,
+              leads: prev.converted.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            },
+            archived: {
+              ...prev.archived,
+              leads: prev.archived.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            },
+            followup: {
+              ...prev.followup,
+              leads: prev.followup.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
+            }
+          }));
 
           // Show status change notification
           setStatusNotificationData({
@@ -1185,18 +1340,74 @@ const LeadCreationComponent: React.FC = () => {
 
         if (response.data.success) {
           // Update the leads list with the new data
-          setLeads(prevLeads => 
-            prevLeads.map(lead => 
-              lead.id === selectedLeadForStatus.id ? {
-                ...lead,
-                status: newStatus,
-                statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || lead.remarks,
-                followUpDate: response.data.data.followUpDate,
-                followUpTime: response.data.data.followUpTime
-              } : lead
-            )
-          );
+          setLeadsData(prev => ({
+            ...prev,
+            open: {
+              ...prev.open,
+              leads: prev.open.leads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? {
+                  ...lead,
+                  status: newStatus,
+                  statusGroup: response.data.data.statusGroup,
+                  remarks: response.data.data.remarks || lead.remarks,
+                  followUpDate: response.data.data.followUpDate,
+                  followUpTime: response.data.data.followUpTime
+                } : lead
+              )
+            },
+            inProcess: {
+              ...prev.inProcess,
+              leads: prev.inProcess.leads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? {
+                  ...lead,
+                  status: newStatus,
+                  statusGroup: response.data.data.statusGroup,
+                  remarks: response.data.data.remarks || lead.remarks,
+                  followUpDate: response.data.data.followUpDate,
+                  followUpTime: response.data.data.followUpTime
+                } : lead
+              )
+            },
+            converted: {
+              ...prev.converted,
+              leads: prev.converted.leads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? {
+                  ...lead,
+                  status: newStatus,
+                  statusGroup: response.data.data.statusGroup,
+                  remarks: response.data.data.remarks || lead.remarks,
+                  followUpDate: response.data.data.followUpDate,
+                  followUpTime: response.data.data.followUpTime
+                } : lead
+              )
+            },
+            archived: {
+              ...prev.archived,
+              leads: prev.archived.leads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? {
+                  ...lead,
+                  status: newStatus,
+                  statusGroup: response.data.data.statusGroup,
+                  remarks: response.data.data.remarks || lead.remarks,
+                  followUpDate: response.data.data.followUpDate,
+                  followUpTime: response.data.data.followUpTime
+                } : lead
+              )
+            },
+            followup: {
+              ...prev.followup,
+              leads: prev.followup.leads.map(lead => 
+                lead.id === selectedLeadForStatus.id ? {
+                  ...lead,
+                  status: newStatus,
+                  statusGroup: response.data.data.statusGroup,
+                  remarks: response.data.data.remarks || lead.remarks,
+                  followUpDate: response.data.data.followUpDate,
+                  followUpTime: response.data.data.followUpTime
+                } : lead
+              )
+            }
+          }));
 
           // If this lead is currently selected in the details modal, update it
           if (selectedLead?.id === selectedLeadForStatus.id) {
@@ -1223,7 +1434,7 @@ const LeadCreationComponent: React.FC = () => {
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: isInFollowUp ? 'followUp' : response.data.data.statusGroup
+            statusGroup: isInFollowUp ? 'followup' : response.data.data.statusGroup
           });
           setShowStatusNotification(true);
 
@@ -1894,17 +2105,17 @@ ${(() => {
                           value={pageSize}
                           onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                         >
+                          <option value="10">10 per page</option>
                           <option value="25">25 per page</option>
                           <option value="50">50 per page</option>
                           <option value="100">100 per page</option>
-                          <option value="200">200 per page</option>
                         </select>
                       </div>
                     </div>
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess', 'followUp', 'converted'] as const).map(tab => (
+                        {(['open', 'inProcess', 'followup', 'converted'] as TabStatus[]).map((tab: TabStatus) => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1912,7 +2123,7 @@ ${(() => {
                           >
                             <span className="flex items-center gap-2">
                               {getStatusIcon(tab)}
-                              {tab === 'followUp' ? 'Follow Up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              {tab === 'followup' ? 'Follow Up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
                                 {getLeadsCountByStatus(tab)}
                               </span>
@@ -1982,7 +2193,7 @@ ${(() => {
                                     </PermissionGuard>
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    {(currentPage - 1) * pageSize + index + 1}
+                                    {(leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize + index + 1}
                                   </td>
                                   <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.firstName} {lead.lastName}
@@ -2162,38 +2373,31 @@ ${(() => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalLeads)} of {totalLeads} leads
+                      Showing {((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize) + 1} to {
+                        Math.min(
+                          leadsData[activeStatusTab].pagination.currentPage * pageSize,
+                          leadsData[activeStatusTab].pagination.total
+                        )
+                      } of {leadsData[activeStatusTab].pagination.total} leads
                     </div>
-                    <div className="flex items-center gap-4">
-                      <select 
-                        className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={pageSize}
-                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage - 1)}
+                        disabled={leadsData[activeStatusTab].pagination.currentPage === 1}
+                        className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                       >
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                        <option value="100">100 per page</option>
-                        <option value="200">200 per page</option>
-                      </select>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          Previous
-                        </button>
-                        <span className="px-4 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          Next
-                        </button>
-                      </div>
+                        Previous
+                      </button>
+                      <span className="px-4 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                        Page {leadsData[activeStatusTab].pagination.currentPage} of {leadsData[activeStatusTab].pagination.totalPages}
+                      </span>
+                      <button
+                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage + 1)}
+                        disabled={leadsData[activeStatusTab].pagination.currentPage >= leadsData[activeStatusTab].pagination.totalPages}
+                        className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
                 </div>

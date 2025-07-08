@@ -53,11 +53,11 @@ const usePermissions = () => {
         const userRole = finalUser ? JSON.parse(finalUser).role : null;
         const isSpecial = finalUser ? JSON.parse(finalUser).isSpecial : false;
 
-        console.log('User data:', {
-          userRole,
-          isSpecial,
-          parsedUser: finalUser ? JSON.parse(finalUser) : null
-        });
+        // console.log('User data:', {
+        //   userRole,
+        //   isSpecial,
+        //   parsedUser: finalUser ? JSON.parse(finalUser) : null
+        // });
 
         if (!authToken || !finalUserId) {
           if (retryCount < 3) {
@@ -92,7 +92,7 @@ const usePermissions = () => {
         
         // Check permissions based on user role and special status
         if (userRole === 'admin') {
-          console.log('Fetching admin permissions');
+          // console.log('Fetching admin permissions');
           // Fetch admin permissions
           permissionsResponse = await axios.get(
             `${BASE_URL}/admin-permissions/admin/${finalUserId}`,
@@ -101,7 +101,7 @@ const usePermissions = () => {
             }
           );
         } else if (isSpecial) {
-          console.log('Fetching special user permissions');
+          // console.log('Fetching special user permissions');
           // Fetch special user permissions
           permissionsResponse = await axios.get(
             `${BASE_URL}/special-user-permission/${finalUserId}`,
@@ -110,7 +110,7 @@ const usePermissions = () => {
             }
           );
         } else {
-          console.log('Fetching regular role permissions');
+          // console.log('Fetching regular role permissions');
           // Fetch role permissions
           if (!finalDepartmentId || !finalSubrole) {
             throw new Error('Department or role information missing');
@@ -167,11 +167,11 @@ const usePermissions = () => {
 
     const permission = permissions[activityName];
     if (!permission) {
-      console.log(`No permissions found for activity: ${activityName}`);
+      // console.log(`No permissions found for activity: ${activityName}`);
       return false;
     }
 
-    console.log(`Checking ${action} permission for ${activityName}:`, permission);
+    // console.log(`Checking ${action} permission for ${activityName}:`, permission);
 
     switch (action) {
       case 'view':
