@@ -1,8 +1,10 @@
 {
   "build": {
-    "command": "npm run build"
+    "builder": "NIXPACKS",
+    "buildCommand": "npm run build",
+    "startCommand": "npm run start"
   },
   "deploy": {
-    "command": "npm run start"
+    "restartPolicyType": "ON_FAILURE"
   }
 }
