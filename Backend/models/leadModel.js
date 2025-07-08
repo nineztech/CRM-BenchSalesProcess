@@ -137,7 +137,7 @@ const Lead = sequelize.define(
         'wrong no',
         'closed',
         'call again later',
-        'follow-up'
+        'follow up'
       ),
       allowNull: false,
       defaultValue: 'open',
@@ -147,26 +147,15 @@ const Lead = sequelize.define(
     },
     followUpDate: {
       type: DataTypes.DATEONLY,
-      allowNull: true,
-      validate: {
-        isDate: true,
-        followUpDateRequired(value) {
-          if (this.status === 'follow-up' && !value) {
-            throw new Error('Follow-up date is required when status is follow-up');
-          }
-        }
-      }
+      allowNull: true
     },
     followUpTime: {
       type: DataTypes.TIME,
-      allowNull: true,
-      validate: {
-        followUpTimeRequired(value) {
-          if (this.status === 'follow-up' && !value) {
-            throw new Error('Follow-up time is required when status is follow-up');
-          }
-        }
-      }
+      allowNull: true
+    },
+    followUpDateTime: {
+      type: DataTypes.DATE,
+      allowNull: true
     },
     leadSource: {
       type: DataTypes.STRING,
@@ -197,19 +186,16 @@ const Lead = sequelize.define(
         const status = this.getDataValue('status');
         if (!status) return 'open';
         
-        if (status === 'follow-up') {
-          const followUpDate = this.getDataValue('followUpDate');
-          const followUpTime = this.getDataValue('followUpTime');
+        // Check if lead is within 24 hours of follow-up
+        const followUpDateTime = this.getDataValue('followUpDateTime');
+        if (followUpDateTime) {
+          const now = new Date();
+          const timeDiff = followUpDateTime.getTime() - now.getTime();
+          const hoursDiff = timeDiff / (1000 * 60 * 60);
           
-          if (followUpDate && followUpTime) {
-            const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
-            const now = new Date();
-            const timeDiff = followUpDateTime.getTime() - now.getTime();
-            const hoursDiff = timeDiff / (1000 * 60 * 60);
-            
-            if (hoursDiff <= 24) {
-              return 'followUp';
-            }
+          // If follow-up is within next 24 hours, show in followUp tab
+          if (hoursDiff > 0 && hoursDiff <= 24) {
+            return 'followUp';
           }
         }
         
@@ -217,16 +203,53 @@ const Lead = sequelize.define(
           open: ['open'],
           converted: ['closed'],
           archived: ['Dead', 'notinterested'],
-          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow-up'],
-          followUp: []
+          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later']
         };
-
+        
+        // Check each status group
         for (const [group, statuses] of Object.entries(statusGroups)) {
           if (statuses.includes(status)) {
+            // For inProcess group, only return if not in followUp
+            if (group === 'inProcess') {
+              const followUpDateTime = this.getDataValue('followUpDateTime');
+              if (followUpDateTime) {
+                const now = new Date();
+                const timeDiff = followUpDateTime.getTime() - now.getTime();
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                // If within 24 hours, it will be shown in followUp tab
+                if (hoursDiff > 0 && hoursDiff <= 24) {
+                  return 'followUp';
+                }
+              }
+            }
             return group;
           }
         }
+        
         return 'open';
+      }
+    },
+    timeToFollowUp: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        const followUpDateTime = this.getDataValue('followUpDateTime');
+        if (!followUpDateTime) return null;
+        
+        const now = new Date();
+        const timeDiff = followUpDateTime.getTime() - now.getTime();
+        const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (timeDiff <= 0) return 'Now';
+        if (hoursDiff > 24) {
+          const days = Math.floor(hoursDiff / 24);
+          return `${days}d ${hoursDiff % 24}h`;
+        }
+        if (hoursDiff > 0) {
+          return `${hoursDiff}h ${minutesDiff}m`;
+        }
+        return `${minutesDiff}m`;
       }
     },
     assignTo: {
@@ -292,14 +315,27 @@ const Lead = sequelize.define(
     ],
     hooks: {
       beforeValidate: (lead) => {
+        // Set primaryEmail from emails array
         if (Array.isArray(lead.emails) && lead.emails.length > 0) {
           lead.primaryEmail = lead.emails[0].toLowerCase();
+        }
+      },
+      beforeSave: (lead) => {
+        // Combine followUpDate and followUpTime into followUpDateTime
+        if (lead.followUpDate && lead.followUpTime) {
+          const [hours, minutes, seconds] = lead.followUpTime.split(':');
+          const followUpDateTime = new Date(lead.followUpDate);
+          followUpDateTime.setHours(parseInt(hours, 10));
+          followUpDateTime.setMinutes(parseInt(minutes, 10));
+          followUpDateTime.setSeconds(parseInt(seconds, 10));
+          lead.followUpDateTime = followUpDateTime;
         }
       }
     }
   }
 );
 
+// Add a virtual field for technology search
 Lead.addHook('afterSync', async () => {
   try {
     await sequelize.query(`

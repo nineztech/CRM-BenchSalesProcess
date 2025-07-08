@@ -16,8 +16,34 @@ import usePermissions from '../../../hooks/usePermissions';
 import RouteGuard from '../../common/RouteGuard';
 import toast from 'react-hot-toast';
 import ReassignRemarkModal from './ReassignRemarkModal';
-import { FiChevronDown, FiChevronUp, FiClock } from 'react-icons/fi';
-import { FaEdit } from 'react-icons/fa';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FaEdit, FaClock } from 'react-icons/fa';
+import Countdown from 'react-countdown';
+
+// Add countdown renderer interface
+interface CountdownRendererProps {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  completed: boolean;
+}
+
+// Add countdown renderer component
+const countdownRenderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
+  if (completed) {
+    return <span className="text-red-600 font-semibold">Now</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-white font-medium">
+      {days > 0 && <span>{days}d</span>}
+      {hours > 0 && <span>{hours}h</span>}
+      <span>{minutes}m</span>
+      <span>{seconds}s</span>
+    </div>
+  );
+};
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 // Type definitions for country list
 // type Country = {
@@ -35,8 +61,6 @@ const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 import countryList from 'react-select-country-list';
 
 interface Lead {
-  followUpTime: any;
-  followUpDate: any;
   id?: number;
   firstName: string;
   lastName: string;
@@ -49,7 +73,7 @@ interface Lead {
   countryCode: string;
   visaStatus: string;
   status?: string;
-  statusGroup?: string;
+  statusGroup?: 'open' | 'converted' | 'archived' | 'inProcess';
   leadSource: string;
   remarks: Remark[];
   reference?: string | null;
@@ -94,6 +118,8 @@ interface Lead {
     subrole: string | null;
     departmentId: number | null;
   };
+  followUpDate?: string;
+  followUpTime?: string;
 }
 
 interface Remark {
@@ -136,16 +162,11 @@ interface SalesUser {
   };
 }
 
-// Add new interfaces for timer
-interface CountdownRendererProps {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  completed: boolean;
-}
+// Add type definition for tab status
+type TabStatus = 'open' | 'converted' | 'inProcess' | 'followup';
 
-const getStatusIcon = (status: string) => {
+// Update the getStatusIcon function
+const getStatusIcon = (status: TabStatus) => {
   switch (status) {
     case 'open':
       return (
@@ -165,16 +186,23 @@ const getStatusIcon = (status: string) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-    case 'followUp':
-      return (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      );
     default:
       return null;
   }
+};
+
+// Add this helper function to map status to groups
+const mapStatusToGroup = (status: string): string => {
+  if (['Numb'].includes(status)) {
+    return 'open';
+  } else if (['closed'].includes(status)) {
+    return 'converted';
+  } else if (['Dead', 'notinterested'].includes(status)) {
+    return 'archived';
+  } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later'].includes(status)) {
+    return 'inProcess';
+  }
+  return status;
 };
 
 const LeadCreationComponent: React.FC = () => {
@@ -199,29 +227,31 @@ const LeadCreationComponent: React.FC = () => {
     }],
     linkedinId: '',
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    followUpDate: '', // Added default value
-    followUpTime: ''  // Added default value
+    updatedAt: new Date().toISOString()
   });
 
   const [errors, setErrors] = useState<Partial<Lead>>({});
   const [countries] = useState(countryList().getData());
 
   // Table states
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsData, setLeadsData] = useState<{
+    open: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    inProcess: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    converted: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    archived: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
+  }>({
+    open: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    inProcess: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    converted: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    archived: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
+  });
+
   var searchTerm='';
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Add status counts state
-  const [statusCounts, setStatusCounts] = useState<Record<'open' | 'inProcess' | 'converted' | 'followUp', number>>({
-    open: 0,
-    inProcess: 0,
-    converted: 0,
-    followUp: 0
-  });
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
 
   // // Edit states
   // const [editingLead, setEditingLead] = useState<number | null>(null);
@@ -255,7 +285,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followUp'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -317,10 +347,7 @@ const LeadCreationComponent: React.FC = () => {
   // Add isEditing state
   const [isEditing, setIsEditing] = useState(false);
 
-  // Add new state for timer
-  const [showTimer, setShowTimer] = useState<number | null>(null);
-
-  // Fetch leads
+  // Fetch leads with proper permission check
   const fetchLeads = async () => {
     try {
       setIsLoading(true);
@@ -332,102 +359,229 @@ const LeadCreationComponent: React.FC = () => {
         return;
       }
 
-      // Check if user has permission to view all leads
-      const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      
-      // Use the appropriate endpoint based on permission
-      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      
-      // Use the group endpoint for status filtering
-      const endpoint = activeStatusTab ? `${BASE_URL}/lead/group/${activeStatusTab}` : baseEndpoint;
-      
-      // Add query parameters for pagination
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: pageSize.toString()
-      });
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      const response = await axios.get(`${endpoint}?${queryParams}`, {
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: leadsData[activeStatusTab].pagination.currentPage,
+          limit: pageSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
         }
       });
 
       if (response.data.success) {
-        setLeads(response.data.data.leads);
-        // Update pagination info from API response
-        const { totalPages } = response.data.data.pagination;
-        setTotalPages(totalPages);
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          open: data.open,
+          inProcess: data.inProcess,
+          converted: data.converted,
+          archived: data.archived,
+          followup: data.followup
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
       }
-    } catch (error) {
-      setApiError('Failed to fetch leads. Please try again.');
-      console.error('Error fetching leads:', error);
+    } catch (error: any) {
+      console.error('Error in fetchLeads:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Add new function to fetch status counts
-  const fetchStatusCounts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      // const hasViewAllLeadsPermission = checkPermission('View All Leads', 'view');
-      // const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-
-      // Fetch counts for all status groups
-      const promises = ['open', 'inProcess', 'converted', 'followUp'].map(group =>
-        axios.get(`${BASE_URL}/lead/group/${group}?page=1&limit=1`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-      );
-
-      const responses = await Promise.all(promises);
-      const counts = {
-        open: responses[0].data.data.pagination.total || 0,
-        inProcess: responses[1].data.data.pagination.total || 0,
-        converted: responses[2].data.data.pagination.total || 0,
-        followUp: responses[3].data.data.pagination.total || 0
-      };
-
-      setStatusCounts(counts);
-    } catch (error) {
-      console.error('Error fetching status counts:', error);
-    }
-  };
-
-  // Effect to fetch leads when component mounts, permissions change, or pagination changes
+  // Effect to fetch leads when component mounts or when permissions change
   useEffect(() => {
     if (!permissionsLoading) {
       fetchLeads();
-      fetchStatusCounts(); // Add this line to fetch counts
     }
-  }, [permissionsLoading, currentPage, pageSize, activeStatusTab]);
+  }, [permissionsLoading]);
+
+  // Update handlePageChange to fetch new data
+  const handlePageChange = async (newPage: number) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: newPage,
+          limit: pageSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [activeStatusTab]: {
+            ...data[activeStatusTab],
+            pagination: {
+              ...data[activeStatusTab].pagination,
+              currentPage: newPage
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handlePageChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update handlePageSizeChange to reset to first page and fetch new data
+  const handlePageSizeChange = async (newSize: number) => {
+    try {
+      setIsLoading(true);
+      setPageSize(newSize);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: 1, // Reset to first page when changing page size
+          limit: newSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [activeStatusTab]: {
+            ...data[activeStatusTab],
+            pagination: {
+              ...data[activeStatusTab].pagination,
+              currentPage: 1,
+              limit: newSize
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handlePageSizeChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter leads based on status
   // const getLeadsByStatus = (status: string) => {
   //   return leads.filter(lead => lead.statusGroup === status);
   // };
 
-  // Get leads count by status
-  // const getLeadsCountByStatus = (status: string) => {
-  //   return leads.filter(lead => lead.statusGroup === status).length;
-  // };
+  // Add helper function to calculate time remaining
+  const getTimeRemaining = (followUpDate: string, followUpTime: string) => {
+    const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+    const now = new Date();
+    const timeDiff = followUpDateTime.getTime() - now.getTime();
+    const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+    const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    
+    if (hoursDiff > 24) {
+      const days = Math.floor(hoursDiff / 24);
+      const remainingHours = hoursDiff % 24;
+      return `${days}d ${remainingHours}h ${minutesDiff}m ${secondsDiff}s`;
+    } else if (hoursDiff > 0) {
+      return `${hoursDiff}h ${minutesDiff}m ${secondsDiff}s`;
+    } else if (minutesDiff > 0) {
+      return `${minutesDiff}m ${secondsDiff}s`;
+    } else if (secondsDiff > 0) {
+      return `${secondsDiff}s`;
+    } else {
+      return 'Now';
+    }
+  };
+
+  // Update getFollowUpLeads function
+  const getFollowUpLeads = () => {
+    return leadsData.followup.leads;
+  };
+
+  // Add useEffect to refresh leads periodically for follow-up timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (activeStatusTab === 'followup') {
+        fetchLeads();
+      }
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(timer);
+  }, [activeStatusTab]);
+
+  // Update the getLeadsCountByStatus function
+  const getLeadsCountByStatus = (status: string) => {
+    if (status === 'followup') {
+      return leadsData.followup.pagination.total;
+    }
+    return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
+  };
 
   // Filter leads based on active status tab and search term
-  const filteredLeads = leads.filter((lead: Lead) => {
-    const matchesStatus = lead.statusGroup === activeStatusTab;
-    const matchesSearch = searchTerm === '' || 
-      lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.technology.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  const filteredLeads = activeStatusTab === 'followup' 
+    ? leadsData.followup.leads 
+    : leadsData[activeStatusTab]?.leads || [];
 
-  const paginatedLeads = leads;
+  // Use the filtered leads directly since we're using server-side pagination
+  const paginatedLeads = filteredLeads;
 
   // Export to Excel function
   const exportToExcel = () => {
@@ -435,7 +589,7 @@ const LeadCreationComponent: React.FC = () => {
     const filename = `leads_${date}`;
     
     // Format the leads data for Excel
-    const excelData = leads.map(lead => ({
+    const excelData = leadsData.open.leads.map(lead => ({
       'Candidate Name': lead.firstName + ' ' + lead.lastName,
       'Contact Number': lead.primaryContact,
       'Email': lead.primaryEmail,
@@ -468,9 +622,9 @@ const LeadCreationComponent: React.FC = () => {
     }
 
     // Find the first lead that is being reassigned (already has assignedUser)
-    const firstReassignedIndex = selectedLeads.find(index => leads[index]?.assignedUser);
+    const firstReassignedIndex = selectedLeads.find(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
     if (firstReassignedIndex !== undefined) {
-      setPendingReassign({ lead: leads[firstReassignedIndex], user: selectedUser });
+      setPendingReassign({ lead: leadsData[activeStatusTab].leads[firstReassignedIndex], user: selectedUser });
       setShowReassignRemarkModal(true);
       return;
     }
@@ -490,7 +644,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       for (const leadIndex of selectedLeads) {
-        const lead = leads[leadIndex];
+        const lead = leadsData[activeStatusTab].leads[leadIndex];
         if (!lead || !lead.id) continue;
 
         // First create the lead assignment
@@ -565,7 +719,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leads[firstSelectedLead]?.assignedUser ? `${leads[firstSelectedLead].assignedUser.firstname} ${leads[firstSelectedLead].assignedUser.lastname}` : '';
+    return leadsData[activeStatusTab].leads[firstSelectedLead]?.assignedUser ? `${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.firstname} ${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.lastname}` : '';
   };
 
   React.useEffect(() => {
@@ -579,7 +733,7 @@ const LeadCreationComponent: React.FC = () => {
   const getButtonProps = () => {
     if (selectedLeads.length === 0) return { text: 'Assign', color: 'bg-indigo-600' };
     
-    const hasSalesPerson = selectedLeads.some(index => leads[index].assignedUser);
+    const hasSalesPerson = selectedLeads.some(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
     
     if (hasSalesPerson) {
       return { 
@@ -714,11 +868,15 @@ const LeadCreationComponent: React.FC = () => {
             })) || [],
             leadSource: row['Lead Source'],
             linkedinId: row['LinkedIn'],
-            followUpDate: '', // Added default value
-            followUpTime: ''  // Added default value
           }));
           
-          setLeads(prev => [...prev, ...newLeads as Lead[]]);
+          setLeadsData(prev => ({
+            ...prev,
+            open: {
+              ...prev.open,
+              leads: [...prev.open.leads, ...newLeads]
+            }
+          }));
           setUploadSuccess(true);
           setFile(null); // Clear the file input
           toast.success('File uploaded successfully!');
@@ -825,7 +983,7 @@ const LeadCreationComponent: React.FC = () => {
   // };
 
   const handleCheckboxChange = (index: number) => {
-    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((currentPage - 1) * pageSize));
+    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize));
     setSelectedLeads(prev =>
       prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
     );
@@ -977,9 +1135,7 @@ const LeadCreationComponent: React.FC = () => {
           }],
           linkedinId: '',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          followUpDate: '', // Added default value
-          followUpTime: ''  // Added default value
+          updatedAt: new Date().toISOString()
         });
         setErrors({});
         setIsEditing(false);
@@ -1016,28 +1172,82 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab styling
   const getTabStyle = (isActive: boolean) => `
-    relative  px-6 text-start py-3 text-sm font-medium transition-all duration-300
+    relative px-6 py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
   `;
 
-  const getStatusTabStyle = (isActive: boolean) => `
-    relative  px-6 text-start py-3 text-sm font-medium transition-all duration-300
+  // Update the getStatusTabStyle function
+  const getStatusTabStyle = (isActive: boolean): string => `
+    relative px-6 py-3 text-sm font-medium transition-all duration-300
     ${isActive ? 
       'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600' : 
       'text-gray-500 hover:text-gray-700'}
   `;
 
-  // Handle status tab change
-  const handleStatusTabChange = (status: 'open' | 'converted' | 'inProcess' | 'followUp') => {
-    setActiveStatusTab(status);
-    setCurrentPage(1); // Reset to first page when changing status
+  // Update the handleStatusTabChange function
+  const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup') => {
+    try {
+      setIsLoading(true);
+      setActiveStatusTab(status);
+      setSelectedLeads([]); // Clear selected leads when changing tabs
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setApiError('Authentication required. Please login again.');
+        return;
+      }
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+
+      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+        setApiError('You do not have permission to view leads.');
+        return;
+      }
+
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          page: 1,
+          limit: pageSize, // Use current pageSize when switching tabs
+          sortBy: 'createdAt',
+          sortOrder: 'DESC'
+        }
+      });
+
+      if (response.data.success) {
+        const { data } = response.data;
+        setLeadsData(prev => ({
+          ...prev,
+          [status]: {
+            ...data[status],
+            pagination: {
+              ...data[status].pagination,
+              currentPage: 1,
+              limit: pageSize // Ensure the page size is consistent
+            }
+          }
+        }));
+      } else {
+        setApiError('Failed to fetch leads. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in handleStatusTabChange:', error);
+      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Update the handleStatusChange function
   const handleStatusChange = async (leadId: number, newStatus: string) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = leadsData[activeStatusTab].leads.find(l => l.id === leadId);
     if (!lead) return;
 
     setSelectedLeadForStatus(lead);
@@ -1072,16 +1282,21 @@ const LeadCreationComponent: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Remove the lead from the list
-          setLeads(prevLeads => 
-            prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
-          );
-
-          // Update status counts
-          setStatusCounts(prev => ({
-            ...prev,
-            [activeStatusTab]: prev[activeStatusTab] - 1
-          }));
+          // Remove the lead from all tabs
+          setLeadsData(prev => {
+            const newData = { ...prev };
+            Object.keys(newData).forEach(key => {
+              newData[key as keyof typeof newData] = {
+                ...newData[key as keyof typeof newData],
+                leads: newData[key as keyof typeof newData].leads.filter(lead => lead.id !== selectedLeadForStatus.id),
+                pagination: {
+                  ...newData[key as keyof typeof newData].pagination,
+                  total: newData[key as keyof typeof newData].pagination.total - 1
+                }
+              };
+            });
+            return newData;
+          });
 
           // Show status change notification
           setStatusNotificationData({
@@ -1094,17 +1309,39 @@ const LeadCreationComponent: React.FC = () => {
           setShowStatusRemarkModal(false);
           setSelectedLeadForStatus(null);
           setNewStatus('');
+
+          // Fetch fresh data for all tabs
+          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+          const refreshResponse = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: {
+              page: 1,
+              limit: pageSize,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+
+          if (refreshResponse.data.success) {
+            setLeadsData(prev => ({
+              ...prev,
+              ...refreshResponse.data.data
+            }));
+          }
         }
       } else {
-        // Regular status update
+        // Regular status update with follow-up data if provided
+        const updateData = {
+          status: newStatus,
+          remark,
+          ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {})
+        };
+
         const response = await axios.patch(
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-          { 
-            status: newStatus,
-            remark,
-            followUpDate,
-            followUpTime
-          },
+          updateData,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -1114,57 +1351,44 @@ const LeadCreationComponent: React.FC = () => {
         );
 
         if (response.data.success) {
-          const updatedLead = {
-            ...selectedLeadForStatus,
-            status: newStatus,
-            statusGroup: response.data.data.statusGroup,
-            remarks: response.data.data.remarks || selectedLeadForStatus.remarks,
-            followUpDate,
-            followUpTime
-          };
-
-          // If the status group has changed, remove the lead from the current list
-          if (updatedLead.statusGroup !== selectedLeadForStatus.statusGroup) {
-            setLeads(prevLeads => 
-              prevLeads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            );
-
-            // Update status counts
-            setStatusCounts(prev => ({
-              ...prev,
-              [(selectedLeadForStatus.statusGroup as keyof typeof prev) || 'open']: prev[(selectedLeadForStatus.statusGroup as keyof typeof prev) || 'open'] - 1,
-              [updatedLead.statusGroup as keyof typeof prev]: prev[updatedLead.statusGroup as keyof typeof prev] + 1
-            }));
-
-            // If the new status group matches the active tab, add the lead to the list
-            if (updatedLead.statusGroup === activeStatusTab) {
-              setLeads(prevLeads => [...prevLeads, updatedLead]);
-            }
-          } else {
-            // Just update the lead in the current list
-            setLeads(prevLeads => 
-              prevLeads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? updatedLead : lead
-              )
-            );
-          }
-
-          // If this lead is currently selected in the details modal, update it
-          if (selectedLead?.id === selectedLeadForStatus.id) {
-            setSelectedLead(updatedLead);
-          }
+          const updatedLead = response.data.data;
+          const followUpDateTime = followUpDate && followUpTime ? new Date(`${followUpDate}T${followUpTime}`) : null;
+          const now = new Date();
+          const diffHours = followUpDateTime ? (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
+          const isInFollowUp = diffHours !== null && diffHours > 0 && diffHours <= 24;
 
           // Show status change notification
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: updatedLead.statusGroup
+            statusGroup: isInFollowUp ? 'followup' : updatedLead.statusGroup
           });
           setShowStatusNotification(true);
 
           setShowStatusRemarkModal(false);
           setSelectedLeadForStatus(null);
           setNewStatus('');
+
+          // Fetch fresh data for all tabs
+          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+          const refreshResponse = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: {
+              page: 1,
+              limit: pageSize,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+
+          if (refreshResponse.data.success) {
+            setLeadsData(prev => ({
+              ...prev,
+              ...refreshResponse.data.data
+            }));
+          }
         } else {
           setApiError('Failed to update status. Please try again.');
         }
@@ -1299,23 +1523,6 @@ ${(() => {
 })()}`;
   };
 
-  // Update handleEmailClick function
-  // const handleEmailClick = (lead: Lead) => {
-  //   const userDataString = localStorage.getItem('user');
-  //   const userData = userDataString ? JSON.parse(userDataString) : null;
-    
-  //   const emailLead: EmailLead = {
-  //     firstName: lead.firstName,
-  //     lastName: lead.lastName,
-  //     primaryEmail: lead.primaryEmail,
-  //     id: lead.id,
-  //     from: userData ? `${userData.firstname} ${userData.lastname} <${userData.email}>` : ''
-  //   };
-    
-  //   setSelectedLeadForEmail(emailLead);
-  //   setShowEmailPopup(true);
-  // };
-
   useEffect(() => {
     if (permissionError) {
       console.error('Permission error:', permissionError);
@@ -1404,40 +1611,6 @@ ${(() => {
     }
   };
 
-  // Add countdown renderer function
-  const countdownRenderer = ({ days, hours, minutes, seconds, completed }: CountdownRendererProps) => {
-    if (completed) {
-      return <span className="text-red-600 text-xs">Follow-up time passed</span>;
-    }
-    
-    return (
-      <span className="text-red-600 text-sm font-semibold whitespace-nowrap">
-        {days > 0 && `${days}d `}
-        {hours > 0 && `${hours}h `}
-        {minutes > 0 && `${minutes}m `}
-        {`${seconds}s`}
-      </span>
-    );
-  };
-
-  // Add click handler for timer icon
-  const handleTimerClick = (e: React.MouseEvent, leadId: number) => {
-    e.stopPropagation();
-    setShowTimer(showTimer === leadId ? null : leadId);
-  };
-
-  // Add useEffect to close timer when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setShowTimer(null);
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
-
   return (
     <RouteGuard activityName="Lead Management">
       <div className="ml-[20px] mt-6 p-8 bg-gray-50 min-h-screen">
@@ -1455,7 +1628,7 @@ ${(() => {
               )}
               
               {/* Header */}
-              <div className="mb-2">
+              <div className="mb-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Lead Management</h1>
                 <p className="text-gray-600">Create and manage your leads efficiently</p>
               </div>
@@ -1631,7 +1804,7 @@ ${(() => {
                             <input 
                               type="email" 
                               name="secondaryEmail" 
-                              value={formData.emails[1] || ''} 
+                              value={formData.emails[1] || ''}
                               onChange={(e) => handleEmailChange(e.target.value, 1)}
                               placeholder="Enter secondary email" 
                               className="w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-300"
@@ -1788,7 +1961,7 @@ ${(() => {
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className={` px-6 text-start py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                            className={`px-6 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
                               isLoading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                           >
@@ -1864,8 +2037,8 @@ ${(() => {
               {/* Status Tabs */}
               <PermissionGuard activityName="Lead Management" action="view">
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                  <div className="px-8 py-4">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
                       <div className="flex items-center gap-4">
                         <PermissionGuard 
@@ -1876,8 +2049,9 @@ ${(() => {
                           <AssignmentSection />
                         </PermissionGuard>
                         <select 
-className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"                          value={pageSize}
-                          onChange={(e) => setPageSize(Number(e.target.value))}
+                          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={pageSize}
+                          onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                         >
                           <option value="10">10 per page</option>
                           <option value="25">25 per page</option>
@@ -1889,7 +2063,7 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess', 'followUp','converted'] as const).map(tab => (
+                        {(['open', 'inProcess', 'followup', 'converted'] as TabStatus[]).map((tab: TabStatus) => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1897,9 +2071,9 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                           >
                             <span className="flex items-center gap-2">
                               {getStatusIcon(tab)}
-                              {tab === 'followUp' ? 'Follow-up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              {tab === 'followup' ? 'Follow Up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
-                                {statusCounts[tab]}
+                                {getLeadsCountByStatus(tab)}
                               </span>
                             </span>
                           </button>
@@ -1919,8 +2093,8 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                         <div className="inline-block min-w-full align-middle">
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead>
-                              <tr className="bg-gray-50 m-0 p-0">
-                                <th className=" px-6 text-start py-1.5 border-b">
+                              <tr className="bg-gray-50">
+                                <th className="px-6 py-4 border-b">
                                   <PermissionGuard 
                                     activityName="Lead Assignment Management" 
                                     action="edit"
@@ -1933,26 +2107,26 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                     />
                                   </PermissionGuard>
                                 </th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
-                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
-                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                                <th className=" px-6 text-start py-1.5 text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
-                                <th className=" px-6 text-start py-1.5  text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">#</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {paginatedLeads.map((lead: Lead, index: number) => (
-                                <tr key={lead.id || index} className="hover:bg-gray-50 p-0 m-0">
-                                  <td className=" px-4 text-start py-0 border-b">
+                                <tr key={lead.id || index} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 border-b">
                                     <PermissionGuard 
                                       activityName="Lead Assignment Management" 
                                       action="edit"
@@ -1966,13 +2140,13 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                       />
                                     </PermissionGuard>
                                   </td>
-                                  <td className=" px-4 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
-                                    {(currentPage - 1) * pageSize + index + 1}
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
+                                    {(leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize + index + 1}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.firstName} {lead.lastName}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                       <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -1984,7 +2158,7 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                         type="button"
                                         title="Email options"
                                       >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
                                           <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                                           <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                                         </svg>
@@ -1993,7 +2167,7 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                       
                                     </div>
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
                                        <button
                                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
@@ -2006,7 +2180,7 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                       type="button"
                                         title="Call options"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
                                           <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                                         </svg>
                                     </button>
@@ -2014,10 +2188,10 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                    
                                     </div>
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                                     <a 
                                       href={lead.linkedinId} 
                                       target="_blank" 
@@ -2027,74 +2201,76 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                       LinkedIn
                                     </a>
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.visaStatus}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.country}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
-                                    <PermissionGuard 
-                                      activityName="Lead Status Management" 
-                                      action="view"
-                                      fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
-                                    >
-                                      <PermissionGuard
-                                        activityName="Lead Status Management"
-                                        action="edit"
-                                        fallback={
-                                          <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
-                                            {lead.status || 'open'}
-                                          </div>
-                                        }
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
+                                    <div className="flex flex-col gap-1">
+                                      <PermissionGuard 
+                                        activityName="Lead Status Management" 
+                                        action="view"
+                                        fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
                                       >
-                                        <div className="flex items-center gap-2">
-                                          <select
-                                            value={lead.status || 'open'}
-                                            onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                            disabled={lead.status === 'closed'}
-                                            className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                          >
-                                            <option value="open">Open</option>
-                                            <option value="DNR1">DNR1</option>
-                                            <option value="DNR2">DNR2</option>
-                                            <option value="DNR3">DNR3</option>
-                                            <option value="interested">Interested</option>
-                                            <option value="not working">Not Working</option>
-                                            <option value="wrong no">Wrong No</option>
-                                            <option value="call again later">Call Again Later</option>
-                                            <option value="closed">Closed</option>
-                                            <option value="Dead">Dead</option>
-                                            <option value="notinterested">Not Interested</option>
-                                            <option value="follow-up">Follow-up</option>
-                                          </select>
-                                          {lead.status === 'follow-up' && lead.followUpDate && lead.followUpTime && (
-                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                              <FiClock 
-                                                className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600"
-                                                onClick={(e) => handleTimerClick(e, lead.id || 0)}
-                                              />
-                                              {showTimer === lead.id && (
-                                                <div className="absolute left-6 top-0 z-10 bg-white shadow-lg rounded-md p-2 border border-gray-200">
-                                                  {countdownRenderer({
-                                                    days: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
-                                                    hours: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60 * 60) % 24),
-                                                    minutes: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / (1000 * 60) % 60),
-                                                    seconds: Math.floor((new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() - new Date().getTime()) / 1000 % 60),
-                                                    completed: new Date(`${lead.followUpDate}T${lead.followUpTime}`).getTime() < new Date().getTime()
-                                                  })}
-                                                </div>
-                                              )}
+                                        <PermissionGuard
+                                          activityName="Lead Status Management"
+                                          action="edit"
+                                          fallback={
+                                            <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                              {lead.status || 'open'}
                                             </div>
-                                          )}
-                                        </div>
+                                          }
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <select
+                                              value={lead.status || 'open'}
+                                              onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                              disabled={lead.status === 'closed'}
+                                              className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                            >
+                                              <option value="open">Open</option>
+                                              <option value="DNR1">DNR1</option>
+                                              <option value="DNR2">DNR2</option>
+                                              <option value="DNR3">DNR3</option>
+                                              <option value="interested">Interested</option>
+                                              <option value="not working">Not Working</option>
+                                              <option value="wrong no">Wrong No</option>
+                                              <option value="call again later">Call Again Later</option>
+                                              <option value="follow up">Follow Up</option>
+                                              <option value="closed">Closed</option>
+                                              <option value="Dead">Dead</option>
+                                              <option value="notinterested">Not Interested</option>
+                                            </select>
+                                            {lead.followUpDate && lead.followUpTime && (
+                                              <div className="group relative">
+                                                <FaClock 
+                                                  className={`h-4 w-4 cursor-help ${
+                                                    new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                      ? 'text-red-500' 
+                                                      : 'text-gray-500'
+                                                  }`} 
+                                                />
+                                                <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
+                                                  <span className="text-indigo-200">Follow up in:</span>
+                                                  <Countdown
+                                                    date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                    renderer={countdownRenderer}
+                                                  />
+                                                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </PermissionGuard>
                                       </PermissionGuard>
-                                    </PermissionGuard>
+                                    </div>
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-US', {
                                       day: '2-digit',
                                       month: 'short',
@@ -2105,13 +2281,13 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                                       hour12: false
                                     }).replace(',', '') : '-'}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm text-gray-900 border-b whitespace-nowrap">
                                     {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
                                   </td>
-                                  <td className=" px-6 text-start py-1.5 text-sm border-b whitespace-nowrap">
+                                  <td className="px-6 py-4 text-sm border-b whitespace-nowrap">
                                     <div className="flex items-center space-x-2">
                                       <button 
                                         onClick={() => handleInfoClick(lead)}
@@ -2145,23 +2321,28 @@ className="border border-gray-300 px-4 py-2 rounded-md text-sm bg-white focus:ou
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, leads.length)} of {statusCounts[activeStatusTab]} leads
+                      Showing {((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize) + 1} to {
+                        Math.min(
+                          leadsData[activeStatusTab].pagination.currentPage * pageSize,
+                          leadsData[activeStatusTab].pagination.total
+                        )
+                      } of {leadsData[activeStatusTab].pagination.total} leads
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage - 1)}
+                        disabled={leadsData[activeStatusTab].pagination.currentPage === 1}
+                        className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                       >
                         Previous
                       </button>
-                      <span className="px-4 py-2 mx-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                        Page {currentPage} of {totalPages}
+                      <span className="px-4 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                        Page {leadsData[activeStatusTab].pagination.currentPage} of {leadsData[activeStatusTab].pagination.totalPages}
                       </span>
                       <button
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className="px-4 py-2 mx-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage + 1)}
+                        disabled={leadsData[activeStatusTab].pagination.currentPage >= leadsData[activeStatusTab].pagination.totalPages}
+                        className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                       >
                         Next
                       </button>
