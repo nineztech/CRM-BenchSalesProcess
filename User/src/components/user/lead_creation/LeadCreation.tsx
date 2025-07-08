@@ -362,11 +362,12 @@ const LeadCreationComponent: React.FC = () => {
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+      if (!hasLeadManagementPermission) {
         setApiError('You do not have permission to view leads.');
         return;
       }
 
+      // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       const response = await axios.get(endpoint, {
@@ -413,6 +414,8 @@ const LeadCreationComponent: React.FC = () => {
   const handlePageChange = async (newPage: number) => {
     try {
       setIsLoading(true);
+      setApiError(null);
+
       const token = localStorage.getItem('token');
       if (!token) {
         setApiError('Authentication required. Please login again.');
@@ -422,11 +425,12 @@ const LeadCreationComponent: React.FC = () => {
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+      if (!hasLeadManagementPermission) {
         setApiError('You do not have permission to view leads.');
         return;
       }
 
+      // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       const response = await axios.get(endpoint, {
@@ -453,12 +457,10 @@ const LeadCreationComponent: React.FC = () => {
             }
           }
         }));
-      } else {
-        setApiError('Failed to fetch leads. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error in handlePageChange:', error);
-      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+      console.error('Error changing page:', error);
+      setApiError(error.response?.data?.message || 'Failed to change page. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -468,7 +470,7 @@ const LeadCreationComponent: React.FC = () => {
   const handlePageSizeChange = async (newSize: number) => {
     try {
       setIsLoading(true);
-      setPageSize(newSize);
+      setApiError(null);
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -479,11 +481,12 @@ const LeadCreationComponent: React.FC = () => {
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+      if (!hasLeadManagementPermission) {
         setApiError('You do not have permission to view leads.');
         return;
       }
 
+      // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       const response = await axios.get(endpoint, {
@@ -491,7 +494,7 @@ const LeadCreationComponent: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         params: {
-          page: 1, // Reset to first page when changing page size
+          page: 1,
           limit: newSize,
           sortBy: 'createdAt',
           sortOrder: 'DESC'
@@ -500,6 +503,7 @@ const LeadCreationComponent: React.FC = () => {
 
       if (response.data.success) {
         const { data } = response.data;
+        setPageSize(newSize);
         setLeadsData(prev => ({
           ...prev,
           [activeStatusTab]: {
@@ -511,12 +515,10 @@ const LeadCreationComponent: React.FC = () => {
             }
           }
         }));
-      } else {
-        setApiError('Failed to fetch leads. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error in handlePageSizeChange:', error);
-      setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
+      console.error('Error changing page size:', error);
+      setApiError(error.response?.data?.message || 'Failed to change page size. Please try again.');
     } finally {
       setIsLoading(false);
     }

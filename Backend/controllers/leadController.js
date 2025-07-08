@@ -429,14 +429,11 @@ export const getAllLeads = async (req, res) => {
 // Get Leads Assigned to Logged-in User
 export const getAssignedLeads = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      statusGroup,
-      search,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC'
-    } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'DESC';
 
     // Check if user is authenticated
     if (!req.user || !req.user.id) {
@@ -455,107 +452,153 @@ export const getAssignedLeads = async (req, res) => {
       open: ['open'],
       converted: ['closed'],
       archived: ['Dead', 'notinterested'],
-      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later']
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
     };
 
-    // Build base where clause for search and user assignment
-    const searchWhereClause = search ? {
-      [Op.or]: [
-        { firstName: { [Op.like]: `%${search}%` } },
-        { lastName: { [Op.like]: `%${search}%` } },
-        { primaryEmail: { [Op.like]: `%${search}%` } },
-        { primaryContact: { [Op.like]: `%${search}%` } }
-      ]
-    } : {};
+    // First get all leads that have follow-up dates
+    const now = new Date();
+    const followupLeads = await Lead.findAndCountAll({
+      where: {
+        [Op.or]: [
+          { assignTo: req.user.id },
+          { createdBy: req.user.id }
+        ],
+        followUpDate: {
+          [Op.not]: null
+        },
+        followUpTime: {
+          [Op.not]: null
+        },
+        [Op.and]: [
+          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) > NOW()`),
+          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) <= DATE_ADD(NOW(), INTERVAL 24 HOUR)`)
+        ]
+      },
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        },
+        {
+          model: User,
+          as: 'previouslyAssignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        },
+        {
+          model: User,
+          as: 'updater',
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+        }
+      ],
+      order: [[sortBy, sortOrder]],
+      offset: offset,
+      limit: limit
+    });
 
-    const userWhereClause = {
-      [Op.or]: [
-        { assignTo: req.user.id },  // Leads assigned to the user
-        { createdBy: req.user.id }  // Leads created by the user
-      ]
-    };
+    // Get the IDs of follow-up leads to exclude from other queries
+    const followupLeadIds = followupLeads.rows.map(lead => lead.id);
 
-    // Fetch leads for each status group with pagination
-    const groupedLeads = {};
-    const groupPromises = Object.entries(statusGroups).map(async ([group, statuses]) => {
-      const whereClause = {
-        ...searchWhereClause,
-        ...userWhereClause,
-        status: { [Op.in]: statuses }
-      };
-
-      // Only fetch data for requested status group if specified
-      if (statusGroup && statusGroup !== group) {
-        groupedLeads[group] = {
-          leads: [],
-          pagination: {
-            total: 0,
-            totalPages: 0,
-            currentPage: parseInt(page),
-            limit: parseInt(limit)
-          }
-        };
-        return;
-      }
-
+    // Function to get leads for a specific status group with pagination
+    const getLeadsForStatus = async (statuses) => {
       const { count, rows } = await Lead.findAndCountAll({
-        where: whereClause,
+        where: {
+          [Op.and]: [
+            {
+              status: {
+                [Op.in]: statuses
+              }
+            },
+            {
+              id: {
+                [Op.notIn]: followupLeadIds
+              }
+            },
+            {
+              [Op.or]: [
+                { assignTo: req.user.id },
+                { createdBy: req.user.id }
+              ]
+            }
+          ]
+        },
         include: [
           {
             model: User,
             as: 'assignedUser',
-            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
           },
           {
             model: User,
             as: 'previouslyAssignedUser',
-            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
           },
           {
             model: User,
             as: 'creator',
-            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
           },
           {
             model: User,
             as: 'updater',
-            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
           }
         ],
         order: [[sortBy, sortOrder]],
-        offset: (parseInt(page) - 1) * parseInt(limit),
-        limit: parseInt(limit)
+        offset: offset,
+        limit: limit
       });
 
-      groupedLeads[group] = {
+      return {
         leads: rows,
         pagination: {
           total: count,
-          totalPages: Math.ceil(count / parseInt(limit)),
-          currentPage: parseInt(page),
-          limit: parseInt(limit)
+          totalPages: Math.ceil(count / limit),
+          currentPage: page,
+          limit: limit
         }
       };
-    });
+    };
 
-    // Wait for all group queries to complete
-    await Promise.all(groupPromises);
+    // Get leads for each status group
+    const [openLeads, inProcessLeads, convertedLeads, archivedLeads] = await Promise.all([
+      getLeadsForStatus(statusGroups.open),
+      getLeadsForStatus(statusGroups.inProcess),
+      getLeadsForStatus(statusGroups.converted),
+      getLeadsForStatus(statusGroups.archived)
+    ]);
 
-    // Return only the requested group if specified, otherwise return all groups
-    const response = statusGroup ? 
-      groupedLeads[statusGroup] : 
-      groupedLeads;
-
-    return res.status(200).json({
+    const response = {
       success: true,
-      data: response
-    });
+      data: {
+        open: openLeads,
+        inProcess: inProcessLeads,
+        converted: convertedLeads,
+        archived: archivedLeads,
+        followup: {
+          leads: followupLeads.rows,
+          pagination: {
+            total: followupLeads.count,
+            totalPages: Math.ceil(followupLeads.count / limit),
+            currentPage: page,
+            limit: limit
+          }
+        }
+      }
+    };
 
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching assigned leads:', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error occurred while fetching assigned leads'
+      message: 'Internal server error occurred while fetching assigned leads',
+      error: error.message
     });
   }
 };
