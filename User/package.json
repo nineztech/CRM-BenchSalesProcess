@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist -l $port"
+    "start": "serve -s dist -l 8080"
   },
   "dependencies": {
     "@dicebear/collection": "^9.2.3",
