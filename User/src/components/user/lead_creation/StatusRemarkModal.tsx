@@ -9,6 +9,37 @@ interface StatusRemarkModalProps {
   newStatus: string;
 }
 
+// Helper function to check if status is in inProcess group
+const isInProcessStatus = (status: string): boolean => {
+  const inProcessStatuses = [
+    'DNR1',
+    'DNR2',
+    'DNR3',
+    'interested',
+    'not working',
+    'follow up',
+    'wrong no',
+    'call again later'
+  ];
+  return inProcessStatuses.includes(status);
+};
+
+// Add helper function to validate follow-up time
+const isValidFollowUpDateTime = (date: string, time: string): boolean => {
+  if (!date || !time) return false;
+  
+  try {
+    const [hours, minutes] = time.split(':');
+    const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+    const followUpDateTime = new Date(`${date}T${formattedTime}`);
+    const now = new Date();
+    
+    return !isNaN(followUpDateTime.getTime()) && followUpDateTime > now;
+  } catch (error) {
+    return false;
+  }
+};
+
 const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   isOpen,
   onClose,
@@ -20,6 +51,22 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpTime, setFollowUpTime] = useState('');
 
+  // Add validation message state
+  const [validationMessage, setValidationMessage] = useState<string>('');
+
+  // Update validation on date/time change
+  React.useEffect(() => {
+    if (isInProcessStatus(newStatus) && followUpDate && followUpTime) {
+      if (!isValidFollowUpDateTime(followUpDate, followUpTime)) {
+        setValidationMessage('Follow-up date and time must be in the future');
+      } else {
+        setValidationMessage('');
+      }
+    } else {
+      setValidationMessage('');
+    }
+  }, [followUpDate, followUpTime, newStatus]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (remark.trim()) {
@@ -30,6 +77,16 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
         name: `${userInfo.firstname} ${userInfo.lastname}`,
         email: userInfo.email
       };
+      
+      // Format date and time properly
+      let formattedDate = followUpDate;
+      let formattedTime = followUpTime;
+      
+      if (isInProcessStatus(newStatus) && followUpDate && followUpTime) {
+        // Ensure time is in HH:mm format
+        const [hours, minutes] = followUpTime.split(':');
+        formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+      }
       
       // Create remark with creator info
       const remarkWithCreator = {
@@ -45,8 +102,8 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
 
       onSubmit(
         JSON.stringify(remarkWithCreator),
-        newStatus === 'follow-up' ? followUpDate : undefined,
-        newStatus === 'follow-up' ? followUpTime : undefined
+        isInProcessStatus(newStatus) ? formattedDate : undefined,
+        isInProcessStatus(newStatus) ? formattedTime : undefined
       );
       setRemark('');
       setFollowUpDate('');
@@ -54,8 +111,14 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
     }
   };
 
-  const isFollowUp = newStatus === 'follow-up';
-  const today = new Date().toISOString().split('T')[0];
+  const isSubmitDisabled = () => {
+    if (!remark.trim()) return true;
+    if (isInProcessStatus(newStatus)) {
+      if (!followUpDate || !followUpTime) return true;
+      return !isValidFollowUpDateTime(followUpDate, followUpTime);
+    }
+    return false;
+  };
 
   if (!isOpen) return null;
 
@@ -133,40 +196,44 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                       />
                     </div>
 
-                    {/* Follow-up Date and Time Fields */}
-                    <div className={`mb-4 ${isFollowUp ? 'opacity-100' : 'opacity-50'}`}>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="followUpDate" className="block text-sm font-medium text-gray-700 mb-2">
-                            Follow-up Date {isFollowUp && '*'}
-                          </label>
-                          <input
-                            type="date"
-                            id="followUpDate"
-                            value={followUpDate}
-                            onChange={(e) => setFollowUpDate(e.target.value)}
-                            min={today}
-                            required={isFollowUp}
-                            disabled={!isFollowUp}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
-                          />
+                    {isInProcessStatus(newStatus) && (
+                      <>
+                        <div className="mb-4 grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="followUpDate" className="block text-sm font-medium text-gray-700 mb-2">
+                              Follow-up Date *
+                            </label>
+                            <input
+                              type="date"
+                              id="followUpDate"
+                              value={followUpDate}
+                              onChange={(e) => setFollowUpDate(e.target.value)}
+                              min={new Date().toISOString().split('T')[0]}
+                              required
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="followUpTime" className="block text-sm font-medium text-gray-700 mb-2">
+                              Follow-up Time *
+                            </label>
+                            <input
+                              type="time"
+                              id="followUpTime"
+                              value={followUpTime}
+                              onChange={(e) => setFollowUpTime(e.target.value)}
+                              required
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label htmlFor="followUpTime" className="block text-sm font-medium text-gray-700 mb-2">
-                            Follow-up Time {isFollowUp && '*'}
-                          </label>
-                          <input
-                            type="time"
-                            id="followUpTime"
-                            value={followUpTime}
-                            onChange={(e) => setFollowUpTime(e.target.value)}
-                            required={isFollowUp}
-                            disabled={!isFollowUp}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                        {validationMessage && (
+                          <div className="mb-4 text-sm text-red-600">
+                            {validationMessage}
+                          </div>
+                        )}
+                      </>
+                    )}
 
                     <div className="flex justify-end gap-3">
                       <button
@@ -178,7 +245,7 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                       </button>
                       <button
                         type="submit"
-                        disabled={!remark.trim() || (isFollowUp && (!followUpDate || !followUpTime))}
+                        disabled={isSubmitDisabled()}
                         className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Submit
@@ -195,4 +262,4 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   );
 };
 
-export default StatusRemarkModal; 
+export default StatusRemarkModal;

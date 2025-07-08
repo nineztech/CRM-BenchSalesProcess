@@ -31,4 +31,4 @@ router.delete("/:packageId/discounts/:discountId", authentication, removeDiscoun
 // Cleanup route
 router.post("/cleanup-expired-discounts", authentication, cleanupExpiredDiscounts)
 
-export default router 
+export default router
