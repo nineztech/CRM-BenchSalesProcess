@@ -7,14 +7,13 @@ import { sequelize } from "../config/dbConnection.js";
 // Get all archived leads with pagination and filtering
 export const getArchivedLeads = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10,
-      status,
-      search,
-      sortBy = 'archivedAt',
-      sortOrder = 'DESC'
-    } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'archivedAt';
+    const sortOrder = req.query.sortOrder || 'DESC';
+    const status = req.query.status;
+    const search = req.query.search;
 
     const whereClause = {};
     
@@ -30,8 +29,6 @@ export const getArchivedLeads = async (req, res) => {
         { country: { [Op.like]: `%${search}%` } }
       ];
     }
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const archivedLeads = await ArchivedLead.findAndCountAll({
       where: whereClause,
@@ -53,7 +50,7 @@ export const getArchivedLeads = async (req, res) => {
         }
       ],
       order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
+      limit: limit,
       offset: offset
     });
 
@@ -93,9 +90,9 @@ export const getArchivedLeads = async (req, res) => {
         leads: processedLeads,
         pagination: {
           total: archivedLeads.count,
-          totalPages: Math.ceil(archivedLeads.count / parseInt(limit)),
-          currentPage: parseInt(page),
-          limit: parseInt(limit)
+          totalPages: Math.ceil(archivedLeads.count / limit),
+          currentPage: page,
+          limit: limit
         }
       }
     });

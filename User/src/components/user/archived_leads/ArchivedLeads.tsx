@@ -140,7 +140,8 @@ const ArchivedLeadsComponent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [reopenRemark, setReopenRemark] = useState('');
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [showReopenModal, setShowReopenModal] = useState(false);
@@ -171,6 +172,7 @@ const ArchivedLeadsComponent: React.FC = () => {
       if (response.data.success) {
         setArchivedLeads(response.data.data.leads);
         setTotalPages(response.data.data.pagination.totalPages);
+        setTotalCount(response.data.data.pagination.total);
       }
     } catch (err) {
       setError('Failed to fetch archived leads');
@@ -316,6 +318,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                         value={pageSize}
                         onChange={(e) => setPageSize(Number(e.target.value))}
                       >
+                        <option value="10">10 per page</option>
                         <option value="25">25 per page</option>
                         <option value="50">50 per page</option>
                         <option value="100">100 per page</option>
@@ -429,7 +432,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, archivedLeads.length)} of {archivedLeads.length} leads
+                      Showing {Math.min(((currentPage - 1) * pageSize) + 1, totalCount)} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} leads
                     </div>
                     <div className="flex items-center gap-2">
                       <button

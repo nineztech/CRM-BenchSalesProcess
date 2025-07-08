@@ -1282,30 +1282,21 @@ const LeadCreationComponent: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Remove the lead from the list
-          setLeadsData(prev => ({
-            ...prev,
-            open: {
-              ...prev.open,
-              leads: prev.open.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            },
-            inProcess: {
-              ...prev.inProcess,
-              leads: prev.inProcess.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            },
-            converted: {
-              ...prev.converted,
-              leads: prev.converted.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            },
-            archived: {
-              ...prev.archived,
-              leads: prev.archived.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            },
-            followup: {
-              ...prev.followup,
-              leads: prev.followup.leads.filter(lead => lead.id !== selectedLeadForStatus.id)
-            }
-          }));
+          // Remove the lead from all tabs
+          setLeadsData(prev => {
+            const newData = { ...prev };
+            Object.keys(newData).forEach(key => {
+              newData[key as keyof typeof newData] = {
+                ...newData[key as keyof typeof newData],
+                leads: newData[key as keyof typeof newData].leads.filter(lead => lead.id !== selectedLeadForStatus.id),
+                pagination: {
+                  ...newData[key as keyof typeof newData].pagination,
+                  total: newData[key as keyof typeof newData].pagination.total - 1
+                }
+              };
+            });
+            return newData;
+          });
 
           // Show status change notification
           setStatusNotificationData({
@@ -1318,6 +1309,27 @@ const LeadCreationComponent: React.FC = () => {
           setShowStatusRemarkModal(false);
           setSelectedLeadForStatus(null);
           setNewStatus('');
+
+          // Fetch fresh data for all tabs
+          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+          const refreshResponse = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: {
+              page: 1,
+              limit: pageSize,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+
+          if (refreshResponse.data.success) {
+            setLeadsData(prev => ({
+              ...prev,
+              ...refreshResponse.data.data
+            }));
+          }
         }
       } else {
         // Regular status update with follow-up data if provided
@@ -1339,92 +1351,7 @@ const LeadCreationComponent: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Update the leads list with the new data
-          setLeadsData(prev => ({
-            ...prev,
-            open: {
-              ...prev.open,
-              leads: prev.open.leads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? {
-                  ...lead,
-                  status: newStatus,
-                  statusGroup: response.data.data.statusGroup,
-                  remarks: response.data.data.remarks || lead.remarks,
-                  followUpDate: response.data.data.followUpDate,
-                  followUpTime: response.data.data.followUpTime
-                } : lead
-              )
-            },
-            inProcess: {
-              ...prev.inProcess,
-              leads: prev.inProcess.leads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? {
-                  ...lead,
-                  status: newStatus,
-                  statusGroup: response.data.data.statusGroup,
-                  remarks: response.data.data.remarks || lead.remarks,
-                  followUpDate: response.data.data.followUpDate,
-                  followUpTime: response.data.data.followUpTime
-                } : lead
-              )
-            },
-            converted: {
-              ...prev.converted,
-              leads: prev.converted.leads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? {
-                  ...lead,
-                  status: newStatus,
-                  statusGroup: response.data.data.statusGroup,
-                  remarks: response.data.data.remarks || lead.remarks,
-                  followUpDate: response.data.data.followUpDate,
-                  followUpTime: response.data.data.followUpTime
-                } : lead
-              )
-            },
-            archived: {
-              ...prev.archived,
-              leads: prev.archived.leads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? {
-                  ...lead,
-                  status: newStatus,
-                  statusGroup: response.data.data.statusGroup,
-                  remarks: response.data.data.remarks || lead.remarks,
-                  followUpDate: response.data.data.followUpDate,
-                  followUpTime: response.data.data.followUpTime
-                } : lead
-              )
-            },
-            followup: {
-              ...prev.followup,
-              leads: prev.followup.leads.map(lead => 
-                lead.id === selectedLeadForStatus.id ? {
-                  ...lead,
-                  status: newStatus,
-                  statusGroup: response.data.data.statusGroup,
-                  remarks: response.data.data.remarks || lead.remarks,
-                  followUpDate: response.data.data.followUpDate,
-                  followUpTime: response.data.data.followUpTime
-                } : lead
-              )
-            }
-          }));
-
-          // If this lead is currently selected in the details modal, update it
-          if (selectedLead?.id === selectedLeadForStatus.id) {
-            setSelectedLead(prevLead => {
-              if (!prevLead) return null;
-              return {
-                ...prevLead,
-                status: newStatus,
-                statusGroup: response.data.data.statusGroup,
-                remarks: response.data.data.remarks || prevLead.remarks,
-                followUpDate: response.data.data.followUpDate,
-                followUpTime: response.data.data.followUpTime
-              };
-            });
-          }
-
-          // Check if the lead will be in follow-up tab
+          const updatedLead = response.data.data;
           const followUpDateTime = followUpDate && followUpTime ? new Date(`${followUpDate}T${followUpTime}`) : null;
           const now = new Date();
           const diffHours = followUpDateTime ? (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
@@ -1434,13 +1361,34 @@ const LeadCreationComponent: React.FC = () => {
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: isInFollowUp ? 'followup' : response.data.data.statusGroup
+            statusGroup: isInFollowUp ? 'followup' : updatedLead.statusGroup
           });
           setShowStatusNotification(true);
 
           setShowStatusRemarkModal(false);
           setSelectedLeadForStatus(null);
           setNewStatus('');
+
+          // Fetch fresh data for all tabs
+          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+
+          const refreshResponse = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: {
+              page: 1,
+              limit: pageSize,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+
+          if (refreshResponse.data.success) {
+            setLeadsData(prev => ({
+              ...prev,
+              ...refreshResponse.data.data
+            }));
+          }
         } else {
           setApiError('Failed to update status. Please try again.');
         }
