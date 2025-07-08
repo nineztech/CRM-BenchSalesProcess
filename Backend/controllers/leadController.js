@@ -3,6 +3,7 @@ import { ValidationError, UniqueConstraintError, Op } from "sequelize";
 import User from "../models/userModel.js";
 import ArchivedLead from "../models/archivedLeadModel.js";
 import { sequelize } from "../config/dbConnection.js";
+import { Sequelize } from "sequelize";
 
 export const createLead = async (req, res) => {
   try {
@@ -136,11 +137,12 @@ export const createLead = async (req, res) => {
         'DNR2',
         'DNR3',
         'Dead',
-        'Numb',
+        'open',
         'not working',
         'wrong no',
         'closed',
-        'call again later'
+        'call again later',
+        'follow up'
       ];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
@@ -278,104 +280,148 @@ export const createLead = async (req, res) => {
 // Get All Leads with filtering and pagination
 export const getAllLeads = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
-      search,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC'
-    } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'DESC';
 
-    // Build where clause
-    const whereClause = {};
-    
-    // Add status filter if provided
-    if (status && ['open', 'converted', 'archive'].includes(status)) {
-      whereClause.status = status;
-    }
+    // Define status mappings
+    const statusGroups = {
+      open: ['open'],
+      converted: ['closed'],
+      archived: ['Dead', 'notinterested'],
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+    };
 
-    // Add search functionality
-    if (search) {
-      whereClause[Op.or] = [
-        { candidateName: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
-        { technology: { [Op.like]: `%${search}%` } },
-        { country: { [Op.like]: `%${search}%` } }
-      ];
-    }
-
-    // Calculate offset
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Get leads with pagination
-    const leads = await Lead.findAndCountAll({
-      where: whereClause,
+    // First get all leads that have follow-up dates
+    const now = new Date();
+    const followupLeads = await Lead.findAndCountAll({
+      where: {
+        followUpDate: {
+          [Op.not]: null
+        },
+        followUpTime: {
+          [Op.not]: null
+        },
+        [Op.and]: [
+          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) > NOW()`),
+          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) <= DATE_ADD(NOW(), INTERVAL 24 HOUR)`)
+        ]
+      },
       include: [
         {
           model: User,
           as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false  // Make this a LEFT JOIN
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
         },
         {
           model: User,
           as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false  // Make this a LEFT JOIN
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
         },
         {
           model: User,
           as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
         },
         {
           model: User,
           as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
+          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
         }
       ],
       order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
-      offset: offset
+      offset: offset,
+      limit: limit
     });
 
-    // Process the leads to ensure assignment data is accurate
-    const processedLeads = leads.rows.map(lead => {
-      const leadData = lead.toJSON();
-      // Only include assignment data if there's actually an assigned user
-      if (!leadData.assignedUser) {
-        leadData.assignedUser = null;
-        leadData.assignTo = null;
-      }
-      if (!leadData.previouslyAssignedUser) {
-        leadData.previouslyAssignedUser = null;
-        leadData.previousAssign = null;
-      }
-      return leadData;
-    });
+    // Get the IDs of follow-up leads to exclude from other queries
+    const followupLeadIds = followupLeads.rows.map(lead => lead.id);
 
-    return res.status(200).json({
-      success: true,
-      message: 'Leads fetched successfully',
-      data: {
-        leads: processedLeads,
+    // Function to get leads for a specific status group with pagination
+    const getLeadsForStatus = async (statuses) => {
+      const { count, rows } = await Lead.findAndCountAll({
+        where: {
+          status: {
+            [Op.in]: statuses
+          },
+          id: {
+            [Op.notIn]: followupLeadIds // Exclude leads that are in follow-up
+          }
+        },
+        include: [
+          {
+            model: User,
+            as: 'assignedUser',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          },
+          {
+            model: User,
+            as: 'previouslyAssignedUser',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          },
+          {
+            model: User,
+            as: 'creator',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          },
+          {
+            model: User,
+            as: 'updater',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
+          }
+        ],
+        order: [[sortBy, sortOrder]],
+        offset: offset,
+        limit: limit
+      });
+
+      return {
+        leads: rows,
         pagination: {
-          total: leads.count,
-          totalPages: Math.ceil(leads.count / parseInt(limit)),
-          currentPage: parseInt(page),
-          limit: parseInt(limit)
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: page,
+          limit: limit
+        }
+      };
+    };
+
+    // Get leads for each status group
+    const [openLeads, inProcessLeads, convertedLeads, archivedLeads] = await Promise.all([
+      getLeadsForStatus(statusGroups.open),
+      getLeadsForStatus(statusGroups.inProcess),
+      getLeadsForStatus(statusGroups.converted),
+      getLeadsForStatus(statusGroups.archived)
+    ]);
+
+    const response = {
+      success: true,
+      data: {
+        open: openLeads,
+        inProcess: inProcessLeads,
+        converted: convertedLeads,
+        archived: archivedLeads,
+        followup: {
+          leads: followupLeads.rows,
+          pagination: {
+            total: followupLeads.count,
+            totalPages: Math.ceil(followupLeads.count / limit),
+            currentPage: page,
+            limit: limit
+          }
         }
       }
-    });
+    };
 
+    res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching leads:', error);
-    return res.status(500).json({
+    console.error('Error in getAllLeads:', error);
+    res.status(500).json({
       success: false,
-      message: 'Internal server error occurred while fetching leads'
+      message: 'Failed to fetch leads',
+      error: error.message
     });
   }
 };
@@ -386,7 +432,7 @@ export const getAssignedLeads = async (req, res) => {
     const { 
       page = 1, 
       limit = 10, 
-      status,
+      statusGroup,
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC'
@@ -404,93 +450,105 @@ export const getAssignedLeads = async (req, res) => {
       });
     }
 
-    // Build where clause
-    const whereClause = {
+    // Define status mappings
+    const statusGroups = {
+      open: ['open'],
+      converted: ['closed'],
+      archived: ['Dead', 'notinterested'],
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later']
+    };
+
+    // Build base where clause for search and user assignment
+    const searchWhereClause = search ? {
+      [Op.or]: [
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { primaryEmail: { [Op.like]: `%${search}%` } },
+        { primaryContact: { [Op.like]: `%${search}%` } }
+      ]
+    } : {};
+
+    const userWhereClause = {
       [Op.or]: [
         { assignTo: req.user.id },  // Leads assigned to the user
         { createdBy: req.user.id }  // Leads created by the user
       ]
     };
-    
-    // Add status filter if provided
-    if (status && ['open', 'converted', 'archive'].includes(status)) {
-      whereClause.status = status;
-    }
 
-    // Add search functionality
-    if (search) {
-      whereClause[Op.or] = [
-        { firstName: { [Op.like]: `%${search}%` } },
-        { lastName: { [Op.like]: `%${search}%` } },
-        { emails: { [Op.like]: `%${search}%` } },
-        { technology: { [Op.like]: `%${search}%` } },
-        { country: { [Op.like]: `%${search}%` } }
-      ];
-    }
+    // Fetch leads for each status group with pagination
+    const groupedLeads = {};
+    const groupPromises = Object.entries(statusGroups).map(async ([group, statuses]) => {
+      const whereClause = {
+        ...searchWhereClause,
+        ...userWhereClause,
+        status: { [Op.in]: statuses }
+      };
 
-    // Calculate offset
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Get leads with pagination
-    const leads = await Lead.findAndCountAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
-        },
-        {
-          model: User,
-          as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
-        },
-        {
-          model: User,
-          as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
-          required: false
-        }
-      ],
-      order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
-      offset: offset
-    });
-
-    // Process the leads to ensure assignment data is accurate
-    const processedLeads = leads.rows.map(lead => {
-      const leadData = lead.toJSON();
-      if (!leadData.assignedUser) {
-        leadData.assignedUser = null;
-        leadData.assignTo = null;
+      // Only fetch data for requested status group if specified
+      if (statusGroup && statusGroup !== group) {
+        groupedLeads[group] = {
+          leads: [],
+          pagination: {
+            total: 0,
+            totalPages: 0,
+            currentPage: parseInt(page),
+            limit: parseInt(limit)
+          }
+        };
+        return;
       }
-      if (!leadData.previouslyAssignedUser) {
-        leadData.previouslyAssignedUser = null;
-        leadData.previousAssign = null;
-      }
-      return leadData;
-    });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Assigned leads fetched successfully',
-      data: {
-        leads: processedLeads,
+      const { count, rows } = await Lead.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: 'assignedUser',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          },
+          {
+            model: User,
+            as: 'previouslyAssignedUser',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          },
+          {
+            model: User,
+            as: 'creator',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          },
+          {
+            model: User,
+            as: 'updater',
+            attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId'],
+          }
+        ],
+        order: [[sortBy, sortOrder]],
+        offset: (parseInt(page) - 1) * parseInt(limit),
+        limit: parseInt(limit)
+      });
+
+      groupedLeads[group] = {
+        leads: rows,
         pagination: {
-          total: leads.count,
-          totalPages: Math.ceil(leads.count / parseInt(limit)),
+          total: count,
+          totalPages: Math.ceil(count / parseInt(limit)),
           currentPage: parseInt(page),
           limit: parseInt(limit)
         }
-      }
+      };
+    });
+
+    // Wait for all group queries to complete
+    await Promise.all(groupPromises);
+
+    // Return only the requested group if specified, otherwise return all groups
+    const response = statusGroup ? 
+      groupedLeads[statusGroup] : 
+      groupedLeads;
+
+    return res.status(200).json({
+      success: true,
+      data: response
     });
 
   } catch (error) {
@@ -766,7 +824,7 @@ export const updateLeadStatus = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { status, remark } = req.body;
+    const { status, remark, followUpDate, followUpTime } = req.body;
 
     // Validate status
     const validStatuses = [
@@ -780,7 +838,8 @@ export const updateLeadStatus = async (req, res) => {
       'not working',
       'wrong no',
       'closed',
-      'call again later'
+      'call again later',
+      'follow up'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -805,6 +864,27 @@ export const updateLeadStatus = async (req, res) => {
         success: false,
         message: 'Lead not found'
       });
+    }
+
+    // Validate follow-up date and time for inProcess statuses
+    const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
+    if (inProcessStatuses.includes(status)) {
+      if (!followUpDate || !followUpTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time are required for in-process status changes'
+        });
+      }
+
+      // Validate that follow-up time is in the future
+      const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+      const now = new Date();
+      if (followUpDateTime <= now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up date and time must be in the future'
+        });
+      }
     }
 
     // Get creator details
@@ -862,13 +942,11 @@ export const updateLeadStatus = async (req, res) => {
         archivedAt: new Date(),
         remarks: updatedRemarks,
         updatedBy: req.user.id,
-        archivedBy: req.user.id // This will be used to track who archived the lead
+        archivedBy: req.user.id
       };
 
-      // Remove fields that shouldn't be copied
       delete archivedLeadData.id;
 
-      // Create archived lead and delete original lead
       await ArchivedLead.create(archivedLeadData, { transaction });
       await lead.destroy({ transaction });
 
@@ -881,12 +959,55 @@ export const updateLeadStatus = async (req, res) => {
       });
     }
 
-    // If not archiving, just update the status and remarks
-    await lead.update({
+    // Prepare update data
+    const updateData = {
       status,
       remarks: updatedRemarks,
-      updatedBy: req.user.id
-    }, { transaction });
+      updatedBy: req.user.id,
+      followUpDate: null,
+      followUpTime: null,
+      followUpDateTime: null
+    };
+
+    // Add follow-up data if provided
+    if (followUpDate && followUpTime) {
+      try {
+        // Ensure proper date format
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        
+        if (!dateRegex.test(followUpDate) || !timeRegex.test(followUpTime)) {
+          throw new Error('Invalid date or time format');
+        }
+
+        // Format the time to ensure HH:mm:ss format
+        const [hours, minutes] = followUpTime.split(':');
+        const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+        
+        // Create the datetime string in MySQL format
+        const mysqlDateTime = `${followUpDate} ${formattedTime}`;
+        const followUpDateTimeObj = new Date(mysqlDateTime);
+
+        // Validate the created date
+        if (isNaN(followUpDateTimeObj.getTime())) {
+          throw new Error('Invalid date/time combination');
+        }
+
+        updateData.followUpDate = followUpDate;
+        updateData.followUpTime = formattedTime;
+        updateData.followUpDateTime = followUpDateTimeObj;
+      } catch (error) {
+        console.error('Error formatting follow-up date/time:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid follow-up date or time format',
+          error: error.message
+        });
+      }
+    }
+
+    // Update the lead with the prepared data
+    await lead.update(updateData, { transaction });
 
     await transaction.commit();
 

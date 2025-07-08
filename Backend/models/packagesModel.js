@@ -172,4 +172,4 @@ Packages.prototype.addDiscount = function(newDiscount) {
   return this.discounts;
 };
 
-export default Packages; 
+export default Packages;
