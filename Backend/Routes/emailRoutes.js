@@ -37,6 +37,7 @@ router.get('/template-preview', auth, async (req, res) => {
   }
 });
 
+
 // Send email
 router.post('/send', auth, async (req, res) => {
   try {

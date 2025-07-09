@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Editor } from '@tinymce/tinymce-react';
 
 interface EmailPopupProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [templateHtml, setTemplateHtml] = useState('');
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [customContent, setCustomContent] = useState('');
   const [subject, setSubject] = useState(emailSubject || "Embark on a Success Journey with Ninez Tech");
   const [to, setTo] = useState(lead.primaryEmail);
   const [cc, setCC] = useState('');
@@ -94,6 +97,10 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
     }
   };
 
+  const handleEditorChange = (content: string) => {
+    setCustomContent(content);
+  };
+
   const handleSendEmail = async () => {
     try {
       setIsSending(true);
@@ -104,7 +111,6 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         return;
       }
 
-      // Split CC emails by comma and trim whitespace
       const ccEmails = cc.split(',').map(email => email.trim()).filter(email => email);
 
       const userData = {
@@ -117,7 +123,8 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         from: from,
         to: to,
         cc: ccEmails,
-        subject: subject
+        subject: subject,
+        customBody: isCustomizing ? customContent : undefined
       };
 
       const response = await axios.post(
@@ -239,17 +246,58 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
                   </div>
                 </div>
 
-                {/* Template Preview */}
+                {/* Template Preview and Editor */}
                 <div className="mb-4 border rounded-lg">
                   {isLoading ? (
                     <div className="flex items-center justify-center h-96">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
                   ) : (
-                    <div 
-                      className="p-4 max-h-96 overflow-y-auto"
-                      dangerouslySetInnerHTML={{ __html: templateHtml }}
-                    />
+                    <>
+                      <div className="flex justify-end p-2">
+                        <button
+                          onClick={() => {
+                            setIsCustomizing(!isCustomizing);
+                            if (!isCustomizing) {
+                              setCustomContent(templateHtml);
+                            }
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                        >
+                          {isCustomizing ? 'View Original Template' : 'Customize Email'}
+                        </button>
+                      </div>
+                      
+                      {isCustomizing ? (
+                        <Editor
+                          apiKey="n1jupubcidq4bqvv01vznzpbcj43hg297pgftp78jszal918"
+                          value={customContent || templateHtml}
+                          init={{
+                            height: 500,
+                            menubar: false,
+                            plugins: [
+                              'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                              'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                              'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                            ],
+                            toolbar: 'undo redo | blocks | ' +
+                              'bold italic forecolor | alignleft aligncenter ' +
+                              'alignright alignjustify | bullist numlist outdent indent | ' +
+                              'removeformat | help',
+                            content_style: 'body { font-family:Arial,sans-serif; font-size:14px }',
+                            auto_focus: undefined,
+                            preserve_caret_position: true,
+                            statusbar: false
+                          }}
+                          onEditorChange={handleEditorChange}
+                        />
+                      ) : (
+                        <div 
+                          className="p-4 max-h-96 overflow-y-auto"
+                          dangerouslySetInnerHTML={{ __html: templateHtml }}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
 

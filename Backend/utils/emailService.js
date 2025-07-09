@@ -262,8 +262,6 @@ const getEmailHeader = () => `
   </div>
 `;
 
-
-
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', options.to || userData.email);
 
@@ -342,10 +340,6 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
       </head>
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6; text-align: left;">
         <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-          
-  
-          <div style="border-top: 1px solid #ccc; margin: 20px 0;"></div>
-          
           ${options.customBody ? formatText(options.customBody) : `
             <div style="padding: 20px 0; text-align: left;">
               <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px; text-align: left;">Hello ${userData.firstName},</p>
