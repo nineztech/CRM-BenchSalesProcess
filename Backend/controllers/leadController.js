@@ -5,6 +5,47 @@ import ArchivedLead from "../models/archivedLeadModel.js";
 import { sequelize } from "../config/dbConnection.js";
 import { Sequelize } from "sequelize";
 
+// Function to check follow-up times
+const checkFollowUpTimes = async () => {
+  try {
+    // Find all leads that have follow-up dates
+    const leadsToCheck = await Lead.findAll({
+      where: {
+        followUpDate: {
+          [Op.not]: null
+        },
+        followUpTime: {
+          [Op.not]: null
+        },
+        status: {
+          [Op.notIn]: ['Dead', 'notinterested', 'closed'] // Exclude archived and converted leads
+        }
+      }
+    });
+
+    // Check each lead's follow-up time
+    for (const lead of leadsToCheck) {
+      if (lead.followUpDateTime) {
+        const now = new Date();
+        const timeDiff = lead.followUpDateTime.getTime() - now.getTime();
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+        // If follow-up time is set and within 24 hours (past or future), keep in followup
+        if (hoursDiff <= 24) {
+          // No need to update anything as the queries in getAllLeads and getAssignedLeads
+          // will automatically pick up these leads in the followup section
+          console.log(`Lead ${lead.id} is in follow-up status (${hoursDiff} hours from follow-up time)`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking follow-up times:', error);
+  }
+};
+
+// Start checking follow-up times every 5 seconds
+setInterval(checkFollowUpTimes, 5000);
+
 export const createLead = async (req, res) => {
   try {
     // Check if user is authenticated
@@ -291,22 +332,26 @@ export const getAllLeads = async (req, res) => {
       open: ['open'],
       converted: ['closed'],
       archived: ['Dead', 'notinterested'],
-      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow up']
     };
 
-    // First get all leads that have follow-up dates
-    const now = new Date();
+    // Get all leads that have follow-up dates within or past 24 hours
     const followupLeads = await Lead.findAndCountAll({
       where: {
-        followUpDate: {
-          [Op.not]: null
-        },
-        followUpTime: {
+        followUpDateTime: {
           [Op.not]: null
         },
         [Op.and]: [
-          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) > NOW()`),
-          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) <= DATE_ADD(NOW(), INTERVAL 24 HOUR)`)
+          {
+            followUpDateTime: {
+              [Op.lte]: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            }
+          },
+          {
+            status: {
+              [Op.notIn]: ['Dead', 'notinterested', 'closed']
+            }
+          }
         ]
       },
       include: [
@@ -452,26 +497,34 @@ export const getAssignedLeads = async (req, res) => {
       open: ['open'],
       converted: ['closed'],
       archived: ['Dead', 'notinterested'],
-      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later']
+      inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow up']
     };
 
-    // First get all leads that have follow-up dates
-    const now = new Date();
+    // Get all leads that have follow-up dates within or past 24 hours
     const followupLeads = await Lead.findAndCountAll({
       where: {
-        [Op.or]: [
-          { assignTo: req.user.id },
-          { createdBy: req.user.id }
-        ],
-        followUpDate: {
-          [Op.not]: null
-        },
-        followUpTime: {
-          [Op.not]: null
-        },
         [Op.and]: [
-          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) > NOW()`),
-          Sequelize.literal(`CONCAT(followUpDate, 'T', followUpTime) <= DATE_ADD(NOW(), INTERVAL 24 HOUR)`)
+          {
+            [Op.or]: [
+              { assignTo: req.user.id },
+              { createdBy: req.user.id }
+            ]
+          },
+          {
+            followUpDateTime: {
+              [Op.not]: null
+            }
+          },
+          {
+            followUpDateTime: {
+              [Op.lte]: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            }
+          },
+          {
+            status: {
+              [Op.notIn]: ['Dead', 'notinterested', 'closed']
+            }
+          }
         ]
       },
       include: [
