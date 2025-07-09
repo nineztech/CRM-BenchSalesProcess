@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneInput from 'react-phone-input-2';
