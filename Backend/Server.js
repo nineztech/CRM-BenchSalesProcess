@@ -8,6 +8,7 @@ import router from "./Routes/index.js";
 import addOtpFields from './migrations/addOtpFields.js';
 import { createDefaultActivities } from './controllers/activityController.js';
 import emailRoutes from './Routes/emailRoutes.js';
+import bulkRoutes from './Routes/bulkRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,7 @@ app.use(cors({
 // Routes
 app.use("/api", router);
 app.use('/api/email', emailRoutes);
+app.use('/api/bulk', bulkRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

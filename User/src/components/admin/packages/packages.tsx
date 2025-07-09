@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck } from 'react-icons/fa';
+import { FaEdit, FaLock, FaUnlock, FaGift, FaMoneyBillWave, FaUserGraduate, FaClock, FaCheck } from 'react-icons/fa';
 import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../common/layout/Layout';
@@ -324,6 +324,13 @@ const PackagesPage: React.FC = () => {
         [name]: newValue
       };
 
+      // Handle mutual exclusivity between firstYearSalaryPercentage and firstYearFixedPrice
+      if (name === 'firstYearSalaryPercentage' && newValue !== null) {
+        updatedData.firstYearFixedPrice = null;
+      } else if (name === 'firstYearFixedPrice' && newValue !== null) {
+        updatedData.firstYearSalaryPercentage = null;
+      }
+
       // Real-time validation for initial price and enrollment charge
       if (name === 'initialPrice' || name === 'enrollmentCharge') {
         const initialPrice = name === 'initialPrice' ? Number(value) : updatedData.initialPrice;
@@ -390,7 +397,7 @@ const PackagesPage: React.FC = () => {
       }
       // Validate firstYearFixedPrice if it's provided
       if (formData.firstYearFixedPrice !== null) {
-        if (formData.firstYearFixedPrice <0) {
+        if (formData.firstYearFixedPrice <= 0) {
           newErrors.firstYearFixedPrice = 'First year fixed price must be greater than 0';
         }
       }
@@ -399,6 +406,9 @@ const PackagesPage: React.FC = () => {
     if (formData.features.length === 0) {
       newErrors.features = 'At least one feature is required';
     }
+
+    console.log('Form data being validated:', formData); // Add logging
+    console.log('Validation errors:', newErrors); // Add logging
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -429,11 +439,14 @@ const PackagesPage: React.FC = () => {
       return;
     }
 
+    // Create a clean package data object
     const packageData = {
-      ...formData,
+      planName: formData.planName.trim(),
       initialPrice: Number(formData.initialPrice),
       enrollmentCharge: Number(formData.enrollmentCharge),
       offerLetterCharge: Number(formData.offerLetterCharge),
+      firstYearSalaryPercentage: formData.firstYearSalaryPercentage !== null ? Number(formData.firstYearSalaryPercentage) : null,
+      firstYearFixedPrice: formData.firstYearFixedPrice !== null ? Number(formData.firstYearFixedPrice) : null,
       features: formData.features.map(feature => feature.trim()).filter(Boolean),
       discounts: formData.discounts.map(discount => ({
         ...discount,
@@ -441,17 +454,21 @@ const PackagesPage: React.FC = () => {
       }))
     };
 
+    console.log('Package data being submitted:', packageData); // Debug log
+
     if (editingPackage) {
       toast.promise(
         axiosInstance.put(`/${editingPackage.id}`, packageData),
         {
           loading: 'Updating package...',
-          success: () => {
+          success: (response) => {
+            console.log('Update response:', response); // Debug log
             fetchPackages();
             resetForm();
             return 'Package updated successfully';
           },
           error: (err: any) => {
+            console.error('Update error:', err, err.response?.data); // Debug log
             if (err.response?.data?.errors) {
               setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
                 acc[curr.field] = curr.message;
@@ -473,6 +490,7 @@ const PackagesPage: React.FC = () => {
             return 'Package created successfully';
           },
           error: (err: any) => {
+            console.error('Create error:', err); // Add logging
             if (err.response?.data?.errors) {
               setErrors(err.response.data.errors.reduce((acc: {[key: string]: string}, curr: any) => {
                 acc[curr.field] = curr.message;
@@ -487,16 +505,17 @@ const PackagesPage: React.FC = () => {
   };
 
   const handleEdit = (pkg: Package) => {
+    console.log('Package data received for edit:', pkg); // Debug log
     setEditingPackage(pkg);
     setFormData({
       planName: pkg.planName,
       initialPrice: pkg.initialPrice || 0,
       enrollmentCharge: pkg.enrollmentCharge,
       offerLetterCharge: pkg.offerLetterCharge,
-      firstYearSalaryPercentage: pkg.firstYearSalaryPercentage,
-      firstYearFixedPrice: pkg.firstYearFixedPrice,
-      features: pkg.features,
-      discounts: pkg.discounts
+      firstYearSalaryPercentage: pkg.firstYearSalaryPercentage !== undefined ? pkg.firstYearSalaryPercentage : null,
+      firstYearFixedPrice: pkg.firstYearFixedPrice !== undefined ? pkg.firstYearFixedPrice : null,
+      features: pkg.features || [],
+      discounts: pkg.discounts || []
     });
     setSelectedPackageId(pkg.id);
     
@@ -524,16 +543,18 @@ const PackagesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, currentStatus: string) => {
+    const action = currentStatus === 'active' ? 'deactivate' : 'activate';
+    
     toast.promise(
-      axiosInstance.delete(`/${id}`),
+      axiosInstance.patch(`/${id}`),
       {
-        loading: 'Deleting package...',
+        loading: `${action === 'activate' ? 'Activating' : 'Deactivating'} package...`,
         success: () => {
           fetchPackages();
-          return 'Package deleted successfully';
+          return `Package ${action}d successfully`;
         },
-        error: (err: any) => err.response?.data?.message || 'Failed to delete package'
+        error: (err: any) => err.response?.data?.message || `Failed to ${action} package`
       }
     );
   };
@@ -1082,12 +1103,12 @@ const PackagesPage: React.FC = () => {
                   <motion.div
                     key={pkg.id}
                     initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: pkg.status === 'active' ? 1 : 0.7, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: index * 0.1 }}
                     onHoverStart={() => setIsAnyCardHovered(true)}
                     onHoverEnd={() => setIsAnyCardHovered(false)}
-                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''}`}
+                    className={`group relative bg-gradient-to-br ${theme.gradient} rounded-xl shadow-md ${theme.border} border overflow-hidden transition-all duration-700 ease-in-out ${isAnyCardHovered ? 'hover:scale-[1.02]' : ''} ${pkg.status !== 'active' ? 'grayscale' : ''}`}
                   >
                     {/* Countdown Timer - Only show if there are active discounts */}
                     {hasActiveDiscount && (
@@ -1144,10 +1165,11 @@ const PackagesPage: React.FC = () => {
                           <div className="flex gap-1.5">
                             {checkPermission('Package Management', 'edit') && (
                               <motion.button
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleEdit(pkg)}
-                                className={`p-1.5 ${theme.icon} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
+                                whileHover={{ scale: pkg.status === 'active' ? 1.1 : 1, rotate: pkg.status === 'active' ? 5 : 0 }}
+                                whileTap={{ scale: pkg.status === 'active' ? 0.9 : 1 }}
+                                onClick={() => pkg.status === 'active' ? handleEdit(pkg) : null}
+                                className={`p-1.5 ${pkg.status === 'active' ? `${theme.icon} hover:bg-white hover:shadow-sm` : 'text-gray-400 cursor-not-allowed'} rounded-lg transition-all duration-300`}
+                                disabled={pkg.status !== 'active'}
                               >
                                 <FaEdit size={14} />
                               </motion.button>
@@ -1156,10 +1178,10 @@ const PackagesPage: React.FC = () => {
                               <motion.button
                                 whileHover={{ scale: 1.1, rotate: -5 }}
                                 whileTap={{ scale: 0.9 }}
-                                onClick={() => handleDelete(pkg.id)}
-                                className="p-1.5 text-red-500 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300"
+                                onClick={() => handleDelete(pkg.id, pkg.status)}
+                                className={`p-1.5 ${pkg.status === 'active' ? 'text-orange-500' : 'text-green-500'} hover:bg-white hover:shadow-sm rounded-lg transition-all duration-300`}
                               >
-                                <FaTrash size={14} />
+                                {pkg.status === 'active' ? <FaLock size={14} /> : <FaUnlock size={14} />}
                               </motion.button>
                             )}
                           </div>
