@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,18 +23,13 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   isOpen,
   onClose,
   lead,
-  emailBody,
   emailSubject,
   packages
 }) => {
   const [isSending, setIsSending] = useState(false);
-  const [subject, setSubject] = useState(emailSubject);
-  const [body, setBody] = useState(() => {
-    if (emailBody && emailBody.trim().startsWith('Dear')) {
-      return emailBody;
-    }
-    return `Dear ${lead.firstName} ${lead.lastName},\n\n${emailBody || ''}`;
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [templateHtml, setTemplateHtml] = useState('');
+  const [subject, setSubject] = useState(emailSubject || "Embark on a Success Journey with Ninez Tech");
   const [to, setTo] = useState(lead.primaryEmail);
   const [cc, setCC] = useState('');
   const [from, setFrom] = useState(() => {
@@ -44,9 +39,60 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
   });
 
   // Update "to" field when lead.primaryEmail changes
-  React.useEffect(() => {
+  useEffect(() => {
     setTo(lead.primaryEmail);
   }, [lead.primaryEmail]);
+
+  // Fetch template preview when popup opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchTemplatePreview();
+    }
+  }, [isOpen, lead, packages]);
+
+  const fetchTemplatePreview = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        alert('Authentication required. Please login again.');
+        return;
+      }
+
+      const userData = {
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: to
+      };
+
+      // Convert objects to query strings
+      const queryParams = new URLSearchParams({
+        userData: JSON.stringify(userData),
+        packages: JSON.stringify(packages)
+      });
+
+      const response = await axios.get(
+        `${BASE_URL}/email/template-preview?${queryParams.toString()}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        setTemplateHtml(response.data.template);
+      } else {
+        alert('Failed to load template preview.');
+      }
+    } catch (error) {
+      console.error('Error loading template preview:', error);
+      alert('Failed to load template preview.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSendEmail = async () => {
     try {
@@ -61,23 +107,25 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       // Split CC emails by comma and trim whitespace
       const ccEmails = cc.split(',').map(email => email.trim()).filter(email => email);
 
+      const userData = {
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: to
+      };
+
+      const emailOptions = {
+        from: from,
+        to: to,
+        cc: ccEmails,
+        subject: subject
+      };
+
       const response = await axios.post(
         `${BASE_URL}/email/send`,
         {
-          userData: {
-            firstName: lead.firstName,
-            lastName: lead.lastName,
-            email: to
-          },
-          packages: packages,
-          options: {
-            from: from,
-            to: to,
-            cc: ccEmails,
-            subject: subject,
-            customBody: body // This will trigger the custom body template in emailService
-          },
-          leadId: lead.id
+          userData,
+          packages,
+          emailOptions
         },
         {
           headers: {
@@ -124,7 +172,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h2 className="text-lg font-medium">New Message</h2>
+                <h2 className="text-lg font-medium">Send Package Details Email</h2>
                 <button
                   onClick={onClose}
                   className="text-gray-400 hover:text-gray-500"
@@ -179,7 +227,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
 
                 {/* Subject Field */}
                 <div className="mb-4">
-                  <div className="flex items-center border-b py-2 ">
+                  <div className="flex items-center border-b py-2">
                     <span className="text-gray-500 w-16">Subject:</span>
                     <input
                       type="text"
@@ -191,14 +239,18 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
                   </div>
                 </div>
 
-                {/* Email Body */}
-                <div className="mb-4">
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    className="w-full h-96 p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Write your message..."
-                  />
+                {/* Template Preview */}
+                <div className="mb-4 border rounded-lg">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-96">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="p-4 max-h-96 overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: templateHtml }}
+                    />
+                  )}
                 </div>
 
                 {/* Actions */}
