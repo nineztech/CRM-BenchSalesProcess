@@ -5,14 +5,14 @@ const addOtpFields = async () => {
   try {
     // Check if columns exist
     const columns = await sequelize.query(
-      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME IN ('resetPasswordOtp', 'resetPasswordOtpExpiry')",
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('resetPasswordOtp', 'resetPasswordOtpExpiry')",
       { type: QueryTypes.SELECT }
     );
 
     // Add resetPasswordOtp if it doesn't exist
     if (!columns.find(col => col.COLUMN_NAME === 'resetPasswordOtp')) {
       await sequelize.query(
-        "ALTER TABLE Users ADD COLUMN resetPasswordOtp VARCHAR(255) NULL"
+        "ALTER TABLE users ADD COLUMN resetPasswordOtp VARCHAR(255) NULL"
       );
       console.log('✅ Added resetPasswordOtp column');
     }
@@ -20,7 +20,7 @@ const addOtpFields = async () => {
     // Add resetPasswordOtpExpiry if it doesn't exist
     if (!columns.find(col => col.COLUMN_NAME === 'resetPasswordOtpExpiry')) {
       await sequelize.query(
-        "ALTER TABLE Users ADD COLUMN resetPasswordOtpExpiry DATETIME NULL"
+        "ALTER TABLE users ADD COLUMN resetPasswordOtpExpiry DATETIME NULL"
       );
       console.log('✅ Added resetPasswordOtpExpiry column');
     }
