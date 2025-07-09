@@ -3,7 +3,7 @@ import { sequelize } from "../config/dbConnection.js";
 import Department from "./departmentModel.js";
 
 const SpecialUserPermission = sequelize.define(
-  "SpecialUserPermission",
+  "specialuserpermissions",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -14,7 +14,7 @@ const SpecialUserPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -22,7 +22,7 @@ const SpecialUserPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Activities',
+        model: 'activities',
         key: 'id'
       }
     },
@@ -30,7 +30,7 @@ const SpecialUserPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Departments',
+        model: 'departments',
         key: 'id'
       }
     },
@@ -70,7 +70,7 @@ const SpecialUserPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -78,7 +78,7 @@ const SpecialUserPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }

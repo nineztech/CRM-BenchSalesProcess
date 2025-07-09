@@ -3,7 +3,7 @@ import { sequelize } from "../config/dbConnection.js";
 import User from './userModel.js';
 
 const LeadAssignment = sequelize.define(
-  "LeadAssignment",
+  "leadassignments",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -14,7 +14,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Leads',
+        model: 'leads',
         key: 'id'
       }
     },
@@ -22,7 +22,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -30,7 +30,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -53,7 +53,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -61,7 +61,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -124,7 +124,7 @@ const LeadAssignment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },

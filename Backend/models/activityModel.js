@@ -4,7 +4,7 @@ import Department from "./departmentModel.js";
 import User from "./userModel.js";
 
 const Activity = sequelize.define(
-  "Activity",
+  "activities",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -56,7 +56,7 @@ const Activity = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -64,7 +64,7 @@ const Activity = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }

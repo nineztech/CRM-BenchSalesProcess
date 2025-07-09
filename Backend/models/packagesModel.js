@@ -2,7 +2,7 @@ import { Sequelize, DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
 
 const Packages = sequelize.define(
-  "Packages",
+  "packages",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -129,7 +129,7 @@ const Packages = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -137,7 +137,7 @@ const Packages = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },

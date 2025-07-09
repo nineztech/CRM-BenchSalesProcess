@@ -4,7 +4,7 @@ import Activity from "./activityModel.js";
 import User from "./userModel.js";
 
 const AdminPermission = sequelize.define(
-  "AdminPermission",
+  "adminpermissions",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -15,7 +15,7 @@ const AdminPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -23,7 +23,7 @@ const AdminPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Activities',
+        model: 'activities',
         key: 'id'
       }
     },
@@ -51,7 +51,7 @@ const AdminPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -59,7 +59,7 @@ const AdminPermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }

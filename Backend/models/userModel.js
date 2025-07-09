@@ -3,7 +3,7 @@ import { sequelize } from "../config/dbConnection.js";
 import bcrypt from "bcrypt";
 
 const User = sequelize.define(
-  "User",
+  "users",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -51,7 +51,7 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Departments',
+        model: 'departments',
         key: 'id'
       }
     },

@@ -3,7 +3,7 @@ import { sequelize } from "../config/dbConnection.js";
 import User from "./userModel.js";
 
 const Permission = sequelize.define(
-  "Permission",
+  "permissions",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -23,7 +23,7 @@ const Permission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -31,7 +31,7 @@ const Permission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }

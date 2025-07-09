@@ -6,7 +6,7 @@ import User from "./userModel.js";
 import SpecialUserPermission from "./specialUserPermissionModel.js";
 
 const RolePermission = sequelize.define(
-  "RolePermission",
+  "rolepermissions",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -17,7 +17,7 @@ const RolePermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Activities',
+        model: 'activities',
         key: 'id'
       }
     },
@@ -25,7 +25,7 @@ const RolePermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Departments',
+        model: 'departments',
         key: 'id'
       }
     },
@@ -65,7 +65,7 @@ const RolePermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -73,7 +73,7 @@ const RolePermission = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }

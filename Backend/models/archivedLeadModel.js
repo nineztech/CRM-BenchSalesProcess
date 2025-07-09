@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
 
 const ArchivedLead = sequelize.define(
-  "ArchivedLead",
+  "archivedleads",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -179,7 +179,7 @@ const ArchivedLead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -187,7 +187,7 @@ const ArchivedLead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -216,7 +216,7 @@ const ArchivedLead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     },
@@ -224,7 +224,7 @@ const ArchivedLead = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       }
     }
