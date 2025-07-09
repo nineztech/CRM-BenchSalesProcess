@@ -21,11 +21,9 @@ import {
   FaClock, 
   FaMoneyBillWave,
   FaArrowUp,
-  FaArrowDown,
-  FaFileUpload
+  FaArrowDown
 } from 'react-icons/fa';
 // import usePermissions from '../../../hooks/usePermissions';
-import BulkLeadUpload from '../../user/lead_creation/bulkLead';
 
 // Sample data - Replace with actual data from your API
 const leadData = [
@@ -270,22 +268,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      {/* Bulk Upload Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-white rounded-lg shadow-md p-6 mb-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-            <FaFileUpload className="mr-2 text-indigo-600" />
-            Bulk Lead Upload
-          </h2>
-        </div>
-        <BulkLeadUpload />
-      </motion.div>
-
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
