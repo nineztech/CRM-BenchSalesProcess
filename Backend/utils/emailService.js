@@ -328,6 +328,81 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
     `).join('');
   };
 
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; padding: 15px !important; }
+            .content { padding: 20px !important; }
+          }
+        </style>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6; text-align: left;">
+        <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
+          
+  
+          <div style="border-top: 1px solid #ccc; margin: 20px 0;"></div>
+          
+          ${options.customBody ? formatText(options.customBody) : `
+            <div style="padding: 20px 0; text-align: left;">
+              <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px; text-align: left;">Hello ${userData.firstName},</p>
+              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
+             
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Please visit our online presence and plans:</strong><br/>
+              <a href="https://taplink.cc/nineztech" style="color: #0066cc; text-decoration: none;">Nineztech | Online Presence</a><br/>
+              <span style="font-size: 13px;">Please find discounted pricing below in this email*</span><br/></p><br/>
+
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Why Choose Ninez Tech?</strong></p>
+              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies</p>
+              
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Program Highlights:</strong></p><br/>
+              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px; text-align: left;">
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Our recruiter will work full-time for you according to your time zone, coordinating with you to meet your expectations and requirements.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Search for positions to submit your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Source passive positions suitable for your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Carefully scan each position and select the most suitable ones that match your resume.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Our recruiters have formal training in various technical skills and can handle preliminary technical interviews with technical recruiters.</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• The recruiter will coordinate with the client's technical recruiter for various discussions.</li>
+              </ul>
+
+              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Topics Covered in Our Placement Program:</strong></p><br/>
+              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px; text-align: left;">
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Skill & Technology Guidance</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Resume Writing (ATS optimized)</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Resume Marketing (through a dedicated technical recruiter)</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Placement</li>
+                <li style="margin-bottom: 12px; padding-left: 20px; position: relative; text-align: left;">• Compliance</li>
+              </ul>
+
+              ${getPackageCards(packages)}
+                
+              <div style="margin-top: 30px; text-align: left;">
+                <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0; text-align: left;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
+                <p style="color: #333333; font-size: 15px; margin: 0; text-align: left;">Looking forward to helping you take the next big step in your career!</p>
+              </div><br/><br/>  --
+              <div style="margin-top: 20px; padding-top: 20px; text-align: left;">
+                <b><p style="color: #333333; margin: 0; text-align: left;">Thanks and Regards,</p></b>
+              </div>
+            </div>
+          `}
+          
+          ${getEmailHeader()}
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+            <p style="color: #666; margin: 0; text-align: left;">"Empowering Career, Enriching Future"</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  // If preview mode is enabled, return the HTML without sending
+  if (options.previewOnly) {
+    return emailHtml;
+  }
+
   const mailOptions = {
     from: options.from || `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
     to: options.to || userData.email,
@@ -338,76 +413,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
       path: '../User/src/assets/Logo.webp',
       cid: 'companyLogo'
     }],
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            @media only screen and (max-width: 600px) {
-              .container { width: 100% !important; padding: 15px !important; }
-              .content { padding: 20px !important; }
-            }
-          </style>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-            
-            
-            <div style="border-top: 1px solid #ccc; margin: 20px 0;"></div>
-            
-            ${options.customBody ? formatText(options.customBody) : `
-              <div style="padding: 20px 0;">
-                <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px;">Hello ${userData.firstName},</p>
-                <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
-               
-              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Please visit our online presence and plans:</strong><br/>
-              <a href="https://taplink.cc/nineztech" style="color: #0066cc; text-decoration: none;">Nineztech | Online Presence</a><br/>
-              <span style="font-size: 13px;">Please find discounted pricing below in this email*</span><br/></p><br/>
-              
-
-              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Why Choose Ninez Tech?</strong><br/>
-              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies</p>
-              
-              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Program Highlights:</strong></p><br/>
-              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px;">
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Our recruiter will work full-time for you according to your time zone, coordinating with you to meet your expectations and requirements.</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Search for positions to submit your resume.</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Source passive positions suitable for your resume.</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Carefully scan each position and select the most suitable ones that match your resume.</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Our recruiters have formal training in various technical skills and can handle preliminary technical interviews with technical recruiters.</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• The recruiter will coordinate with the client's technical recruiter for various discussions.</li>
-              </ul>
-
-              <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px;"><strong>Topics Covered in Our Placement Program:</strong></p><br/>
-              <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px;">
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Skill & Technology Guidance</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Resume Writing (ATS optimized)</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Resume Marketing (through a dedicated technical recruiter)</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Placement</li>
-                <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">• Compliance</li>
-              </ul>
-
-              ${getPackageCards(packages)}
-                
-                <div style="margin-top: 30px;">
-                  <p style="color: #333333; font-size: 15px; margin: 0 0 20px 0;">Let me know if you have any questions or would like to hop on a quick call to discuss which plan best aligns with your goals.</p>
-                  <p style="color: #333333; font-size: 15px; margin: 0;">Looking forward to helping you take the next big step in your career!</p>
-                </div><br/><br/>  --
-              <div style="margin-top: 20px; padding-top: 20px; ;">
-                <b><p style="color: #333333; margin: 0;">Thanks and Regards,</p></b>
-                </div>
-              </div>
-            `}
-            
-            ${getEmailHeader()}
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
-                <p style="color: #666; margin: 0;">“Empowering Career, Enriching Future”</p>
-              </div>
-          </div>
-        </body>
-      </html>
-    `
+    html: emailHtml
   };
 
   try {
