@@ -24,7 +24,7 @@ import {
   FaArrowDown,
   FaFileUpload
 } from 'react-icons/fa';
-import usePermissions from '../../../hooks/usePermissions';
+// import usePermissions from '../../../hooks/usePermissions';
 import BulkLeadUpload from '../../user/lead_creation/bulkLead';
 
 // Sample data - Replace with actual data from your API
@@ -266,7 +266,7 @@ const StatCard: React.FC<{
 );
 
 const Dashboard: React.FC = () => {
-  const { loading: permissionsLoading } = usePermissions();
+  // const { loading: permissionsLoading } = usePermissions();
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
