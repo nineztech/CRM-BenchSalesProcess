@@ -81,145 +81,140 @@ const BulkLeadUpload: React.FC = () => {
         'Visa Status': 'Citizen',
         'Lead Source': 'Indeed',
         'Remarks': 'Senior backend developer'
-      },
-      {
-        'First Name': 'Raj',
-        'Last Name': 'Patel',
-        'Primary Contact': '+919876543210',
-        'Secondary Contact': '+919876543211',
-        'Primary Email': 'raj.patel@example.com',
-        'Secondary Email': 'raj.work@example.com',
-        'LinkedIn URL': 'https://www.linkedin.com/in/rajpatel',
-        'Technology': 'Python, Django, React',
-        'Country': 'India',
-        'Country Code': 'IN',
-        'Visa Status': 'L1',
-        'Lead Source': 'Referral',
-        'Remarks': 'Full stack developer with 5 years experience'
-      },
-      {
-        'First Name': 'Maria',
-        'Last Name': 'Garcia',
-        'Primary Contact': '+34612345678',
-        'Secondary Contact': '',
-        'Primary Email': 'maria.garcia@example.com',
-        'Secondary Email': '',
-        'LinkedIn URL': 'https://www.linkedin.com/in/mariagarcia',
-        'Technology': 'Angular, .NET, Azure',
-        'Country': 'Spain',
-        'Country Code': 'ES',
-        'Visa Status': 'Green Card',
-        'Lead Source': 'LinkedIn',
-        'Remarks': 'Cloud architecture specialist'
       }
     ];
 
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const ws = XLSX.utils.json_to_sheet(sampleData, { 
+      header: [
+        'First Name',
+        'Last Name',
+        'Primary Contact',
+        'Secondary Contact',
+        'Primary Email',
+        'Secondary Email',
+        'LinkedIn URL',
+        'Technology',
+        'Country',
+        'Country Code',
+        'Visa Status',
+        'Lead Source',
+        'Remarks'
+      ]
+    });
 
     // Create hidden sheet for country data
     const countryDataWs = XLSX.utils.aoa_to_sheet([
       ['Country', 'Code'],
       ...countryList.map(country => [country.name, country.code])
     ]);
+
+    // Add the sheets to the workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
     XLSX.utils.book_append_sheet(wb, countryDataWs, 'CountryData');
 
-    // Add data validation for Country column (I2:I1048576)
-    if (!ws['!dataValidation']) ws['!dataValidation'] = [];
-    
+    // Set column widths
+    ws['!cols'] = [
+      { width: 15 },  // First Name
+      { width: 15 },  // Last Name
+      { width: 20 },  // Primary Contact
+      { width: 20 },  // Secondary Contact
+      { width: 30 },  // Primary Email
+      { width: 30 },  // Secondary Email
+      { width: 40 },  // LinkedIn URL
+      { width: 30 },  // Technology
+      { width: 25 },  // Country
+      { width: 15 },  // Country Code
+      { width: 15 },  // Visa Status
+      { width: 15 },  // Lead Source
+      { width: 40 }   // Remarks
+    ];
+
+    // Style the header row
+    const headerStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F46E5" } }, // Indigo color
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      }
+    };
+
+    // Apply header styles
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:M1');
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!ws[addr]) continue;
+      ws[addr].s = headerStyle;
+    }
+
     // Add data validation for Country column
-    ws['!dataValidation'].push({
-      sqref: 'I2:I1048576', // Column I from row 2 onwards
+    ws['!dataValidations'] = [{
+      sqref: 'I2:I1048576',
       type: 'list',
       formula1: '=CountryData!$A$2:$A$' + (countryList.length + 1),
       allowBlank: false,
       showErrorMessage: true,
       errorTitle: 'Invalid Country',
       error: 'Please select a country from the dropdown',
-      prompt: 'Select a country'
-    });
+      showInputMessage: true,
+      promptTitle: 'Country Selection',
+      prompt: 'Select a country from the list'
+    }];
 
-    // Add formula for Country Code column (J2:J1048576)
-    for (let i = 2; i <= 1000; i++) { // Adjust range as needed
+    // Add formula for Country Code column
+    for (let i = 2; i <= 1000; i++) {
       const cellRef = `J${i}`;
-      ws[cellRef] = { 
+      ws[cellRef] = {
         f: `=VLOOKUP(I${i},CountryData!$A$2:$B$${countryList.length + 1},2,FALSE)`,
         t: 'f'
       };
     }
 
-    // Set column widths
-    const colWidths = [
-      { wch: 15 },  // First Name
-      { wch: 15 },  // Last Name
-      { wch: 20 },  // Primary Contact
-      { wch: 20 },  // Secondary Contact
-      { wch: 30 },  // Primary Email
-      { wch: 30 },  // Secondary Email
-      { wch: 40 },  // LinkedIn URL
-      { wch: 30 },  // Technology
-      { wch: 25 },  // Country
-      { wch: 15 },  // Country Code
-      { wch: 15 },  // Visa Status
-      { wch: 15 },  // Lead Source
-      { wch: 40 }   // Remarks
-    ];
-    ws['!cols'] = colWidths;
-
-    // Add comments/notes to the header cells
-    const headerComments = {
-      'A1': 'Required: 2-50 characters',
-      'B1': 'Required: 2-50 characters',
-      'C1': 'Required: Format: +[country code][number], e.g., +12345678901',
-      'D1': 'Optional: Same format as Primary Contact',
-      'E1': 'Required: Valid email format',
-      'F1': 'Optional: Valid email format',
-      'G1': 'Required: Valid LinkedIn URL',
-      'H1': 'Required: Comma-separated technologies',
-      'I1': 'Required: Select country from dropdown',
-      'J1': 'Auto-generated based on selected country',
-      'K1': 'Required: One of: H1B, L1, F1, Green Card, Citizen, H4 EAD, L2 EAD, Other',
-      'L1': 'Required: Source of the lead',
-      'M1': 'Optional: Any additional notes'
+    // Add cell comments/notes
+    const comments = {
+      A1: { text: 'Required: 2-50 characters' },
+      B1: { text: 'Required: 2-50 characters' },
+      C1: { text: 'Required: Format: +[country code][number], e.g., +12345678901' },
+      D1: { text: 'Optional: Same format as Primary Contact' },
+      E1: { text: 'Required: Valid email format' },
+      F1: { text: 'Optional: Valid email format' },
+      G1: { text: 'Required: Valid LinkedIn URL' },
+      H1: { text: 'Required: Comma-separated technologies' },
+      I1: { text: 'Required: Select country from dropdown' },
+      J1: { text: 'Auto-generated based on selected country' },
+      K1: { text: 'Required: One of: H1B, L1, F1, Green Card, Citizen, H4 EAD, L2 EAD, Other' },
+      L1: { text: 'Required: Source of the lead' },
+      M1: { text: 'Optional: Any additional notes' }
     };
 
-    // Add the comments to the worksheet
-    for (const [cell, comment] of Object.entries(headerComments)) {
-      if (!ws[cell].c) ws[cell].c = [];
-      ws[cell].c.push({ t: comment, a: 'System' });
+    // Apply comments
+    if (!ws['!comments']) ws['!comments'] = {};
+    for (const [cell, comment] of Object.entries(comments)) {
+      ws['!comments'][cell] = comment;
     }
 
-    // Protect Country Code column
-    if (!ws['!protect']) ws['!protect'] = {};
-    ws['!protect'] = {
-      selectLockedCells: true,
-      selectUnlockedCells: true,
-      password: undefined,
-      sheet: true
-    };
-
-    // Lock Country Code cells
-    for (let i = 2; i <= 1000; i++) {
-      const cellRef = `J${i}`;
-      if (!ws[cellRef].s) ws[cellRef].s = {};
-      ws[cellRef].s.locked = true;
+    // Lock Country Code column
+    if (!ws['!protect']) {
+      ws['!protect'] = {
+        selectLockedCells: true,
+        selectUnlockedCells: true,
+        password: undefined
+      };
     }
-
-    // Add the main worksheet
-    XLSX.utils.book_append_sheet(wb, ws, 'Sample Template');
-
-    // Hide the CountryData sheet
-    if (!wb.Workbook) wb.Workbook = { Sheets: [] };
-    if (!wb.Workbook.Sheets) wb.Workbook.Sheets = [];
-    
-    wb.Workbook.Sheets.push({
-      name: 'CountryData',
-      Hidden: 1
-    });
 
     // Save the file
-    XLSX.writeFile(wb, 'lead_upload_template.xlsx');
+    XLSX.writeFile(wb, 'lead_template.xlsx', {
+      bookType: 'xlsx',
+      bookSST: false,
+      type: 'binary',
+      cellStyles: true,
+      compression: true
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

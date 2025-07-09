@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
-import * as XLSX from 'xlsx';
-// import Sidebar from '../sidebar/Sidebar';
-import LogoIcon from "../../../assets/xls_logo.webp"
+// import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneInput from 'react-phone-input-2';
@@ -19,6 +17,7 @@ import ReassignRemarkModal from './ReassignRemarkModal';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { FaEdit, FaClock } from 'react-icons/fa';
 import Countdown from 'react-countdown';
+import BulkLeadUpload from './bulkLead';
 
 // Add countdown renderer interface
 interface CountdownRendererProps {
@@ -45,19 +44,7 @@ const countdownRenderer = ({ days, hours, minutes, seconds, completed }: Countdo
   );
 };
 const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
-// Type definitions for country list
-// type Country = {
-//   label: string;
-//   value: string;
-// };
 
-// type CountryList = {
-//   getData: () => Country[];
-//   getLabel: (value: string) => string;
-//   getValue: (label: string) => string;
-// };
-
-// Using dynamic import for country list
 import countryList from 'react-select-country-list';
 
 interface Lead {
@@ -190,21 +177,6 @@ const getStatusIcon = (status: TabStatus) => {
       return null;
   }
 };
-
-// Add this helper function to map status to groups
-const mapStatusToGroup = (status: string): string => {
-  if (['Numb'].includes(status)) {
-    return 'open';
-  } else if (['closed'].includes(status)) {
-    return 'converted';
-  } else if (['Dead', 'notinterested'].includes(status)) {
-    return 'archived';
-  } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later'].includes(status)) {
-    return 'inProcess';
-  }
-  return status;
-};
-
 const LeadCreationComponent: React.FC = () => {
   const { checkPermission, error: permissionError, loading: permissionsLoading } = usePermissions();
   // Form and error states
@@ -248,34 +220,10 @@ const LeadCreationComponent: React.FC = () => {
     followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
   });
 
-  var searchTerm='';
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [pageSize, setPageSize] = useState(10);
-  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  // const [allLeads, setAllLeads] = useState<Lead[]>([]);
 
-  // // Edit states
-  // const [editingLead, setEditingLead] = useState<number | null>(null);
-  // const [editFormData, setEditFormData] = useState<Lead>({
-  //   firstName: '',
-  //   lastName: '',
-  //   contactNumbers: [''],
-  //   emails: ['', ''],
-  //   primaryEmail: '',
-  //   primaryContact: '',
-  //   technology: [''],
-  //   country: '',
-  //   countryCode: '',
-  //   visaStatus: '',
-  //   leadSource: '',
-  //   remarks: [{
-  //     text: '',
-  //     createdAt: new Date().toISOString(),
-  //     createdBy: 0
-  //   }],
-  //   linkedinId: '',
-  //   createdAt: new Date().toISOString(),
-  //   updatedAt: new Date().toISOString()
-  // });
 
   // Dialog states
   const [showInfoDialog, setShowInfoDialog] = useState(false);
@@ -288,10 +236,6 @@ const LeadCreationComponent: React.FC = () => {
   const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-
-  // File upload states
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // New states for StatusRemarkModal
   const [showStatusRemarkModal, setShowStatusRemarkModal] = useState(false);
@@ -334,9 +278,6 @@ const LeadCreationComponent: React.FC = () => {
   const [selectedCallNumber, setSelectedCallNumber] = useState<string>('');
   const [callLeadName, setCallLeadName] = useState<string>('');
 
-  // const [showEmailSelectionPopup, setShowEmailSelectionPopup] = useState(false);
-  // const [selectedEmailForPopup, setSelectedEmailForPopup] = useState<string>('');
-  // const [currentLeadForEmail, setCurrentLeadForEmail] = useState<Lead | null>(null);
 
   const [isFormVisible, setIsFormVisible] = useState(false);
 
@@ -524,39 +465,35 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Filter leads based on status
-  // const getLeadsByStatus = (status: string) => {
-  //   return leads.filter(lead => lead.statusGroup === status);
-  // };
 
   // Add helper function to calculate time remaining
-  const getTimeRemaining = (followUpDate: string, followUpTime: string) => {
-    const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
-    const now = new Date();
-    const timeDiff = followUpDateTime.getTime() - now.getTime();
-    const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
-    const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
+  // const getTimeRemaining = (followUpDate: string, followUpTime: string) => {
+  //   const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+  //   const now = new Date();
+  //   const timeDiff = followUpDateTime.getTime() - now.getTime();
+  //   const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+  //   const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+  //   const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
     
-    if (hoursDiff > 24) {
-      const days = Math.floor(hoursDiff / 24);
-      const remainingHours = hoursDiff % 24;
-      return `${days}d ${remainingHours}h ${minutesDiff}m ${secondsDiff}s`;
-    } else if (hoursDiff > 0) {
-      return `${hoursDiff}h ${minutesDiff}m ${secondsDiff}s`;
-    } else if (minutesDiff > 0) {
-      return `${minutesDiff}m ${secondsDiff}s`;
-    } else if (secondsDiff > 0) {
-      return `${secondsDiff}s`;
-    } else {
-      return 'Now';
-    }
-  };
+  //   if (hoursDiff > 24) {
+  //     const days = Math.floor(hoursDiff / 24);
+  //     const remainingHours = hoursDiff % 24;
+  //     return `${days}d ${remainingHours}h ${minutesDiff}m ${secondsDiff}s`;
+  //   } else if (hoursDiff > 0) {
+  //     return `${hoursDiff}h ${minutesDiff}m ${secondsDiff}s`;
+  //   } else if (minutesDiff > 0) {
+  //     return `${minutesDiff}m ${secondsDiff}s`;
+  //   } else if (secondsDiff > 0) {
+  //     return `${secondsDiff}s`;
+  //   } else {
+  //     return 'Now';
+  //   }
+  // };
 
-  // Update getFollowUpLeads function
-  const getFollowUpLeads = () => {
-    return leadsData.followup.leads;
-  };
+  // // Update getFollowUpLeads function
+  // const getFollowUpLeads = () => {
+  //   return leadsData.followup.leads;
+  // };
 
   // Add useEffect to refresh leads periodically for follow-up timer
   useEffect(() => {
@@ -568,6 +505,15 @@ const LeadCreationComponent: React.FC = () => {
 
     return () => clearInterval(timer);
   }, [activeStatusTab]);
+
+  // Add new useEffect for general refresh across all tabs
+  useEffect(() => {
+    const refreshTimer = setInterval(() => {
+      fetchLeads();
+    }, 300000); // Refresh every 5 minutes for all tabs
+
+    return () => clearInterval(refreshTimer);
+  }, []);
 
   // Update the getLeadsCountByStatus function
   const getLeadsCountByStatus = (status: string) => {
@@ -586,30 +532,30 @@ const LeadCreationComponent: React.FC = () => {
   const paginatedLeads = filteredLeads;
 
   // Export to Excel function
-  const exportToExcel = () => {
-    const date = new Date().toISOString().split('T')[0];
-    const filename = `leads_${date}`;
+  // const exportToExcel = () => {
+  //   const date = new Date().toISOString().split('T')[0];
+  //   const filename = `leads_${date}`;
     
-    // Format the leads data for Excel
-    const excelData = leadsData.open.leads.map(lead => ({
-      'Candidate Name': lead.firstName + ' ' + lead.lastName,
-      'Contact Number': lead.primaryContact,
-      'Email': lead.primaryEmail,
-      'LinkedIn': lead.linkedinId,
-      'Technology': lead.technology.join(', '),
-      'Country': lead.country,
-      'Visa Status': lead.visaStatus,
-      'Remarks': lead.remarks.map(remark => remark.text).join(', '),
-      'Status': lead.status,
-      'Assigned To': lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : ''
-    }));
+  //   // Format the leads data for Excel
+  //   const excelData = leadsData.open.leads.map(lead => ({
+  //     'Candidate Name': lead.firstName + ' ' + lead.lastName,
+  //     'Contact Number': lead.primaryContact,
+  //     'Email': lead.primaryEmail,
+  //     'LinkedIn': lead.linkedinId,
+  //     'Technology': lead.technology.join(', '),
+  //     'Country': lead.country,
+  //     'Visa Status': lead.visaStatus,
+  //     'Remarks': lead.remarks.map(remark => remark.text).join(', '),
+  //     'Status': lead.status,
+  //     'Assigned To': lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : ''
+  //   }));
 
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+  //   const ws = XLSX.utils.json_to_sheet(excelData);
+  //   const wb = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(wb, ws, 'Leads');
     
-    XLSX.writeFile(wb, `${filename}.xlsx`);
-  };
+  //   XLSX.writeFile(wb, `${filename}.xlsx`);
+  // };
 
   const handleAssignSalesPerson = async () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
@@ -772,125 +718,6 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // const handleEdit = (leadIndex: number) => {
-  //   setEditingLead(leadIndex);
-  //   setEditFormData(leads[leadIndex]);
-  // };
-
-  // const handleEditSubmit = () => {
-  //   if (editingLead !== null) {
-  //     const updatedLeads = [...leads];
-  //     updatedLeads[editingLead] = editFormData;
-  //     setLeads(updatedLeads);
-  //     setEditingLead(null);
-  //     setEditFormData({
-  //       firstName: '',
-  //       lastName: '',
-  //       contactNumbers: [''],
-  //       emails: ['', ''],
-  //       primaryEmail: '',
-  //       primaryContact: '',
-  //       technology: [''],
-  //       country: '',
-  //       countryCode: '',
-  //       visaStatus: '',
-  //       leadSource: '',
-  //       remarks: [{
-  //         text: '',
-  //         createdAt: new Date().toISOString(),
-  //         createdBy: 0
-  //       }],
-  //       linkedinId: '',
-  //       createdAt: new Date().toISOString(),
-  //       updatedAt: new Date().toISOString()
-  //     });
-  //     alert('Lead updated successfully!');
-  //   }
-  // };
-
-  // const handleEditCancel = () => {
-  //   setEditingLead(null);
-  //   setEditFormData({
-  //     firstName: '',
-  //     lastName: '',
-  //     contactNumbers: [''],
-  //     emails: ['', ''],
-  //     primaryEmail: '',
-  //     primaryContact: '',
-  //     technology: [''],
-  //     country: '',
-  //     countryCode: '',
-  //     visaStatus: '',
-  //     leadSource: '',
-  //     remarks: [{
-  //       text: '',
-  //       createdAt: new Date().toISOString(),
-  //       createdBy: 0
-  //     }],
-  //     linkedinId: '',
-  //     createdAt: new Date().toISOString(),
-  //     updatedAt: new Date().toISOString()
-  //   });
-  // };
-
-  // const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  //   const { name, value } = e.target;
-  //   setEditFormData(prev => ({ ...prev, [name]: value }));
-  // };
-
-  const handleFileUpload = async () => {
-    if (!file) return;
-    
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const data = e.target?.result;
-        if (data) {
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
-          // Process the data and update leads
-          const newLeads = jsonData.map((row: any) => ({
-            firstName: row['Candidate Name'].split(' ')[0],
-            lastName: row['Candidate Name'].split(' ')[1],
-            contactNumbers: [row['Contact Number']],
-            emails: [row['Email']],
-            primaryEmail: row['Email'],
-            primaryContact: row['Contact Number'],
-            technology: Array.isArray(row['Technology']) ? row['Technology'] : [row['Technology']],
-            country: row['Country'],
-            countryCode: row['Country Code'],
-            visaStatus: row['Visa Status'],
-            remarks: row['Remarks']?.split(', ').map((text: string) => ({
-              text,
-              createdAt: new Date().toISOString(),
-              createdBy: 0
-            })) || [],
-            leadSource: row['Lead Source'],
-            linkedinId: row['LinkedIn'],
-          }));
-          
-          setLeadsData(prev => ({
-            ...prev,
-            open: {
-              ...prev.open,
-              leads: [...prev.open.leads, ...newLeads]
-            }
-          }));
-          setUploadSuccess(true);
-          setFile(null); // Clear the file input
-          toast.success('File uploaded successfully!');
-        }
-      };
-      reader.readAsBinaryString(file);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error('Error uploading file. Please try again.');
-    }
-  };
-
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -954,35 +781,6 @@ const LeadCreationComponent: React.FC = () => {
       }
     }
   };
-
-  // const handleRemarkChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-  //   const newRemarks = [...formData.remarks];
-  //   newRemarks[formData.remarks.length - 1] = {
-  //     ...newRemarks[formData.remarks.length - 1],
-  //     text: e.target.value
-  //   };
-  //   setFormData(prev => ({
-  //     ...prev,
-  //     remarks: newRemarks
-  //   }));
-  // };
-
-  // const handleRemarkKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-  //   if (e.key === 'Enter' && !e.shiftKey) {
-  //     e.preventDefault();
-  //     const currentRemark = formData.remarks[formData.remarks.length - 1].text.trim();
-  //     if (currentRemark) {
-  //       setFormData(prev => ({
-  //         ...prev,
-  //         remarks: [...prev.remarks, {
-  //           text: '',
-  //           createdAt: new Date().toISOString(),
-  //           createdBy: 0
-  //         }]
-  //       }));
-  //     }
-  //   }
-  // };
 
   const handleCheckboxChange = (index: number) => {
     const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize));
@@ -1257,7 +1055,7 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Update the handleStatusRemarkSubmit function
+  // Update the handleStatusRemarkSubmit function to refresh immediately after status change
   const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string) => {
     if (!selectedLeadForStatus) return;
 
@@ -1312,26 +1110,8 @@ const LeadCreationComponent: React.FC = () => {
           setSelectedLeadForStatus(null);
           setNewStatus('');
 
-          // Fetch fresh data for all tabs
-          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-
-          const refreshResponse = await axios.get(endpoint, {
-            headers: { 'Authorization': `Bearer ${token}` },
-            params: {
-              page: 1,
-              limit: pageSize,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-
-          if (refreshResponse.data.success) {
-            setLeadsData(prev => ({
-              ...prev,
-              ...refreshResponse.data.data
-            }));
-          }
+          // Fetch fresh data immediately
+          fetchLeads();
         }
       } else {
         // Regular status update with follow-up data if provided
@@ -1371,26 +1151,8 @@ const LeadCreationComponent: React.FC = () => {
           setSelectedLeadForStatus(null);
           setNewStatus('');
 
-          // Fetch fresh data for all tabs
-          const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-          const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-
-          const refreshResponse = await axios.get(endpoint, {
-            headers: { 'Authorization': `Bearer ${token}` },
-            params: {
-              page: 1,
-              limit: pageSize,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-
-          if (refreshResponse.data.success) {
-            setLeadsData(prev => ({
-              ...prev,
-              ...refreshResponse.data.data
-            }));
-          }
+          // Fetch fresh data immediately
+          fetchLeads();
         } else {
           setApiError('Failed to update status. Please try again.');
         }
@@ -1982,54 +1744,8 @@ ${(() => {
                         </div>
                       </form>
                     ) : (
-                      // Bulk Upload Form
-                      <div className="max-w-xl mx-auto">
-                        <div className="mb-6">
-                          <h4 className="text-lg font-medium text-gray-900 mb-1">Bulk lead upload</h4>
-                          <p className="text-sm text-gray-500">Upload multiple leads at once</p>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow transition-all duration-300">
-                          <div className="text-center mb-6">
-                            <button 
-                              onClick={exportToExcel}
-                              className="p-3 hover:bg-white rounded-lg cursor-pointer transition-all duration-200 shadow-sm hover:shadow"
-                              title="Export to Excel"
-                            >
-                              <img 
-                                src={LogoIcon}
-                                alt="Excel" 
-                                className="w-12 h-12 mx-auto"
-                              />
-                            </button>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-4">Download the sample file, enter the data of leads into it and upload the bulk lead from Browse button.</p>
-                          <p className="text-sm text-gray-500 mb-6">Note: Don't change the header and the filename.</p>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="file"
-                              accept=".xlsx"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  setFile(e.target.files[0]);
-                                  setUploadSuccess(false);
-                                }
-                              }}
-                              className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
-                            />
-                            <button
-                              onClick={handleFileUpload}
-                              className="flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 shadow-sm hover:shadow"
-                              title="Upload selected file"
-                            >
-                              <span className="text-xl font-bold">&uarr;</span>
-                            </button>
-                          </div>
-                          {uploadSuccess && (
-                            <p className="text-green-600 mt-4 text-sm font-medium">File uploaded successfully!</p>
-                          )}
-                        </div>
-                      </div>
+                      // Bulk Upload Form - Use the existing BulkLeadUpload component
+                      <BulkLeadUpload />
                     )}
                   </PermissionGuard>
                 </motion.div>
