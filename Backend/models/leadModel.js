@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
+import { indexLead, updateLead, deleteLead } from '../config/elasticSearch.js';
 
 const Lead = sequelize.define(
   "leads",
@@ -329,6 +330,27 @@ const Lead = sequelize.define(
           followUpDateTime.setMinutes(parseInt(minutes, 10));
           followUpDateTime.setSeconds(parseInt(seconds, 10));
           lead.followUpDateTime = followUpDateTime;
+        }
+      },
+      afterCreate: async (lead) => {
+        try {
+          await indexLead(lead.toJSON());
+        } catch (error) {
+          console.error('Error indexing lead:', error);
+        }
+      },
+      afterUpdate: async (lead) => {
+        try {
+          await updateLead(lead.toJSON());
+        } catch (error) {
+          console.error('Error updating lead in Elasticsearch:', error);
+        }
+      },
+      afterDestroy: async (lead) => {
+        try {
+          await deleteLead(lead.id);
+        } catch (error) {
+          console.error('Error deleting lead from Elasticsearch:', error);
         }
       }
     }

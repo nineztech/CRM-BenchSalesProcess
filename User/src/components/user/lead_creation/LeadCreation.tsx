@@ -179,6 +179,10 @@ const getStatusIcon = (status: TabStatus) => {
 };
 const LeadCreationComponent: React.FC = () => {
   const { checkPermission, error: permissionError, loading: permissionsLoading } = usePermissions();
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
@@ -288,7 +292,7 @@ const LeadCreationComponent: React.FC = () => {
   // Add isEditing state
   const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch leads with proper permission check
+  // Modify fetchLeads function to use correct endpoints
   const fetchLeads = async () => {
     try {
       setIsLoading(true);
@@ -308,31 +312,58 @@ const LeadCreationComponent: React.FC = () => {
         return;
       }
 
-      // Select endpoint based on View All Leads permission
-      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      // Select endpoint based on whether we're searching or not
+      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      const endpoint = searchQuery.trim() ? `${baseEndpoint}/search` : baseEndpoint;
+
+      const params: any = {
+        page: leadsData[activeStatusTab].pagination.currentPage,
+        limit: pageSize,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC'
+      };
+
+      // Only add search parameter if there's a search query
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+        params.status = activeStatusTab;
+      }
 
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        params: {
-          page: leadsData[activeStatusTab].pagination.currentPage,
-          limit: pageSize,
-          sortBy: 'createdAt',
-          sortOrder: 'DESC'
-        }
+        params
       });
 
       if (response.data.success) {
         const { data } = response.data;
-        setLeadsData(prev => ({
-          ...prev,
-          open: data.open,
-          inProcess: data.inProcess,
-          converted: data.converted,
-          archived: data.archived,
-          followup: data.followup
-        }));
+        
+        if (searchQuery.trim()) {
+          // Handle search results
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: data.leads || [],
+              pagination: {
+                total: data.total || 0,
+                totalPages: Math.ceil((data.total || 0) / pageSize),
+                currentPage: data.currentPage || 1,
+                limit: pageSize
+              }
+            }
+          }));
+        } else {
+          // Handle regular fetch (no search)
+          setLeadsData(prev => ({
+            ...prev,
+            open: data.open,
+            inProcess: data.inProcess,
+            converted: data.converted,
+            archived: data.archived,
+            followup: data.followup
+          }));
+        }
       } else {
         setApiError('Failed to fetch leads. Please try again.');
       }
@@ -341,17 +372,11 @@ const LeadCreationComponent: React.FC = () => {
       setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
-  // Effect to fetch leads when component mounts or when permissions change
-  useEffect(() => {
-    if (!permissionsLoading) {
-      fetchLeads();
-    }
-  }, [permissionsLoading]);
-
-  // Update handlePageChange to fetch new data
+  // Update handlePageChange to use correct endpoints
   const handlePageChange = async (newPage: number) => {
     try {
       setIsLoading(true);
@@ -364,40 +389,59 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      const endpoint = searchQuery.trim() ? `${baseEndpoint}/search` : baseEndpoint;
 
-      if (!hasLeadManagementPermission) {
-        setApiError('You do not have permission to view leads.');
-        return;
+      const params: any = {
+        page: newPage,
+        limit: pageSize,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC'
+      };
+
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+        params.status = activeStatusTab;
       }
-
-      // Select endpoint based on View All Leads permission
-      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        params: {
-          page: newPage,
-          limit: pageSize,
-          sortBy: 'createdAt',
-          sortOrder: 'DESC'
-        }
+        params
       });
 
       if (response.data.success) {
         const { data } = response.data;
-        setLeadsData(prev => ({
-          ...prev,
-          [activeStatusTab]: {
-            ...data[activeStatusTab],
-            pagination: {
-              ...data[activeStatusTab].pagination,
-              currentPage: newPage
+        if (searchQuery.trim()) {
+          // Handle search results pagination
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: data.leads || [],
+              pagination: {
+                total: data.total || 0,
+                totalPages: Math.ceil((data.total || 0) / pageSize),
+                currentPage: newPage,
+                limit: pageSize
+              }
             }
-          }
-        }));
+          }));
+        } else {
+          // Handle regular pagination
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: data[activeStatusTab]?.leads || [],
+              pagination: {
+                total: data[activeStatusTab]?.pagination.total || 0,
+                totalPages: data[activeStatusTab]?.pagination.totalPages || 1,
+                currentPage: newPage,
+                limit: pageSize
+              }
+            }
+          }));
+        }
       }
     } catch (error: any) {
       console.error('Error changing page:', error);
@@ -406,6 +450,32 @@ const LeadCreationComponent: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Add back the debounced search effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        setIsSearching(true);
+      }
+      fetchLeads();
+    }, 300); // 300ms debounce time
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  // Add clear search function
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setIsSearching(false);
+    fetchLeads();
+  };
+
+  // Effect to fetch leads when component mounts or when permissions change
+  useEffect(() => {
+    if (!permissionsLoading) {
+      fetchLeads();
+    }
+  }, [permissionsLoading]);
 
   // Update handlePageSizeChange to reset to first page and fetch new data
   const handlePageSizeChange = async (newSize: number) => {
@@ -517,16 +587,21 @@ const LeadCreationComponent: React.FC = () => {
 
   // Update the getLeadsCountByStatus function
   const getLeadsCountByStatus = (status: string) => {
+    if (searchQuery) {
+      return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
+    }
     if (status === 'followup') {
       return leadsData.followup.pagination.total;
     }
     return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
   };
 
-  // Filter leads based on active status tab and search term
-  const filteredLeads = activeStatusTab === 'followup' 
-    ? leadsData.followup.leads 
-    : leadsData[activeStatusTab]?.leads || [];
+  // Update filtered leads logic
+  const filteredLeads = searchQuery 
+    ? leadsData[activeStatusTab]?.leads || []
+    : activeStatusTab === 'followup' 
+      ? leadsData.followup.leads 
+      : leadsData[activeStatusTab]?.leads || [];
 
   // Use the filtered leads directly since we're using server-side pagination
   const paginatedLeads = filteredLeads;
@@ -992,6 +1067,8 @@ const LeadCreationComponent: React.FC = () => {
       setIsLoading(true);
       setActiveStatusTab(status);
       setSelectedLeads([]); // Clear selected leads when changing tabs
+      setSearchQuery(''); // Clear search when changing tabs
+      setSearchResults([]); // Clear search results when changing tabs
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -1015,9 +1092,10 @@ const LeadCreationComponent: React.FC = () => {
         },
         params: {
           page: 1,
-          limit: pageSize, // Use current pageSize when switching tabs
+          limit: pageSize,
           sortBy: 'createdAt',
-          sortOrder: 'DESC'
+          sortOrder: 'DESC',
+          status: status
         }
       });
 
@@ -1030,7 +1108,7 @@ const LeadCreationComponent: React.FC = () => {
             pagination: {
               ...data[status].pagination,
               currentPage: 1,
-              limit: pageSize // Ensure the page size is consistent
+              limit: pageSize
             }
           }
         }));
@@ -1757,7 +1835,35 @@ ${(() => {
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                   <div className="px-8 py-4">
                     <div className="flex items-center justify-between mb-1">
-                      <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                      <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                        {/* Update search input */}
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Search by name, email, phone..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-80 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={handleClearSearch}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              title="Clear search"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                          {isSearching && !searchQuery && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex items-center gap-4">
                         <PermissionGuard 
                           activityName="Lead Assignment Management" 

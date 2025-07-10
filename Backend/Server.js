@@ -9,6 +9,7 @@ import addOtpFields from './migrations/addOtpFields.js';
 import { createDefaultActivities } from './controllers/activityController.js';
 import emailRoutes from './Routes/emailRoutes.js';
 import bulkRoutes from './Routes/bulkRoutes.js';
+import { createLeadIndex } from './config/elasticSearch.js';
 
 // Load environment variables
 dotenv.config();
@@ -45,14 +46,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found"
-  });
-});
-
 // Start server after DB connection
 const startServer = async () => {
   try {
@@ -62,6 +55,15 @@ const startServer = async () => {
     await syncModels();
 
     console.log(colors.green("✅ Database & Tables Synced Successfully!"));
+
+    // Initialize Elasticsearch (non-blocking)
+    try {
+      await createLeadIndex();
+      console.log(colors.green("✅ Elasticsearch index created successfully!"));
+    } catch (error) {
+      console.warn(colors.yellow("⚠️ Elasticsearch initialization failed. The application will continue without search functionality."));
+      console.error(colors.red("Elasticsearch Error:"), error.message);
+    }
 
     // After database connection is established
     sequelize.authenticate()

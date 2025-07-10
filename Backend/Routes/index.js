@@ -10,6 +10,7 @@ import rolePermissionRoutes from './rolePermissionRoutes.js'
 import adminPermissionRoutes from './adminPermissionRoutes.js'
 import archivedLeadRoutes from './archivedLeadRoutes.js'
 import specialUserPermissionRoutes from './specialUserPermissionRoutes.js'
+import searchRoutes from './searchRoutes.js'
 
 import express from 'express'
 const router = express.Router()
@@ -26,5 +27,6 @@ router.use('/role-permissions', rolePermissionRoutes)
 router.use('/admin-permissions', adminPermissionRoutes)
 router.use('/archived-leads', archivedLeadRoutes)
 router.use('/special-user-permission', specialUserPermissionRoutes)
+router.use('/search', searchRoutes)
 
 export default router
