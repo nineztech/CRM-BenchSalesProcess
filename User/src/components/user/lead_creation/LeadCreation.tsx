@@ -295,6 +295,9 @@ const LeadCreationComponent: React.FC = () => {
   // Modify fetchLeads function to use correct endpoints
   const fetchLeads = async () => {
     try {
+      console.log('[Fetch Leads] Starting fetch operation');
+      console.log('[Search Query]', searchQuery ? `Searching for: "${searchQuery}"` : 'No search query');
+      
       setIsLoading(true);
       setApiError(null);
 
@@ -314,7 +317,8 @@ const LeadCreationComponent: React.FC = () => {
 
       // Select endpoint based on whether we're searching or not
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery.trim() ? `${baseEndpoint}/search` : baseEndpoint;
+      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      console.log(`[API Request] Using endpoint: ${endpoint}`);
 
       const params: any = {
         page: leadsData[activeStatusTab].pagination.currentPage,
@@ -323,11 +327,15 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
-      // Only add search parameter if there's a search query
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-        params.status = activeStatusTab;
+      // Add search parameter for any non-empty query
+      if (searchQuery !== '') {
+        params.query = searchQuery;  // Send the exact search query without trimming
+        // Normalize status group to match backend expectations
+        const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
+        params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
       }
+
+      console.log('[API Request] Params:', params);
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -337,10 +345,17 @@ const LeadCreationComponent: React.FC = () => {
       });
 
       if (response.data.success) {
+        console.log('[API Response] Success:', {
+          searchActive: !!searchQuery,
+          totalResults: searchQuery ? response.data.data.total : response.data.data[activeStatusTab]?.pagination.total,
+          currentPage: searchQuery ? response.data.data.currentPage : response.data.data[activeStatusTab]?.pagination.currentPage
+        });
+        
         const { data } = response.data;
         
         if (searchQuery.trim()) {
           // Handle search results
+          console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
           setLeadsData(prev => ({
             ...prev,
             [activeStatusTab]: {
@@ -355,6 +370,7 @@ const LeadCreationComponent: React.FC = () => {
           }));
         } else {
           // Handle regular fetch (no search)
+          console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
           setLeadsData(prev => ({
             ...prev,
             open: data.open,
@@ -365,10 +381,11 @@ const LeadCreationComponent: React.FC = () => {
           }));
         }
       } else {
+        console.error('[API Error] Failed to fetch leads:', response.data);
         setApiError('Failed to fetch leads. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error in fetchLeads:', error);
+      console.error('[Error] Error in fetchLeads:', error);
       setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
@@ -390,7 +407,7 @@ const LeadCreationComponent: React.FC = () => {
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery.trim() ? `${baseEndpoint}/search` : baseEndpoint;
+      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
 
       const params: any = {
         page: newPage,
@@ -399,9 +416,11 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-        params.status = activeStatusTab;
+      if (searchQuery !== '') {
+        params.query = searchQuery;  // Send the exact search query without trimming
+        // Normalize status group to match backend expectations
+        const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
+        params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
       }
 
       const response = await axios.get(endpoint, {
@@ -451,16 +470,12 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Add back the debounced search effect
+  // Immediate search effect
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchQuery.trim() !== '') {
-        setIsSearching(true);
-      }
-      fetchLeads();
-    }, 300); // 300ms debounce time
-
-    return () => clearTimeout(delayDebounceFn);
+    if (searchQuery !== '') {
+      setIsSearching(true);
+    }
+    fetchLeads();
   }, [searchQuery]);
 
   // Add clear search function
@@ -1064,11 +1079,11 @@ const LeadCreationComponent: React.FC = () => {
   // Update the handleStatusTabChange function
   const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup') => {
     try {
+      console.log(`[Status Tab Change] Switching to ${status} tab`);
       setIsLoading(true);
       setActiveStatusTab(status);
       setSelectedLeads([]); // Clear selected leads when changing tabs
       setSearchQuery(''); // Clear search when changing tabs
-      setSearchResults([]); // Clear search results when changing tabs
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -1085,6 +1100,14 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      console.log(`[API Request] Fetching leads from: ${endpoint}`);
+      console.log(`[API Request] Params:`, {
+        page: 1,
+        limit: pageSize,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC',
+        status: status
+      });
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -1100,6 +1123,11 @@ const LeadCreationComponent: React.FC = () => {
       });
 
       if (response.data.success) {
+        console.log(`[API Response] Successfully fetched ${status} leads:`, {
+          total: response.data.data[status]?.pagination.total,
+          currentPage: response.data.data[status]?.pagination.currentPage,
+          leads: response.data.data[status]?.leads.length
+        });
         const { data } = response.data;
         setLeadsData(prev => ({
           ...prev,
@@ -1113,10 +1141,11 @@ const LeadCreationComponent: React.FC = () => {
           }
         }));
       } else {
+        console.error('[API Error] Failed to fetch leads:', response.data);
         setApiError('Failed to fetch leads. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error in handleStatusTabChange:', error);
+      console.error('[Error] Error in handleStatusTabChange:', error);
       setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);

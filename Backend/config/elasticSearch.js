@@ -78,23 +78,92 @@ const checkElasticsearchConnection = async () => {
   }
 };
 
+// Function to process phone numbers - remove country code and special characters
+const processPhoneNumber = (phone) => {
+  if (!phone) return '';
+  
+  // Remove any special characters first
+  const cleanNumber = phone.replace(/[^\d+]/g, '');
+  
+  // If starts with +, remove the + and check for country code
+  if (cleanNumber.startsWith('+')) {
+    // Get first 3 characters after + to check for country code
+    const firstThree = cleanNumber.substring(1, 4);
+    
+    // Common 3-digit country codes
+    if (['256', '255', '254', '971', '966', '852'].includes(firstThree)) {
+      return cleanNumber.substring(4);
+    }
+    
+    // Common 2-digit country codes
+    const firstTwo = cleanNumber.substring(1, 3);
+    if (['91', '86', '44', '61', '49', '81', '82', '33', '34', '39'].includes(firstTwo)) {
+      return cleanNumber.substring(3);
+    }
+    
+    // Common 1-digit country codes
+    const firstOne = cleanNumber.substring(1, 2);
+    if (['1', '7'].includes(firstOne)) {
+      return cleanNumber.substring(2);
+    }
+    
+    // If no known country code, return as is
+    return cleanNumber.substring(1);
+  }
+  
+  // If no +, check for country code without +
+  const firstThree = cleanNumber.substring(0, 3);
+  if (['256', '255', '254', '971', '966', '852'].includes(firstThree)) {
+    return cleanNumber.substring(3);
+  }
+  
+  const firstTwo = cleanNumber.substring(0, 2);
+  if (['91', '86', '44', '61', '49', '81', '82', '33', '34', '39'].includes(firstTwo)) {
+    return cleanNumber.substring(2);
+  }
+  
+  const firstOne = cleanNumber.substring(0, 1);
+  if (['1', '7'].includes(firstOne)) {
+    return cleanNumber.substring(1);
+  }
+  
+  // If no country code detected, return as is
+  return cleanNumber;
+};
+
 // Function to index a lead
 const indexLead = async (lead) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
-    if (!isAvailable) return;
+    if (!isAvailable) {
+      console.warn('⚠️ Elasticsearch is not available for indexing');
+      return;
+    }
+
+    // Process contact numbers to create searchable versions without country codes
+    const processedContactNumbers = Array.isArray(lead.contactNumbers) 
+      ? lead.contactNumbers.map(processPhoneNumber)
+      : [];
+
+    // Add the processed numbers to the lead object
+    const leadToIndex = {
+      ...lead,
+      processedContactNumbers,
+      // Keep original contact numbers as well
+      contactNumbers: Array.isArray(lead.contactNumbers) ? lead.contactNumbers : []
+    };
 
     await client.index({
       index: LEAD_INDEX,
       id: lead.id.toString(),
-      body: {
-        ...lead,
-        statusGroup: getStatusGroup(lead)
-      }
+      body: leadToIndex,
+      refresh: true
     });
+
+    console.log(`✅ Progress: ${lead.id} lead indexed`);
   } catch (error) {
-    console.error('Error indexing lead:', error);
-    // Don't throw the error, just log it
+    console.error(`❌ Error indexing lead ${lead.id}:`, error);
+    throw error;
   }
 };
 
@@ -172,30 +241,102 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
+      console.warn('⚠️ Elasticsearch is not available for search');
       return {
         total: 0,
         leads: []
       };
     }
 
+    console.log('🔍 Search query:', { query, statusGroup, page, limit });
+
     const offset = (page - 1) * limit;
+
+    // Process the search query if it looks like a phone number
+    const processedQuery = query.match(/^\+?\d+$/) ? processPhoneNumber(query) : query;
 
     const searchQuery = {
       bool: {
         must: [
           {
-            multi_match: {
-              query: query,
-              fields: [
-                'firstName',
-                'lastName',
-                'contactNumbers',
-                'emails',
-                'primaryEmail',
-                'country',
-                'assignedUser.firstname',
-                'assignedUser.lastname'
-              ]
+            bool: {
+              should: [
+                {
+                  bool: {
+                    should: [
+                      {
+                        wildcard: {
+                          "firstName": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 3
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "lastName": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 3
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "assignedUser.firstname": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "assignedUser.lastname": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "country": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  bool: {
+                    should: [
+                      {
+                        wildcard: {
+                          "emails": {
+                            value: `*${processedQuery.toLowerCase()}*`
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "primaryEmail": {
+                            value: `*${processedQuery.toLowerCase()}*`
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  wildcard: {
+                    "processedContactNumbers": {
+                      value: `*${processedQuery}*`,
+                      boost: 2
+                    }
+                  }
+                }
+              ],
+              minimum_should_match: 1
             }
           }
         ]
@@ -204,10 +345,17 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
 
     // Add status group filter if provided
     if (statusGroup) {
-      searchQuery.bool.filter = [
-        { term: { statusGroup: statusGroup } }
-      ];
+      console.log('🔍 Adding status group filter:', statusGroup);
+      // Convert statusGroup to lowercase for case-insensitive comparison
+      const normalizedStatusGroup = statusGroup.toLowerCase();
+      searchQuery.bool.must.push({
+        term: {
+          statusGroup: normalizedStatusGroup
+        }
+      });
     }
+
+    console.log('📦 Elasticsearch query:', JSON.stringify(searchQuery, null, 2));
 
     const response = await client.search({
       index: LEAD_INDEX,
@@ -222,6 +370,13 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
       }
     });
 
+    console.log('📊 Raw Elasticsearch response:', JSON.stringify(response.hits, null, 2));
+    console.log('📊 Search results:', {
+      total: response.hits.total.value,
+      hits: response.hits.hits.length,
+      statusGroup: statusGroup
+    });
+
     return {
       total: response.hits.total.value,
       leads: response.hits.hits.map(hit => ({
@@ -230,7 +385,10 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
       }))
     };
   } catch (error) {
-    console.error('Error searching leads:', error);
+    console.error('❌ Error searching leads:', error);
+    if (error.meta?.body?.error) {
+      console.error('Elasticsearch error details:', JSON.stringify(error.meta.body.error, null, 2));
+    }
     return {
       total: 0,
       leads: []
