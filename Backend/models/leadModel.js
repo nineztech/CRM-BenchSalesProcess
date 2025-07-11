@@ -138,7 +138,8 @@ const Lead = sequelize.define(
         'wrong no',
         'closed',
         'call again later',
-        'follow up'
+        'follow up',
+        'teamfollowup'
       ),
       allowNull: false,
       defaultValue: 'open',
@@ -204,7 +205,8 @@ const Lead = sequelize.define(
           open: ['open'],
           converted: ['closed'],
           archived: ['Dead', 'notinterested'],
-          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later']
+          inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later', 'teamfollowup'],
+          teamFollowup: ['teamfollowup']
         };
         
         // Check each status group
