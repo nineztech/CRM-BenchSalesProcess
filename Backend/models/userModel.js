@@ -39,6 +39,25 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    usphonenumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    linkedin: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: function(value) {
+          if (value === null || value === '') return true; // Allow null or empty string
+          try {
+            new URL(value);
+            return true;
+          } catch (e) {
+            throw new Error('Invalid URL format');
+          }
+        }
+      }
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,

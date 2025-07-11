@@ -57,21 +57,22 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('user');
+      const loggedInUser = userDataString ? JSON.parse(userDataString) : null;
       
-      if (!token) {
+      if (!token || !loggedInUser) {
         alert('Authentication required. Please login again.');
         return;
       }
 
-      const userData = {
-        firstName: lead.firstName,
-        lastName: lead.lastName,
-        email: to
-      };
-
       // Convert objects to query strings
       const queryParams = new URLSearchParams({
-        userData: JSON.stringify(userData),
+        userData: JSON.stringify({
+          ...loggedInUser,
+          firstName: lead.firstName,  // For the email recipient
+          lastName: lead.lastName,    // For the email recipient
+          email: to                   // For the email recipient
+        }),
         packages: JSON.stringify(packages)
       });
 
@@ -105,8 +106,10 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
     try {
       setIsSending(true);
       const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('user');
+      const loggedInUser = userDataString ? JSON.parse(userDataString) : null;
       
-      if (!token) {
+      if (!token || !loggedInUser) {
         alert('Authentication required. Please login again.');
         return;
       }
@@ -124,7 +127,8 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         to: to,
         cc: ccEmails,
         subject: subject,
-        customBody: isCustomizing ? customContent : undefined
+        customBody: isCustomizing ? customContent : undefined,
+        userData: loggedInUser // Pass the logged-in user data for the email header
       };
 
       const response = await axios.post(
