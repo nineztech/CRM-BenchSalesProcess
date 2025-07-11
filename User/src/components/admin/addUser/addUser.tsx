@@ -93,6 +93,8 @@ const UserRegister: React.FC = () => {
     department: "",
     subrole: "",
     mobileNumber: "",
+    usphonenumber: "",
+    linkedin: "",
     username: "",
     email: "",
     password: "",
@@ -199,12 +201,18 @@ const UserRegister: React.FC = () => {
     }
 
     let errorMsg = "";
-    if (!value.trim()) {
+    if (!value.trim() && name !== 'linkedin' && name !== 'usphonenumber') {
       errorMsg = "This field is required";
     } else if (name === "mobileNumber" && !/^\d{10}$/.test(value)) {
       errorMsg = "Enter a valid 10-digit mobile number";
     } else if (name === "confirmPassword" && value !== formData.password) {
       errorMsg = "Passwords do not match";
+    } else if (name === "linkedin" && value.trim() !== "") {
+      try {
+        new URL(value);
+      } catch (e) {
+        errorMsg = "Please enter a valid URL";
+      }
     }
 
     setErrors({ ...errors, [name]: errorMsg });
@@ -235,16 +243,24 @@ const UserRegister: React.FC = () => {
         departmentId: Number(formData.department),
         subrole: formData.subrole,
         phoneNumber: formData.mobileNumber,
+        usphonenumber: formData.usphonenumber || null,
+        linkedin: formData.linkedin || null,
         username: formData.username,
         designation: formData.designation,
         is_special: formData.is_special
-      } as { [key: string]: any };  // Type assertion to allow optional properties
+      } as { [key: string]: any };
 
+      // For edit, only send password if it's been changed
       if (editingUserId) {
-        // For edit, only send password if it's been changed
         if (!userData.password) {
           delete userData.password;
         }
+        // Only include these fields if they have values
+        if (!userData.usphonenumber) delete userData.usphonenumber;
+        if (!userData.linkedin) delete userData.linkedin;
+      }
+
+      if (editingUserId) {
         await toast.promise(
           axios.put(`${API_BASE_URL}/user/${editingUserId}`, userData, {
             headers: {
@@ -303,6 +319,8 @@ const UserRegister: React.FC = () => {
       department: "",
       subrole: "",
       mobileNumber: "",
+      usphonenumber: "",
+      linkedin: "",
       username: "",
       email: "",
       password: "",
@@ -348,6 +366,8 @@ const UserRegister: React.FC = () => {
       department: user.departmentId ? String(user.departmentId) : (typeof user.department === 'object' && user.department?.id ? String(user.department.id) : ""),
       subrole: user.subrole || "",
       mobileNumber: user.phoneNumber || "",
+      usphonenumber: user.usphonenumber || "",
+      linkedin: user.linkedin || "",
       username: user.username || "",
       email: user.email || "",
       password: "",
@@ -546,7 +566,7 @@ const UserRegister: React.FC = () => {
                       </div>
                     </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="form-group">
                         <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                           Mobile Number <span className="text-red-500">*</span>
@@ -561,6 +581,21 @@ const UserRegister: React.FC = () => {
                           />
                         </div>
                         {errors.mobileNumber && <div className="text-red-500 text-xs mt-1">{errors.mobileNumber}</div>}
+                      </div>
+
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          US Phone Number
+                        </label>
+                        <div className="max-w-[180px]">
+                          <PhoneInput
+                            country={'us'}
+                            value={formData.usphonenumber}
+                            onChange={(value) => setFormData(prev => ({ ...prev, usphonenumber: value }))}
+                            inputClass={`p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed`}
+                            disabled={isLoading}
+                          />
+                        </div>
                       </div>
                       
                       <div className="form-group">
@@ -578,39 +613,23 @@ const UserRegister: React.FC = () => {
                         {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                       </div>
 
-                      <div className="form-group flex gap-4">
-                        <div className="flex-grow">
-                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-                            Designation <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="designation"
-                            placeholder="Enter Designation"
-                            value={formData.designation}
-                            onChange={handleChange}
-                            className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
-                          />
-                          {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
-                        </div>
-                        <div className="flex items-end mb-[6px]">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="is_special"
-                              checked={formData.is_special}
-                              onChange={(e) => setFormData(prev => ({ ...prev, is_special: e.target.checked }))}
-                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                            />
-                            <span className="text-xs font-medium text-gray-600">Special User</span>
-                          </label>
-                        </div>
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          LinkedIn URL
+                        </label>
+                        <input
+                          type="url"
+                          name="linkedin"
+                          placeholder="Enter LinkedIn URL"
+                          value={formData.linkedin}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        />
+                        {errors.linkedin && <div className="text-red-500 text-xs mt-1">{errors.linkedin}</div>}
                       </div>
                   </div>
 
-                  <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="form-group">
                         <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                           Username <span className="text-red-500">*</span>
@@ -626,7 +645,39 @@ const UserRegister: React.FC = () => {
                         />
                         {errors.username && <div className="text-red-500 text-xs mt-1">{errors.username}</div>}
                       </div>
-                      
+
+                      <div className="form-group">
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                          Designation <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="designation"
+                          placeholder="Enter Designation"
+                          value={formData.designation}
+                          onChange={handleChange}
+                          className="w-full p-2 text-sm rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200"
+                        />
+                        {errors.designation && <div className="text-red-500 text-xs mt-1">{errors.designation}</div>}
+                      </div>
+
+                      <div className="form-group flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="is_special"
+                            checked={formData.is_special}
+                            onChange={(e) => setFormData(prev => ({ ...prev, is_special: e.target.checked }))}
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="text-xs font-medium text-gray-600">Special User</span>
+                        </label>
+                      </div>
+                  </div>
+
+                  <h3 className="text-lg font-medium text-gray-800 pt-2">User Credentials</h3>
+                    
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="form-group">
                         <label className="text-xs font-medium text-gray-600 mb-1.5 block">
                           Password <span className="text-red-500">*</span>
@@ -719,11 +770,13 @@ const UserRegister: React.FC = () => {
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Username</th>
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Email</th>
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Designation</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">US Phone</th>
+                            <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">LinkedIn</th>
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Special</th>
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Status</th>
                             <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-left">Created At</th>
                             {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
-                              <th className="p-1.5 text-xsfont-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
+                              <th className="p-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200 text-center">Actions</th>
                             )}
                           </tr>
                         </thead>
@@ -745,6 +798,32 @@ const UserRegister: React.FC = () => {
                               <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.username}</td>
                               <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.email}</td>
                               <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">{user.designation || ''}</td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">
+                                {user.usphonenumber ? (
+                                  <div className="max-w-[180px]">
+                                    <PhoneInput
+                                      country={'us'}
+                                      value={user.usphonenumber}
+                                      disabled={true}
+                                      inputClass="!w-full !h-8 !text-sm !bg-transparent !border-none !cursor-default"
+                                      containerClass="!w-full"
+                                      buttonClass="!hidden"
+                                    />
+                                  </div>
+                                ) : '-'}
+                              </td>
+                              <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">
+                                {user.linkedin ? (
+                                  <a 
+                                    href={user.linkedin} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    View Profile
+                                  </a>
+                                ) : '-'}
+                              </td>
                               <td className="p-1.5 text-sm text-start text-gray-600 border-b border-gray-100">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   user.is_special 
@@ -796,7 +875,7 @@ const UserRegister: React.FC = () => {
                                 }) : ''}
                               </td>
                               {(checkPermission('User Management', 'edit') || checkPermission('User Management', 'delete')) && (
-                                <td className="p-2.5  text-start text-sm border-b border-gray-100">
+                                <td className="p-2.5 text-start text-sm border-b border-gray-100">
                                   <div className="flex gap-3 justify-center">
                                     {checkPermission('User Management', 'edit') && (
                                       <motion.button 

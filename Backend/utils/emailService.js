@@ -233,8 +233,34 @@ export const sendOtpEmail = async (userData) => {
   }
 };
 
-const getEmailHeader = () => `
-  <div style="padding: 20px 0; margin-bottom: 20px;">
+const getEmailHeader = (userData) => {
+  // Handle both property name formats and add null checks
+  const firstName = (userData?.firstname || userData?.firstName || '').toUpperCase();
+  const lastName = (userData?.lastname || userData?.lastName || '').toUpperCase();
+  const designation = userData?.designation || '';
+  const phoneNumber = userData?.phoneNumber || '';
+  const usphonenumber = userData?.usphonenumber || '';
+  const linkedin = userData?.linkedin || '';
+
+  // Only include LinkedIn section if URL exists
+  const linkedInSection = linkedin ? `
+    <p style="margin: 0 0 5px 0;">
+      <strong>LinkedIn:</strong> <a href="${linkedin}" style="color: #0066cc; text-decoration: none;">${firstName} ${lastName}</a>
+    </p>
+  ` : '';
+
+  // Format phone numbers section
+  const phoneNumbers = [];
+  if (usphonenumber) phoneNumbers.push(`+${usphonenumber}`);
+  if (phoneNumber) phoneNumbers.push(`+${phoneNumber}`);
+  const phoneSection = phoneNumbers.length > 0 ? `
+    <p style="margin: 0 0 5px 0; color: #0066cc;">
+      <strong>C:</strong> ${phoneNumbers.join(', ')}
+    </p>
+  ` : '';
+
+  return `
+  <div style="padding: 20px 0; margin-bottom: 20px; text-align: left;">
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
       <tr>
         <td width="150" style="vertical-align: top;">
@@ -244,16 +270,15 @@ const getEmailHeader = () => `
         <!-- Vertical line separator -->
         <td width="1" style="background-color: #ccc; width: 1px;"></td>
 
-        <td style="vertical-align: top; padding-left: 20px;">
-          <h2 style="margin: 0 0 10px 0; color: #e65c00; font-size: 24px;">RANJIT SINGH</h2>
-          <p style="margin: 0 0 5px 0; font-size: 16px;">Founder & Managing Director</p>
-          <p style="margin: 0 0 5px 0; color: #0066cc;">
-            <strong>C:</strong> +1 (339) 365 5999, +91 - 98249 99898
+        <td style="vertical-align: top; padding-left: 20px; text-align: left;">
+          <h2 style="margin: 0 0 10px 0; color: #e65c00; font-size: 24px; text-align: left;">${firstName} ${lastName}</h2>
+          <p style="margin: 0 0 5px 0; font-size: 16px; text-align: left;">${designation}</p>
+          ${phoneSection}
+          <p style="margin: 0 0 5px 0; text-align: left;">
+            <strong>W:</strong> <a href="http://www.nineztech.com" style="color: #0066cc; text-decoration: none;">NinezTech</a>
           </p>
-          <p style="margin: 0 0 5px 0;">
-            <strong>W:</strong> <a href="http://www.nineztech.com" style="color: #0066cc; text-decoration: none;">www.nineztech.com</a>
-          </p>
-          <p style="margin: 0; color: #666;">
+          ${linkedInSection}
+          <p style="margin: 0; color: #666; text-align: left;">
             <strong>A:</strong> Sharidan, WY -USA| Ahmedabad, Vadodara, IN
           </p>
         </td>
@@ -261,9 +286,13 @@ const getEmailHeader = () => `
     </table>
   </div>
 `;
+};
 
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', options.to || userData.email);
+
+  // Get user data from options or use default userData
+  const userDataForHeader = options.userData || userData;
 
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
@@ -383,7 +412,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
             </div>
           `}
           
-          ${getEmailHeader()}
+          ${getEmailHeader(userDataForHeader)}
           <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
             <p style="color: #666; margin: 0; text-align: left;">"Empowering Career, Enriching Future"</p>
           </div>

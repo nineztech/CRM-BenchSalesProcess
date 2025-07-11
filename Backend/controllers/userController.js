@@ -7,6 +7,16 @@ import { sendWelcomeEmail, sendOtpEmail } from '../utils/emailService.js';
 import RolePermission from '../models/rolePermissionModel.js';
 import SpecialUserPermission from '../models/specialUserPermissionModel.js';
 
+// Helper function to validate URLs
+const isValidUrl = (string) => {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
 // JWT Secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
@@ -21,6 +31,8 @@ export const register = async (req, res) => {
       departmentId,
       subrole,
       phoneNumber,
+      usphonenumber,
+      linkedin,
       username,
       designation,
       is_special
@@ -48,6 +60,16 @@ export const register = async (req, res) => {
 
     if (isNaN(phoneNumber) || phoneNumber.length < 10) {
       return res.status(400).json({ success: false, message: 'Invalid phone number' });
+    }
+
+    // Validate US phone number if provided
+    if (usphonenumber && (isNaN(usphonenumber) || usphonenumber.length < 10)) {
+      return res.status(400).json({ success: false, message: 'Invalid US phone number' });
+    }
+
+    // Validate LinkedIn URL if provided
+    if (linkedin && !isValidUrl(linkedin)) {
+      return res.status(400).json({ success: false, message: 'Invalid LinkedIn URL' });
     }
 
     // Check for existing phone number across all users (including inactive users)
@@ -102,6 +124,8 @@ export const register = async (req, res) => {
       departmentId,
       subrole,
       phoneNumber,
+      usphonenumber,
+      linkedin,
       username,
       designation,
       is_special: is_special ? 1 : 0, // Convert boolean to number
@@ -270,6 +294,8 @@ export const login = async (req, res) => {
       firstname: user.firstname,
       lastname: user.lastname,
       phoneNumber: user.phoneNumber,
+      usphonenumber: user.usphonenumber,
+      linkedin: user.linkedin,
       username: user.username,
       role: user.role,
       departmentId: user.departmentId,
@@ -327,6 +353,8 @@ export const getProfile = async (req, res) => {
       firstname: user.firstname,
       lastname: user.lastname,
       phoneNumber: user.phoneNumber,
+      usphonenumber: user.usphonenumber,
+      linkedin: user.linkedin,
       username: user.username,
       role: user.role,
       departmentId: user.departmentId,
@@ -509,6 +537,8 @@ export const getAllUsers = async (req, res) => {
         'departmentId',
         'subrole',
         'phoneNumber',
+        'usphonenumber',
+        'linkedin',
         'designation',
         'status',
         'is_special',
@@ -692,7 +722,7 @@ export const editUser = async (req, res) => {
 
     // Get the fields from request body
     const updateFields = {};
-    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole', 'designation', 'is_special'];
+    const allowedFields = ['email', 'firstname', 'lastname', 'phoneNumber', 'usphonenumber', 'linkedin', 'username', 'password', 'confirmPassword', 'departmentId', 'subrole', 'designation', 'is_special'];
 
     // Add only the allowed fields that exist in the request
     Object.keys(req.body).forEach(field => {
@@ -810,6 +840,18 @@ export const editUser = async (req, res) => {
           }
           break;
 
+        case 'usphonenumber':
+          if (value && (isNaN(value) || value.toString().length < 10)) {
+            return res.status(400).json({ message: 'Invalid US phone number' });
+          }
+          break;
+
+        case 'linkedin':
+          if (value && !isValidUrl(value)) {
+            return res.status(400).json({ message: 'Invalid LinkedIn URL' });
+          }
+          break;
+
         case 'username':
           const existingUserByUsername = await User.findOne({
             where: { 
@@ -835,6 +877,8 @@ export const editUser = async (req, res) => {
       firstname: currentUser.firstname,
       lastname: currentUser.lastname,
       phoneNumber: currentUser.phoneNumber,
+      usphonenumber: currentUser.usphonenumber,
+      linkedin: currentUser.linkedin,
       username: currentUser.username,
       role: currentUser.role,
       departmentId: currentUser.departmentId,
