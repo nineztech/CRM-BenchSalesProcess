@@ -34,7 +34,7 @@ const checkFollowUpTimes = async () => {
         if (hoursDiff <= 24) {
           // No need to update anything as the queries in getAllLeads and getAssignedLeads
           // will automatically pick up these leads in the followup section
-          console.log(`Lead ${lead.id} is in follow-up status (${hoursDiff} hours from follow-up time)`);
+          // console.log(`Lead ${lead.id} is in follow-up status (${hoursDiff} hours from follow-up time)`);
         }
       }
     }

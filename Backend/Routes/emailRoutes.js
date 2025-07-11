@@ -1,6 +1,8 @@
 import express from 'express';
 import { sendPackageDetailsEmail } from '../utils/emailService.js';
 import auth from '../middleware/auth.js';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -17,12 +19,19 @@ router.get('/template-preview', auth, async (req, res) => {
     };
     const parsedPackages = packages ? JSON.parse(packages) : [];
 
+    // Read the logo file and convert to base64
+    const logoPath = path.join(process.cwd(), '..', 'User', 'src', 'assets', 'Logo.webp');
+    const logoBase64 = fs.readFileSync(logoPath, { encoding: 'base64' });
+
     // Generate the email template HTML
-    const templateHtml = await sendPackageDetailsEmail(
+    let templateHtml = await sendPackageDetailsEmail(
       parsedUserData,
       parsedPackages,
       { previewOnly: true } // This flag will make the function return the HTML without sending
     );
+
+    // Replace the CID placeholder with the base64 image
+    templateHtml = templateHtml.replace('cid:companyLogo', `data:image/webp;base64,${logoBase64}`);
 
     res.json({
       success: true,
@@ -36,7 +45,6 @@ router.get('/template-preview', auth, async (req, res) => {
     });
   }
 });
-
 
 // Send email
 router.post('/send', auth, async (req, res) => {
