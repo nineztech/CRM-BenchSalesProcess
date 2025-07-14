@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+interface Leader {
+  id: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+}
 
 interface StatusRemarkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (remark: string, followUpDate?: string, followUpTime?: string) => void;
+  onSubmit: (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => void;
   currentStatus: string;
   newStatus: string;
 }
@@ -19,9 +27,15 @@ const isInProcessStatus = (status: string): boolean => {
     'not working',
     'follow up',
     'wrong no',
-    'call again later'
+    'call again later',
+    'teamfollowup'
   ];
   return inProcessStatuses.includes(status);
+};
+
+// Add helper function to check if status is teamfollowup
+const isTeamFollowup = (status: string): boolean => {
+  return status === 'teamfollowup';
 };
 
 // Add helper function to validate follow-up time
@@ -50,9 +64,38 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   const [remark, setRemark] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpTime, setFollowUpTime] = useState('');
+  const [selectedLeader, setSelectedLeader] = useState<number | ''>('');
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [isLoadingLeaders, setIsLoadingLeaders] = useState(false);
 
   // Add validation message state
   const [validationMessage, setValidationMessage] = useState<string>('');
+
+  // Fetch leaders when modal opens and status is teamfollowup
+  useEffect(() => {
+    const fetchLeaders = async () => {
+      if (isOpen && isTeamFollowup(newStatus)) {
+        try {
+          setIsLoadingLeaders(true);
+          const token = localStorage.getItem('token');
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/leaders`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.data.success) {
+            setLeaders(response.data.data);
+          }
+        } catch (error) {
+          console.error('Error fetching leaders:', error);
+        } finally {
+          setIsLoadingLeaders(false);
+        }
+      }
+    };
+
+    fetchLeaders();
+  }, [isOpen, newStatus]);
 
   // Update validation on date/time change
   React.useEffect(() => {
@@ -103,11 +146,13 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
       onSubmit(
         JSON.stringify(remarkWithCreator),
         isInProcessStatus(newStatus) ? formattedDate : undefined,
-        isInProcessStatus(newStatus) ? formattedTime : undefined
+        isInProcessStatus(newStatus) ? formattedTime : undefined,
+        isTeamFollowup(newStatus) ? Number(selectedLeader) : undefined
       );
       setRemark('');
       setFollowUpDate('');
       setFollowUpTime('');
+      setSelectedLeader('');
     }
   };
 
@@ -116,6 +161,9 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
     if (isInProcessStatus(newStatus)) {
       if (!followUpDate || !followUpTime) return true;
       return !isValidFollowUpDateTime(followUpDate, followUpTime);
+    }
+    if (isTeamFollowup(newStatus)) {
+      return !selectedLeader;
     }
     return false;
   };
@@ -181,6 +229,29 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                   </div>
 
                   <form onSubmit={handleSubmit}>
+                    {isTeamFollowup(newStatus) && (
+                      <div className="mb-4">
+                        <label htmlFor="leader" className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Leader *
+                        </label>
+                        <select
+                          id="leader"
+                          value={selectedLeader}
+                          onChange={(e) => setSelectedLeader(e.target.value ? Number(e.target.value) : '')}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          disabled={isLoadingLeaders}
+                        >
+                          <option value="">Select a leader</option>
+                          {leaders.map((leader) => (
+                            <option key={leader.id} value={leader.id}>
+                              {leader.firstname} {leader.lastname}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div className="mb-4">
                       <label htmlFor="remark" className="block text-sm font-medium text-gray-700 mb-2">
                         Remark *

@@ -150,7 +150,7 @@ interface SalesUser {
 }
 
 // Add type definition for tab status
-type TabStatus = 'open' | 'converted' | 'inProcess' | 'followup';
+type TabStatus = 'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup';
 
 // Update the getStatusIcon function
 const getStatusIcon = (status: TabStatus) => {
@@ -171,6 +171,12 @@ const getStatusIcon = (status: TabStatus) => {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'teamfollowup':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       );
     default:
@@ -215,13 +221,15 @@ const LeadCreationComponent: React.FC = () => {
     inProcess: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     converted: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     archived: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
+    followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    teamfollowup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
   }>({
     open: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     inProcess: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     converted: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     archived: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
+    followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    teamfollowup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
   });
 
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
@@ -237,7 +245,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -377,7 +385,8 @@ const LeadCreationComponent: React.FC = () => {
             inProcess: data.inProcess,
             converted: data.converted,
             archived: data.archived,
-            followup: data.followup
+            followup: data.followup,
+            teamfollowup: data.teamfollowup
           }));
         }
       } else {
@@ -620,33 +629,6 @@ const LeadCreationComponent: React.FC = () => {
 
   // Use the filtered leads directly since we're using server-side pagination
   const paginatedLeads = filteredLeads;
-
-  // Export to Excel function
-  // const exportToExcel = () => {
-  //   const date = new Date().toISOString().split('T')[0];
-  //   const filename = `leads_${date}`;
-    
-  //   // Format the leads data for Excel
-  //   const excelData = leadsData.open.leads.map(lead => ({
-  //     'Candidate Name': lead.firstName + ' ' + lead.lastName,
-  //     'Contact Number': lead.primaryContact,
-  //     'Email': lead.primaryEmail,
-  //     'LinkedIn': lead.linkedinId,
-  //     'Technology': lead.technology.join(', '),
-  //     'Country': lead.country,
-  //     'Visa Status': lead.visaStatus,
-  //     'Remarks': lead.remarks.map(remark => remark.text).join(', '),
-  //     'Status': lead.status,
-  //     'Assigned To': lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : ''
-  //   }));
-
-  //   const ws = XLSX.utils.json_to_sheet(excelData);
-  //   const wb = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(wb, ws, 'Leads');
-    
-  //   XLSX.writeFile(wb, `${filename}.xlsx`);
-  // };
-
   const handleAssignSalesPerson = async () => {
     if (!selectedSalesPerson || selectedLeads.length === 0) return;
 
@@ -1077,7 +1059,7 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   // Update the handleStatusTabChange function
-  const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup') => {
+  const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup') => {
     try {
       console.log(`[Status Tab Change] Switching to ${status} tab`);
       setIsLoading(true);
@@ -1162,8 +1144,8 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Update the handleStatusRemarkSubmit function to refresh immediately after status change
-  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string) => {
+  // Update the handleStatusRemarkSubmit function to handle leader ID
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1225,8 +1207,27 @@ const LeadCreationComponent: React.FC = () => {
         const updateData = {
           status: newStatus,
           remark,
-          ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {})
+          ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {}),
+          ...(leaderId ? { leaderId } : {})
         };
+
+        // If status is teamfollowup, create team followup record
+        if (newStatus === 'teamfollowup' && leaderId) {
+          await axios.post(
+            `${BASE_URL}/team-followup/create`,
+            {
+              leadId: selectedLeadForStatus.id,
+              assignedToId: leaderId,
+              remark
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+        }
 
         const response = await axios.patch(
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
@@ -1241,16 +1242,26 @@ const LeadCreationComponent: React.FC = () => {
 
         if (response.data.success) {
           const updatedLead = response.data.data;
-          const followUpDateTime = followUpDate && followUpTime ? new Date(`${followUpDate}T${followUpTime}`) : null;
-          const now = new Date();
-          const diffHours = followUpDateTime ? (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
-          const isInFollowUp = diffHours !== null && diffHours > 0 && diffHours <= 24;
+          
+          // Calculate status group based on follow-up time
+          let statusGroup = updatedLead.statusGroup;
+          
+          if (followUpDate && followUpTime) {
+            const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+            const now = new Date();
+            const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+            
+            // If follow-up time is within 24 hours, set to followup, otherwise inProcess
+            if (diffHours > 0) {
+              statusGroup = diffHours <= 24 ? 'followup' : 'inProcess';
+            }
+          }
 
           // Show status change notification
           setStatusNotificationData({
             leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
             newStatus: newStatus,
-            statusGroup: isInFollowUp ? 'followup' : updatedLead.statusGroup
+            statusGroup: statusGroup
           });
           setShowStatusNotification(true);
 
@@ -1916,7 +1927,7 @@ ${(() => {
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess', 'followup', 'converted'] as TabStatus[]).map((tab: TabStatus) => (
+                        {(['open', 'inProcess', 'followup', 'teamfollowup', 'converted'] as TabStatus[]).map((tab: TabStatus) => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -1924,7 +1935,9 @@ ${(() => {
                           >
                             <span className="flex items-center gap-2">
                               {getStatusIcon(tab)}
-                              {tab === 'followup' ? 'Follow Up' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              {tab === 'followup' ? 'Follow Up' : 
+                               tab === 'teamfollowup' ? 'Team Follow Up' :
+                               tab.charAt(0).toUpperCase() + tab.slice(1)}
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs">
                                 {getLeadsCountByStatus(tab)}
                               </span>
@@ -2095,7 +2108,8 @@ ${(() => {
                                               <option value="wrong no">Wrong No</option>
                                               <option value="call again later">Call Again Later</option>
                                               <option value="follow up">Follow Up</option>
-                                              <option value="closed">Closed</option>
+                                              <option value="teamfollowup">Team Follow Up</option>
+                                              <option value="closed">Enrolled</option>
                                               <option value="Dead">Dead</option>
                                               <option value="notinterested">Not Interested</option>
                                             </select>

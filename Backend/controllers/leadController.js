@@ -7,7 +7,10 @@ import { Sequelize } from "sequelize";
 
 // Function to check follow-up times
 const checkFollowUpTimes = async () => {
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
+
     // Find all leads that have follow-up dates
     const leadsToCheck = await Lead.findAll({
       where: {
@@ -20,7 +23,11 @@ const checkFollowUpTimes = async () => {
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'closed'] // Exclude archived and converted leads
         }
-      }
+      },
+      transaction,
+      // Add a timeout to the query
+      lock: false,
+      skipLocked: true
     });
 
     // Check each lead's follow-up time
@@ -32,19 +39,38 @@ const checkFollowUpTimes = async () => {
 
         // If follow-up time is set and within 24 hours (past or future), keep in followup
         if (hoursDiff <= 24) {
-          // No need to update anything as the queries in getAllLeads and getAssignedLeads
-          // will automatically pick up these leads in the followup section
-          // console.log(`Lead ${lead.id} is in follow-up status (${hoursDiff} hours from follow-up time)`);
+          console.log(`Lead ${lead.id} is in follow-up status (${hoursDiff} hours from follow-up time)`);
         }
       }
     }
+
+    await transaction.commit();
   } catch (error) {
     console.error('Error checking follow-up times:', error);
+    if (transaction) await transaction.rollback();
+  } finally {
+    // Ensure connection is released
+    if (transaction) {
+      try {
+        await sequelize.connectionManager.releaseConnection(transaction.connection);
+      } catch (err) {
+        console.error('Error releasing connection:', err);
+      }
+    }
   }
 };
 
-// Start checking follow-up times every 5 seconds
-setInterval(checkFollowUpTimes, 5000);
+// Start checking follow-up times every 5 minutes instead of 5 seconds
+const followUpCheckInterval = setInterval(checkFollowUpTimes, 5 * 60 * 1000);
+
+// Handle cleanup on process termination
+process.on('SIGTERM', () => {
+  clearInterval(followUpCheckInterval);
+});
+
+process.on('SIGINT', () => {
+  clearInterval(followUpCheckInterval);
+});
 
 export const createLead = async (req, res) => {
   try {
