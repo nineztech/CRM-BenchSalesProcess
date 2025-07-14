@@ -558,7 +558,7 @@ const DepartmentPermissions = (): ReactElement => {
                       ? 'bg-gray-100 cursor-not-allowed'
                       : 'focus:ring-2 focus:ring-blue-100 focus:border-blue-400'
                   }`}
-                  disabled={true}
+                  disabled={isAdmin || isSpecial || !selectedDepartment}
                 >
                   {isSpecial && selectedSpecialUserData ? (
                     <option value={selectedSpecialUserData.subrole}>
