@@ -263,12 +263,13 @@ const getEmailHeader = (userData) => {
   <div style="padding: 20px 0; margin-bottom: 20px; text-align: left;">
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
       <tr>
-        <td width="150" style="vertical-align: top;">
+        <td width="150" style="vertical-align: top; padding-right: 10px;">
           <img src="cid:companyLogo" alt="Ninez Tech Logo" style="width: 150px; margin-left: 2px"; height: auto;"/>
         </td>
 
         <!-- Vertical line separator -->
-        <td width="1" style="background-color: #ccc; width: 1px;"></td>
+        <td width="1" style="background-color: #3944BC; width: 1px;"></td><br/>
+        <td width="1" style="background-color: #3944BC; width: 1px;"></td>
 
         <td style="vertical-align: top; padding-left: 20px; text-align: left;">
           <h2 style="margin: 0 0 10px 0; color: #e65c00; font-size: 24px; text-align: left;">${firstName} ${lastName}</h2>
@@ -282,6 +283,9 @@ const getEmailHeader = (userData) => {
             <strong>A:</strong> Sharidan, WY -USA| Ahmedabad, Vadodara, IN
           </p>
         </td>
+        <td>
+        
+        </td>
       </tr>
     </table>
   </div>
@@ -294,12 +298,25 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
   // Get user data from options or use default userData
   const userDataForHeader = options.userData || userData;
 
+  // Create a custom transporter for this specific email
+  const customTransporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+
   // Function to convert markdown-style formatting to HTML
   const formatText = (text) => {
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
   };
 
   // Function to format currency
@@ -336,7 +353,8 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
           </li>
 
           <li style="margin-bottom: 12px; padding-left: 20px; position: relative;">
-            • <b>${pkg.firstYearSalaryPercentage}%</b> of first-year salary (from first 4 paychecks)
+            • ${pkg.firstYearSalaryPercentage ? `<b>${pkg.firstYearSalaryPercentage}%</b> of first-year salary (from first 4 paychecks)` : 
+               pkg.firstYearFixedPrice ? `<b>${formatCurrency(pkg.firstYearFixedPrice)}</b> from first-year salary (from first 4 paychecks)` : ''}
           </li>
 
           ${pkg.features.map(feature => `
@@ -370,16 +388,16 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6; text-align: left;">
         <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
           ${options.customBody ? formatText(options.customBody) : `
-            <div style="padding: 20px 0; text-align: left;">
+            <div style="padding: 5PX 0; text-align: left;">
               <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px; text-align: left;">Hello ${userData.firstName},</p>
               <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
              
               <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Please visit our online presence and plans:</strong><br/>
               <a href="https://taplink.cc/nineztech" style="color: #0066cc; text-decoration: none;">Nineztech | Online Presence</a><br/>
-              <span style="font-size: 13px;">Please find discounted pricing below in this email*</span><br/></p><br/>
+              <span style="font-size: 13px;">Please find discounted pricing below in this email</span><br/></p><br/>
 
               <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Why Choose Ninez Tech?</strong></p>
-              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies</p>
+              <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Join the fastest-growing network for OPT/CPT/H1B/GC/USC job seekers and sponsors. We specialize in connecting international professionals, students, and US companies.</p>
               
               <p style="margin: 0 0 10px 0; color: #333333; font-size: 15px; text-align: left;"><strong>Program Highlights:</strong></p><br/>
               <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 20px; text-align: left;">
@@ -412,7 +430,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
             </div>
           `}
           
-          ${getEmailHeader(userDataForHeader)}
+          ${!options.skipHeader ? getEmailHeader(userDataForHeader) : ''}
           <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
             <p style="color: #666; margin: 0; text-align: left;">"Empowering Career, Enriching Future"</p>
           </div>
@@ -427,7 +445,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
   }
 
   const mailOptions = {
-    from: options.from || `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    from: options.from || `"${userDataForHeader.firstname} ${userDataForHeader.lastname}" <${process.env.EMAIL_USER}>`,
     to: options.to || userData.email,
     cc: options.cc || [],
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
@@ -436,12 +454,13 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
       path: '../User/src/assets/Logo.webp',
       cid: 'companyLogo'
     }],
-    html: emailHtml
+    html: emailHtml,
+    replyTo: userDataForHeader.email || process.env.EMAIL_USER
   };
 
   try {
     console.log('Sending package details email...');
-    const info = await transporter.sendMail(mailOptions);
+    const info = await customTransporter.sendMail(mailOptions);
     console.log('Package details email sent successfully:', info.messageId);
     return true;
   } catch (error) {

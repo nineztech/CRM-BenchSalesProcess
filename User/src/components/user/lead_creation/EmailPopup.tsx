@@ -128,7 +128,8 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         cc: ccEmails,
         subject: subject,
         customBody: isCustomizing ? customContent : undefined,
-        userData: loggedInUser // Pass the logged-in user data for the email header
+        userData: loggedInUser, // Pass the logged-in user data for the email header
+        skipHeader: isCustomizing // Add this flag to indicate we're using custom content
       };
 
       const response = await axios.post(
@@ -275,7 +276,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
                       {isCustomizing ? (
                         <Editor
                           apiKey="n1jupubcidq4bqvv01vznzpbcj43hg297pgftp78jszal918"
-                          value={customContent || templateHtml}
+                          value={customContent.split('<div style="padding: 20px 0; margin-bottom: 20px; text-align: left;">')[0] || customContent}
                           init={{
                             height: 500,
                             menubar: false,
