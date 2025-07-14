@@ -107,6 +107,9 @@ interface Lead {
   };
   followUpDate?: string;
   followUpTime?: string;
+  is_team_followup?: boolean;
+  team_followup_assigned_by?: number;
+  team_followup_assigned_to?: number;
 }
 
 interface Remark {
@@ -316,20 +319,13 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
-
       // Select endpoint based on whether we're searching or not
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
       console.log(`[API Request] Using endpoint: ${endpoint}`);
 
       const params: any = {
-        page: leadsData[activeStatusTab].pagination.currentPage,
+        page: leadsData[activeStatusTab]?.pagination?.currentPage || 1,
         limit: pageSize,
         sortBy: 'createdAt',
         sortOrder: 'DESC'
@@ -379,15 +375,15 @@ const LeadCreationComponent: React.FC = () => {
         } else {
           // Handle regular fetch (no search)
           console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
-          setLeadsData(prev => ({
-            ...prev,
-            open: data.open,
-            inProcess: data.inProcess,
-            converted: data.converted,
-            archived: data.archived,
-            followup: data.followup,
-            teamfollowup: data.teamfollowup
-          }));
+          const updatedData = {
+            open: data.open || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+            inProcess: data.inProcess || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+            converted: data.converted || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+            archived: data.archived || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+            followup: data.followup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+            teamfollowup: data.teamfollowup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } }
+          };
+          setLeadsData(updatedData);
         }
       } else {
         console.error('[API Error] Failed to fetch leads:', response.data);
@@ -457,18 +453,15 @@ const LeadCreationComponent: React.FC = () => {
           }));
         } else {
           // Handle regular pagination
-          setLeadsData(prev => ({
-            ...prev,
-            [activeStatusTab]: {
-              leads: data[activeStatusTab]?.leads || [],
-              pagination: {
-                total: data[activeStatusTab]?.pagination.total || 0,
-                totalPages: data[activeStatusTab]?.pagination.totalPages || 1,
-                currentPage: newPage,
-                limit: pageSize
-              }
-            }
-          }));
+          const updatedData = {
+            open: data.open || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } },
+            inProcess: data.inProcess || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } },
+            converted: data.converted || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } },
+            archived: data.archived || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } },
+            followup: data.followup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } },
+            teamfollowup: data.teamfollowup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: newPage, limit: pageSize } }
+          };
+          setLeadsData(updatedData);
         }
       }
     } catch (error: any) {
@@ -514,12 +507,6 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
 
       // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
@@ -1045,12 +1032,6 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       console.log(`[API Request] Fetching leads from: ${endpoint}`);
@@ -1077,22 +1058,20 @@ const LeadCreationComponent: React.FC = () => {
 
       if (response.data.success) {
         console.log(`[API Response] Successfully fetched ${status} leads:`, {
-          total: response.data.data[status]?.pagination.total,
-          currentPage: response.data.data[status]?.pagination.currentPage,
-          leads: response.data.data[status]?.leads.length
+          total: response.data.data[status]?.pagination?.total || 0,
+          currentPage: response.data.data[status]?.pagination?.currentPage || 1,
+          leads: response.data.data[status]?.leads?.length || 0
         });
         const { data } = response.data;
-        setLeadsData(prev => ({
-          ...prev,
-          [status]: {
-            ...data[status],
-            pagination: {
-              ...data[status].pagination,
-              currentPage: 1,
-              limit: pageSize
-            }
-          }
-        }));
+        const updatedData = {
+          open: data.open || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+          inProcess: data.inProcess || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+          converted: data.converted || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+          archived: data.archived || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+          followup: data.followup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } },
+          teamfollowup: data.teamfollowup || { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } }
+        };
+        setLeadsData(updatedData);
       } else {
         console.error('[API Error] Failed to fetch leads:', response.data);
         setApiError('Failed to fetch leads. Please try again.');
@@ -1109,6 +1088,17 @@ const LeadCreationComponent: React.FC = () => {
   const handleStatusChange = async (leadId: number, newStatus: string) => {
     const lead = leadsData[activeStatusTab].leads.find(l => l.id === leadId);
     if (!lead) return;
+
+    // Get current user ID
+    const userDataString = localStorage.getItem('user');
+    const userData = userDataString ? JSON.parse(userDataString) : null;
+    const currentUserId = userData?.id;
+
+    // Check if user is team_followup_assigned_by
+    if (lead.is_team_followup && lead.team_followup_assigned_by === currentUserId) {
+      toast.error('You cannot change the status of a lead you have assigned for team followup');
+      return;
+    }
 
     setSelectedLeadForStatus(lead);
     setNewStatus(newStatus);
@@ -2064,26 +2054,36 @@ ${(() => {
                                           }
                                         >
                                           <div className="flex items-center gap-2">
-                                            <select
-                                              value={lead.status || 'open'}
-                                              onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                              disabled={lead.status === 'closed'}
-                                              className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                            >
-                                              <option value="open">Open</option>
-                                              <option value="DNR1">DNR1</option>
-                                              <option value="DNR2">DNR2</option>
-                                              <option value="DNR3">DNR3</option>
-                                              <option value="interested">Interested</option>
-                                              <option value="not working">Not Working</option>
-                                              <option value="wrong no">Wrong No</option>
-                                              <option value="call again later">Call Again Later</option>
-                                              <option value="follow up">Follow Up</option>
-                                              <option value="teamfollowup">Team Follow Up</option>
-                                              <option value="closed">Enrolled</option>
-                                              <option value="Dead">Dead</option>
-                                              <option value="notinterested">Not Interested</option>
-                                            </select>
+                                            {checkPermission('Lead Status Management', 'edit') ? (
+                                              <select
+                                                value={lead.status || 'open'}
+                                                onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                                disabled={lead.status === 'closed' || (lead.is_team_followup && lead.team_followup_assigned_by === currentUserId)}
+                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                  lead.status === 'closed' || (lead.is_team_followup && lead.team_followup_assigned_by === currentUserId) 
+                                                    ? 'opacity-70 cursor-not-allowed' 
+                                                    : ''
+                                                }`}
+                                              >
+                                                <option value="open">Open</option>
+                                                <option value="DNR1">DNR1</option>
+                                                <option value="DNR2">DNR2</option>
+                                                <option value="DNR3">DNR3</option>
+                                                <option value="interested">Interested</option>
+                                                <option value="not working">Not Working</option>
+                                                <option value="wrong no">Wrong No</option>
+                                                <option value="call again later">Call Again Later</option>
+                                                <option value="follow up">Follow Up</option>
+                                                <option value="teamfollowup">Team Follow Up</option>
+                                                <option value="closed">Enrolled</option>
+                                                <option value="Dead">Dead</option>
+                                                <option value="notinterested">Not Interested</option>
+                                              </select>
+                                            ) : (
+                                              <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                                {lead.status || 'open'}
+                                              </div>
+                                            )}
                                             {lead.followUpDate && lead.followUpTime && (
                                               <div className="group relative">
                                                 <FaClock 
@@ -2106,6 +2106,17 @@ ${(() => {
                                           </div>
                                         </PermissionGuard>
                                       </PermissionGuard>
+                                      {lead.is_team_followup && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          {lead.team_followup_assigned_by === currentUserId ? (
+                                            <span>Assigned to team followup</span>
+                                          ) : lead.team_followup_assigned_to === currentUserId ? (
+                                            <span>Assigned to you for team followup</span>
+                                          ) : (
+                                            <span>In team followup</span>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-6 py-1 text-sm text-start text-gray-900 border-b whitespace-nowrap">
