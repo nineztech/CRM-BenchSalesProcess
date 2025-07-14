@@ -316,12 +316,12 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasLeadManagementPermission) {
-        setApiError('You do not have permission to view leads.');
-        return;
-      }
+      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
+      //   setApiError('You do not have permission to view leads.');
+      //   return;
+      // }
 
       // Select endpoint based on whether we're searching or not
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
@@ -514,12 +514,12 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasLeadManagementPermission) {
-        setApiError('You do not have permission to view leads.');
-        return;
-      }
+      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
+      //   setApiError('You do not have permission to view leads.');
+      //   return;
+      // }
 
       // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
@@ -559,35 +559,6 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-
-  // Add helper function to calculate time remaining
-  // const getTimeRemaining = (followUpDate: string, followUpTime: string) => {
-  //   const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
-  //   const now = new Date();
-  //   const timeDiff = followUpDateTime.getTime() - now.getTime();
-  //   const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
-  //   const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-  //   const secondsDiff = Math.floor((timeDiff % (1000 * 60)) / 1000);
-    
-  //   if (hoursDiff > 24) {
-  //     const days = Math.floor(hoursDiff / 24);
-  //     const remainingHours = hoursDiff % 24;
-  //     return `${days}d ${remainingHours}h ${minutesDiff}m ${secondsDiff}s`;
-  //   } else if (hoursDiff > 0) {
-  //     return `${hoursDiff}h ${minutesDiff}m ${secondsDiff}s`;
-  //   } else if (minutesDiff > 0) {
-  //     return `${minutesDiff}m ${secondsDiff}s`;
-  //   } else if (secondsDiff > 0) {
-  //     return `${secondsDiff}s`;
-  //   } else {
-  //     return 'Now';
-  //   }
-  // };
-
-  // // Update getFollowUpLeads function
-  // const getFollowUpLeads = () => {
-  //   return leadsData.followup.leads;
-  // };
 
   // Add useEffect to refresh leads periodically for follow-up timer
   useEffect(() => {
@@ -1074,12 +1045,12 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
+      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
-        setApiError('You do not have permission to view leads.');
-        return;
-      }
+      // if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
+      //   setApiError('You do not have permission to view leads.');
+      //   return;
+      // }
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       console.log(`[API Request] Fetching leads from: ${endpoint}`);
