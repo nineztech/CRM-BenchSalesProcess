@@ -60,6 +60,16 @@ export const createDefaultActivities = async () => {
         status: "active"
       },
       {
+        name: "Team Followup Management",
+        category: "Lead",
+        description: "Manage and update team followup statuses and assignments",
+        viewRoute: "/leadcreation",
+        addRoute: "/leadcreation",
+        editRoute: "/leadcreation",
+        deleteRoute: "/leadcreation",
+        status: "active"
+      },
+      {
         name: "Archived Lead Management",
         category: "Lead",
         description: "View and manage archived leads, including reopening leads",
