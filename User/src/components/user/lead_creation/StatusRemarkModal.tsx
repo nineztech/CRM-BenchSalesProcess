@@ -12,10 +12,9 @@ interface Leader {
 interface StatusRemarkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number, shouldReleaseTeamLead?: boolean) => void;
+  onSubmit: (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => void;
   currentStatus: string;
   newStatus: string;
-  isInTeamFollowupTab?: boolean;
 }
 
 // Helper function to check if status is in inProcess group
@@ -60,8 +59,7 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   onClose,
   onSubmit,
   currentStatus,
-  newStatus,
-  isInTeamFollowupTab
+  newStatus
 }) => {
   const [remark, setRemark] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
@@ -69,7 +67,6 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   const [selectedLeader, setSelectedLeader] = useState<number | ''>('');
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [isLoadingLeaders, setIsLoadingLeaders] = useState(false);
-  const [releaseTeamLead, setReleaseTeamLead] = useState(false);
 
   // Add validation message state
   const [validationMessage, setValidationMessage] = useState<string>('');
@@ -81,34 +78,16 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
         try {
           setIsLoadingLeaders(true);
           const token = localStorage.getItem('token');
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/team-leads`, {
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/leaders`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
-          console.log('API Response:', response.data);
-          
-          if (response.data.success && response.data.data) {
-            // Extract users from the data object
-            const users = response.data.data.users || response.data.data;
-            if (Array.isArray(users)) {
-              setLeaders(users.map((user: any) => ({
-                id: user.id,
-                firstname: user.firstname,
-                lastname: user.lastname,
-                email: user.email
-              })));
-            } else {
-              console.error('Invalid users data:', users);
-              setLeaders([]);
-            }
-          } else {
-            console.error('Invalid response structure:', response.data);
-            setLeaders([]);
+          if (response.data.success) {
+            setLeaders(response.data.data);
           }
         } catch (error) {
           console.error('Error fetching leaders:', error);
-          setLeaders([]);
         } finally {
           setIsLoadingLeaders(false);
         }
@@ -134,46 +113,54 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (remark.trim()) {
-      // Format date and time if provided
+      // Get user info from localStorage
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const creatorInfo = {
+        id: userInfo.id,
+        name: `${userInfo.firstname} ${userInfo.lastname}`,
+        email: userInfo.email
+      };
+      
+      // Format date and time properly
       let formattedDate = followUpDate;
       let formattedTime = followUpTime;
       
-      if (followUpTime) {
+      if (isInProcessStatus(newStatus) && followUpDate && followUpTime) {
         // Ensure time is in HH:mm format
         const [hours, minutes] = followUpTime.split(':');
         formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
       }
-
-      // Only include follow-up date and time if both are provided
-      const hasFollowUp = !!(formattedDate && formattedTime);
       
-      // Only include team lead if status is teamfollowup
-      const teamLeadId = isTeamFollowup(newStatus) ? Number(selectedLeader) : undefined;
+      // Create remark with creator info
+      const remarkWithCreator = {
+        text: remark.trim(),
+        createdAt: new Date().toISOString(),
+        createdBy: creatorInfo.id,
+        creator: creatorInfo,
+        statusChange: {
+          from: currentStatus,
+          to: newStatus
+        }
+      };
 
-      // Call the parent's onSubmit with the formatted data and releaseTeamLead flag
       onSubmit(
-        remark.trim(),
-        hasFollowUp ? formattedDate : undefined,
-        hasFollowUp ? formattedTime : undefined,
-        teamLeadId,
-        releaseTeamLead
+        JSON.stringify(remarkWithCreator),
+        isInProcessStatus(newStatus) ? formattedDate : undefined,
+        isInProcessStatus(newStatus) ? formattedTime : undefined,
+        isTeamFollowup(newStatus) ? Number(selectedLeader) : undefined
       );
-
-      // Reset form
       setRemark('');
       setFollowUpDate('');
       setFollowUpTime('');
       setSelectedLeader('');
-      setReleaseTeamLead(false);
-      onClose();
     }
   };
 
   const isSubmitDisabled = () => {
     if (!remark.trim()) return true;
-    if (isInProcessStatus(newStatus) || isTeamFollowup(newStatus)) {
+    if (isInProcessStatus(newStatus)) {
       if (!followUpDate || !followUpTime) return true;
-      if (!isValidFollowUpDateTime(followUpDate, followUpTime)) return true;
+      return !isValidFollowUpDateTime(followUpDate, followUpTime);
     }
     if (isTeamFollowup(newStatus)) {
       return !selectedLeader;
@@ -317,21 +304,6 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                           </div>
                         )}
                       </>
-                    )}
-
-                    {/* Add the Release Team Lead checkbox when in teamfollowup tab */}
-                    {isInTeamFollowupTab && (
-                      <div className="mb-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={releaseTeamLead}
-                            onChange={(e) => setReleaseTeamLead(e.target.checked)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">Release Team Lead</span>
-                        </label>
-                      </div>
                     )}
 
                     <div className="flex justify-end gap-3">

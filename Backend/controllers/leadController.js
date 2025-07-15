@@ -361,44 +361,6 @@ export const getAllLeads = async (req, res) => {
       inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow up']
     };
 
-    // Get team follow-up leads
-    const teamFollowupLeads = await Lead.findAndCountAll({
-      where: {
-        is_team_followup: true,
-        status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
-        }
-      },
-      include: [
-        {
-          model: User,
-          as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        }
-      ],
-      order: [[sortBy, sortOrder]],
-      offset: offset,
-      limit: limit
-    });
-
-    // Get the IDs of team follow-up leads to exclude from other queries
-    const teamFollowupLeadIds = teamFollowupLeads.rows.map(lead => lead.id);
-
     // Get all leads that have follow-up dates within or past 24 hours
     const followupLeads = await Lead.findAndCountAll({
       where: {
@@ -415,14 +377,6 @@ export const getAllLeads = async (req, res) => {
             status: {
               [Op.notIn]: ['Dead', 'notinterested', 'closed']
             }
-          },
-          {
-            id: {
-              [Op.notIn]: teamFollowupLeadIds
-            }
-          },
-          {
-            is_team_followup: false
           }
         ]
       },
@@ -464,9 +418,8 @@ export const getAllLeads = async (req, res) => {
             [Op.in]: statuses
           },
           id: {
-            [Op.notIn]: [...followupLeadIds, ...teamFollowupLeadIds]
-          },
-          is_team_followup: false
+            [Op.notIn]: followupLeadIds // Exclude leads that are in follow-up
+          }
         },
         include: [
           {
@@ -529,15 +482,6 @@ export const getAllLeads = async (req, res) => {
             currentPage: page,
             limit: limit
           }
-        },
-        teamFollowup: {
-          leads: teamFollowupLeads.rows,
-          pagination: {
-            total: teamFollowupLeads.count,
-            totalPages: Math.ceil(teamFollowupLeads.count / limit),
-            currentPage: page,
-            limit: limit
-          }
         }
       }
     };
@@ -582,54 +526,6 @@ export const getAssignedLeads = async (req, res) => {
       inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later', 'follow up']
     };
 
-    // Get team follow-up leads assigned to the user
-    const teamFollowupLeads = await Lead.findAndCountAll({
-      where: {
-        [Op.and]: [
-          {
-            is_team_followup: true,
-            status: {
-              [Op.notIn]: ['Dead', 'notinterested', 'closed']
-            }
-          },
-          {
-            [Op.or]: [
-              { team_followup_assigned_to: req.user.id },
-              { team_followup_assigned_by: req.user.id }
-            ]
-          }
-        ]
-      },
-      include: [
-        {
-          model: User,
-          as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        }
-      ],
-      order: [[sortBy, sortOrder]],
-      offset: offset,
-      limit: limit
-    });
-
-    // Get the IDs of team follow-up leads to exclude from other queries
-    const teamFollowupLeadIds = teamFollowupLeads.rows.map(lead => lead.id);
-
     // Get all leads that have follow-up dates within or past 24 hours
     const followupLeads = await Lead.findAndCountAll({
       where: {
@@ -647,21 +543,13 @@ export const getAssignedLeads = async (req, res) => {
           },
           {
             followUpDateTime: {
-              [Op.lte]: new Date(Date.now())
+              [Op.lte]: new Date(Date.now() )
             }
           },
           {
             status: {
               [Op.notIn]: ['Dead', 'notinterested', 'closed']
             }
-          },
-          {
-            id: {
-              [Op.notIn]: teamFollowupLeadIds
-            }
-          },
-          {
-            is_team_followup: false
           }
         ]
       },
@@ -707,7 +595,7 @@ export const getAssignedLeads = async (req, res) => {
             },
             {
               id: {
-                [Op.notIn]: [...followupLeadIds, ...teamFollowupLeadIds]
+                [Op.notIn]: followupLeadIds
               }
             },
             {
@@ -715,9 +603,6 @@ export const getAssignedLeads = async (req, res) => {
                 { assignTo: req.user.id },
                 { createdBy: req.user.id }
               ]
-            },
-            {
-              is_team_followup: false
             }
           ]
         },
@@ -779,15 +664,6 @@ export const getAssignedLeads = async (req, res) => {
           pagination: {
             total: followupLeads.count,
             totalPages: Math.ceil(followupLeads.count / limit),
-            currentPage: page,
-            limit: limit
-          }
-        },
-        teamFollowup: {
-          leads: teamFollowupLeads.rows,
-          pagination: {
-            total: teamFollowupLeads.count,
-            totalPages: Math.ceil(teamFollowupLeads.count / limit),
             currentPage: page,
             limit: limit
           }
@@ -1070,7 +946,7 @@ export const updateLeadStatus = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { status, remark, followUpDate, followUpTime, team_followup_assigned_to } = req.body;
+    const { status, remark, followUpDate, followUpTime } = req.body;
 
     // Validate status
     const validStatuses = [
@@ -1085,8 +961,7 @@ export const updateLeadStatus = async (req, res) => {
       'wrong no',
       'closed',
       'call again later',
-      'follow up',
-      'teamfollowup'
+      'follow up'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -1110,14 +985,6 @@ export const updateLeadStatus = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Lead not found'
-      });
-    }
-
-    // Validate team_followup_assigned_to if status is teamfollowup
-    if (status === 'teamfollowup' && !team_followup_assigned_to) {
-      return res.status(400).json({
-        success: false,
-        message: 'Team followup assigned to user is required for team followup status'
       });
     }
 
@@ -1221,19 +1088,8 @@ export const updateLeadStatus = async (req, res) => {
       updatedBy: req.user.id,
       followUpDate: null,
       followUpTime: null,
-      followUpDateTime: null,
-      // Keep is_team_followup true if it was true before
-      is_team_followup: lead.is_team_followup || false,
-      team_followup_assigned_by: lead.team_followup_assigned_by || null,
-      team_followup_assigned_to: lead.team_followup_assigned_to || null
+      followUpDateTime: null
     };
-
-    // Set team followup fields if status is teamfollowup
-    if (status === 'teamfollowup') {
-      updateData.is_team_followup = true;
-      updateData.team_followup_assigned_by = req.user.id;
-      updateData.team_followup_assigned_to = team_followup_assigned_to;
-    }
 
     // Add follow-up data if provided
     if (followUpDate && followUpTime) {
@@ -1315,155 +1171,6 @@ export const updateLeadStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while updating lead status'
-    });
-  }
-};
-
-// Update Team Follow-up Status
-export const updateTeamFollowupStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { is_team_followup, team_followup_assigned_to } = req.body;
-
-    // Find the lead
-    const lead = await Lead.findByPk(id);
-    if (!lead) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lead not found'
-      });
-    }
-
-    // Prepare update data
-    const updateData = {
-      is_team_followup: is_team_followup,
-      updatedBy: req.user.id
-    };
-
-    // If is_team_followup is false, reset team follow-up fields
-    if (!is_team_followup) {
-      updateData.team_followup_assigned_by = null;
-      updateData.team_followup_assigned_to = null;
-    } else {
-      // If setting to true, set assigned by and to
-      updateData.team_followup_assigned_by = req.user.id;
-      if (team_followup_assigned_to) {
-        updateData.team_followup_assigned_to = team_followup_assigned_to;
-      }
-    }
-
-    // Update the lead
-    await lead.update(updateData);
-
-    // Fetch updated lead with associations
-    const updatedLead = await Lead.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        }
-      ]
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Team follow-up status updated successfully',
-      data: updatedLead
-    });
-
-  } catch (error) {
-    console.error('Error updating team follow-up status:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error occurred while updating team follow-up status',
-      error: error.message
-    });
-  }
-};
-
-// Toggle Team Follow-up Flag
-export const toggleTeamFollowup = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Find the lead
-    const lead = await Lead.findByPk(id);
-    if (!lead) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lead not found'
-      });
-    }
-
-    // Toggle the is_team_followup flag
-    const updateData = {
-      is_team_followup: !lead.is_team_followup,
-      updatedBy: req.user.id
-    };
-
-    // If turning off team followup, clear the assignment
-    if (!updateData.is_team_followup) {
-      updateData.team_followup_assigned_by = null;
-      updateData.team_followup_assigned_to = null;
-    }
-
-    // Update the lead
-    await lead.update(updateData);
-
-    // Fetch updated lead with associations
-    const updatedLead = await Lead.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'assignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'previouslyAssignedUser',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        },
-        {
-          model: User,
-          as: 'updater',
-          attributes: ['id', 'firstname', 'lastname', 'email', 'subrole', 'departmentId']
-        }
-      ]
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: `Team follow-up ${updateData.is_team_followup ? 'enabled' : 'disabled'} successfully`,
-      data: updatedLead
-    });
-
-  } catch (error) {
-    console.error('Error toggling team follow-up flag:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error occurred while toggling team follow-up flag',
-      error: error.message
     });
   }
 };
