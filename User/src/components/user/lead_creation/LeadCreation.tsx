@@ -749,14 +749,23 @@ const LeadCreationComponent: React.FC = () => {
     setSelectedLead(null);
   };
 
-  // Select all checkbox handler
+  // Update the checkbox handlers to work with lead IDs
+  const handleCheckboxChange = (index: number) => {
+    const lead = paginatedLeads[index];
+    if (!lead || typeof lead.id !== 'number') return;
+    
+    if (selectedLeads.includes(index)) {
+      setSelectedLeads(selectedLeads.filter(i => i !== index));
+    } else {
+      setSelectedLeads([...selectedLeads, index]);
+    }
+  };
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      // Select all visible leads
       const allIndexes = Array.from({ length: paginatedLeads.length }, (_, i) => i);
       setSelectedLeads(allIndexes);
     } else {
-      // Deselect all
       setSelectedLeads([]);
     }
   };
@@ -823,13 +832,6 @@ const LeadCreationComponent: React.FC = () => {
         }));
       }
     }
-  };
-
-  const handleCheckboxChange = (index: number) => {
-    const originalIndex = filteredLeads.findIndex((_, i) => i === index + ((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize));
-    setSelectedLeads(prev =>
-      prev.includes(originalIndex) ? prev.filter(i => i !== index) : [...prev, originalIndex]
-    );
   };
 
   const handleCountryChange = (e: ChangeEvent<HTMLSelectElement>) => {
