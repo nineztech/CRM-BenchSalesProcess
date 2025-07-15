@@ -284,6 +284,30 @@ const Lead = sequelize.define(
         key: 'id'
       }
     },
+    is_team_followup: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_team_followup'
+    },
+    team_followup_assigned_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      field: 'team_followup_assigned_by'
+    },
+    team_followup_assigned_to: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      field: 'team_followup_assigned_to'
+    },
     updatedBy: {
       type: DataTypes.INTEGER,
       allowNull: true,

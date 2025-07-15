@@ -1115,8 +1115,8 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Update the handleStatusRemarkSubmit function to handle leader ID
-  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => {
+  // Update the handleStatusRemarkSubmit function to handle leader ID and release team lead
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number, shouldReleaseTeamLead?: boolean) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1124,6 +1124,26 @@ const LeadCreationComponent: React.FC = () => {
       if (!token) {
         setApiError('Authentication required. Please login again.');
         return;
+      }
+
+      // If in team followup tab and release team lead is checked, call toggleTeamFollowup first
+      if (activeStatusTab === 'teamfollowup' && shouldReleaseTeamLead) {
+        try {
+          await axios.patch(
+            `${BASE_URL}/lead/${selectedLeadForStatus.id}/toggle-team-followup`,
+            {},
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+        } catch (error) {
+          console.error('Error toggling team followup:', error);
+          setApiError('Failed to release team lead. Please try again.');
+          return;
+        }
       }
 
       if (newStatus === 'Dead' || newStatus === 'notinterested') {
@@ -1179,26 +1199,8 @@ const LeadCreationComponent: React.FC = () => {
           status: newStatus,
           remark,
           ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {}),
-          ...(leaderId ? { leaderId } : {})
+          ...(newStatus === 'teamfollowup' ? { team_followup_assigned_to: leaderId } : {})
         };
-
-        // If status is teamfollowup, create team followup record
-        if (newStatus === 'teamfollowup' && leaderId) {
-          await axios.post(
-            `${BASE_URL}/team-followup/create`,
-            {
-              leadId: selectedLeadForStatus.id,
-              assignedToId: leaderId,
-              remark
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
-            }
-          );
-        }
 
         const response = await axios.patch(
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
@@ -1214,10 +1216,12 @@ const LeadCreationComponent: React.FC = () => {
         if (response.data.success) {
           const updatedLead = response.data.data;
           
-          // Calculate status group based on follow-up time
+          // Calculate status group based on status and follow-up time
           let statusGroup = updatedLead.statusGroup;
           
-          if (followUpDate && followUpTime) {
+          if (newStatus === 'teamfollowup') {
+            statusGroup = 'teamfollowup';
+          } else if (followUpDate && followUpTime) {
             const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
             const now = new Date();
             const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -2288,6 +2292,7 @@ ${(() => {
           onSubmit={handleStatusRemarkSubmit}
           currentStatus={selectedLeadForStatus?.status || ''}
           newStatus={newStatus}
+          isInTeamFollowupTab={activeStatusTab === 'teamfollowup'}
         />
         <StatusChangeNotification
           isOpen={showStatusNotification}
