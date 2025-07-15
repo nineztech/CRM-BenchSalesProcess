@@ -217,19 +217,22 @@ const LeadCreationComponent: React.FC = () => {
 
   // Table states
   const [leadsData, setLeadsData] = useState<{
-    open: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    inProcess: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    converted: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    archived: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    teamfollowup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
+    [key: string]: {
+      leads: Lead[];
+      pagination: {
+        total: number;
+        totalPages: number;
+        currentPage: number;
+        limit: number;
+      };
+    };
   }>({
     open: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     inProcess: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    converted: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    archived: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    teamfollowup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
+    converted: { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: 10 } },
+    archived: { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: 10 } },
+    followup: { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: 10 } },
+    teamfollowup: { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: 10 } }
   });
 
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
@@ -316,14 +319,6 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
-
-      // Select endpoint based on whether we're searching or not
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
       console.log(`[API Request] Using endpoint: ${endpoint}`);
@@ -335,12 +330,10 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
-      // Add search parameter for any non-empty query
       if (searchQuery !== '') {
-        params.query = searchQuery;  // Send the exact search query without trimming
-        // Normalize status group to match backend expectations
+        params.query = searchQuery;
         const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
-        params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
+        params.statusGroup = normalizedStatusGroup;
       }
 
       console.log('[API Request] Params:', params);
@@ -381,12 +374,12 @@ const LeadCreationComponent: React.FC = () => {
           console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
           setLeadsData(prev => ({
             ...prev,
-            open: data.open,
-            inProcess: data.inProcess,
-            converted: data.converted,
-            archived: data.archived,
-            followup: data.followup,
-            teamfollowup: data.teamfollowup
+            open: data.open || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } },
+            inProcess: data.inProcess || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } },
+            converted: data.converted || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } },
+            archived: data.archived || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } },
+            followup: data.followup || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } },
+            teamfollowup: data.teamFollowup || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } }
           }));
         }
       } else {
@@ -426,10 +419,9 @@ const LeadCreationComponent: React.FC = () => {
       };
 
       if (searchQuery !== '') {
-        params.query = searchQuery;  // Send the exact search query without trimming
-        // Normalize status group to match backend expectations
+        params.query = searchQuery;
         const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
-        params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
+        params.statusGroup = normalizedStatusGroup;
       }
 
       const response = await axios.get(endpoint, {
@@ -457,18 +449,35 @@ const LeadCreationComponent: React.FC = () => {
           }));
         } else {
           // Handle regular pagination
-          setLeadsData(prev => ({
-            ...prev,
-            [activeStatusTab]: {
-              leads: data[activeStatusTab]?.leads || [],
-              pagination: {
-                total: data[activeStatusTab]?.pagination.total || 0,
-                totalPages: data[activeStatusTab]?.pagination.totalPages || 1,
-                currentPage: newPage,
-                limit: pageSize
+          if (activeStatusTab === 'teamfollowup') {
+            // Handle team followup data specifically
+            setLeadsData(prev => ({
+              ...prev,
+              teamfollowup: {
+                leads: data.teamFollowup?.leads || [],
+                pagination: {
+                  total: data.teamFollowup?.pagination.total || 0,
+                  totalPages: data.teamFollowup?.pagination.totalPages || 1,
+                  currentPage: newPage,
+                  limit: pageSize
+                }
               }
-            }
-          }));
+            }));
+          } else {
+            // Handle other tabs
+            setLeadsData(prev => ({
+              ...prev,
+              [activeStatusTab]: {
+                leads: data[activeStatusTab]?.leads || [],
+                pagination: {
+                  total: data[activeStatusTab]?.pagination.total || 0,
+                  totalPages: data[activeStatusTab]?.pagination.totalPages || 1,
+                  currentPage: newPage,
+                  limit: pageSize
+                }
+              }
+            }));
+          }
         }
       }
     } catch (error: any) {
@@ -1045,13 +1054,6 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
-
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       console.log(`[API Request] Fetching leads from: ${endpoint}`);
       console.log(`[API Request] Params:`, {
@@ -1077,17 +1079,23 @@ const LeadCreationComponent: React.FC = () => {
 
       if (response.data.success) {
         console.log(`[API Response] Successfully fetched ${status} leads:`, {
-          total: response.data.data[status]?.pagination.total,
-          currentPage: response.data.data[status]?.pagination.currentPage,
-          leads: response.data.data[status]?.leads.length
+          total: response.data.data[status === 'teamfollowup' ? 'teamFollowup' : status]?.pagination.total,
+          currentPage: response.data.data[status === 'teamfollowup' ? 'teamFollowup' : status]?.pagination.currentPage,
+          leads: response.data.data[status === 'teamfollowup' ? 'teamFollowup' : status]?.leads.length
         });
         const { data } = response.data;
+        
+        // Handle teamfollowup data differently since API returns it as teamFollowup
+        const statusKey = status === 'teamfollowup' ? 'teamFollowup' : status;
+        const statusData = data[statusKey] || { leads: [], pagination: { total: 0, totalPages: 1, currentPage: 1, limit: pageSize } };
+        
         setLeadsData(prev => ({
           ...prev,
           [status]: {
-            ...data[status],
+            leads: statusData.leads || [],
             pagination: {
-              ...data[status].pagination,
+              total: statusData.pagination.total || 0,
+              totalPages: statusData.pagination.totalPages || 1,
               currentPage: 1,
               limit: pageSize
             }
@@ -1115,8 +1123,8 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Update the handleStatusRemarkSubmit function to handle leader ID
-  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => {
+  // Update the handleStatusRemarkSubmit function
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, teamLeadId?: number, shouldReleaseTeamLead?: boolean) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1126,71 +1134,12 @@ const LeadCreationComponent: React.FC = () => {
         return;
       }
 
-      if (newStatus === 'Dead' || newStatus === 'notinterested') {
-        // Archive the lead
-        const response = await axios.post(
-          `${BASE_URL}/lead/${selectedLeadForStatus.id}/archive`,
-          { 
-            archiveReason: remark
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-
-        if (response.data.success) {
-          // Remove the lead from all tabs
-          setLeadsData(prev => {
-            const newData = { ...prev };
-            Object.keys(newData).forEach(key => {
-              newData[key as keyof typeof newData] = {
-                ...newData[key as keyof typeof newData],
-                leads: newData[key as keyof typeof newData].leads.filter(lead => lead.id !== selectedLeadForStatus.id),
-                pagination: {
-                  ...newData[key as keyof typeof newData].pagination,
-                  total: newData[key as keyof typeof newData].pagination.total - 1
-                }
-              };
-            });
-            return newData;
-          });
-
-          // Show status change notification
-          setStatusNotificationData({
-            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
-            newStatus: newStatus,
-            statusGroup: 'archived'
-          });
-          setShowStatusNotification(true);
-
-          setShowStatusRemarkModal(false);
-          setSelectedLeadForStatus(null);
-          setNewStatus('');
-
-          // Fetch fresh data immediately
-          fetchLeads();
-        }
-      } else {
-        // Regular status update with follow-up data if provided
-        const updateData = {
-          status: newStatus,
-          remark,
-          ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {}),
-          ...(leaderId ? { leaderId } : {})
-        };
-
-        // If status is teamfollowup, create team followup record
-        if (newStatus === 'teamfollowup' && leaderId) {
-          await axios.post(
-            `${BASE_URL}/team-followup/create`,
-            {
-              leadId: selectedLeadForStatus.id,
-              assignedToId: leaderId,
-              remark
-            },
+      // If shouldReleaseTeamLead is true, call the toggle API first
+      if (shouldReleaseTeamLead) {
+        try {
+          await axios.patch(
+            `${BASE_URL}/lead/${selectedLeadForStatus.id}/toggle-team-followup`,
+            {},
             {
               headers: {
                 'Content-Type': 'application/json',
@@ -1198,57 +1147,54 @@ const LeadCreationComponent: React.FC = () => {
               }
             }
           );
-        }
-
-        const response = await axios.patch(
-          `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
-          updateData,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        );
-
-        if (response.data.success) {
-          const updatedLead = response.data.data;
-          
-          // Calculate status group based on follow-up time
-          let statusGroup = updatedLead.statusGroup;
-          
-          if (followUpDate && followUpTime) {
-            const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
-            const now = new Date();
-            const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-            
-            // If follow-up time is within 24 hours, set to followup, otherwise inProcess
-            if (diffHours > 0) {
-              statusGroup = diffHours <= 24 ? 'followup' : 'inProcess';
-            }
-          }
-
-          // Show status change notification
-          setStatusNotificationData({
-            leadName: `${selectedLeadForStatus.firstName} ${selectedLeadForStatus.lastName}`,
-            newStatus: newStatus,
-            statusGroup: statusGroup
-          });
-          setShowStatusNotification(true);
-
-          setShowStatusRemarkModal(false);
-          setSelectedLeadForStatus(null);
-          setNewStatus('');
-
-          // Fetch fresh data immediately
-          fetchLeads();
-        } else {
-          setApiError('Failed to update status. Please try again.');
+        } catch (error: any) {
+          console.error('Error toggling team followup:', error);
+          toast.error('Failed to release team lead');
+          return;
         }
       }
+
+      // Create the update data
+      const updateData = {
+        status: newStatus,
+        remark,
+        ...(followUpDate && { followUpDate }),
+        ...(followUpTime && { followUpTime }),
+        ...(teamLeadId && { team_followup_assigned_to: teamLeadId })
+      };
+
+      // Log the request data for debugging
+      console.log('Updating lead status with data:', updateData);
+
+      // Make the API call without duplicate /api prefix
+      const response = await axios.patch(
+        `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
+        updateData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Show success message
+        toast.success('Lead status updated successfully');
+
+        // Reset the selected lead and modal
+        setSelectedLeadForStatus(null);
+        setNewStatus('');
+        setShowStatusRemarkModal(false);
+
+        // Refresh the leads list
+        fetchLeads();
+      }
     } catch (error: any) {
-      console.error('Error updating status:', error);
-      setApiError(error.response?.data?.message || 'Failed to update status');
+      console.error('Error updating lead status:', error.response?.data || error);
+      const errorMessage = error.response?.data?.message || 'Failed to update lead status';
+      setApiError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -2208,6 +2154,7 @@ ${(() => {
           onSubmit={handleStatusRemarkSubmit}
           currentStatus={selectedLeadForStatus?.status || ''}
           newStatus={newStatus}
+          isInTeamFollowupTab={activeStatusTab === 'teamfollowup'}
         />
         <StatusChangeNotification
           isOpen={showStatusNotification}
