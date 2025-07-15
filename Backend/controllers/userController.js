@@ -1272,3 +1272,131 @@ export const getSpecialUsers = async (req, res) => {
     });
   }
 };
+
+// Get Team Lead users from sales departments
+export const getTeamLeadUsers = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10,
+      search = '',
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      status = 'active'
+    } = req.query;
+
+    // First, get all sales departments
+    const salesDepartments = await Department.findAll({
+      where: {
+        isSalesTeam: true,
+        status: 'active'
+      },
+      attributes: ['id', 'departmentName', 'subroles']
+    });
+
+    // Extract department IDs and find exact "Team Lead" subroles
+    const departmentIds = salesDepartments.map(dept => dept.id);
+    const teamLeadSubroles = salesDepartments.reduce((acc, dept) => {
+      const teamLeadRoles = dept.subroles.filter(role => role === 'Team Lead');
+      return [...acc, ...teamLeadRoles];
+    }, []);
+
+    if (departmentIds.length === 0 || teamLeadSubroles.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No sales departments or team lead roles found',
+        data: {
+          users: [],
+          pagination: {
+            total: 0,
+            totalPages: 0,
+            currentPage: parseInt(page),
+            limit: parseInt(limit)
+          }
+        }
+      });
+    }
+
+    // Build where clause
+    const whereClause = {
+      role: 'user',
+      departmentId: {
+        [Op.in]: departmentIds
+      },
+      subrole: 'Team Lead', // Exact match for "Team Lead"
+      status: status && ['active', 'inactive'].includes(status) ? status : 'active'
+    };
+
+    // Add search functionality
+    if (search) {
+      whereClause[Op.and] = [
+        whereClause,
+        {
+          [Op.or]: [
+            { email: { [Op.like]: `%${search}%` } },
+            { firstname: { [Op.like]: `%${search}%` } },
+            { lastname: { [Op.like]: `%${search}%` } },
+            { username: { [Op.like]: `%${search}%` } }
+          ]
+        }
+      ];
+    }
+
+    // Calculate offset
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get team lead users with pagination
+    const users = await User.findAndCountAll({
+      where: whereClause,
+      attributes: [
+        'id', 
+        'email', 
+        'firstname', 
+        'lastname', 
+        'username',
+        'departmentId',
+        'subrole',
+        'phoneNumber',
+        'designation',
+        'status',
+        'is_special',
+        'createdAt',
+        'updatedAt'
+      ],
+      include: [{
+        model: Department,
+        as: 'userDepartment',
+        attributes: ['departmentName', 'isSalesTeam']
+      }],
+      order: [[sortBy, sortOrder]],
+      offset: offset,
+      limit: parseInt(limit)
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(users.count / parseInt(limit));
+    const currentPage = parseInt(page);
+
+    res.status(200).json({
+      success: true,
+      message: 'Team Lead users fetched successfully',
+      data: {
+        users: users.rows,
+        pagination: {
+          total: users.count,
+          totalPages,
+          currentPage,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get Team Lead users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};

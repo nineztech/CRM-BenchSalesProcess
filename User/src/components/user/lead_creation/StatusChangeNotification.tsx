@@ -93,6 +93,19 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
             </svg>
           </motion.div>
         );
+      case 'teamfollowup':
+        return (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center"
+          >
+            <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </motion.div>
+        );
       case 'converted':
         return (
           <motion.div
@@ -141,6 +154,8 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
     switch (statusGroup) {
       case 'open':
         return 'bg-green-50 border-green-200';
+      case 'teamfollowup':
+        return 'bg-purple-50 border-purple-200';
       case 'converted':
         return 'bg-blue-50 border-blue-200';
       case 'archived':
@@ -156,6 +171,8 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
     switch (statusGroup) {
       case 'converted':
         return '🎉 Congratulations! Lead has been successfully converted!';
+      case 'teamfollowup':
+        return '👥 Lead has been moved to team follow-up!';
       case 'archived':
         return '📦 Lead has been archived';
       case 'inProcess':

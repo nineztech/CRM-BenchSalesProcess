@@ -1115,8 +1115,8 @@ const LeadCreationComponent: React.FC = () => {
     setShowStatusRemarkModal(true);
   };
 
-  // Update the handleStatusRemarkSubmit function to handle leader ID
-  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number) => {
+  // Update the handleStatusRemarkSubmit function to handle leader ID and release team lead
+  const handleStatusRemarkSubmit = async (remark: string, followUpDate?: string, followUpTime?: string, leaderId?: number, shouldReleaseTeamLead?: boolean) => {
     if (!selectedLeadForStatus) return;
 
     try {
@@ -1124,6 +1124,26 @@ const LeadCreationComponent: React.FC = () => {
       if (!token) {
         setApiError('Authentication required. Please login again.');
         return;
+      }
+
+      // If in team followup tab and release team lead is checked, call toggleTeamFollowup first
+      if (activeStatusTab === 'teamfollowup' && shouldReleaseTeamLead) {
+        try {
+          await axios.patch(
+            `${BASE_URL}/lead/${selectedLeadForStatus.id}/toggle-team-followup`,
+            {},
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+        } catch (error) {
+          console.error('Error toggling team followup:', error);
+          setApiError('Failed to release team lead. Please try again.');
+          return;
+        }
       }
 
       if (newStatus === 'Dead' || newStatus === 'notinterested') {
@@ -1179,26 +1199,8 @@ const LeadCreationComponent: React.FC = () => {
           status: newStatus,
           remark,
           ...(followUpDate && followUpTime ? { followUpDate, followUpTime } : {}),
-          ...(leaderId ? { leaderId } : {})
+          ...(newStatus === 'teamfollowup' ? { team_followup_assigned_to: leaderId } : {})
         };
-
-        // If status is teamfollowup, create team followup record
-        if (newStatus === 'teamfollowup' && leaderId) {
-          await axios.post(
-            `${BASE_URL}/team-followup/create`,
-            {
-              leadId: selectedLeadForStatus.id,
-              assignedToId: leaderId,
-              remark
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
-            }
-          );
-        }
 
         const response = await axios.patch(
           `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
@@ -1214,10 +1216,12 @@ const LeadCreationComponent: React.FC = () => {
         if (response.data.success) {
           const updatedLead = response.data.data;
           
-          // Calculate status group based on follow-up time
+          // Calculate status group based on status and follow-up time
           let statusGroup = updatedLead.statusGroup;
           
-          if (followUpDate && followUpTime) {
+          if (newStatus === 'teamfollowup') {
+            statusGroup = 'teamfollowup';
+          } else if (followUpDate && followUpTime) {
             const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
             const now = new Date();
             const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -1249,6 +1253,32 @@ const LeadCreationComponent: React.FC = () => {
     } catch (error: any) {
       console.error('Error updating status:', error);
       setApiError(error.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  // Add this helper function to determine status group
+  const getStatusGroup = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'open':
+      case 'dnr1':
+      case 'dnr2':
+      case 'dnr3':
+        return 'open';
+      case 'interested':
+      case 'not working':
+      case 'wrong no':
+      case 'call again later':
+      case 'follow up':
+      case 'teamfollowup':
+        return 'inProcess';
+      case 'closed':
+      case 'enrolled':
+        return 'converted';
+      case 'dead':
+      case 'notinterested':
+        return 'archived';
+      default:
+        return 'open';
     }
   };
 
@@ -2054,57 +2084,111 @@ ${(() => {
                                         action="view"
                                         fallback={<div className="px-2 py-1 rounded-md text-sm font-medium bg-gray-50 text-gray-500">{lead.status || 'open'}</div>}
                                       >
-                                        <PermissionGuard
-                                          activityName="Lead Status Management"
-                                          action="edit"
-                                          fallback={
-                                            <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
-                                              {lead.status || 'open'}
-                                            </div>
-                                          }
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <select
-                                              value={lead.status || 'open'}
-                                              onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                              disabled={lead.status === 'closed'}
-                                              className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                            >
-                                              <option value="open">Open</option>
-                                              <option value="DNR1">DNR1</option>
-                                              <option value="DNR2">DNR2</option>
-                                              <option value="DNR3">DNR3</option>
-                                              <option value="interested">Interested</option>
-                                              <option value="not working">Not Working</option>
-                                              <option value="wrong no">Wrong No</option>
-                                              <option value="call again later">Call Again Later</option>
-                                              <option value="follow up">Follow Up</option>
-                                              <option value="teamfollowup">Team Follow Up</option>
-                                              <option value="closed">Enrolled</option>
-                                              <option value="Dead">Dead</option>
-                                              <option value="notinterested">Not Interested</option>
-                                            </select>
-                                            {lead.followUpDate && lead.followUpTime && (
-                                              <div className="group relative">
-                                                <FaClock 
-                                                  className={`h-4 w-4 cursor-help ${
-                                                    new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
-                                                      ? 'text-red-500' 
-                                                      : 'text-gray-500'
-                                                  }`} 
-                                                />
-                                                <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
-                                                  <span className="text-indigo-200">Follow up in:</span>
-                                                  <Countdown
-                                                    date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
-                                                    renderer={countdownRenderer}
-                                                  />
-                                                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
-                                                </div>
+                                        {activeStatusTab === 'teamfollowup' ? (
+                                          <PermissionGuard
+                                            activityName="Team Followup Management"
+                                            action="edit"
+                                            fallback={
+                                              <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                                {lead.status || 'open'}
                                               </div>
-                                            )}
-                                          </div>
-                                        </PermissionGuard>
+                                            }
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <select
+                                                value={lead.status || 'open'}
+                                                onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                                disabled={lead.status === 'closed'}
+                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                              >
+                                                <option value="open">Open</option>
+                                                <option value="DNR1">DNR1</option>
+                                                <option value="DNR2">DNR2</option>
+                                                <option value="DNR3">DNR3</option>
+                                                <option value="interested">Interested</option>
+                                                <option value="not working">Not Working</option>
+                                                <option value="wrong no">Wrong No</option>
+                                                <option value="call again later">Call Again Later</option>
+                                                <option value="follow up">Follow Up</option>
+                                                <option value="teamfollowup">Team Follow Up</option>
+                                                <option value="closed">Enrolled</option>
+                                                <option value="Dead">Dead</option>
+                                                <option value="notinterested">Not Interested</option>
+                                              </select>
+                                              {lead.followUpDate && lead.followUpTime && (
+                                                <div className="group relative">
+                                                  <FaClock 
+                                                    className={`h-4 w-4 cursor-help ${
+                                                      new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                        ? 'text-red-500' 
+                                                        : 'text-gray-500'
+                                                    }`} 
+                                                  />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
+                                                    <span className="text-indigo-200">Follow up in:</span>
+                                                    <Countdown
+                                                      date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                      renderer={countdownRenderer}
+                                                    />
+                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </PermissionGuard>
+                                        ) : (
+                                          <PermissionGuard
+                                            activityName="Lead Status Management"
+                                            action="edit"
+                                            fallback={
+                                              <div className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')}`}>
+                                                {lead.status || 'open'}
+                                              </div>
+                                            }
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <select
+                                                value={lead.status || 'open'}
+                                                onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
+                                                disabled={lead.status === 'closed'}
+                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                              >
+                                                <option value="open">Open</option>
+                                                <option value="DNR1">DNR1</option>
+                                                <option value="DNR2">DNR2</option>
+                                                <option value="DNR3">DNR3</option>
+                                                <option value="interested">Interested</option>
+                                                <option value="not working">Not Working</option>
+                                                <option value="wrong no">Wrong No</option>
+                                                <option value="call again later">Call Again Later</option>
+                                                <option value="follow up">Follow Up</option>
+                                                <option value="teamfollowup">Team Follow Up</option>
+                                                <option value="closed">Enrolled</option>
+                                                <option value="Dead">Dead</option>
+                                                <option value="notinterested">Not Interested</option>
+                                              </select>
+                                              {lead.followUpDate && lead.followUpTime && (
+                                                <div className="group relative">
+                                                  <FaClock 
+                                                    className={`h-4 w-4 cursor-help ${
+                                                      new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                        ? 'text-red-500' 
+                                                        : 'text-gray-500'
+                                                    }`} 
+                                                  />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
+                                                    <span className="text-indigo-200">Follow up in:</span>
+                                                    <Countdown
+                                                      date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                      renderer={countdownRenderer}
+                                                    />
+                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </PermissionGuard>
+                                        )}
                                       </PermissionGuard>
                                     </div>
                                   </td>
@@ -2208,6 +2292,7 @@ ${(() => {
           onSubmit={handleStatusRemarkSubmit}
           currentStatus={selectedLeadForStatus?.status || ''}
           newStatus={newStatus}
+          isInTeamFollowupTab={activeStatusTab === 'teamfollowup'}
         />
         <StatusChangeNotification
           isOpen={showStatusNotification}

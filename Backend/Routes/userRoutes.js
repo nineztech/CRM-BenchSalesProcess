@@ -14,7 +14,8 @@ import {
   resetPassword,
   updateUserStatus,
   toggleSpecialStatus,
-  getSpecialUsers
+  getSpecialUsers,
+  getTeamLeadUsers
 } from '../controllers/userController.js';
 import authenticateToken from '../middleware/auth.js';
 import { sendPackageDetailsEmail } from '../utils/emailService.js';
@@ -26,6 +27,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/all', getAllUsers);
 router.get('/special', getSpecialUsers);
+router.get('/team-leads', authenticateToken, getTeamLeadUsers);
 router.get('/department/:departmentId', getUsersByDepartment);
 router.put('/:id', editUser);
 router.delete('/:id', deleteUser);
