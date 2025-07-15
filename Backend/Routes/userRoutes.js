@@ -14,8 +14,7 @@ import {
   resetPassword,
   updateUserStatus,
   toggleSpecialStatus,
-  getSpecialUsers,
-  getTeamLeaders
+  getSpecialUsers
 } from '../controllers/userController.js';
 import authenticateToken from '../middleware/auth.js';
 import { sendPackageDetailsEmail } from '../utils/emailService.js';
@@ -25,7 +24,6 @@ const router = express.Router();
 // User routes
 router.post('/register', register);
 router.post('/login', login);
-router.get('/team-leaders', authenticateToken, getTeamLeaders); // Place it before dynamic routes
 router.get('/all', getAllUsers);
 router.get('/special', getSpecialUsers);
 router.get('/department/:departmentId', getUsersByDepartment);

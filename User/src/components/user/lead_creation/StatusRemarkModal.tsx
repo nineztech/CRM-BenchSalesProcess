@@ -78,7 +78,7 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
         try {
           setIsLoadingLeaders(true);
           const token = localStorage.getItem('token');
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/team-leaders`, {
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/leaders`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }

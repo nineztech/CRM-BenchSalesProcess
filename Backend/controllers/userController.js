@@ -1272,37 +1272,3 @@ export const getSpecialUsers = async (req, res) => {
     });
   }
 };
-
-export const getTeamLeaders = async (req, res) => {
-  try {
-    const teamLeaders = await User.findAll({
-      where: {
-        role: 'user',
-        status: 'active',
-        subrole: 'Team Lead'
-      },
-      include: [{
-        model: Department,
-        as: 'userDepartment',
-        where: {
-          isSalesTeam: true,
-          status: 'active'  // Only include active departments
-        },
-        attributes: ['departmentName']
-      }],
-      attributes: ['id', 'firstname', 'lastname', 'email'],
-      order: [['firstname', 'ASC']]
-    });
-
-    res.status(200).json({
-      success: true,
-      data: teamLeaders
-    });
-  } catch (error) {
-    console.error('Get team leaders error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-};
