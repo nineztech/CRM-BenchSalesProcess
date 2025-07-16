@@ -58,63 +58,79 @@ const reindexLeads = async () => {
           }
         },
         mappings: {
-          properties: {
-            id: { type: 'integer' },
-            firstName: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            lastName: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            contactNumbers: { 
-              type: 'keyword'
-            },
-            processedContactNumbers: {
-              type: 'text',
-              analyzer: 'phone_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            emails: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            primaryEmail: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            technology: { type: 'keyword' },
-            country: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            countryCode: { type: 'keyword' },
-            visaStatus: { type: 'keyword' },
-            status: { type: 'keyword' },
-            statusGroup: { type: 'keyword' },
+                      properties: {
+              id: { type: 'integer' },
+              is_Team_Followup: { type: 'boolean' },
+              followUpDateTime: { type: 'date' },
+              firstName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              lastName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              contactNumbers: { 
+                type: 'keyword'
+              },
+              processedContactNumbers: {
+                type: 'text',
+                analyzer: 'phone_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              emails: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              primaryEmail: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              technology: { type: 'keyword' },
+              country: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              countryCode: { type: 'keyword' },
+              visaStatus: { type: 'keyword' },
+              status: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              statusGroup: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
             leadSource: { type: 'keyword' },
             assignTo: { type: 'integer' },
             assignedUser: {

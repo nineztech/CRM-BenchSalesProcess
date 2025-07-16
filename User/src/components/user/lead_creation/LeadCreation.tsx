@@ -338,10 +338,33 @@ const LeadCreationComponent: React.FC = () => {
       // Add search parameter for any non-empty query
       if (searchQuery !== '') {
         params.query = searchQuery;  // Send the exact search query without trimming
-        // Normalize status group to match backend expectations
-        const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
-        params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
       }
+      
+      // Always send the status group, whether searching or not
+      let normalizedStatusGroup;
+      switch(activeStatusTab) {
+        case 'open':
+          normalizedStatusGroup = 'open';
+          break;
+        case 'inProcess':
+          normalizedStatusGroup = 'inProcess';
+          break;
+        case 'followup':
+          normalizedStatusGroup = 'followUp';
+          break;
+        case 'teamfollowup':
+          normalizedStatusGroup = 'teamfollowup';
+          break;
+        case 'converted':
+          normalizedStatusGroup = 'converted';
+          break;
+        default:
+          normalizedStatusGroup = activeStatusTab;
+      }
+      params.statusGroup = normalizedStatusGroup;
+      
+      // Add current tab context for status search
+      params.currentTab = activeStatusTab;
 
       console.log('[API Request] Params:', params);
 

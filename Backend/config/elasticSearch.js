@@ -303,6 +303,14 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
                             boost: 2
                           }
                         }
+                      },
+                      {
+                        wildcard: {
+                          "status": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
                       }
                     ]
                   }
@@ -346,13 +354,93 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
     // Add status group filter if provided
     if (statusGroup) {
       console.log('🔍 Adding status group filter:', statusGroup);
-      // Convert statusGroup to lowercase for case-insensitive comparison
-      const normalizedStatusGroup = statusGroup.toLowerCase();
-      searchQuery.bool.must.push({
-        term: {
-          statusGroup: normalizedStatusGroup
-        }
-      });
+      const now = new Date();
+
+      // Define conditions based on status group
+      switch(statusGroup.toLowerCase()) {
+        case 'teamfollowup':
+          searchQuery.bool.must.push({
+            term: { "is_Team_Followup": true }
+          });
+          searchQuery.bool.must.push({
+            bool: {
+              must_not: {
+                terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+              }
+            }
+          });
+          break;
+
+        case 'followup':
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                {
+                  exists: { field: "followUpDateTime" }
+                },
+                {
+                  range: {
+                    followUpDateTime: {
+                      lte: now.toISOString()
+                    }
+                  }
+                },
+                {
+                  bool: {
+                    must_not: {
+                      terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+                    }
+                  }
+                }
+              ]
+            }
+          });
+          break;
+
+        case 'inprocess':
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                {
+                  exists: { field: "followUpDateTime" }
+                },
+                {
+                  range: {
+                    followUpDateTime: {
+                      gt: now.toISOString()
+                    }
+                  }
+                },
+                {
+                  bool: {
+                    must_not: {
+                      terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+                    }
+                  }
+                }
+              ]
+            }
+          });
+          break;
+
+        case 'open':
+          searchQuery.bool.must.push({
+            term: { "status": "open" }
+          });
+          break;
+
+        case 'converted':
+          searchQuery.bool.must.push({
+            term: { "status": "closed" }
+          });
+          break;
+
+        case 'archived':
+          searchQuery.bool.must.push({
+            terms: { "status": ["Dead", "notinterested"] }
+          });
+          break;
+      }
     }
 
     console.log('📦 Elasticsearch query:', JSON.stringify(searchQuery, null, 2));
