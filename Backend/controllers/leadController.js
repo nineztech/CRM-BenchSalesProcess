@@ -359,7 +359,7 @@ export const getAllLeads = async (req, res) => {
       where: {
         is_Team_Followup: true,
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
         }
       },
       include: includeOptions,
@@ -380,7 +380,7 @@ export const getAllLeads = async (req, res) => {
           [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
         },
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
         }
       },
       include: includeOptions,
@@ -393,16 +393,26 @@ export const getAllLeads = async (req, res) => {
     const followupIds = followupLeads.rows.map(lead => lead.id);
     const excludeIds = [...teamFollowupIds, ...followupIds];
 
-    // Get leads with follow-up time > 24 hours (inProcess)
+    // Get leads with follow-up time > 24 hours (inProcess) OR null followup date/time
     const inProcessLeads = await Lead.findAndCountAll({
       where: {
         id: { [Op.notIn]: excludeIds },
-        followUpDateTime: {
-          [Op.not]: null,
-          [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
-        },
+        [Op.or]: [
+          {
+            followUpDateTime: {
+              [Op.not]: null,
+              [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+            }
+          },
+          {
+            [Op.or]: [
+              { followUpDate: null },
+              { followUpTime: null }
+            ]
+          }
+        ],
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
         }
       },
       include: includeOptions,
@@ -584,7 +594,7 @@ export const getAssignedLeads = async (req, res) => {
         ...assignedCondition,
         is_Team_Followup: true,
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
         }
       },
       include: includeOptions,
@@ -606,7 +616,7 @@ export const getAssignedLeads = async (req, res) => {
           [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
         },
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
         }
       },
       include: includeOptions,
@@ -619,15 +629,25 @@ export const getAssignedLeads = async (req, res) => {
     const followupIds = followupLeads.rows.map(lead => lead.id);
     const excludeIds = [...teamFollowupIds, ...followupIds];
 
-    // Get leads with follow-up time > 24 hours (inProcess)
+    // Get leads with follow-up time > 24 hours (inProcess) OR null followup date/time
     const inProcessLeads = await Lead.findAndCountAll({
       where: {
         ...assignedCondition,
         id: { [Op.notIn]: excludeIds },
-        followUpDateTime: {
-          [Op.not]: null,
-          [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
-        },
+        [Op.or]: [
+          {
+            followUpDateTime: {
+              [Op.not]: null,
+              [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+            }
+          },
+          {
+            [Op.or]: [
+              { followUpDate: null },
+              { followUpTime: null }
+            ]
+          }
+        ],
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'closed']
         }
