@@ -1,6 +1,40 @@
 import Lead from '../models/leadModel.js';
 import { validateLead } from '../utils/validation.js';
 import * as XLSX from 'xlsx';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const downloadTemplate = async (req, res) => {
+  try {
+    const templatePath = path.join(__dirname, '../excel_template/lead_template.xlsx');
+    
+    // Check if file exists
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template file not found'
+      });
+    }
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=lead_template.xlsx');
+
+    // Stream the file
+    const fileStream = fs.createReadStream(templatePath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error('Error downloading template:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error downloading template file'
+    });
+  }
+};
 
 export const uploadBulkLeads = async (req, res) => {
   try {
@@ -22,12 +56,22 @@ export const uploadBulkLeads = async (req, res) => {
       });
     }
 
+    // Skip the first entry (example data) and process the rest
+    const leadsToProcess = leads.slice(1);
+
+    if (leadsToProcess.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No leads data found after skipping the example row'
+      });
+    }
+
     const validationResults = [];
     let hasErrors = false;
 
     // First pass: Validate all leads
-    for (let i = 0; i < leads.length; i++) {
-      const leadData = leads[i];
+    for (let i = 0; i < leadsToProcess.length; i++) {
+      const leadData = leadsToProcess[i];
       try {
         // Check for duplicate email first
         const existingLead = await Lead.findOne({
@@ -39,7 +83,7 @@ export const uploadBulkLeads = async (req, res) => {
           validationResults.push({
             ...leadData,
             Error: `Primary email '${leadData['Primary Email']}' already exists in the system`,
-            rowIndex: i + 2
+            rowIndex: i + 3 // Add 3 to account for 0-based index and skipped first row and header row
           });
           continue;
         }
@@ -87,7 +131,7 @@ export const uploadBulkLeads = async (req, res) => {
           validationResults.push({
             ...leadData,
             Error: validationError,
-            rowIndex: i + 2
+            rowIndex: i + 3 // Add 3 to account for 0-based index and skipped first row and header row
           });
         } else {
           validationResults.push({
@@ -101,7 +145,7 @@ export const uploadBulkLeads = async (req, res) => {
         validationResults.push({
           ...leadData,
           Error: error.message,
-          rowIndex: i + 2
+          rowIndex: i + 3 // Add 3 to account for 0-based index and skipped first row and header row
         });
       }
     }
