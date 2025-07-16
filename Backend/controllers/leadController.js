@@ -632,25 +632,34 @@ export const getAssignedLeads = async (req, res) => {
     // Get leads with follow-up time > 24 hours (inProcess) OR null followup date/time
     const inProcessLeads = await Lead.findAndCountAll({
       where: {
-        ...assignedCondition,
-        id: { [Op.notIn]: excludeIds },
-        [Op.or]: [
-          {
-            followUpDateTime: {
-              [Op.not]: null,
-              [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
-            }
-          },
+        [Op.and]: [
           {
             [Op.or]: [
-              { followUpDate: null },
-              { followUpTime: null }
+              { assignTo: req.user.id },
+              { createdBy: req.user.id }
             ]
+          },
+          {
+            id: { [Op.notIn]: excludeIds },
+            [Op.or]: [
+              {
+                followUpDateTime: {
+                  [Op.not]: null,
+                  [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+                }
+              },
+              {
+                [Op.or]: [
+                  { followUpDate: null },
+                  { followUpTime: null }
+                ]
+              }
+            ],
+            status: {
+              [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
+            }
           }
-        ],
-        status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
-        }
+        ]
       },
       include: includeOptions,
       order: [[sortBy, sortOrder]],

@@ -329,7 +329,7 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
                             onChange={(e) => setReleaseTeamLead(e.target.checked)}
                             className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="text-sm font-medium text-gray-700">Release Team Lead</span>
+                          <span className="text-sm font-medium text-gray-700">Team Follow Up Closed</span>
                         </label>
                       </div>
                     )}
