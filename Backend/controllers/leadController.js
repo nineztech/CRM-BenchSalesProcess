@@ -649,7 +649,7 @@ export const getAssignedLeads = async (req, res) => {
           }
         ],
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
