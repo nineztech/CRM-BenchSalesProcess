@@ -19,7 +19,7 @@ export const searchLeadsController = async (req, res) => {
 
     // Validate status group if provided
     if (statusGroup) {
-      const validStatusGroups = ['open', 'converted', 'archived', 'inProcess', 'followUp'];
+      const validStatusGroups = ['open', 'Enrolled', 'archived', 'inProcess', 'followUp'];
       if (!validStatusGroups.includes(statusGroup)) {
         return res.status(400).json({
           success: false,

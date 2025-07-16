@@ -46,7 +46,7 @@ const TeamFollowup = sequelize.define(
         'open',
         'not working',
         'wrong no',
-        'closed',
+        'Enrolled',
         'call again later',
         'follow up',
         'teamfollowup'  // Add teamfollowup status
@@ -102,7 +102,7 @@ const TeamFollowup = sequelize.define(
         
         const statusGroups = {
           open: ['open'],
-          converted: ['closed'],
+          Enrolled: ['Enrolled'],
           archived: ['Dead', 'notinterested'],
           inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later']
         };
