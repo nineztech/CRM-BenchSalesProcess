@@ -222,10 +222,10 @@ export const reindexLeads = async () => {
     console.log(colors.green(`✅ Successfully indexed: ${successCount}`));
     console.log(colors.red(`❌ Failed to index: ${errorCount}`));
 
-    process.exit(0);
+    // process.exit(0);
   } catch (error) {
     console.error(colors.red('❌ Error during reindexing:'), error);
-    process.exit(1);
+    // process.exit(1);
   }
 };
 
