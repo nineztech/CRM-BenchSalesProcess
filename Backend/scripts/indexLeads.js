@@ -2,7 +2,7 @@ import { Lead, User } from '../models/index.js';
 import { client, LEAD_INDEX, indexLead } from '../config/elasticSearch.js';
 import colors from 'colors';
 
-const reindexLeads = async () => {
+export const reindexLeads = async () => {
   try {
     console.log(colors.yellow('🔄 Starting to reindex all leads...'));
 

@@ -10,6 +10,7 @@ import { createDefaultActivities } from './controllers/activityController.js';
 import emailRoutes from './Routes/emailRoutes.js';
 import bulkRoutes from './Routes/bulkRoutes.js';
 import { createLeadIndex } from './config/elasticSearch.js';
+import { reindexLeads } from './scripts/indexLeads.js';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,7 @@ const startServer = async () => {
     // Initialize Elasticsearch (non-blocking)
     try {
       await createLeadIndex();
+       await reindexLeads();
       console.log(colors.green("✅ Elasticsearch index created successfully!"));
     } catch (error) {
       console.warn(colors.yellow("⚠️ Elasticsearch initialization failed. The application will continue without search functionality."));
