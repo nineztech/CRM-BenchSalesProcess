@@ -11,10 +11,10 @@ countries.registerLocale(english);
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
 // Get all countries data
-const countryList = Object.entries(countries.getNames('en')).map(([code, name]) => ({
-  name,
-  code: code.toUpperCase(),
-})).sort((a, b) => a.name.localeCompare(b.name));
+// const countryList = Object.entries(countries.getNames('en')).map(([code, name]) => ({
+//   name,
+//   code: code.toUpperCase(),
+// })).sort((a, b) => a.name.localeCompare(b.name));
 
 const downloadErrorFile = (base64Data: string, fileName: string, contentType: string) => {
   try {
@@ -385,35 +385,58 @@ const BulkLeadUpload: React.FC = () => {
                 <h3 className="text-xl font-semibold text-gray-900">Instructions</h3>
               </div>
               <ul className="space-y-3 text-gray-600">
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Download and review the template file for the correct format
+                  <span>Step 1: Click "Download Template" button to get the Excel template file</span>
                 </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Fill in all required lead information in the Excel file
+                  <span>Step 2: Open the template and DO NOT modify column headers or remove any columns</span>
                 </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Ensure all mandatory fields are properly filled
+                  <div>
+                    <span>Step 3: Fill in all required fields present in the Excel file for each lead:</span>
+                  </div>
                 </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Upload the completed Excel file using the form above
+                  <span>Step 4: Keep sample data in the template as reference - DO NOT alter or remove sample data</span>
                 </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  Monitor the progress bar and wait for confirmation
+                  <span>Step 5: Save your file in .xlsx format and ensure no formatting issues</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Step 6: Click "Choose Excel File" or drag and drop your completed file</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Step 7: Click "Upload Leads" and monitor the progress bar</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <div className='text-start'>
+                    <span>Note: If errors are found, an error file will be downloaded automatically having an error column mentioning the error in that field if present. Fix the errors in the previous file and upload again. </span> 
+                    <span>Make sure not to upload the error file</span>
+                  </div>
                 </li>
               </ul>
             </div>
