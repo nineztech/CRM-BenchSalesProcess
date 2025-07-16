@@ -49,157 +49,42 @@ const BulkLeadUpload: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const downloadSampleTemplate = () => {
-    // Create sample data with valid examples
-    const sampleData = [
-      {
-        'First Name': 'John',
-        'Last Name': 'Doe',
-        'Primary Contact': '+12345678901',
-        'Secondary Contact': '+19876543210',
-        'Primary Email': 'john.doe@example.com',
-        'Secondary Email': 'johndoe.work@example.com',
-        'LinkedIn URL': 'https://www.linkedin.com/in/johndoe',
-        'Technology': 'React, Node.js, TypeScript',
-        'Country': 'United States',
-        'Country Code': 'US',
-        'Visa Status': 'H1B',
-        'Lead Source': 'LinkedIn',
-        'Remarks': 'Experienced full-stack developer'
-      },
-      {
-        'First Name': 'Sarah',
-        'Last Name': 'Smith',
-        'Primary Contact': '+442012345678',
-        'Secondary Contact': '',
-        'Primary Email': 'sarah.smith@example.com',
-        'Secondary Email': '',
-        'LinkedIn URL': 'https://www.linkedin.com/in/sarahsmith',
-        'Technology': 'Java, Spring Boot, AWS',
-        'Country': 'United Kingdom',
-        'Country Code': 'GB',
-        'Visa Status': 'Citizen',
-        'Lead Source': 'Indeed',
-        'Remarks': 'Senior backend developer'
+  const downloadSampleTemplate = async () => {
+    try {
+      // Get the token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication required');
+        return;
       }
-    ];
 
-    // Create workbook and worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(sampleData, { 
-      header: [
-        'First Name',
-        'Last Name',
-        'Primary Contact',
-        'Secondary Contact',
-        'Primary Email',
-        'Secondary Email',
-        'LinkedIn URL',
-        'Technology',
-        'Country',
-        'Country Code',
-        'Visa Status',
-        'Lead Source',
-        'Remarks'
-      ]
-    });
+      // Fetch the template file from the backend
+      const response = await axios({
+        method: 'GET',
+        url: `${BASE_URL}/bulk/template`,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob' // Important for file download
+      });
 
-    // Create country data sheet
-    const countryDataWs = XLSX.utils.aoa_to_sheet([
-      ['Country', 'Code'],
-      ...countryList.map(country => [country.name, country.code])
-    ]);
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'lead_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
 
-    // Add the sheets to the workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    XLSX.utils.book_append_sheet(wb, countryDataWs, 'CountryData');
-
-    // Set column widths
-    ws['!cols'] = [
-      { width: 15 },  // First Name
-      { width: 15 },  // Last Name
-      { width: 20 },  // Primary Contact
-      { width: 20 },  // Secondary Contact
-      { width: 30 },  // Primary Email
-      { width: 30 },  // Secondary Email
-      { width: 40 },  // LinkedIn URL
-      { width: 30 },  // Technology
-      { width: 25 },  // Country
-      { width: 15 },  // Country Code
-      { width: 15 },  // Visa Status
-      { width: 15 },  // Lead Source
-      { width: 40 }   // Remarks
-    ];
-
-    // Style the header row
-    const headerStyle = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4F46E5" } }, // Indigo color
-      alignment: { horizontal: "center", vertical: "center" }
-    };
-
-    // Apply header styles
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:M1');
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const addr = XLSX.utils.encode_cell({ r: 0, c: C });
-      if (!ws[addr]) continue;
-      ws[addr].s = headerStyle;
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Template downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast.error('Error downloading template file');
     }
-
-    // Add data validation for Country column (keeping it as a suggestion rather than strict validation)
-    ws['!dataValidations'] = [{
-      sqref: 'I2:I1048576',
-      type: 'list',
-      formula1: '=CountryData!$A$2:$A$' + (countryList.length + 1),
-      allowBlank: true,
-      showErrorMessage: true,
-      errorTitle: 'Suggestion',
-      error: 'Select a country from the dropdown or enter manually',
-      showInputMessage: true,
-      promptTitle: 'Country Selection',
-      prompt: 'Select a country from the list or enter manually'
-    }];
-
-    // Add helper formulas for Country Code (as suggestions, not locked)
-    for (let i = 2; i <= 1000; i++) {
-      const cellRef = `J${i}`;
-      ws[cellRef] = { 
-        f: `=IFERROR(VLOOKUP(I${i},CountryData!$A$2:$B$${countryList.length + 1},2,FALSE),"")`,
-        t: 'f'
-      };
-    }
-
-    // Add cell comments/notes with instructions
-    const comments = {
-      A1: { text: 'Required: 2-50 characters' },
-      B1: { text: 'Required: 2-50 characters' },
-      C1: { text: 'Required: Format: +[country code][number], e.g., +12345678901' },
-      D1: { text: 'Optional: Same format as Primary Contact' },
-      E1: { text: 'Required: Valid email format' },
-      F1: { text: 'Optional: Valid email format' },
-      G1: { text: 'Required: Valid LinkedIn URL' },
-      H1: { text: 'Required: Comma-separated technologies' },
-      I1: { text: 'Required: Country name - Use dropdown or enter manually' },
-      J1: { text: 'Country code will auto-fill based on country selection, can be edited manually' },
-      K1: { text: 'Required: Suggested values - H1B, L1, F1, Green Card, Citizen, H4 EAD, L2 EAD, Other' },
-      L1: { text: 'Required: Source of the lead' },
-      M1: { text: 'Optional: Any additional notes' }
-    };
-
-    // Apply comments
-    if (!ws['!comments']) ws['!comments'] = {};
-    for (const [cell, comment] of Object.entries(comments)) {
-      ws['!comments'][cell] = comment;
-    }
-
-    // Save the file with all cells editable
-    XLSX.writeFile(wb, 'lead_template.xlsx', {
-      bookType: 'xlsx',
-      bookSST: false,
-      type: 'binary',
-      cellStyles: true,
-      compression: true
-    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
