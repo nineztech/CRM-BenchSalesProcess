@@ -355,8 +355,8 @@ const LeadCreationComponent: React.FC = () => {
         case 'teamfollowup':
           normalizedStatusGroup = 'teamfollowup';
           break;
-        case 'converted':
-          normalizedStatusGroup = 'converted';
+        case 'Enrolled':
+          normalizedStatusGroup = 'Enrolled';
           break;
         default:
           normalizedStatusGroup = activeStatusTab;
