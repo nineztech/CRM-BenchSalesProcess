@@ -136,7 +136,7 @@ const Lead = sequelize.define(
         'open',
         'not working',
         'wrong no',
-        'closed',
+        'Enrolled',
         'call again later',
         'follow up',
         'teamfollowup'
@@ -203,7 +203,7 @@ const Lead = sequelize.define(
         
         const statusGroups = {
           open: ['open'],
-          converted: ['closed'],
+          Enrolled: ['Enrolled'],
           archived: ['Dead', 'notinterested'],
           inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later', 'teamfollowup'],
           teamFollowup: ['teamfollowup']

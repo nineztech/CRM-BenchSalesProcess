@@ -18,7 +18,7 @@ const checkFollowUpTimes = async () => {
           [Op.not]: null
         },
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed'] // Exclude archived and converted leads
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled'] // Exclude archived and Enrolled leads
         }
       }
     });
@@ -181,7 +181,7 @@ export const createLead = async (req, res) => {
         'open',
         'not working',
         'wrong no',
-        'closed',
+        'Enrolled',
         'call again later',
         'follow up'
       ];
@@ -359,7 +359,7 @@ export const getAllLeads = async (req, res) => {
       where: {
         is_Team_Followup: true,
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
@@ -380,7 +380,7 @@ export const getAllLeads = async (req, res) => {
           [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
         },
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
@@ -412,7 +412,7 @@ export const getAllLeads = async (req, res) => {
           }
         ],
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
@@ -437,10 +437,10 @@ export const getAllLeads = async (req, res) => {
       limit: limit
     });
 
-    // Get converted leads
-    const convertedLeads = await Lead.findAndCountAll({
+    // Get Enrolled leads
+    const EnrolledLeads = await Lead.findAndCountAll({
       where: {
-        status: 'closed'
+        status: 'Enrolled'
       },
       include: includeOptions,
       order: [[sortBy, sortOrder]],
@@ -482,11 +482,11 @@ export const getAllLeads = async (req, res) => {
             limit: limit
           }
         },
-        converted: {
-          leads: convertedLeads.rows,
+        Enrolled: {
+          leads: EnrolledLeads.rows,
           pagination: {
-            total: convertedLeads.count,
-            totalPages: Math.ceil(convertedLeads.count / limit),
+            total: EnrolledLeads.count,
+            totalPages: Math.ceil(EnrolledLeads.count / limit),
             currentPage: page,
             limit: limit
           }
@@ -594,7 +594,7 @@ export const getAssignedLeads = async (req, res) => {
         ...assignedCondition,
         is_Team_Followup: true,
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
@@ -616,7 +616,7 @@ export const getAssignedLeads = async (req, res) => {
           [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
         },
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed','open']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
       },
       include: includeOptions,
@@ -649,7 +649,7 @@ export const getAssignedLeads = async (req, res) => {
           }
         ],
         status: {
-          [Op.notIn]: ['Dead', 'notinterested', 'closed']
+          [Op.notIn]: ['Dead', 'notinterested', 'Enrolled']
         }
       },
       include: includeOptions,
@@ -675,11 +675,11 @@ export const getAssignedLeads = async (req, res) => {
       limit: limit
     });
 
-    // Get converted leads
-    const convertedLeads = await Lead.findAndCountAll({
+    // Get Enrolled leads
+    const EnrolledLeads = await Lead.findAndCountAll({
       where: {
         ...assignedCondition,
-        status: 'closed'
+        status: 'Enrolled'
       },
       include: includeOptions,
       order: [[sortBy, sortOrder]],
@@ -722,11 +722,11 @@ export const getAssignedLeads = async (req, res) => {
             limit: limit
           }
         },
-        converted: {
-          leads: convertedLeads.rows,
+        Enrolled: {
+          leads: EnrolledLeads.rows,
           pagination: {
-            total: convertedLeads.count,
-            totalPages: Math.ceil(convertedLeads.count / limit),
+            total: EnrolledLeads.count,
+            totalPages: Math.ceil(EnrolledLeads.count / limit),
             currentPage: page,
             limit: limit
           }
@@ -779,7 +779,7 @@ export const getLeadsByStatus = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     // Validate status
-    if (!['open', 'converted', 'archive'].includes(status)) {
+    if (!['open', 'Enrolled', 'archive'].includes(status)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid status parameter'
@@ -850,7 +850,7 @@ export const getLeadsByStatusGroup = async (req, res) => {
     const user = req.user; // Get the authenticated user
 
     // Validate status group
-    const validStatusGroups = ['open', 'converted', 'archived', 'inProcess', 'followUp'];
+    const validStatusGroups = ['open', 'Enrolled', 'archived', 'inProcess', 'followUp'];
     if (!validStatusGroups.includes(statusGroup)) {
       return res.status(400).json({
         success: false,
@@ -861,7 +861,7 @@ export const getLeadsByStatusGroup = async (req, res) => {
     // Define status mappings
     const statusMappings = {
       open: ['open', 'Numb'],
-      converted: ['closed'],
+      Enrolled: ['Enrolled'],
       archived: ['Dead', 'notinterested'],
       inProcess: ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'wrong no', 'call again later'],
       followUp: ['follow-up']
@@ -958,7 +958,7 @@ export const updateLead = async (req, res) => {
     }
 
     // Validate status if provided
-    if (updateData.status && !['open', 'converted', 'archive'].includes(updateData.status)) {
+    if (updateData.status && !['open', 'Enrolled', 'archive'].includes(updateData.status)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid status value'
@@ -1049,7 +1049,7 @@ export const updateLeadStatus = async (req, res) => {
       'open',
       'not working',
       'wrong no',
-      'closed',
+      'Enrolled',
       'call again later',
       'follow up',
       'teamfollowup'

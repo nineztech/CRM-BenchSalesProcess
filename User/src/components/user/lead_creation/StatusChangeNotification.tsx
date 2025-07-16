@@ -28,7 +28,7 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
   }, [isOpen, onClose]);
 
   React.useEffect(() => {
-    if (isOpen && (statusGroup === 'converted' || statusGroup === 'open')) {
+    if (isOpen && (statusGroup === 'Enrolled' || statusGroup === 'open')) {
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
 
@@ -45,7 +45,7 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
 
         const particleCount = 50 * (timeLeft / duration);
 
-        if (statusGroup === 'converted') {
+        if (statusGroup === 'Enrolled') {
           // Celebratory confetti with gold and blue colors
           confetti({
             particleCount,
@@ -106,7 +106,7 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
             </svg>
           </motion.div>
         );
-      case 'converted':
+      case 'Enrolled':
         return (
           <motion.div
             initial={{ scale: 0 }}
@@ -156,7 +156,7 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
         return 'bg-green-50 border-green-200';
       case 'teamfollowup':
         return 'bg-purple-50 border-purple-200';
-      case 'converted':
+      case 'Enrolled':
         return 'bg-blue-50 border-blue-200';
       case 'archived':
         return 'bg-red-50 border-red-200';
@@ -169,8 +169,8 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
 
   const getStatusMessage = () => {
     switch (statusGroup) {
-      case 'converted':
-        return '🎉 Congratulations! Lead has been successfully converted!';
+      case 'Enrolled':
+        return '🎉 Congratulations! Lead has been successfully Enrolled!';
       case 'teamfollowup':
         return '👥 Lead has been moved to team follow-up!';
       case 'archived':
@@ -208,7 +208,7 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
               transition={{ duration: 3, ease: "linear" }}
               className={`absolute bottom-0 left-0 h-1 ${
                 statusGroup === 'open' ? 'bg-green-500' :
-                statusGroup === 'converted' ? 'bg-blue-500' :
+                statusGroup === 'Enrolled' ? 'bg-blue-500' :
                 statusGroup === 'archived' ? 'bg-red-500' :
                 'bg-yellow-500'
               }`}
@@ -251,11 +251,11 @@ const StatusChangeNotification: React.FC<StatusChangeNotificationProps> = ({
                 className="mt-4 inline-block px-4 py-2 rounded-full text-lg font-semibold capitalize"
                 style={{
                   backgroundColor: statusGroup === 'open' ? '#dcfce7' :
-                    statusGroup === 'converted' ? '#dbeafe' :
+                    statusGroup === 'Enrolled' ? '#dbeafe' :
                     statusGroup === 'archived' ? '#fee2e2' :
                     '#fef3c7',
                   color: statusGroup === 'open' ? '#166534' :
-                    statusGroup === 'converted' ? '#1e40af' :
+                    statusGroup === 'Enrolled' ? '#1e40af' :
                     statusGroup === 'archived' ? '#991b1b' :
                     '#92400e'
                 }}

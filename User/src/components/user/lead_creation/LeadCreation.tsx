@@ -60,7 +60,7 @@ interface Lead {
   countryCode: string;
   visaStatus: string;
   status?: string;
-  statusGroup?: 'open' | 'converted' | 'archived' | 'inProcess';
+  statusGroup?: 'open' | 'Enrolled' | 'archived' | 'inProcess';
   leadSource: string;
   remarks: Remark[];
   reference?: string | null;
@@ -150,7 +150,7 @@ interface SalesUser {
 }
 
 // Add type definition for tab status
-type TabStatus = 'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup';
+type TabStatus = 'open' | 'Enrolled' | 'inProcess' | 'followup' | 'teamfollowup';
 
 // Update the getStatusIcon function
 const getStatusIcon = (status: TabStatus) => {
@@ -161,7 +161,7 @@ const getStatusIcon = (status: TabStatus) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-    case 'converted':
+    case 'Enrolled':
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -219,14 +219,14 @@ const LeadCreationComponent: React.FC = () => {
   const [leadsData, setLeadsData] = useState<{
     open: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     inProcess: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
-    converted: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
+    Enrolled: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     archived: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     followup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } },
     teamfollowup: { leads: Lead[], pagination: { total: number, totalPages: number, currentPage: number, limit: number } }
   }>({
     open: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     inProcess: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
-    converted: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
+    Enrolled: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     archived: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     followup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } },
     teamfollowup: { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: 10 } }
@@ -245,7 +245,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Tab states
   const [activeMainTab, setActiveMainTab] = useState<'create' | 'bulk'>('create');
-  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup'>('open');
+  const [activeStatusTab, setActiveStatusTab] = useState<'open' | 'Enrolled' | 'inProcess' | 'followup' | 'teamfollowup'>('open');
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -383,7 +383,7 @@ const LeadCreationComponent: React.FC = () => {
             ...prev,
             open: data.open,
             inProcess: data.inProcess,
-            converted: data.converted,
+            Enrolled: data.Enrolled,
             archived: data.archived,
             followup: data.followup,
             teamfollowup: data.teamfollowup
@@ -1032,7 +1032,7 @@ const LeadCreationComponent: React.FC = () => {
   `;
 
   // Update the handleStatusTabChange function
-  const handleStatusTabChange = async (status: 'open' | 'converted' | 'inProcess' | 'followup' | 'teamfollowup') => {
+  const handleStatusTabChange = async (status: 'open' | 'Enrolled' | 'inProcess' | 'followup' | 'teamfollowup') => {
     try {
       console.log(`[Status Tab Change] Switching to ${status} tab`);
       setIsLoading(true);
@@ -1258,32 +1258,6 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
-  // Add this helper function to determine status group
-  const getStatusGroup = (status: string): string => {
-    switch (status.toLowerCase()) {
-      case 'open':
-      case 'dnr1':
-      case 'dnr2':
-      case 'dnr3':
-        return 'open';
-      case 'interested':
-      case 'not working':
-      case 'wrong no':
-      case 'call again later':
-      case 'follow up':
-      case 'teamfollowup':
-        return 'inProcess';
-      case 'closed':
-      case 'enrolled':
-        return 'converted';
-      case 'dead':
-      case 'notinterested':
-        return 'archived';
-      default:
-        return 'open';
-    }
-  };
-
   // Add this function to get status color
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -1291,7 +1265,7 @@ const LeadCreationComponent: React.FC = () => {
         return 'bg-green-100 text-green-800';
       case 'inProcess':
         return 'bg-yellow-100 text-yellow-800';
-      case 'converted':
+      case 'Enrolled':
         return 'bg-blue-100 text-blue-800';
       case 'archived':
         return 'bg-red-100 text-red-800';
@@ -1930,7 +1904,7 @@ ${(() => {
                     
                     <div className="border-b border-gray-200">
                       <div className="flex">
-                        {(['open', 'inProcess', 'followup', 'teamfollowup', 'converted'] as TabStatus[]).map((tab: TabStatus) => (
+                        {(['open', 'inProcess', 'followup', 'teamfollowup', 'Enrolled'] as TabStatus[]).map((tab: TabStatus) => (
                           <button
                             key={tab}
                             className={getStatusTabStyle(activeStatusTab === tab)}
@@ -2100,8 +2074,8 @@ ${(() => {
                                               <select
                                                 value={lead.status || 'open'}
                                                 onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                                disabled={lead.status === 'closed'}
-                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                                disabled={lead.status === 'Enrolled'}
+                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'Enrolled' ? 'opacity-70 cursor-not-allowed' : ''}`}
                                               >
                                                 <option value="open">Open</option>
                                                 <option value="DNR1">DNR1</option>
@@ -2113,7 +2087,7 @@ ${(() => {
                                                 <option value="call again later">Call Again Later</option>
                                                 <option value="follow up">Follow Up</option>
                                                 <option value="teamfollowup">Team Follow Up</option>
-                                                <option value="closed">Enrolled</option>
+                                                <option value="Enrolled">Enrolled</option>
                                                 <option value="Dead">Dead</option>
                                                 <option value="notinterested">Not Interested</option>
                                               </select>
@@ -2152,8 +2126,8 @@ ${(() => {
                                               <select
                                                 value={lead.status || 'open'}
                                                 onChange={(e) => handleStatusChange(lead.id || 0, e.target.value)}
-                                                disabled={lead.status === 'closed'}
-                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'closed' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                                disabled={lead.status === 'Enrolled'}
+                                                className={`px-2 py-1 rounded-md text-sm font-medium ${getStatusColor(lead.statusGroup || 'open')} border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lead.status === 'Enrolled' ? 'opacity-70 cursor-not-allowed' : ''}`}
                                               >
                                                 <option value="open">Open</option>
                                                 <option value="DNR1">DNR1</option>
@@ -2165,7 +2139,7 @@ ${(() => {
                                                 <option value="call again later">Call Again Later</option>
                                                 <option value="follow up">Follow Up</option>
                                                 <option value="teamfollowup">Team Follow Up</option>
-                                                <option value="closed">Enrolled</option>
+                                                <option value="Enrolled">Enrolled</option>
                                                 <option value="Dead">Dead</option>
                                                 <option value="notinterested">Not Interested</option>
                                               </select>

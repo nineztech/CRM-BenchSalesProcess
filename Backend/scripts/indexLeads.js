@@ -175,8 +175,8 @@ const reindexLeads = async () => {
         // Determine the status group
         let statusGroup = 'open';
         if (leadData.status) {
-          if (leadData.status === 'closed') {
-            statusGroup = 'converted';
+          if (leadData.status === 'Enrolled') {
+            statusGroup = 'Enrolled';
           } else if (['Dead', 'notinterested'].includes(leadData.status)) {
             statusGroup = 'archived';
           } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'].includes(leadData.status)) {

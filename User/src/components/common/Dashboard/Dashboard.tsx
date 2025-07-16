@@ -43,9 +43,9 @@ const statusData = [
 ];
 
 const departmentData = [
-  { name: 'Sales', leads: 400, closed: 240 },
-  { name: 'Marketing', leads: 300, closed: 139 },
-  { name: 'Support', leads: 200, closed: 180 },
+  { name: 'Sales', leads: 400, Enrolled: 240 },
+  { name: 'Marketing', leads: 300, Enrolled: 139 },
+  { name: 'Support', leads: 200, Enrolled: 180 },
 ];
 
 // Updated recent leads data
@@ -413,7 +413,7 @@ const Dashboard: React.FC = () => {
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="leads" name="Total Leads" fill="#4F46E5" />
-                <Bar dataKey="closed" name="Closed Deals" fill="#10B981" />
+                <Bar dataKey="Enrolled" name="Closed Deals" fill="#10B981" />
               </BarChart>
             </ResponsiveContainer>
           </div>
