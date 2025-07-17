@@ -3,6 +3,50 @@ import Lead from "../models/leadModel.js";
 import User from "../models/userModel.js";
 import { Op } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
+import { searchArchivedLeads, indexArchivedLead, updateArchivedLead, deleteArchivedLead } from "../config/elasticSearch.js";
+
+// Search archived leads with pagination
+export const searchArchivedLeadsController = async (req, res) => {
+  try {
+    const { query, page = 1, limit = 10 } = req.query;
+
+    // Validate required parameters
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required',
+        errors: [{
+          field: 'query',
+          message: 'Search query cannot be empty'
+        }]
+      });
+    }
+
+    // Search archived leads
+    const result = await searchArchivedLeads(query, parseInt(page), parseInt(limit));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Archived leads retrieved successfully',
+      data: {
+        total: result.total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        leads: result.leads
+      }
+    });
+  } catch (error) {
+    console.error('Error searching archived leads:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error searching archived leads',
+      errors: [{
+        field: 'server',
+        message: 'Internal server error'
+      }]
+    });
+  }
+};
 
 // Get all archived leads with pagination and filtering
 export const getArchivedLeads = async (req, res) => {
@@ -174,6 +218,13 @@ export const reopenArchivedLead = async (req, res) => {
     }, { transaction });
 
     await transaction.commit();
+
+    // Update the archived lead in Elasticsearch to reflect the status change
+    try {
+      await updateArchivedLead(archivedLead.toJSON());
+    } catch (error) {
+      console.error('Error updating archived lead in Elasticsearch:', error);
+    }
 
     return res.status(200).json({
       success: true,
@@ -377,6 +428,13 @@ export const bulkReopenArchivedLeads = async (req, res) => {
           reopenReason: remark || 'Lead reopened from archive (Bulk)'
         }, { transaction });
 
+        // Update the archived lead in Elasticsearch
+        try {
+          await updateArchivedLead(archivedLead.toJSON());
+        } catch (error) {
+          console.error('Error updating archived lead in Elasticsearch:', error);
+        }
+
         results.success.push({ id, newLeadId: newLead.id });
       } catch (error) {
         results.failed.push({ id, reason: error.message });
@@ -411,5 +469,6 @@ export default {
   reopenArchivedLead,
   getArchivedLeadById,
   updateArchivedLeadStatus,
-  bulkReopenArchivedLeads
+  bulkReopenArchivedLeads,
+  searchArchivedLeadsController
 }; 

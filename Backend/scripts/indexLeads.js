@@ -1,5 +1,5 @@
-import { Lead, User } from '../models/index.js';
-import { client, LEAD_INDEX, indexLead } from '../config/elasticSearch.js';
+import { Lead, User, ArchivedLead } from '../models/index.js';
+import { client, LEAD_INDEX, ARCHIVED_LEAD_INDEX, indexLead, indexArchivedLead, createArchivedLeadIndex } from '../config/elasticSearch.js';
 import colors from 'colors';
 
 export const reindexLeads = async () => {
@@ -13,6 +13,15 @@ export const reindexLeads = async () => {
     if (indexExists) {
       console.log(colors.blue('📦 Deleting existing index...'));
       await client.indices.delete({ index: LEAD_INDEX });
+    }
+
+    // Check if archived leads index exists
+    const archivedIndexExists = await client.indices.exists({ index: ARCHIVED_LEAD_INDEX });
+    
+    // If it exists, delete it
+    if (archivedIndexExists) {
+      console.log(colors.blue('📦 Deleting existing archived leads index...'));
+      await client.indices.delete({ index: ARCHIVED_LEAD_INDEX });
     }
 
     // Recreate the index with proper mappings
@@ -167,6 +176,9 @@ export const reindexLeads = async () => {
       }
     });
 
+    // Create archived leads index
+    await createArchivedLeadIndex();
+
     // Get all leads with their assigned users
     const leads = await Lead.findAll({
       include: [
@@ -178,7 +190,19 @@ export const reindexLeads = async () => {
       ]
     });
 
+    // Get all archived leads with their assigned users
+    const archivedLeads = await ArchivedLead.findAll({
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        }
+      ]
+    });
+
     console.log(colors.blue(`📊 Found ${leads.length} leads to reindex`));
+    console.log(colors.blue(`📊 Found ${archivedLeads.length} archived leads to reindex`));
 
     // Index each lead
     let successCount = 0;
@@ -210,15 +234,32 @@ export const reindexLeads = async () => {
         
         await indexLead(enrichedLeadData);
         successCount++;
-        process.stdout.write(`\r${colors.green('✅ Progress:')} ${successCount}/${leads.length} leads indexed`);
+        process.stdout.write(`\r${colors.green('✅ Progress:')} ${successCount}/${leads.length + archivedLeads.length} leads indexed`);
       } catch (error) {
         errorCount++;
         console.error(colors.red(`\n❌ Error indexing lead ${lead.id}:`), error);
       }
     }
 
+    // Index each archived lead
+    for (const archivedLead of archivedLeads) {
+      try {
+        const archivedLeadData = archivedLead.toJSON();
+        
+        console.log(colors.yellow(`📝 Indexing archived lead ${archivedLead.id} with leadstatus: ${archivedLeadData.leadstatus}`));
+        
+        await indexArchivedLead(archivedLeadData);
+        successCount++;
+        process.stdout.write(`\r${colors.green('✅ Progress:')} ${successCount}/${leads.length + archivedLeads.length} leads indexed`);
+      } catch (error) {
+        errorCount++;
+        console.error(colors.red(`\n❌ Error indexing archived lead ${archivedLead.id}:`), error);
+      }
+    }
+
     console.log(colors.green(`\n\n✅ Reindexing completed:`));
     console.log(colors.blue(`📊 Total leads: ${leads.length}`));
+    console.log(colors.blue(`📊 Total archived leads: ${archivedLeads.length}`));
     console.log(colors.green(`✅ Successfully indexed: ${successCount}`));
     console.log(colors.red(`❌ Failed to index: ${errorCount}`));
 

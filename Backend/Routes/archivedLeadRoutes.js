@@ -1,11 +1,14 @@
 import express from 'express';
-import { getArchivedLeads, reopenArchivedLead, getArchivedLeadById, updateArchivedLeadStatus, bulkReopenArchivedLeads } from '../controllers/archivedLeadController.js';
+import { getArchivedLeads, reopenArchivedLead, getArchivedLeadById, updateArchivedLeadStatus, bulkReopenArchivedLeads, searchArchivedLeadsController } from '../controllers/archivedLeadController.js';
 import  authenticate from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticate);
+
+// Search archived leads
+router.get('/search', searchArchivedLeadsController);
 
 // Get all archived leads with pagination and filtering
 router.get('/all', getArchivedLeads);

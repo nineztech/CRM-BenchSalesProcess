@@ -148,44 +148,107 @@ const ArchivedLeadsComponent: React.FC = () => {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState<ArchivedLead | null>(null);
+  
+  // Add search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const { checkPermission, loading: permissionsLoading } = usePermissions();
   const canReopenLeads = checkPermission('Reopen Lead Management', 'add') || checkPermission('Reopen Lead Management', 'edit');
 
   const fetchArchivedLeads = async () => {
     try {
+      console.log('[Fetch Archived Leads] Starting fetch operation');
+      console.log('[Search Query]', searchQuery ? `Searching for: "${searchQuery}"` : 'No search query');
+      
       setIsLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
       
-      const response = await axios.get(`${BASE_URL}/archived-leads/all`, {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication required. Please login again.');
+        return;
+      }
+
+      // Select endpoint based on search query
+      const endpoint = searchQuery !== '' ? `${BASE_URL}/archived-leads/search` : `${BASE_URL}/archived-leads/all`;
+      console.log(`[API Request] Using endpoint: ${endpoint}`);
+
+      const params: any = {
+        page: currentPage,
+        limit: pageSize
+      };
+
+      if (searchQuery !== '') {
+        params.query = searchQuery;
+      } else {
+        params.sortBy = 'archivedAt';
+        params.sortOrder = 'DESC';
+      }
+
+      console.log('[API Request] Params:', params);
+
+      const response = await axios.get(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`
         },
-        params: {
-          page: currentPage,
-          limit: pageSize,
-          sortBy: 'archivedAt',
-          sortOrder: 'DESC'
-        }
+        params
       });
 
       if (response.data.success) {
-        setArchivedLeads(response.data.data.leads);
-        setTotalPages(response.data.data.pagination.totalPages);
-        setTotalCount(response.data.data.pagination.total);
+        console.log('[API Response] Success:', {
+          searchActive: !!searchQuery,
+          totalResults: response.data.data.total || response.data.data.pagination?.total,
+          currentPage: response.data.data.page || response.data.data.pagination?.currentPage
+        });
+        
+        const { data } = response.data;
+        
+        if (searchQuery.trim()) {
+          // Handle search results
+          console.log('[Search Results] Found:', data.leads?.length || 0, 'archived leads');
+          setArchivedLeads(data.leads || []);
+          setTotalPages(Math.ceil((data.total || 0) / pageSize));
+          setTotalCount(data.total || 0);
+        } else {
+          // Handle regular fetch
+          console.log('[Regular Fetch] Data received');
+          setArchivedLeads(data.leads || []);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalCount(data.pagination?.total || 0);
+        }
+      } else {
+        console.error('[API Error] Failed to fetch archived leads:', response.data);
+        setError('Failed to fetch archived leads. Please try again.');
       }
-    } catch (err) {
-      setError('Failed to fetch archived leads');
-      console.error('Error fetching archived leads:', err);
+    } catch (err: any) {
+      console.error('[Error] Error in fetchArchivedLeads:', err);
+      setError(err.response?.data?.message || 'Failed to fetch archived leads. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsSearching(false);
     }
   };
+
+  // Immediate search effect
+  useEffect(() => {
+    if (searchQuery !== '') {
+      setIsSearching(true);
+    }
+    fetchArchivedLeads();
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchArchivedLeads();
   }, [currentPage, pageSize]);
+
+  // Add clear search function
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setIsSearching(false);
+    setCurrentPage(1);
+    fetchArchivedLeads();
+  };
 
   // Handle bulk reopen
   const handleBulkReopen = async () => {
@@ -304,7 +367,35 @@ const ArchivedLeadsComponent: React.FC = () => {
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div className="px-8 py-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900">Archived Leads List</h2>
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-lg font-semibold text-gray-900">Archived Leads List</h2>
+                      {/* Search input */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search archived leads..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-80 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={handleClearSearch}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            title="Clear search"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                        {isSearching && !searchQuery && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex items-center gap-4">
                       {canReopenLeads && selectedLeads.length > 0 && (
                         <button
@@ -443,7 +534,11 @@ const ArchivedLeadsComponent: React.FC = () => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {Math.min(((currentPage - 1) * pageSize) + 1, totalCount)} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} leads
+                      {searchQuery ? (
+                        <>Search results: {totalCount} archived leads found</>
+                      ) : (
+                        <>Showing {Math.min(((currentPage - 1) * pageSize) + 1, totalCount)} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} leads</>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button

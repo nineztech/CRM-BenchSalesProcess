@@ -13,6 +13,7 @@ const client = new Client({
 
 // Define lead index mapping
 const LEAD_INDEX = 'leads';
+const ARCHIVED_LEAD_INDEX = 'archived_leads';
 
 // Create lead index with mapping
 const createLeadIndex = async () => {
@@ -59,10 +60,66 @@ const createLeadIndex = async () => {
       });
       console.log('Lead index created successfully');
     }
+
+    // Also create archived leads index
+    await createArchivedLeadIndex();
   } catch (error) {
     console.error('Error creating lead index:', error);
     // Don't throw the error, just log it and continue
     // This allows the application to start even if Elasticsearch is not available
+  }
+};
+
+// Create archived lead index with mapping
+const createArchivedLeadIndex = async () => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      console.warn('⚠️ Elasticsearch is not available. The application will continue without search functionality.');
+      return;
+    }
+
+    const indexExists = await client.indices.exists({ index: ARCHIVED_LEAD_INDEX });
+    if (!indexExists) {
+      await client.indices.create({
+        index: ARCHIVED_LEAD_INDEX,
+        body: {
+          mappings: {
+            properties: {
+              id: { type: 'integer' },
+              originalLeadId: { type: 'integer' },
+              firstName: { type: 'text' },
+              lastName: { type: 'text' },
+              contactNumbers: { type: 'keyword' },
+              emails: { type: 'keyword' },
+              primaryEmail: { type: 'keyword' },
+              primaryContact: { type: 'keyword' },
+              technology: { type: 'keyword' },
+              country: { type: 'keyword' },
+              countryCode: { type: 'keyword' },
+              visaStatus: { type: 'keyword' },
+              status: { type: 'keyword' },
+              leadstatus: { type: 'keyword' },
+              archiveReason: { type: 'keyword' },
+              leadSource: { type: 'keyword' },
+              assignTo: { type: 'integer' },
+              archivedAt: { type: 'date' },
+              assignedUser: {
+                properties: {
+                  id: { type: 'integer' },
+                  firstname: { type: 'text' },
+                  lastname: { type: 'text' },
+                  email: { type: 'keyword' }
+                }
+              }
+            }
+          }
+        }
+      });
+      console.log('Archived lead index created successfully');
+    }
+  } catch (error) {
+    console.error('Error creating archived lead index:', error);
   }
 };
 
@@ -484,12 +541,259 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
   }
 };
 
+// Function to index an archived lead
+const indexArchivedLead = async (archivedLead) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      console.warn('⚠️ Elasticsearch is not available for indexing archived lead');
+      return;
+    }
+
+    // Process contact numbers to create searchable versions without country codes
+    const processedContactNumbers = Array.isArray(archivedLead.contactNumbers) 
+      ? archivedLead.contactNumbers.map(processPhoneNumber)
+      : [];
+
+    // Add the processed numbers to the archived lead object
+    const archivedLeadToIndex = {
+      ...archivedLead,
+      processedContactNumbers,
+      // Keep original contact numbers as well
+      contactNumbers: Array.isArray(archivedLead.contactNumbers) ? archivedLead.contactNumbers : []
+    };
+
+    await client.index({
+      index: ARCHIVED_LEAD_INDEX,
+      id: archivedLead.id.toString(),
+      body: archivedLeadToIndex,
+      refresh: true
+    });
+
+    console.log(`✅ Archived lead ${archivedLead.id} indexed successfully`);
+  } catch (error) {
+    console.error(`❌ Error indexing archived lead ${archivedLead.id}:`, error);
+    throw error;
+  }
+};
+
+// Function to update indexed archived lead
+const updateArchivedLead = async (archivedLead) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) return;
+
+    await client.update({
+      index: ARCHIVED_LEAD_INDEX,
+      id: archivedLead.id.toString(),
+      body: {
+        doc: archivedLead
+      }
+    });
+  } catch (error) {
+    console.error('Error updating archived lead:', error);
+    // Don't throw the error, just log it
+  }
+};
+
+// Function to delete indexed archived lead
+const deleteArchivedLead = async (archivedLeadId) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) return;
+
+    await client.delete({
+      index: ARCHIVED_LEAD_INDEX,
+      id: archivedLeadId.toString()
+    });
+  } catch (error) {
+    console.error('Error deleting archived lead:', error);
+    // Don't throw the error, just log it
+  }
+};
+
+// Function to search archived leads
+const searchArchivedLeads = async (query, page = 1, limit = 10) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      console.warn('⚠️ Elasticsearch is not available for search');
+      return {
+        total: 0,
+        leads: []
+      };
+    }
+
+    console.log('🔍 Archived leads search query:', { query, page, limit });
+
+    const offset = (page - 1) * limit;
+
+    // Process the search query if it looks like a phone number
+    const processedQuery = query.match(/^\+?\d+$/) ? processPhoneNumber(query) : query;
+
+    const searchQuery = {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  bool: {
+                    should: [
+                      {
+                        wildcard: {
+                          "firstName": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 3
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "lastName": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 3
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "assignedUser.firstname": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "assignedUser.lastname": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "country": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "leadstatus": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "archiveReason": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "leadSource": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 2
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  bool: {
+                    should: [
+                      {
+                        wildcard: {
+                          "emails": {
+                            value: `*${processedQuery.toLowerCase()}*`
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "primaryEmail": {
+                            value: `*${processedQuery.toLowerCase()}*`
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  wildcard: {
+                    "processedContactNumbers": {
+                      value: `*${processedQuery}*`,
+                      boost: 2
+                    }
+                  }
+                }
+              ],
+              minimum_should_match: 1
+            }
+          }
+        ]
+      }
+    };
+
+    console.log('📦 Archived leads Elasticsearch query:', JSON.stringify(searchQuery, null, 2));
+
+    const response = await client.search({
+      index: ARCHIVED_LEAD_INDEX,
+      body: {
+        from: offset,
+        size: limit,
+        query: searchQuery,
+        sort: [
+          { _score: 'desc' },
+          { archivedAt: 'desc' }
+        ]
+      }
+    });
+
+    console.log('📊 Archived leads search results:', {
+      total: response.hits.total.value,
+      hits: response.hits.hits.length
+    });
+
+    return {
+      total: response.hits.total.value,
+      leads: response.hits.hits.map(hit => ({
+        ...hit._source,
+        score: hit._score
+      }))
+    };
+  } catch (error) {
+    console.error('❌ Error searching archived leads:', error);
+    if (error.meta?.body?.error) {
+      console.error('Elasticsearch error details:', JSON.stringify(error.meta.body.error, null, 2));
+    }
+    return {
+      total: 0,
+      leads: []
+    };
+  }
+};
+
 export {
   client,
   LEAD_INDEX,
+  ARCHIVED_LEAD_INDEX,
   createLeadIndex,
+  createArchivedLeadIndex,
   indexLead,
   updateLead,
   deleteLead,
-  searchLeads
+  searchLeads,
+  indexArchivedLead,
+  updateArchivedLead,
+  deleteArchivedLead,
+  searchArchivedLeads
 }; 

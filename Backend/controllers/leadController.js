@@ -4,6 +4,7 @@ import User from "../models/userModel.js";
 import ArchivedLead from "../models/archivedLeadModel.js";
 import { sequelize } from "../config/dbConnection.js";
 import { Sequelize } from "sequelize";
+import { indexArchivedLead } from "../config/elasticSearch.js";
 
 // Function to check follow-up times
 const checkFollowUpTimes = async () => {
@@ -1178,10 +1179,17 @@ export const updateLeadStatus = async (req, res) => {
 
       delete archivedLeadData.id;
 
-      await ArchivedLead.create(archivedLeadData, { transaction });
+      const createdArchivedLead = await ArchivedLead.create(archivedLeadData, { transaction });
       await lead.destroy({ transaction });
 
       await transaction.commit();
+
+      // Index the archived lead in Elasticsearch
+      try {
+        await indexArchivedLead(createdArchivedLead.toJSON());
+      } catch (error) {
+        console.error('Error indexing archived lead in Elasticsearch:', error);
+      }
 
       return res.status(200).json({
         success: true,
@@ -1519,6 +1527,13 @@ export const archiveLead = async (req, res) => {
     await lead.destroy({ transaction });
 
     await transaction.commit();
+
+    // Index the archived lead in Elasticsearch
+    try {
+      await indexArchivedLead(archivedLead.toJSON());
+    } catch (error) {
+      console.error('Error indexing archived lead in Elasticsearch:', error);
+    }
 
     return res.status(200).json({
       success: true,
