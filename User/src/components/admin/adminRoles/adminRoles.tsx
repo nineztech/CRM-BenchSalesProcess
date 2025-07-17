@@ -86,7 +86,7 @@ interface AdminPermissionResponse {
 
 const AdminRoles = (): ReactElement => {
   const location = useLocation();
-  const { checkPermission, loading: permissionsLoading } = usePermissions();
+  const { checkPermission, loading: permissionsLoading, refreshPermissions } = usePermissions();
   // const specialUserData = location.state as { 
   //   isSpecialUser: boolean; 
   //   specialUserId: number; 
@@ -600,6 +600,13 @@ const AdminRoles = (): ReactElement => {
 
         toast.success('Admin permissions updated successfully!');
         await fetchAdminPermissions();
+        
+        // Refresh permissions context to update sidebar immediately
+        // Check if the updated admin is the current user
+        const currentUserId = localStorage.getItem('userId');
+        if (currentUserId && selectedAdminUser === currentUserId) {
+          await refreshPermissions();
+        }
       } else if (isSpecial && selectedSpecialUser) {
         // Handle special user permissions
         try {
@@ -628,6 +635,13 @@ const AdminRoles = (): ReactElement => {
           );
 
           toast.success('Special user permissions updated successfully!');
+          
+          // Refresh permissions context to update sidebar immediately
+          // Check if the updated special user is the current user
+          const currentUserId = localStorage.getItem('userId');
+          if (currentUserId && selectedSpecialUser === currentUserId) {
+            await refreshPermissions();
+          }
         } catch (error: any) {
           console.error('Error managing special user permissions:', error);
           toast.error(error.response?.data?.message || 'Failed to update special user permissions');
@@ -662,6 +676,16 @@ const AdminRoles = (): ReactElement => {
         );
 
         toast.success('Role permissions assigned successfully!');
+        
+        // Refresh permissions context to update sidebar immediately
+        // Check if the updated role affects the current user
+        const currentUserDepartmentId = localStorage.getItem('departmentId');
+        const currentUserRole = localStorage.getItem('subrole');
+        if (currentUserDepartmentId && currentUserRole && 
+            selectedDepartment === currentUserDepartmentId && 
+            selectedRole === currentUserRole) {
+          await refreshPermissions();
+        }
       }
     } catch (error: any) {
       console.error('Error assigning permissions:', error);
