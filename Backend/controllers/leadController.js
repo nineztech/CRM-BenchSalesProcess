@@ -1112,7 +1112,10 @@ export const updateLeadStatus = async (req, res) => {
       }
 
       // Validate that follow-up time is in the future
-      const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+      const [year, month, day] = followUpDate.split('-').map(Number);
+const [hour, minute] = followUpTime.split(':').map(Number);
+const followUpDateTime = new Date(year, month - 1, day, hour, minute);
+
       const now = new Date();
       if (followUpDateTime <= now) {
         return res.status(400).json({
