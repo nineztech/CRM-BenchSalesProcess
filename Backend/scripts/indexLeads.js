@@ -224,10 +224,14 @@ export const reindexLeads = async () => {
           }
         }
 
-        // Add status group to lead data
+        // Check if lead is in team followup
+        const isTeamFollowup = leadData.is_Team_Followup === true || leadData.is_team_followup === true;
+
+        // Add status group and team followup flag to lead data
         const enrichedLeadData = {
           ...leadData,
-          statusGroup: statusGroup.toLowerCase() // ensure lowercase for consistency
+          statusGroup: statusGroup.toLowerCase(), // ensure lowercase for consistency
+          is_Team_Followup: isTeamFollowup // ensure consistent field name
         };
 
         console.log(colors.yellow(`📝 Indexing lead ${lead.id} with status: ${leadData.status}, statusGroup: ${statusGroup}`));
