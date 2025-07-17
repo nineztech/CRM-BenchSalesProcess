@@ -4,7 +4,6 @@ import Lead from './leadModel.js';
 import Packages from './packagesModel.js';
 import LeadAssignment from './leadAssignmentModel.js';
 import Activity from './activityModel.js';
-import Permission from './permissionsModel.js';
 import RolePermission from './rolePermissionModel.js';
 import AdminPermission from './adminPermissionModel.js';
 import ArchivedLead from './archivedLeadModel.js';
@@ -36,12 +35,9 @@ Activity.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 User.hasMany(Activity, { foreignKey: 'createdBy', as: 'createdActivities' });
 User.hasMany(Activity, { foreignKey: 'updatedBy', as: 'updatedActivities' });
 
-// Permission associations
-Permission.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
-Permission.belongsTo(User, { foreignKey: 'updatedBy', as: 'updater' });
 
-User.hasMany(Permission, { foreignKey: 'createdBy', as: 'createdPermissions' });
-User.hasMany(Permission, { foreignKey: 'updatedBy', as: 'updatedPermissions' });
+
+
 
 // RolePermission associations
 RolePermission.belongsTo(Department, { foreignKey: 'dept_id', as: 'roleDepartment' });
@@ -282,10 +278,7 @@ export const syncModels = async () => {
     await Activity.sync({ alter: true });
     console.log('Activity table synced successfully');
 
-    // Create Permission table
-    await Permission.sync({ alter: true });
-    console.log('Permission table synced successfully');
-
+    
     // Create RolePermission table
     await RolePermission.sync({ alter: true });
     console.log('RolePermission table synced successfully');
@@ -330,7 +323,6 @@ export {
   Packages,
   LeadAssignment,
   Activity,
-  Permission,
   RolePermission,
   AdminPermission,
   ArchivedLead,

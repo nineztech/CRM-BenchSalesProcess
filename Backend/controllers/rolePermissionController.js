@@ -2,7 +2,7 @@ import RolePermission from "../models/rolePermissionModel.js";
 import Department from "../models/departmentModel.js";
 import User from "../models/userModel.js";
 import Activity from "../models/activityModel.js";
-import Permission from "../models/permissionsModel.js";
+
 import SpecialUserPermission from "../models/specialUserPermissionModel.js";
 
 // Add RolePermission

@@ -5,13 +5,13 @@ import DepartmentRoute from './departmentRoutes.js'
 import PackagesRoute from './packagesRoutes.js'
 import LeadAssignRoute from './leadAssignmentRoutes.js'
 import activityRoutes from './activityRoutes.js'
-import permissionsRoutes from './permissionsRoutes.js'
+
 import rolePermissionRoutes from './rolePermissionRoutes.js'
 import adminPermissionRoutes from './adminPermissionRoutes.js'
 import archivedLeadRoutes from './archivedLeadRoutes.js'
 import specialUserPermissionRoutes from './specialUserPermissionRoutes.js'
 import searchRoutes from './searchRoutes.js'
-import teamFollowupRoutes from './teamFollowupRoutes.js';
+
 
 import express from 'express'
 const router = express.Router()
@@ -23,12 +23,11 @@ router.use("/department", DepartmentRoute)
 router.use("/packages", PackagesRoute)
 router.use("/lead-assignments", LeadAssignRoute)
 router.use('/activity', activityRoutes)
-router.use('/permissions', permissionsRoutes)
 router.use('/role-permissions', rolePermissionRoutes)
 router.use('/admin-permissions', adminPermissionRoutes)
 router.use('/archived-leads', archivedLeadRoutes)
 router.use('/special-user-permission', specialUserPermissionRoutes)
 router.use('/search', searchRoutes)
-router.use('/team-followup', teamFollowupRoutes);
+
 
 export default router
