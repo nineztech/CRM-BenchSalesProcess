@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserLogin } from '../components/common/UserLogin/UserLogin';
-import { ProtectedRoute } from './ProtectedRoute/ProtectedRoute.tsx';
+import { ProtectedRoute } from './ProtectedRoute/ProtectedRoute';
 import UserProfile from '../components/common/profile';
 import { Navbar } from '../components/common/Navbar/Navbar';
 // import Sales from '../components/user/sales/sales';
