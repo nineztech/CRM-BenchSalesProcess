@@ -1239,11 +1239,12 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       if (newStatus === 'Dead' || newStatus === 'notinterested') {
-        // Archive the lead
-        const response = await axios.post(
-          `${BASE_URL}/lead/${selectedLeadForStatus.id}/archive`,
-          { 
-            archiveReason: remark
+        // Use status endpoint for archiving statuses to preserve the actual status
+        const response = await axios.patch(
+          `${BASE_URL}/lead/${selectedLeadForStatus.id}/status`,
+          {
+            status: newStatus,
+            remark
           },
           {
             headers: {

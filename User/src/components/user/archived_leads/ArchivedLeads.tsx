@@ -104,6 +104,7 @@ interface ArchivedLead {
   archivedAt: string;
   reopenedAt?: string;
   archiveReason: string;
+  leadstatus?: string;
   assignTo?: number;
   previousAssign?: number;
   totalAssign: number;
@@ -357,6 +358,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                             <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Last Assigned To</th>
                             <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Archived At</th>
                             <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Archive Reason</th>
+                            <th className="px-6 py-1.5 text-left text-xs font-medium text-gray-500 border-b">Lead Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -421,6 +423,15 @@ const ArchivedLeadsComponent: React.FC = () => {
                                     </svg>
                                   </button>
                                 </div>
+                              </td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  (lead.leadstatus || 'Dead') === 'notinterested' ? 'bg-red-100 text-red-800' :
+                                  (lead.leadstatus || 'Dead') === 'Dead' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {lead.leadstatus || 'Dead'}
+                                </span>
                               </td>
                             </tr>
                           ))}

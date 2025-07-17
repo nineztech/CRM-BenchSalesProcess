@@ -154,13 +154,14 @@ export const reopenArchivedLead = async (req, res) => {
       }]
     };
 
-    // Remove fields that shouldn't be copied
-    delete leadData.id;
-    delete leadData.archivedAt;
-    delete leadData.reopenedAt;
-    delete leadData.archiveReason;
-    delete leadData.originalLeadId;
-    delete leadData.assignedUser;
+            // Remove fields that shouldn't be copied
+        delete leadData.id;
+        delete leadData.archivedAt;
+        delete leadData.reopenedAt;
+        delete leadData.archiveReason;
+        delete leadData.leadstatus;
+        delete leadData.originalLeadId;
+        delete leadData.assignedUser;
 
     // Create new lead
     const newLead = await Lead.create(leadData, { transaction });
@@ -361,6 +362,7 @@ export const bulkReopenArchivedLeads = async (req, res) => {
         delete leadData.archivedAt;
         delete leadData.reopenedAt;
         delete leadData.archiveReason;
+        delete leadData.leadstatus;
         delete leadData.originalLeadId;
         delete leadData.assignedUser;
 

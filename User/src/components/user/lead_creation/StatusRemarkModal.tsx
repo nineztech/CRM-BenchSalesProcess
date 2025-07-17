@@ -131,6 +131,18 @@ const StatusRemarkModal: React.FC<StatusRemarkModalProps> = ({
     }
   }, [followUpDate, followUpTime, newStatus]);
 
+  // Reset form when modal is closed
+  React.useEffect(() => {
+    if (!isOpen) {
+      setRemark('');
+      setFollowUpDate('');
+      setFollowUpTime('');
+      setSelectedLeader('');
+      setReleaseTeamLead(false);
+      setValidationMessage('');
+    }
+  }, [isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (remark.trim()) {

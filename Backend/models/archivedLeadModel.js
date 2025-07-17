@@ -143,6 +143,14 @@ const ArchivedLead = sequelize.define(
         len: [1, 255]
       }
     },
+    leadstatus: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [1, 50]
+      }
+    },
     leadSource: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -249,6 +257,9 @@ const ArchivedLead = sequelize.define(
       },
       {
         fields: ['archiveReason']
+      },
+      {
+        fields: ['leadstatus']
       },
       {
         fields: ['archivedAt']
