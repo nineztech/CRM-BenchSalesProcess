@@ -47,6 +47,22 @@ const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 import countryList from 'react-select-country-list';
 
+// Helper function to highlight search terms
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm || !text) return text;
+  
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <span key={index} className="bg-yellow-200 font-semibold">
+        {part}
+      </span>
+    ) : part
+  );
+};
+
 // Helper function to parse follow-up datetime as local time (user's timezone)
 const parseFollowUpDateTime = (followUpDate: string, followUpTime: string): Date => {
   const [year, month, day] = followUpDate.split('-').map(Number);
@@ -2087,7 +2103,13 @@ ${(() => {
                                     {(leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize + index + 1}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {lead.firstName} {lead.lastName}
+                                    {searchQuery ? (
+                                      <>
+                                        {highlightSearchTerm(lead.firstName, searchQuery)} {highlightSearchTerm(lead.lastName, searchQuery)}
+                                      </>
+                                    ) : (
+                                      `${lead.firstName} ${lead.lastName}`
+                                    )}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
                                     <div className="flex items-center gap-2">
@@ -2106,7 +2128,9 @@ ${(() => {
                                           <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                                         </svg>
                                       </button>
-                                      <span>{lead.primaryEmail}</span>
+                                      <span>
+                                        {searchQuery ? highlightSearchTerm(lead.primaryEmail, searchQuery) : lead.primaryEmail}
+                                      </span>
                                       
                                     </div>
                                   </td>
@@ -2127,7 +2151,9 @@ ${(() => {
                                           <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                                         </svg>
                                     </button>
-                                      <span>{lead.primaryContact}</span>
+                                      <span>
+                                        {searchQuery ? highlightSearchTerm(lead.primaryContact, searchQuery) : lead.primaryContact}
+                                      </span>
                                    
                                     </div>
                                   </td>
@@ -2260,13 +2286,32 @@ ${(() => {
                                     {lead.visaStatus}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {lead.country}
+                                    {searchQuery ? highlightSearchTerm(lead.country, searchQuery) : lead.country}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '--'}
+                                    {lead.assignedUser ? (
+                                      searchQuery ? (
+                                        <>
+                                          {highlightSearchTerm(lead.assignedUser.firstname, searchQuery)} {highlightSearchTerm(lead.assignedUser.lastname, searchQuery)}
+                                        </>
+                                      ) : (
+                                        `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}`
+                                      )
+                                    ) : '--'}
                                   </td>
                                    <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
+                                    {searchQuery ? (
+                                      Array.isArray(lead.technology) ? 
+                                        lead.technology.map((tech, index) => (
+                                          <span key={index}>
+                                            {highlightSearchTerm(tech, searchQuery)}
+                                            {index < lead.technology.length - 1 ? ', ' : ''}
+                                          </span>
+                                        )) :
+                                        highlightSearchTerm(lead.technology, searchQuery)
+                                    ) : (
+                                      Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology
+                                    )}
                                   </td>
                                
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
@@ -2281,10 +2326,26 @@ ${(() => {
                                     }).replace(',', '') : '-'}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : '--'}
+                                    {lead.creator ? (
+                                      searchQuery ? (
+                                        <>
+                                          {highlightSearchTerm(lead.creator.firstname, searchQuery)} {highlightSearchTerm(lead.creator.lastname, searchQuery)}
+                                        </>
+                                      ) : (
+                                        `${lead.creator.firstname} ${lead.creator.lastname}`
+                                      )
+                                    ) : '--'}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {lead.updater ? `${lead.updater.firstname} ${lead.updater.lastname}` : '--'}
+                                    {lead.updater ? (
+                                      searchQuery ? (
+                                        <>
+                                          {highlightSearchTerm(lead.updater.firstname, searchQuery)} {highlightSearchTerm(lead.updater.lastname, searchQuery)}
+                                        </>
+                                      ) : (
+                                        `${lead.updater.firstname} ${lead.updater.lastname}`
+                                      )
+                                    ) : '--'}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start border-b whitespace-nowrap">
                                     <div className="flex items-center space-x-2">
