@@ -524,7 +524,26 @@ const LeadCreationComponent: React.FC = () => {
       if (searchQuery !== '') {
         params.query = searchQuery;  // Send the exact search query without trimming
         // Normalize status group to match backend expectations
-        const normalizedStatusGroup = activeStatusTab === 'followup' ? 'followUp' : activeStatusTab;
+        let normalizedStatusGroup;
+        switch(activeStatusTab) {
+          case 'open':
+            normalizedStatusGroup = 'open';
+            break;
+          case 'inProcess':
+            normalizedStatusGroup = 'inProcess';
+            break;
+          case 'followup':
+            normalizedStatusGroup = 'followUp';
+            break;
+          case 'teamfollowup':
+            normalizedStatusGroup = 'teamfollowup';
+            break;
+          case 'Enrolled':
+            normalizedStatusGroup = 'Enrolled';
+            break;
+          default:
+            normalizedStatusGroup = activeStatusTab;
+        }
         params.statusGroup = normalizedStatusGroup;  // Changed from status to statusGroup to match backend
       }
 
@@ -1148,6 +1167,28 @@ const LeadCreationComponent: React.FC = () => {
 
       // If there's a search query, use the search endpoint
       if (searchQuery.trim()) {
+        // Normalize status group to match backend expectations
+        let normalizedStatusGroup;
+        switch(status) {
+          case 'open':
+            normalizedStatusGroup = 'open';
+            break;
+          case 'inProcess':
+            normalizedStatusGroup = 'inProcess';
+            break;
+          case 'followup':
+            normalizedStatusGroup = 'followUp';
+            break;
+          case 'teamfollowup':
+            normalizedStatusGroup = 'teamfollowup';
+            break;
+          case 'Enrolled':
+            normalizedStatusGroup = 'Enrolled';
+            break;
+          default:
+            normalizedStatusGroup = status;
+        }
+        
         const response = await axios.get(`${BASE_URL}/search/leads`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1156,7 +1197,7 @@ const LeadCreationComponent: React.FC = () => {
             page: 1,
             limit: pageSize,
             query: searchQuery,
-            statusGroup: status === 'followup' ? 'followUp' : status
+            statusGroup: normalizedStatusGroup
           }
         });
 

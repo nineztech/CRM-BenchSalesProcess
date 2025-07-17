@@ -33,6 +33,7 @@ const createLeadIndex = async () => {
           mappings: {
             properties: {
               id: { type: 'integer' },
+              is_Team_Followup: { type: 'boolean' },
               firstName: { type: 'text' },
               lastName: { type: 'text' },
               contactNumbers: { type: 'keyword' },
