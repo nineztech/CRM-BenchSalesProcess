@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -173,7 +173,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
       const activityMap = new Map(fetchedActivities.map((a: Activity) => [a.id, a]));
       
       permissionsResponse.data.data.forEach((permission: any) => {
-        const activity = activityMap.get(permission.activity_id);
+        const activity = activityMap.get(permission.activity_id) as Activity;
         if (activity) {
           permissionsMap[activity.name] = {
             canView: permission.canView || false,

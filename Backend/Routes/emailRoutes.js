@@ -3,6 +3,7 @@ import { sendPackageDetailsEmail } from '../utils/emailService.js';
 import auth from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
 
@@ -20,7 +21,16 @@ router.get('/template-preview', auth, async (req, res) => {
     const parsedPackages = packages ? JSON.parse(packages) : [];
 
     // Read the logo file and convert to base64
-    const logoPath = path.join(process.cwd(), '..', 'User', 'src', 'assets', 'Logo.webp');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const logoPath = path.resolve(__dirname, '..', '..', 'User', 'src', 'assets', 'Logo.webp');
+    
+    // Check if logo file exists
+    if (!fs.existsSync(logoPath)) {
+      console.error('Logo file not found at:', logoPath);
+      throw new Error(`Logo file not found at: ${logoPath}`);
+    }
+    
     const logoBase64 = fs.readFileSync(logoPath, { encoding: 'base64' });
 
     // Generate the email template HTML
