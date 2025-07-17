@@ -350,11 +350,8 @@ const Lead = sequelize.define(
       beforeSave: (lead) => {
         // Combine followUpDate and followUpTime into followUpDateTime
         if (lead.followUpDate && lead.followUpTime) {
-          const [hours, minutes, seconds] = lead.followUpTime.split(':');
-          const followUpDateTime = new Date(lead.followUpDate);
-          followUpDateTime.setHours(parseInt(hours, 10));
-          followUpDateTime.setMinutes(parseInt(minutes, 10));
-          followUpDateTime.setSeconds(parseInt(seconds, 10));
+          // Create date object treating input as local time (user's timezone)
+          const followUpDateTime = new Date(`${lead.followUpDate}T${lead.followUpTime}`);
           lead.followUpDateTime = followUpDateTime;
         }
       },

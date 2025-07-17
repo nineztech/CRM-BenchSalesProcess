@@ -44,9 +44,12 @@ const isValidFollowUpDateTime = (date: string, time: string): boolean => {
   if (!date || !time) return false;
   
   try {
-    const [hours, minutes] = time.split(':');
-    const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-    const followUpDateTime = new Date(`${date}T${formattedTime}`);
+    // Parse date and time as local time (user's timezone)
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
+    
+    // Create local datetime
+    const followUpDateTime = new Date(year, month - 1, day, hour, minute, 0);
     const now = new Date();
     
     return !isNaN(followUpDateTime.getTime()) && followUpDateTime > now;

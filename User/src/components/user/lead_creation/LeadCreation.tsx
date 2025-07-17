@@ -47,6 +47,13 @@ const BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
 import countryList from 'react-select-country-list';
 
+// Helper function to parse follow-up datetime as local time (user's timezone)
+const parseFollowUpDateTime = (followUpDate: string, followUpTime: string): Date => {
+  const [year, month, day] = followUpDate.split('-').map(Number);
+  const [hour, minute] = followUpTime.split(':').map(Number);
+  return new Date(year, month - 1, day, hour, minute, 0);
+};
+
 interface Lead {
   id?: number;
   firstName: string;
@@ -1314,7 +1321,8 @@ const LeadCreationComponent: React.FC = () => {
           if (newStatus === 'teamfollowup') {
             statusGroup = 'teamfollowup';
           } else if (followUpDate && followUpTime) {
-            const followUpDateTime = new Date(`${followUpDate}T${followUpTime}`);
+            // Parse date and time as local time (user's timezone)
+            const followUpDateTime = parseFollowUpDateTime(followUpDate, followUpTime);
             const now = new Date();
             const diffHours = (followUpDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
             
@@ -2164,7 +2172,7 @@ ${(() => {
                                                 <div className="group relative">
                                                   <FaClock 
                                                     className={`h-4 w-4 cursor-help ${
-                                                      new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                      parseFollowUpDateTime(lead.followUpDate, lead.followUpTime) <= new Date() 
                                                         ? 'text-red-500' 
                                                         : 'text-gray-500'
                                                     }`} 
@@ -2172,7 +2180,7 @@ ${(() => {
                                                   <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
                                                     <span className="text-indigo-200">Follow up in:</span>
                                                     <Countdown
-                                                      date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                      date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
                                                       renderer={countdownRenderer}
                                                     />
                                                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
@@ -2216,7 +2224,7 @@ ${(() => {
                                                 <div className="group relative">
                                                   <FaClock 
                                                     className={`h-4 w-4 cursor-help ${
-                                                      new Date(`${lead.followUpDate}T${lead.followUpTime}`) <= new Date() 
+                                                      parseFollowUpDateTime(lead.followUpDate, lead.followUpTime) <= new Date() 
                                                         ? 'text-red-500' 
                                                         : 'text-gray-500'
                                                     }`} 
@@ -2224,7 +2232,7 @@ ${(() => {
                                                   <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
                                                     <span className="text-indigo-200">Follow up in:</span>
                                                     <Countdown
-                                                      date={new Date(`${lead.followUpDate}T${lead.followUpTime}`)}
+                                                      date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
                                                       renderer={countdownRenderer}
                                                     />
                                                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>

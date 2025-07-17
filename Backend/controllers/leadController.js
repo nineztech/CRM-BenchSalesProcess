@@ -327,8 +327,10 @@ export const getAllLeads = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'DESC';
 
-    // Get current date for follow-up time calculations
+    // Get current date for follow-up time calculations (use UTC to match stored datetime)
     const now = new Date();
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+    const twentyFourHoursFromNow = new Date(now.getTime() + twentyFourHoursInMs);
 
     // Base include for all queries
     const includeOptions = [
@@ -377,7 +379,7 @@ export const getAllLeads = async (req, res) => {
         id: { [Op.notIn]: teamFollowupIds },
         followUpDateTime: {
           [Op.not]: null,
-          [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+          [Op.lte]: twentyFourHoursFromNow
         },
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
@@ -401,7 +403,7 @@ export const getAllLeads = async (req, res) => {
           {
             followUpDateTime: {
               [Op.not]: null,
-              [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+              [Op.gt]: twentyFourHoursFromNow
             }
           },
           {
@@ -553,8 +555,10 @@ export const getAssignedLeads = async (req, res) => {
       });
     }
 
-    // Get current date for follow-up time calculations
+    // Get current date for follow-up time calculations (use UTC to match stored datetime)
     const now = new Date();
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+    const twentyFourHoursFromNow = new Date(now.getTime() + twentyFourHoursInMs);
 
     // Base include for all queries
     const includeOptions = [
@@ -613,7 +617,7 @@ export const getAssignedLeads = async (req, res) => {
         id: { [Op.notIn]: teamFollowupIds },
         followUpDateTime: {
           [Op.not]: null,
-          [Op.lte]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+          [Op.lte]: twentyFourHoursFromNow
         },
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
@@ -645,7 +649,7 @@ export const getAssignedLeads = async (req, res) => {
               {
                 followUpDateTime: {
                   [Op.not]: null,
-                  [Op.gt]: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+                  [Op.gt]: twentyFourHoursFromNow
                 }
               },
               {
@@ -1225,9 +1229,8 @@ export const updateLeadStatus = async (req, res) => {
         const [hours, minutes] = followUpTime.split(':');
         const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
         
-        // Create the datetime string in MySQL format
-        const mysqlDateTime = `${followUpDate} ${formattedTime}`;
-        const followUpDateTimeObj = new Date(mysqlDateTime);
+        // Create date object treating input as local time (user's timezone)
+        const followUpDateTimeObj = new Date(`${followUpDate}T${formattedTime}`);
 
         // Validate the created date
         if (isNaN(followUpDateTimeObj.getTime())) {
