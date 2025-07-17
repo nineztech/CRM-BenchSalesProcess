@@ -18,7 +18,7 @@ const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRolesOpen, setIsRolesOpen] = useState(false);
   const location = useLocation();
-  const { checkPermission, loading } = usePermissions();
+  const { checkPermission, loading, permissions } = usePermissions();
 
   // Check if current path is related to Access Control
   const isAccessControlPath = location.pathname === '/roles' || location.pathname === '/department-permissions';
@@ -139,11 +139,7 @@ const Sidebar: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return null;
-  }
-
-  const renderMenuItem = (item: MenuItem, index: number) => {
+  const renderMenuItem = React.useCallback((item: MenuItem, index: number) => {
     if (!checkPermission(item.activity, item.permission as 'view' | 'add' | 'edit' | 'delete')) {
       return null;
     }
@@ -250,7 +246,11 @@ const Sidebar: React.FC = () => {
         isActive={location.pathname === item.to}
       />
     );
-  };
+  }, [checkPermission, location.pathname, isExpanded, isRolesOpen, permissions]);
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <>

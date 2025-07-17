@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserLogin } from '../components/common/UserLogin/UserLogin';
-import { ProtectedRoute } from '../Routes/ProtectedRoute/ProtectedRoute';
+import { ProtectedRoute } from './ProtectedRoute/ProtectedRoute';
 import UserProfile from '../components/common/profile';
 import { Navbar } from '../components/common/Navbar/Navbar';
 // import Sales from '../components/user/sales/sales';
@@ -18,6 +18,7 @@ import AdminRoles from '../components/admin/adminRoles/adminRoles';
 import DepartmentPermissions from '../components/admin/departmentPermissions/departmentPermissions';
 import Dashboard from '../components/common/Dashboard/Dashboard';
 import EmailTemplates from '../components/admin/email_templates/EmailTemplates';
+import { PermissionsProvider } from '../hooks/usePermissions';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -44,123 +45,125 @@ const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AppRouter: React.FC = () => {
   return (
     <Router>
-      <Routes>
-        {/* Public Route */}
-        <Route path="/" element={
-          <UserLayout>
-            <UserLogin />
-          </UserLayout>
-        } />
+      <PermissionsProvider>
+        <Routes>
+          {/* Public Route */}
+          <Route path="/" element={
+            <UserLayout>
+              <UserLogin />
+            </UserLayout>
+          } />
 
-        {/* Protected User Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <Dashboard />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          {/* Protected User Routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <Dashboard />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <UserProfile />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <UserProfile />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        {/* Regular user packages route */}
-        {/* <Route path="/packages" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <Packages />
-            </UserLayout>
-          </ProtectedRoute>
-        } /> */}
+          {/* Regular user packages route */}
+          {/* <Route path="/packages" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <Packages />
+              </UserLayout>
+            </ProtectedRoute>
+          } /> */}
 
-        <Route path="/leadcreation" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <LeadCreationComponent />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/leadcreation" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <LeadCreationComponent />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        {/* <Route path="/sales" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <SaleCreationComponent/>
-            </UserLayout>
-          </ProtectedRoute>
-        } /> */}
-        <Route path="/archived-leads" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <ArchivedLeads/>
-            </UserLayout>
-          </ProtectedRoute>
-        } />
-        {/* Department route - accessible to any user with proper permissions */}
-        <Route path="/departments" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <AddDepartment />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          {/* <Route path="/sales" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <SaleCreationComponent/>
+              </UserLayout>
+            </ProtectedRoute>
+          } /> */}
+          <Route path="/archived-leads" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <ArchivedLeads/>
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          {/* Department route - accessible to any user with proper permissions */}
+          <Route path="/departments" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AddDepartment />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        {/* Admin-only routes */}
-        <Route path="/users" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <UserRegister />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          {/* Admin-only routes */}
+          <Route path="/users" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <UserRegister />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/admins" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <AdminRegister />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/admins" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AdminRegister />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/roles" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <AdminRoles />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/roles" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AdminRoles />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/department-permissions" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <DepartmentPermissions />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/department-permissions" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <DepartmentPermissions />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/packages" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <PackagesPage />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/packages" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <PackagesPage />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        <Route path="/email-templates" element={
-          <ProtectedRoute>
-            <UserLayout>
-              <EmailTemplates />
-            </UserLayout>
-          </ProtectedRoute>
-        } />
+          <Route path="/email-templates" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <EmailTemplates />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
 
-        {/* Catch all route - redirect to login */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch all route - redirect to login */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </PermissionsProvider>
     </Router>
   );
 };
