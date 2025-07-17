@@ -316,31 +316,73 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
 
-      // if (!hasLeadManagementPermission && !hasViewAllLeadsPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
+      // For users without view all permission, we'll fetch all leads first then filter
+      if (!hasViewAllLeadsPermission && searchQuery) {
+        try {
+          // Fetch all leads for the current tab without pagination
+          const allLeadsResponse = await axios.get(`${BASE_URL}/lead/assigned`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            params: {
+              page: 1,
+              limit: 1000, // Large number to get all leads
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
 
-      // Select endpoint based on whether we're searching or not
+          if (allLeadsResponse.data.success) {
+            const allTabData = allLeadsResponse.data.data[activeStatusTab];
+            if (allTabData && allTabData.leads) {
+              // Filter all leads based on search query
+              const searchLower = searchQuery.toLowerCase();
+              const filteredLeads = allTabData.leads.filter((lead: Lead) => {
+                return (
+                  lead.firstName?.toLowerCase().includes(searchLower) ||
+                  lead.lastName?.toLowerCase().includes(searchLower) ||
+                  lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+                  lead.primaryContact?.includes(searchQuery) ||
+                  lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+                  lead.country?.toLowerCase().includes(searchLower) ||
+                  lead.visaStatus?.toLowerCase().includes(searchLower) ||
+                  lead.status?.toLowerCase().includes(searchLower) ||
+                  lead.leadSource?.toLowerCase().includes(searchLower)
+                );
+              });
+
+              // Update the current tab with filtered results
+              setLeadsData(prev => ({
+                ...prev,
+                [activeStatusTab]: {
+                  ...prev[activeStatusTab],
+                  leads: filteredLeads,
+                  pagination: {
+                    ...prev[activeStatusTab].pagination,
+                    total: filteredLeads.length,
+                    totalPages: Math.ceil(filteredLeads.length / pageSize),
+                    currentPage: 1
+                  }
+                }
+              }));
+
+              setIsLoading(false);
+              setIsSearching(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching all leads for search:', error);
+          // If fetching all leads fails, fall back to regular API call
+        }
+      }
+
+      // For users with view all permission or when not searching, proceed with normal API call
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
       console.log(`[API Request] Using endpoint: ${endpoint}`);
 
-      const params: any = {
-        page: leadsData[activeStatusTab].pagination.currentPage,
-        limit: pageSize,
-        sortBy: 'createdAt',
-        sortOrder: 'DESC'
-      };
-
-      // Add search parameter for any non-empty query
-      if (searchQuery !== '') {
-        params.query = searchQuery;  // Send the exact search query without trimming
-      }
-      
-      // Always send the status group, whether searching or not
       let normalizedStatusGroup;
       switch(activeStatusTab) {
         case 'open':
@@ -361,10 +403,18 @@ const LeadCreationComponent: React.FC = () => {
         default:
           normalizedStatusGroup = activeStatusTab;
       }
-      params.statusGroup = normalizedStatusGroup;
-      
-      // Add current tab context for status search
-      params.currentTab = activeStatusTab;
+
+      const params: any = {
+        page: leadsData[activeStatusTab].pagination.currentPage,
+        limit: pageSize,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC'
+      };
+
+      if (searchQuery !== '') {
+        params.query = searchQuery;
+        params.statusGroup = normalizedStatusGroup;
+      }
 
       console.log('[API Request] Params:', params);
 
@@ -384,8 +434,8 @@ const LeadCreationComponent: React.FC = () => {
         
         const { data } = response.data;
         
-        if (searchQuery.trim()) {
-          // Handle search results
+        if (searchQuery.trim() && hasViewAllLeadsPermission) {
+          // Handle search results for users with view all permission
           console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
           setLeadsData(prev => ({
             ...prev,
@@ -400,7 +450,7 @@ const LeadCreationComponent: React.FC = () => {
             }
           }));
         } else {
-          // Handle regular fetch (no search)
+          // Handle regular fetch
           console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
           setLeadsData(prev => ({
             ...prev,
@@ -1061,7 +1111,6 @@ const LeadCreationComponent: React.FC = () => {
       setIsLoading(true);
       setActiveStatusTab(status);
       setSelectedLeads([]); // Clear selected leads when changing tabs
-      setSearchQuery(''); // Clear search when changing tabs
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -1070,57 +1119,75 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
-      // const hasLeadManagementPermission = await checkPermission('Lead Management', 'view');
-
-      // if (!hasViewAllLeadsPermission && !hasLeadManagementPermission) {
-      //   setApiError('You do not have permission to view leads.');
-      //   return;
-      // }
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
       console.log(`[API Request] Fetching leads from: ${endpoint}`);
-      console.log(`[API Request] Params:`, {
-        page: 1,
-        limit: pageSize,
-        sortBy: 'createdAt',
-        sortOrder: 'DESC',
-        status: status
-      });
 
-      const response = await axios.get(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        params: {
-          page: 1,
-          limit: pageSize,
-          sortBy: 'createdAt',
-          sortOrder: 'DESC',
-          status: status
-        }
-      });
-
-      if (response.data.success) {
-        console.log(`[API Response] Successfully fetched ${status} leads:`, {
-          total: response.data.data[status]?.pagination.total,
-          currentPage: response.data.data[status]?.pagination.currentPage,
-          leads: response.data.data[status]?.leads.length
-        });
-        const { data } = response.data;
-        setLeadsData(prev => ({
-          ...prev,
-          [status]: {
-            ...data[status],
-            pagination: {
-              ...data[status].pagination,
-              currentPage: 1,
-              limit: pageSize
-            }
+      // If there's a search query, use the search endpoint
+      if (searchQuery.trim()) {
+        const response = await axios.get(`${BASE_URL}/search/leads`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            page: 1,
+            limit: pageSize,
+            query: searchQuery,
+            statusGroup: status === 'followup' ? 'followUp' : status
           }
-        }));
+        });
+
+        if (response.data.success) {
+          setLeadsData(prev => ({
+            ...prev,
+            [status]: {
+              leads: response.data.data.leads || [],
+              pagination: {
+                total: response.data.data.total || 0,
+                totalPages: Math.ceil((response.data.data.total || 0) / pageSize),
+                currentPage: 1,
+                limit: pageSize
+              }
+            }
+          }));
+        }
       } else {
-        console.error('[API Error] Failed to fetch leads:', response.data);
-        setApiError('Failed to fetch leads. Please try again.');
+        // Regular tab change without search
+        const response = await axios.get(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          params: {
+            page: 1,
+            limit: pageSize,
+            sortBy: 'createdAt',
+            sortOrder: 'DESC',
+            status: status
+          }
+        });
+
+        if (response.data.success) {
+          console.log(`[API Response] Successfully fetched ${status} leads:`, {
+            total: response.data.data[status]?.pagination.total,
+            currentPage: response.data.data[status]?.pagination.currentPage,
+            leads: response.data.data[status]?.leads.length
+          });
+          const { data } = response.data;
+          setLeadsData(prev => ({
+            ...prev,
+            [status]: {
+              ...data[status],
+              pagination: {
+                ...data[status].pagination,
+                currentPage: 1,
+                limit: pageSize
+              }
+            }
+          }));
+        } else {
+          console.error('[API Error] Failed to fetch leads:', response.data);
+          setApiError('Failed to fetch leads. Please try again.');
+        }
       }
     } catch (error: any) {
       console.error('[Error] Error in handleStatusTabChange:', error);
