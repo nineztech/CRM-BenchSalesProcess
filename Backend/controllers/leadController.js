@@ -2,6 +2,7 @@ import Lead from "../models/leadModel.js";
 import { ValidationError, UniqueConstraintError, Op } from "sequelize";
 import User from "../models/userModel.js";
 import ArchivedLead from "../models/archivedLeadModel.js";
+import EnrolledClients from "../models/enrolledClientsModel.js";
 import { sequelize } from "../config/dbConnection.js";
 import { Sequelize } from "sequelize";
 import { indexArchivedLead } from "../config/elasticSearch.js";
@@ -1293,6 +1294,28 @@ export const updateLeadStatus = async (req, res) => {
 
     // Update the lead with the prepared data
     await lead.update(updateData, { transaction });
+
+    // If status is changed to 'Enrolled', create enrolled client
+    if (status === 'Enrolled') {
+      try {
+        // Check if enrolled client already exists for this lead
+        const existingEnrolledClient = await EnrolledClients.findOne({
+          where: { lead_id: id },
+          transaction
+        });
+
+        if (!existingEnrolledClient) {
+          // Create enrolled client with only lead_id
+          await EnrolledClients.create({
+            lead_id: id,
+            createdBy: req.user.id
+          }, { transaction });
+        }
+      } catch (error) {
+        console.error('Error creating enrolled client:', error);
+        // Don't fail the entire transaction, just log the error
+      }
+    }
 
     await transaction.commit();
 

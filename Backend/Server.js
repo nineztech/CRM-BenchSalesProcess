@@ -7,6 +7,7 @@ import { connectDB, sequelize } from "./config/dbConnection.js";
 import router from "./Routes/index.js";
 import addOtpFields from './migrations/addOtpFields.js';
 import { createDefaultActivities } from './controllers/activityController.js';
+import migrateEnrolledLeads from './migrations/migrateEnrolledLeads.js';
 import emailRoutes from './Routes/emailRoutes.js';
 import bulkRoutes from './Routes/bulkRoutes.js';
 import { createLeadIndex } from './config/elasticSearch.js';
@@ -82,6 +83,10 @@ const startServer = async () => {
         // Create default activities
         await createDefaultActivities();
         console.log(colors.green("✅ Default activities created successfully!"));
+        
+        // Migrate existing enrolled leads
+        await migrateEnrolledLeads();
+        console.log(colors.green("✅ Enrolled leads migration completed!"));
         
         app.listen(PORT, () => {
           console.log(colors.cyan(`🚀 Server running on port ${PORT}`));

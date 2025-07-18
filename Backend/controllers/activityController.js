@@ -168,6 +168,38 @@ export const createDefaultActivities = async () => {
         editRoute: "/email-templates",
         deleteRoute: "/email-templates",
         status: "active"
+      },
+
+      // Enrollment Activities
+      {
+        name: "Enrollment Management",
+        category: "System",
+        description: "Manage enrolled clients and their package configurations",
+        viewRoute: "/enrollment-sales",
+        addRoute: "/enrollment-sales",
+        editRoute: "/enrollment-sales",
+        deleteRoute: "/enrollment-sales",
+        status: "active"
+      },
+      {
+        name: "Sales Enrollment Management",
+        category: "System",
+        description: "Configure packages and pricing for enrolled clients as sales person",
+        viewRoute: "/enrollment-sales",
+        addRoute: "/enrollment-sales",
+        editRoute: "/enrollment-sales",
+        deleteRoute: "/enrollment-sales",
+        status: "active"
+      },
+      {
+        name: "Admin Enrollment Management",
+        category: "System",
+        description: "Review and approve enrollment configurations as admin",
+        viewRoute: "/enrollment-admin",
+        addRoute: "/enrollment-admin",
+        editRoute: "/enrollment-admin",
+        deleteRoute: "/enrollment-admin",
+        status: "active"
       }
     ];
 

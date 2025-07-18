@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope } from 'react-icons/fa';
+import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope, FaGraduationCap, FaUserTie, FaUserCog } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -17,16 +17,24 @@ interface MenuItem {
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRolesOpen, setIsRolesOpen] = useState(false);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
   const location = useLocation();
   const { checkPermission, loading, permissions } = usePermissions();
 
   // Check if current path is related to Access Control
   const isAccessControlPath = location.pathname === '/roles' || location.pathname === '/department-permissions';
+  
+  // Check if current path is related to Enrollment
+  const isEnrollmentPath = location.pathname === '/enrollment-sales' || location.pathname === '/enrollment-admin';
 
   useEffect(() => {
     // Set roles menu open if we're on an access control path
     if (isAccessControlPath) {
       setIsRolesOpen(true);
+    }
+    // Set enrollment menu open if we're on an enrollment path
+    if (isEnrollmentPath) {
+      setIsEnrollmentOpen(true);
     }
   }, [location.pathname]);
 
@@ -40,6 +48,9 @@ const Sidebar: React.FC = () => {
     setIsExpanded(false);
     if (!isAccessControlPath) {
       setIsRolesOpen(false);
+    }
+    if (!isEnrollmentPath) {
+      setIsEnrollmentOpen(false);
     }
   };
 
@@ -117,6 +128,29 @@ const Sidebar: React.FC = () => {
       permission: 'view'
     },
     {
+      icon: <FaGraduationCap />,
+      to: '#',
+      text: 'Enrollment',
+      activity: 'Enrollment Management',
+      permission: 'view',
+      subItems: [
+        {
+          icon: <FaUserTie />,
+          to: '/enrollment-sales',
+          text: 'Sales Enrollment',
+          activity: 'Enrollment Management',
+          permission: 'view'
+        },
+        {
+          icon: <FaUserCog />,
+          to: '/enrollment-admin',
+          text: 'Admin Enrollment',
+          activity: 'Enrollment Management',
+          permission: 'view'
+        }
+      ]
+    },
+    {
       icon: <FaArchive />,
       to: '/archived-leads',
       text: 'Archived Leads',
@@ -151,7 +185,13 @@ const Sidebar: React.FC = () => {
         <React.Fragment key={index}>
           <li>
             <div
-              onClick={() => setIsRolesOpen(!isRolesOpen)}
+              onClick={() => {
+                if (item.text === 'Access Control') {
+                  setIsRolesOpen(!isRolesOpen);
+                } else if (item.text === 'Enrollment') {
+                  setIsEnrollmentOpen(!isEnrollmentOpen);
+                }
+              }}
               className={`flex items-center h-12 px-3 text-sm transition-colors relative cursor-pointer ${
                 isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
               }`}
@@ -177,7 +217,11 @@ const Sidebar: React.FC = () => {
                   >
                     <span className="font-medium">{item.text}</span>
                     <FaChevronDown
-                      className={`transform transition-transform duration-200 ${isRolesOpen ? 'rotate-180' : ''}`}
+                      className={`transform transition-transform duration-200 ${
+                        (item.text === 'Access Control' && isRolesOpen) || 
+                        (item.text === 'Enrollment' && isEnrollmentOpen) 
+                          ? 'rotate-180' : ''
+                      }`}
                     />
                   </motion.div>
                 )}
@@ -185,7 +229,9 @@ const Sidebar: React.FC = () => {
             </div>
           </li>
           <AnimatePresence>
-            {isRolesOpen && isExpanded && item.subItems.map((subItem, subIndex) => {
+            {((item.text === 'Access Control' && isRolesOpen) || 
+              (item.text === 'Enrollment' && isEnrollmentOpen)) && 
+             isExpanded && item.subItems.map((subItem, subIndex) => {
               if (!checkPermission(subItem.activity, subItem.permission as 'view' | 'add' | 'edit' | 'delete')) {
                 return null;
               }
@@ -246,7 +292,7 @@ const Sidebar: React.FC = () => {
         isActive={location.pathname === item.to}
       />
     );
-  }, [checkPermission, location.pathname, isExpanded, isRolesOpen, permissions]);
+  }, [checkPermission, location.pathname, isExpanded, isRolesOpen, isEnrollmentOpen, permissions]);
 
   if (loading) {
     return null;

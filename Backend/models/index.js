@@ -8,6 +8,7 @@ import RolePermission from './rolePermissionModel.js';
 import AdminPermission from './adminPermissionModel.js';
 import ArchivedLead from './archivedLeadModel.js';
 import SpecialUserPermission from './specialUserPermissionModel.js';
+import EnrolledClients from './enrolledClientsModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -260,6 +261,73 @@ User.hasMany(ArchivedLead, {
   as: 'updatedArchivedLeads'
 });
 
+// EnrolledClients associations
+EnrolledClients.belongsTo(Lead, { 
+  foreignKey: 'lead_id', 
+  as: 'lead',
+  onDelete: 'CASCADE'
+});
+
+EnrolledClients.belongsTo(Packages, { 
+  foreignKey: 'packageid', 
+  as: 'package',
+  onDelete: 'SET NULL'
+});
+
+EnrolledClients.belongsTo(User, { 
+  foreignKey: 'Sales_person_id', 
+  as: 'salesPerson',
+  onDelete: 'SET NULL'
+});
+
+EnrolledClients.belongsTo(User, { 
+  foreignKey: 'Admin_id', 
+  as: 'admin',
+  onDelete: 'SET NULL'
+});
+
+EnrolledClients.belongsTo(User, { 
+  foreignKey: 'createdBy', 
+  as: 'creator',
+  onDelete: 'SET NULL'
+});
+
+EnrolledClients.belongsTo(User, { 
+  foreignKey: 'updatedBy', 
+  as: 'updater',
+  onDelete: 'SET NULL'
+});
+
+Lead.hasOne(EnrolledClients, { 
+  foreignKey: 'lead_id', 
+  as: 'enrolledClient'
+});
+
+Packages.hasMany(EnrolledClients, { 
+  foreignKey: 'packageid', 
+  as: 'enrolledClients'
+});
+
+User.hasMany(EnrolledClients, { 
+  foreignKey: 'Sales_person_id', 
+  as: 'salesEnrolledClients'
+});
+
+User.hasMany(EnrolledClients, { 
+  foreignKey: 'Admin_id', 
+  as: 'adminEnrolledClients'
+});
+
+User.hasMany(EnrolledClients, { 
+  foreignKey: 'createdBy', 
+  as: 'createdEnrolledClients'
+});
+
+User.hasMany(EnrolledClients, { 
+  foreignKey: 'updatedBy', 
+  as: 'updatedEnrolledClients'
+});
+
 // Function to sync all models in the correct order
 export const syncModels = async () => {
   try {
@@ -306,6 +374,9 @@ export const syncModels = async () => {
     await LeadAssignment.sync({ alter: true });
     console.log('LeadAssignment table synced successfully');
 
+    await EnrolledClients.sync({ alter: true });
+    console.log('EnrolledClients table synced successfully');
+
     // Re-enable foreign key checks
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
 
@@ -326,5 +397,6 @@ export {
   RolePermission,
   AdminPermission,
   ArchivedLead,
-  SpecialUserPermission
+  SpecialUserPermission,
+  EnrolledClients
 };

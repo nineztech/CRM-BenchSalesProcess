@@ -10,6 +10,8 @@ import LeadCreationComponent from '../components/user/lead_creation/LeadCreation
 import Sidebar from '../components/common/sidebar/Sidebar';
 // import Packages from '../components/user/packages/Packages';
 import ArchivedLeads from '../components/user/archived_leads/ArchivedLeads';
+import SalesEnrollment from '../components/user/enrollment/SalesEnrollment';
+import AdminEnrollment from '../components/user/enrollment/AdminEnrollment';
 import AddDepartment from '../components/admin/department/department';
 import UserRegister from '../components/admin/addUser/addUser';
 import AdminRegister from '../components/admin/adminRegister/AdminRegister';
@@ -84,6 +86,23 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <UserLayout>
                 <LeadCreationComponent />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Enrollment routes */}
+          <Route path="/enrollment-sales" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <SalesEnrollment />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/enrollment-admin" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AdminEnrollment />
               </UserLayout>
             </ProtectedRoute>
           } />

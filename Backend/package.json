@@ -5,7 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node Server.js",
-    "index-leads": "node scripts/indexLeads.js"
+    "index-leads": "node scripts/indexLeads.js",
+    "migrate-enrolled-leads": "node scripts/migrateEnrolledLeads.js"
   },
   "keywords": [],
   "author": "",
