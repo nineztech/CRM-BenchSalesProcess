@@ -1112,15 +1112,44 @@ export const updateLeadStatus = async (req, res) => {
       }
 
       // Validate that follow-up time is in the future
-      const [year, month, day] = followUpDate.split('-').map(Number);
-const [hour, minute] = followUpTime.split(':').map(Number);
-const followUpDateTime = new Date(year, month - 1, day, hour, minute);
+      try {
+        // Ensure proper date format
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        
+        if (!dateRegex.test(followUpDate) || !timeRegex.test(followUpTime)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date or time format'
+          });
+        }
 
-      const now = new Date();
-      if (followUpDateTime <= now) {
+        // Format the time to ensure HH:mm:ss format
+        const [hours, minutes] = followUpTime.split(':');
+        const formattedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+        
+        // Create date object using ISO string format (same as storage logic)
+        const followUpDateTime = new Date(`${followUpDate}T${formattedTime}`);
+
+        // Validate the created date
+        if (isNaN(followUpDateTime.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid date/time combination'
+          });
+        }
+
+        const now = new Date();
+        if (followUpDateTime <= now) {
+          return res.status(400).json({
+            success: false,
+            message: 'Follow-up date and time must be in the future'
+          });
+        }
+      } catch (error) {
         return res.status(400).json({
           success: false,
-          message: 'Follow-up date and time must be in the future'
+          message: 'Invalid follow-up date or time format'
         });
       }
     }
