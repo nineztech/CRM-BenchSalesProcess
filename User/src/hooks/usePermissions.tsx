@@ -135,7 +135,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       if (!authToken || !finalUserId) {
         localStorage.clear();
-        navigate('/login');
+        navigate('/');
         throw new Error('Authentication information missing. Please log in again.');
       }
 
