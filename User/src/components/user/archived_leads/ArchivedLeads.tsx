@@ -8,6 +8,22 @@ import LeadDetailsModal from '../lead_creation/LeadDetailsModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
+// Helper function to highlight search terms
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm || !text) return text;
+  
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <span key={index} className="bg-yellow-200 font-semibold">
+        {part}
+      </span>
+    ) : part
+  );
+};
+
 interface Remark {
   text: string;
   createdAt: string;
@@ -475,20 +491,59 @@ const ArchivedLeadsComponent: React.FC = () => {
                                 {((currentPage - 1) * pageSize) + index + 1}
                               </td>
                               <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
-                                {lead.firstName} {lead.lastName}
+                                {searchQuery ? (
+                                  <>
+                                    {highlightSearchTerm(lead.firstName, searchQuery)} {highlightSearchTerm(lead.lastName, searchQuery)}
+                                  </>
+                                ) : (
+                                  `${lead.firstName} ${lead.lastName}`
+                                )}
                               </td>
-                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryEmail}</td>
-                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.primaryContact}</td>
                               <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
-                                {Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology}
+                                {searchQuery ? highlightSearchTerm(lead.primaryEmail, searchQuery) : lead.primaryEmail}
                               </td>
                               <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
-                                {lead.country} ({lead.countryCode})
+                                {searchQuery ? highlightSearchTerm(lead.primaryContact, searchQuery) : lead.primaryContact}
                               </td>
-                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.visaStatus}</td>
-                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">{lead.leadSource}</td>
                               <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
-                                {lead.assignedUser ? `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}` : '-'}
+                                {searchQuery ? (
+                                  Array.isArray(lead.technology) ? 
+                                    lead.technology.map((tech, index) => (
+                                      <span key={index}>
+                                        {highlightSearchTerm(tech, searchQuery)}
+                                        {index < lead.technology.length - 1 ? ', ' : ''}
+                                      </span>
+                                    )) :
+                                    highlightSearchTerm(lead.technology, searchQuery)
+                                ) : (
+                                  Array.isArray(lead.technology) ? lead.technology.join(', ') : lead.technology
+                                )}
+                              </td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                {searchQuery ? (
+                                  <>
+                                    {highlightSearchTerm(lead.country, searchQuery)} ({lead.countryCode})
+                                  </>
+                                ) : (
+                                  `${lead.country} (${lead.countryCode})`
+                                )}
+                              </td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                {searchQuery ? highlightSearchTerm(lead.visaStatus, searchQuery) : lead.visaStatus}
+                              </td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                {searchQuery ? highlightSearchTerm(lead.leadSource, searchQuery) : lead.leadSource}
+                              </td>
+                              <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
+                                {lead.assignedUser ? (
+                                  searchQuery ? (
+                                    <>
+                                      {highlightSearchTerm(lead.assignedUser.firstname, searchQuery)} {highlightSearchTerm(lead.assignedUser.lastname, searchQuery)}
+                                    </>
+                                  ) : (
+                                    `${lead.assignedUser.firstname} ${lead.assignedUser.lastname}`
+                                  )
+                                ) : '-'}
                               </td>
                               <td className="px-6 py-1.5 text-sm text-gray-900 border-b whitespace-nowrap">
                                 {new Date(lead.archivedAt).toLocaleString('en-US', {
@@ -521,7 +576,7 @@ const ArchivedLeadsComponent: React.FC = () => {
                                   (lead.leadstatus || 'Dead') === 'Dead' ? 'bg-gray-100 text-gray-800' :
                                   'bg-blue-100 text-blue-800'
                                 }`}>
-                                  {lead.leadstatus || 'Dead'}
+                                  {searchQuery ? highlightSearchTerm(lead.leadstatus || 'Dead', searchQuery) : (lead.leadstatus || 'Dead')}
                                 </span>
                               </td>
                             </tr>
