@@ -7,7 +7,9 @@ import {
   updateEnrolledClientBySales,
   adminApprovalAction,
   salesApprovalAction,
-  deleteEnrolledClient
+  deleteEnrolledClient,
+  getAllEnrolledClientsForSales,
+  getAllEnrolledClientsForAdmin
 } from '../controllers/enrolledClientsController.js';
 import verifyToken  from '../middleware/auth.js';
 
@@ -18,7 +20,11 @@ router.post('/', verifyToken, createEnrolledClient);
 
 // Get all enrolled clients with pagination and filtering
 router.get('/', getAllEnrolledClients);
+// Get all enrolled clients for sales with categorized data
+router.get('/sales/all', getAllEnrolledClientsForSales);
 
+// Get all enrolled clients for admin with categorized data
+router.get('/admin/all', getAllEnrolledClientsForAdmin);
 // Get enrolled client by ID
 router.get('/:id', verifyToken, getEnrolledClientById);
 

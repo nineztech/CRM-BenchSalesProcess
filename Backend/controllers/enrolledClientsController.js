@@ -478,3 +478,231 @@ const handleError = (error, res) => {
     error: error.message 
   });
 }; 
+
+// Get all enrolled clients for sales with categorized data
+export const getAllEnrolledClientsForSales = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sales_person_id } = req.query;
+    const offset = (page - 1) * limit;
+
+    const includeConfig = [
+      {
+        model: Lead,
+        as: 'lead',
+        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus'],
+        where: { status: 'Enrolled' } // Only get enrolled leads
+      },
+      {
+        model: User,
+        as: 'salesPerson',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: User,
+        as: 'admin',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: Packages,
+        as: 'package',
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+      }
+    ];
+
+    // All Enrollments - get all enrolled leads
+    const allEnrollments = await EnrolledClients.findAndCountAll({
+      where: sales_person_id ? { Sales_person_id: sales_person_id } : {},
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Approved Enrollments
+    const approvedEnrollments = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Admin Review Pending
+    const adminReviewPending = await EnrolledClients.findAndCountAll({
+      where: {
+        packageid: { [Op.ne]: null },
+        Approval_by_admin: false,
+        has_update: false,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // My Review (Sales Review Pending)
+    const myReview = await EnrolledClients.findAndCountAll({
+      where: {
+        has_update: true,
+        Approval_by_admin: false,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    const createPaginationInfo = (count) => ({
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      totalItems: count,
+      itemsPerPage: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Enrolled clients retrieved successfully',
+      data: {
+        AllEnrollments: {
+          leads: allEnrollments.rows,
+          pagination: createPaginationInfo(allEnrollments.count)
+        },
+        Approved: {
+          leads: approvedEnrollments.rows,
+          pagination: createPaginationInfo(approvedEnrollments.count)
+        },
+        AdminReviewPending: {
+          leads: adminReviewPending.rows,
+          pagination: createPaginationInfo(adminReviewPending.count)
+        },
+        MyReview: {
+          leads: myReview.rows,
+          pagination: createPaginationInfo(myReview.count)
+        }
+      }
+    });
+
+  } catch (error) {
+    handleError(error, res);
+  }
+};
+
+// Get all enrolled clients for admin with categorized data
+export const getAllEnrolledClientsForAdmin = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, admin_id } = req.query;
+    const offset = (page - 1) * limit;
+
+    const includeConfig = [
+      {
+        model: Lead,
+        as: 'lead',
+        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus'],
+        where: { status: 'Enrolled' } // Only get enrolled leads
+      },
+      {
+        model: User,
+        as: 'salesPerson',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: User,
+        as: 'admin',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: Packages,
+        as: 'package',
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+      }
+    ];
+
+    // All Enrollments - get all enrolled leads
+    const allEnrollments = await EnrolledClients.findAndCountAll({
+      where: admin_id ? { Admin_id: admin_id } : {},
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Approved Enrollments
+    const approvedEnrollments = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Sales Review Pending
+    const salesReviewPending = await EnrolledClients.findAndCountAll({
+      where: {
+        has_update: true,
+        Approval_by_admin: false,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // My Review (Admin Review Pending)
+    const myReview = await EnrolledClients.findAndCountAll({
+      where: {
+        packageid: { [Op.ne]: null },
+        Approval_by_admin: false,
+        has_update: false,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    const createPaginationInfo = (count) => ({
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      totalItems: count,
+      itemsPerPage: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Enrolled clients retrieved successfully',
+      data: {
+        AllEnrollments: {
+          leads: allEnrollments.rows,
+          pagination: createPaginationInfo(allEnrollments.count)
+        },
+        Approved: {
+          leads: approvedEnrollments.rows,
+          pagination: createPaginationInfo(approvedEnrollments.count)
+        },
+        SalesReviewPending: {
+          leads: salesReviewPending.rows,
+          pagination: createPaginationInfo(salesReviewPending.count)
+        },
+        MyReview: {
+          leads: myReview.rows,
+          pagination: createPaginationInfo(myReview.count)
+        }
+      }
+    });
+
+  } catch (error) {
+    handleError(error, res);
+  }
+}; 
