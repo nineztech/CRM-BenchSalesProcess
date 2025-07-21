@@ -612,7 +612,7 @@ export const getAllEnrolledClientsForAdmin = async (req, res) => {
       {
         model: Lead,
         as: 'lead',
-        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus'],
+        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers'],
         where: { status: 'Enrolled' } // Only get enrolled leads
       },
       {

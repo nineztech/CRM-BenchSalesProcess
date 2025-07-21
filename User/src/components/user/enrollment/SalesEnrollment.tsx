@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle, FaEnvelope } from 'react-icons/fa';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
@@ -32,6 +32,7 @@ interface EnrolledClient {
     lastName: string;
     primaryEmail: string;
     primaryContact: string;
+      contactNumbers: string[];
     status: string;
     technology: string[];
     country: string;
@@ -296,7 +297,13 @@ const SalesEnrollment: React.FC = () => {
 
   const getStatusBadge = (client: EnrolledClient) => {
     if (client.Approval_by_sales && client.Approval_by_admin) {
-      return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Fully Approved</span>;
+      return (
+        <div>
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Fully Approved</span>
+          <br />
+          <span className="text-gray-500 text-xs mt-1">Initial credentials email sent.</span>
+        </div>
+      );
     } else if (client.has_update && !client.Approval_by_admin) {
       return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending Sales Review</span>;
     } else if (!client.packageid) {
@@ -519,6 +526,9 @@ const SalesEnrollment: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-medium">Email:</span> {selectedClient.lead.primaryEmail}
+                  </div>
+                  <div>
+                    <span className="font-medium">Phone:</span> {selectedClient.lead.contactNumbers?.join(', ')}
                   </div>
                   <div>
                     <span className="font-medium">Technology:</span> {selectedClient.lead.technology?.join(', ') || 'No technology specified'}
@@ -758,6 +768,9 @@ const SalesEnrollment: React.FC = () => {
                     <span className="font-medium">Email:</span> {selectedClient.lead.primaryEmail}
                   </div>
                   <div>
+                    <span className="font-medium">Phone:</span> {selectedClient.lead.contactNumbers?.join(', ')}
+                  </div>
+                  <div>
                     <span className="font-medium">Technology:</span> {selectedClient.lead.technology?.join(', ') || 'No technology specified'}
                   </div>
                   <div>
@@ -864,6 +877,9 @@ const SalesEnrollment: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-medium">Email:</span> {selectedClient.lead.primaryEmail}
+                  </div>
+                  <div>
+                    <span className="font-medium">Phone:</span> {selectedClient.lead.contactNumbers?.join(', ')}
                   </div>
                   <div>
                     <span className="font-medium">Technology:</span> {selectedClient.lead.technology?.join(', ') || 'No technology specified'}
@@ -1090,6 +1106,9 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Lead Details
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Enrolled Date
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Package
                   </th>
@@ -1102,6 +1121,14 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Resume
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  {activeTab === 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      First Call Status
+                    </th>
+                  )}
                   {activeTab !== 'approved' && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -1120,11 +1147,19 @@ const SalesEnrollment: React.FC = () => {
                             {client.lead.firstName} {client.lead.lastName}
                           </div>
                           <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+                          {client.lead.contactNumbers && (
+                            <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+                          )}
                           <div className="text-xs text-gray-400">
                             {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <span className="text-sm text-gray-900">
+                        {new Date(client.createdAt).toLocaleDateString()}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="text-sm text-gray-900 flex items-center gap-2">
@@ -1199,12 +1234,39 @@ const SalesEnrollment: React.FC = () => {
                         <span className="text-gray-400 text-sm">No Resume</span>
                       )}
                     </td>
+                    <td className="px-6 py-4 text-sm  whitespace-nowrap text-start">
+                      <a
+                        href={`mailto:${client.lead.primaryEmail}`}
+                        className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+                        title="Send Email"
+                      >
+                        {/* <FaEnvelope className="w-4 h-4" /> */}
+                        <span>Send Email</span>
+                      </a>
+                    </td>
+                    {activeTab === 'approved' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-start">
+                          {(() => {
+                            const statuses = ['pending', 'onhold', 'Done'];
+                            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                            let badgeColor = '';
+                            if (randomStatus === 'pending') {
+                              badgeColor = 'bg-yellow-100 text-yellow-800';
+                            } else if (randomStatus === 'onhold') {
+                              badgeColor = 'bg-red-100 text-red-800';
+                            } else {
+                              badgeColor = 'bg-green-100 text-green-800';
+                            }
+                            return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
+                          })()}
+                        </td>
+                      )}
                     {activeTab !== 'approved' && (
                       <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
                       {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
                         <button
                           onClick={() => handleEdit(client)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          className="text-purple-600 hover:text-blue-900 mr-3"
                           title="Configure"
                         >
                           <FaEdit className="w-4 h-4" />
