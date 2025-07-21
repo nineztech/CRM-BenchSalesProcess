@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle } from 'react-icons/fa';
 import axios from 'axios';
+import { motion } from 'framer-motion';
+import PackageFeaturesPopup from './PackageFeaturesPopup';
+import ConfirmationPopup from './ConfirmationPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -55,6 +58,7 @@ interface EnrolledClient {
     lastname: string;
     email: string;
   } | null;
+  resume: string | null;
 }
 
 interface Package {
@@ -96,6 +100,13 @@ const SalesEnrollment: React.FC = () => {
     pricing_type: null
   });
   const [enrollmentData, setEnrollmentData] = useState<any>(null);
+  const [selectedResume, setSelectedResume] = useState<File | null>(null);
+  const [showResumePreview, setShowResumePreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPackageFeatures, setShowPackageFeatures] = useState(false);
+  const [selectedPackageForFeatures, setSelectedPackageForFeatures] = useState<{name: string; features: string[]} | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
 
   const pageSize = 10;
 
@@ -320,6 +331,81 @@ const SalesEnrollment: React.FC = () => {
     }).format(amount);
   };
 
+  // Add resume upload handler
+  const handleResumeUpload = async (file: File, clientId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const response = await axios.post(
+        `${BASE_URL}/enrolled-clients/${clientId}/resume`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        alert('Resume uploaded successfully!');
+        fetchEnrolledClients(); // Refresh data
+      }
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      alert('Failed to upload resume');
+    }
+  };
+
+  // Add resume preview handler
+  const handleResumePreview = async (resumePath: string | null, clientId: number) => {
+    if (!resumePath) {
+      alert('No resume available');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/enrolled-clients/${clientId}/resume`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setShowResumePreview(true);
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+      alert('Failed to load resume');
+    }
+  };
+
+  // Add handler for package features
+  const handleShowFeatures = (packageName: string, features: string[]) => {
+    setSelectedPackageForFeatures({ name: packageName, features });
+    setShowPackageFeatures(true);
+  };
+
+  const handleApprovalIconClick = (client: EnrolledClient) => {
+    setPendingApprovalClient(client);
+    setShowConfirmPopup(true);
+  };
+  const handleConfirmApproval = async () => {
+    if (pendingApprovalClient) {
+      await handleApprovalAction(true);
+      setShowConfirmPopup(false);
+      setPendingApprovalClient(null);
+    }
+  };
+  const handleCancelApproval = () => {
+    setShowConfirmPopup(false);
+    setPendingApprovalClient(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -476,7 +562,7 @@ const SalesEnrollment: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={formData.payable_enrollment_charge || ''}
+                  value={formData.payable_enrollment_charge ?? ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="0.00"
@@ -491,7 +577,7 @@ const SalesEnrollment: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={formData.payable_offer_letter_charge || ''}
+                  value={formData.payable_offer_letter_charge ?? ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="0.00"
@@ -543,7 +629,7 @@ const SalesEnrollment: React.FC = () => {
                     </label>
                     <input
                       type="number"
-                      value={formData.payable_first_year_percentage || ''}
+                      value={formData.payable_first_year_percentage ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_percentage: Number(e.target.value) }))}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       placeholder="0.00"
@@ -561,7 +647,7 @@ const SalesEnrollment: React.FC = () => {
                     </label>
                     <input
                       type="number"
-                      value={formData.payable_first_year_fixed_charge || ''}
+                      value={formData.payable_first_year_fixed_charge ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_fixed_charge: Number(e.target.value) }))}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       placeholder="0.00"
@@ -572,6 +658,45 @@ const SalesEnrollment: React.FC = () => {
                     />
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Add Resume Upload Section before Form Actions */}
+            <div className="mt-6 border-t pt-6">
+              <h3 className="font-medium text-gray-900 mb-4 text-left">Resume Upload</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  {/* <label className="block text-sm font-medium text-gray-700 mb-4 text-left">
+                    <FaFilePdf className="inline mr-2" />
+                    Upload Resume (PDF only)
+                  </label> */}
+                  <label className="mt-1 flex justify-center px-4 py-4 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-blue-50 cursor-pointer w-[400px]">
+                    <input
+                      type="file"
+                      name="resume"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedClient) {
+                          handleResumeUpload(file, selectedClient.id);
+                        }
+                      }}
+                    />
+                    <div className="space-y-1 text-center">
+                      <FaUpload className="mx-auto h-8 w-8 text-blue-400" />
+                      <p className="text-sm text-gray-600">
+                        <span className="text-blue-600">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PDF up to 5MB</p>
+                    </div>
+                  </label>
+                  {selectedResume && (
+                    <p className=" text-start mt-4 text-sm text-gray-600">
+                      Selected file: {selectedResume.name}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -776,7 +901,7 @@ const SalesEnrollment: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    value={formData.payable_enrollment_charge || ''}
+                    value={formData.payable_enrollment_charge ?? ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0.00"
@@ -790,7 +915,7 @@ const SalesEnrollment: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    value={formData.payable_offer_letter_charge || ''}
+                    value={formData.payable_offer_letter_charge ?? ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0.00"
@@ -839,7 +964,7 @@ const SalesEnrollment: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={formData.payable_first_year_percentage || ''}
+                        value={formData.payable_first_year_percentage ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_percentage: Number(e.target.value) }))}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
@@ -856,7 +981,7 @@ const SalesEnrollment: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={formData.payable_first_year_fixed_charge || ''}
+                        value={formData.payable_first_year_fixed_charge ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_fixed_charge: Number(e.target.value) }))}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
@@ -893,6 +1018,53 @@ const SalesEnrollment: React.FC = () => {
           </div>
         )}
 
+        {/* Add Resume Preview Modal */}
+        {showResumePreview && previewUrl && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl h-[95vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Resume Preview</h2>
+                <button
+                  onClick={() => {
+                    setShowResumePreview(false);
+                    if (previewUrl) {
+                      window.URL.revokeObjectURL(previewUrl);
+                      setPreviewUrl(null);
+                    }
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="flex-1 h-full">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full rounded-lg border-0"
+                  title="Resume Preview"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Package Features Popup */}
+        {selectedPackageForFeatures && (
+          <PackageFeaturesPopup
+            isOpen={showPackageFeatures}
+            onClose={() => {
+              setShowPackageFeatures(false);
+              setSelectedPackageForFeatures(null);
+            }}
+            packageName={selectedPackageForFeatures.name}
+            features={selectedPackageForFeatures.features}
+          />
+        )}
+
         {/* Enrolled Clients Grid */}
         <div className="bg-white rounded-xl shadow-sm">
           {/* <div className="p-6 border-b border-gray-200">
@@ -927,10 +1099,13 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Resume
+                  </th>
                   {activeTab !== 'approved' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                   )}
                 </tr>
               </thead>
@@ -952,12 +1127,22 @@ const SalesEnrollment: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <div className="text-sm text-gray-900">
-                        {client.package ? client.package.planName : 'Not Selected'}
+                      <div className="text-sm text-gray-900 flex items-center gap-2">
+                        {client.package ? (
+                          <>
+                            <button
+                              onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="View Package Features"
+                            >
+                              <FaInfoCircle className="w-4 h-4" />
+                            </button>
+                            {client.package.planName}
+                          </>
+                        ) : (
+                          'Not Selected'
+                        )}
                       </div>
-                      {/* <div className="text-sm text-gray-500">
-                        {client.package ? formatCurrency(client.package.enrollmentCharge) : 'N/A'}
-                      </div> */}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="text-sm text-gray-900">
@@ -965,21 +1150,21 @@ const SalesEnrollment: React.FC = () => {
                           activeTab === 'approved'
                             ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
                             : (activeTab === 'my_review' && client.edited_enrollment_charge !== null)
-                              ? client.edited_enrollment_charge
-                              : client.payable_enrollment_charge
+                            ? client.edited_enrollment_charge
+                            : client.payable_enrollment_charge
                         )}</div>
                         <div>Offer Letter: {formatCurrency(
                           activeTab === 'approved'
                             ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
                             : (activeTab === 'my_review' && client.edited_offer_letter_charge !== null)
-                              ? client.edited_offer_letter_charge
-                              : client.payable_offer_letter_charge
+                            ? client.edited_offer_letter_charge
+                            : client.payable_offer_letter_charge
                         )}</div>
                         <div>
                           First Year: {
                             activeTab === 'approved'
                               ? (client.edited_first_year_percentage !== null
-                                  ? `${client.edited_first_year_percentage}%`
+                              ? `${client.edited_first_year_percentage}%`
                                   : client.edited_first_year_fixed_charge !== null
                                     ? formatCurrency(client.edited_first_year_fixed_charge)
                                     : client.payable_first_year_percentage
@@ -990,9 +1175,9 @@ const SalesEnrollment: React.FC = () => {
                                 ? `${client.edited_first_year_percentage}%`
                               : (activeTab === 'my_review' && client.edited_first_year_fixed_charge !== null)
                                 ? formatCurrency(client.edited_first_year_fixed_charge)
-                              : client.payable_first_year_percentage 
-                                ? `${client.payable_first_year_percentage}%` 
-                              : formatCurrency(client.payable_first_year_fixed_charge)
+                                : client.payable_first_year_percentage 
+                                  ? `${client.payable_first_year_percentage}%` 
+                                  : formatCurrency(client.payable_first_year_fixed_charge)
                           }
                         </div>
                       </div>
@@ -1000,30 +1185,44 @@ const SalesEnrollment: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       {getStatusBadge(client)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {client.resume ? (
+                        <button
+                          onClick={() => handleResumePreview(client.resume, client.id)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+                          title="View Resume"
+                        >
+                          <FaFilePdf className="w-4 h-4" />
+                          <span>View</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No Resume</span>
+                      )}
+                    </td>
                     {activeTab !== 'approved' && (
                       <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
-                        {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
-                          <button
-                            onClick={() => handleEdit(client)}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
-                            title="Configure"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </button>
-                        )}
-                        {activeTab === 'my_review' && (
-                          <button
-                            onClick={() => {
-                              setSelectedClient(client);
-                              setShowUpdateForm(false);
-                            }}
-                            className="text-purple-600 hover:text-purple-900"
-                            title="Review Changes"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
+                      {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
+                        <button
+                          onClick={() => handleEdit(client)}
+                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          title="Configure"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {activeTab === 'my_review' && (
+                        <button
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setShowUpdateForm(false);
+                          }}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Review Changes"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
                     )}
                   </tr>
                 ))}
@@ -1078,6 +1277,14 @@ const SalesEnrollment: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Render ConfirmationPopup for approval */}
+      <ConfirmationPopup
+        open={showConfirmPopup}
+        message="Are you sure you want to approve?"
+        onConfirm={handleConfirmApproval}
+        onCancel={handleCancelApproval}
+      />
     </div>
   );
 };

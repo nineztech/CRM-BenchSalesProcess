@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import PackageFeaturesPopup from './PackageFeaturesPopup';
+import ConfirmationPopup from './ConfirmationPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -56,6 +58,7 @@ interface EnrolledClient {
     lastname: string;
     email: string;
   } | null;
+  resume: string | null;
 }
 
 interface Package {
@@ -96,6 +99,12 @@ const AdminEnrollment: React.FC = () => {
     pricing_type: null
   });
   const [enrollmentData, setEnrollmentData] = useState<any>(null);
+  const [showResumePreview, setShowResumePreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPackageFeatures, setShowPackageFeatures] = useState(false);
+  const [selectedPackageForFeatures, setSelectedPackageForFeatures] = useState<{name: string; features: string[]} | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
 
   const pageSize = 10;
 
@@ -253,6 +262,59 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
+  const handleResumeUpload = async (file: File, clientId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('resume', file);
+      const response = await axios.post(
+        `${BASE_URL}/enrolled-clients/${clientId}/resume`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      if (response.data.success) {
+        alert('Resume uploaded successfully!');
+        fetchEnrolledClients();
+      }
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      alert('Failed to upload resume');
+    }
+  };
+
+  const handleResumePreview = async (resumePath: string | null, clientId: number) => {
+    if (!resumePath) {
+      alert('No resume available');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/enrolled-clients/${clientId}/resume`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setShowResumePreview(true);
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+      alert('Failed to load resume');
+    }
+  };
+
+  const handleShowFeatures = (packageName: string, features: string[]) => {
+    setSelectedPackageForFeatures({ name: packageName, features });
+    setShowPackageFeatures(true);
+  };
+
   const getStatusBadge = (client: EnrolledClient) => {
     if (!client.packageid) {
       return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Not Configured</span>;
@@ -289,6 +351,22 @@ const AdminEnrollment: React.FC = () => {
       return enrollmentData.MyReview?.leads || [];
     }
     return [];
+  };
+
+  const handleApprovalIconClick = (client: EnrolledClient) => {
+    setPendingApprovalClient(client);
+    setShowConfirmPopup(true);
+  };
+  const handleConfirmApproval = async () => {
+    if (pendingApprovalClient) {
+      await handleApprove(pendingApprovalClient);
+      setShowConfirmPopup(false);
+      setPendingApprovalClient(null);
+    }
+  };
+  const handleCancelApproval = () => {
+    setShowConfirmPopup(false);
+    setPendingApprovalClient(null);
   };
 
   if (loading) {
@@ -592,6 +670,53 @@ const AdminEnrollment: React.FC = () => {
           </div>
         )}
 
+        {/* Add Resume Preview Modal */}
+        {showResumePreview && previewUrl && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl h-[95vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Resume Preview</h2>
+                <button
+                  onClick={() => {
+                    setShowResumePreview(false);
+                    if (previewUrl) {
+                      window.URL.revokeObjectURL(previewUrl);
+                      setPreviewUrl(null);
+                    }
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="flex-1 h-full">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full rounded-lg border-0"
+                  title="Resume Preview"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Package Features Popup */}
+        {selectedPackageForFeatures && (
+          <PackageFeaturesPopup
+            isOpen={showPackageFeatures}
+            onClose={() => {
+              setShowPackageFeatures(false);
+              setSelectedPackageForFeatures(null);
+            }}
+            packageName={selectedPackageForFeatures.name}
+            features={selectedPackageForFeatures.features}
+          />
+        )}
+
         {/* Enrolled Clients Grid */}
         <div className="bg-white rounded-xl shadow-sm">
           {/* <div className="p-6 border-b border-gray-200">
@@ -626,6 +751,9 @@ const AdminEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Resume
+                  </th>
                   {activeTab !== 'all' && activeTab !== 'approved' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -651,11 +779,21 @@ const AdminEnrollment: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <div className="text-sm text-gray-900">
-                        <div className="font-medium">{client.package ? client.package.planName : 'Not Selected'}</div>
-                        {/* <div className="text-gray-500">
-                          {client.salesPerson ? `${client.salesPerson.firstname} ${client.salesPerson.lastname}` : 'No Sales Person'}
-                        </div> */}
+                      <div className="text-sm text-gray-900 flex items-center gap-2">
+                        {client.package ? (
+                          <>
+                            <button
+                              onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="View Package Features"
+                            >
+                              <FaInfoCircle className="w-4 h-4" />
+                            </button>
+                            {client.package.planName}
+                          </>
+                        ) : (
+                          'Not Selected'
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
@@ -697,6 +835,20 @@ const AdminEnrollment: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {client.resume ? (
+                        <button
+                          onClick={() => handleResumePreview(client.resume, client.id)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+                          title="View Resume"
+                        >
+                          <FaFilePdf className="w-4 h-4" />
+                          <span>View</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No Resume</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       {getStatusBadge(client)}
                     </td>
                     {activeTab !== 'all' && activeTab !== 'approved' && (
@@ -705,7 +857,7 @@ const AdminEnrollment: React.FC = () => {
                           {activeTab === 'my_review' && (
                             <>
                               <button
-                                onClick={() => handleApprove(client)}
+                                onClick={() => handleApprovalIconClick(client)}
                                 className="text-green-600 hover:text-green-900"
                                 title="Quick Approve"
                               >
@@ -776,6 +928,14 @@ const AdminEnrollment: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Render ConfirmationPopup for approval */}
+      <ConfirmationPopup
+        open={showConfirmPopup}
+        message="Are you sure you want to approve?"
+        onConfirm={handleConfirmApproval}
+        onCancel={handleCancelApproval}
+      />
     </div>
   );
 };

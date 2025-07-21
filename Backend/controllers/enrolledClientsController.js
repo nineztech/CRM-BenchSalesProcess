@@ -3,6 +3,11 @@ import Lead from '../models/leadModel.js';
 import User from '../models/userModel.js';
 import Packages from '../models/packagesModel.js';
 import { Op } from 'sequelize';
+import fs from 'fs';
+import { promisify } from 'util';
+import path from 'path';
+import express from 'express';
+const unlinkAsync = promisify(fs.unlink);
 
 // Create enrolled client (automatically called when lead status changes to enrolled)
 export const createEnrolledClient = async (req, res) => {
@@ -117,7 +122,7 @@ export const getAllEnrolledClients = async (req, res) => {
         {
           model: Packages,
           as: 'package',
-          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -509,7 +514,7 @@ export const getAllEnrolledClientsForSales = async (req, res) => {
       {
         model: Packages,
         as: 'package',
-        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
       }
     ];
 
@@ -623,7 +628,7 @@ export const getAllEnrolledClientsForAdmin = async (req, res) => {
       {
         model: Packages,
         as: 'package',
-        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice','features']
       }
     ];
 
@@ -708,5 +713,145 @@ export const getAllEnrolledClientsForAdmin = async (req, res) => {
 
   } catch (error) {
     handleError(error, res);
+  }
+}; 
+
+// Upload resume for enrolled client
+export const uploadResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No resume file provided'
+      });
+    }
+
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      // Delete uploaded file if client not found
+      await unlinkAsync(req.file.path);
+      return res.status(404).json({
+        success: false,
+        message: 'Enrolled client not found'
+      });
+    }
+
+    // Delete old resume if exists
+    if (enrolledClient.resume) {
+      try {
+        await unlinkAsync(enrolledClient.resume);
+      } catch (error) {
+        console.error('Error deleting old resume:', error);
+      }
+    }
+
+    // Normalize path with forward slashes
+    const normalizedPath = req.file.path.split(path.sep).join('/');
+
+    // Update resume path
+    await enrolledClient.update({
+      resume: normalizedPath,
+      updatedBy: req.user.id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume uploaded successfully',
+      data: {
+        resumePath: enrolledClient.resume
+      }
+    });
+
+  } catch (error) {
+    // Delete uploaded file if error occurs
+    if (req.file) {
+      try {
+        await unlinkAsync(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting file after upload error:', unlinkError);
+      }
+    }
+    console.error('Error uploading resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Delete resume
+export const deleteResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrolled client not found'
+      });
+    }
+
+    if (!enrolledClient.resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'No resume found for this client'
+      });
+    }
+
+    // Delete resume file
+    try {
+      await unlinkAsync(enrolledClient.resume);
+    } catch (error) {
+      console.error('Error deleting resume file:', error);
+    }
+
+    // Update client record
+    await enrolledClient.update({
+      resume: null,
+      updatedBy: req.user.id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}; 
+
+// Serve resume file
+export const serveResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient || !enrolledClient.resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume not found'
+      });
+    }
+
+    // Send the file
+    res.sendFile(enrolledClient.resume, { root: '.' });
+
+  } catch (error) {
+    console.error('Error serving resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 }; 
