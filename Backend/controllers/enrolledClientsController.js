@@ -286,7 +286,11 @@ export const adminApprovalAction = async (req, res) => {
         Approval_by_admin: true,
         Admin_id,
         has_update: false,
-        updatedBy
+        updatedBy,
+        edited_enrollment_charge: enrolledClient.payable_enrollment_charge,
+        edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge,
+        edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
+        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
       });
       // Auto-approval by sales will be handled in the beforeUpdate hook
     } else {

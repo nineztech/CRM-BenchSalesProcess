@@ -78,7 +78,6 @@ interface FormData {
 }
 
 const SalesEnrollment: React.FC = () => {
-  const [enrolledClients, setEnrolledClients] = useState<EnrolledClient[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -96,6 +95,7 @@ const SalesEnrollment: React.FC = () => {
     payable_first_year_fixed_charge: null,
     pricing_type: null
   });
+  const [enrollmentData, setEnrollmentData] = useState<any>(null);
 
   const pageSize = 10;
 
@@ -105,21 +105,11 @@ const SalesEnrollment: React.FC = () => {
   }, [currentPage, activeTab]);
 
   const fetchEnrolledClients = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      let statusFilter = '';
-      
-      if (activeTab === 'approved') {
-        statusFilter = '&status=approved';
-      } else if (activeTab === 'admin_pending') {
-        statusFilter = '&status=pending_admin';
-      } else if (activeTab === 'my_review') {
-        statusFilter = '&status=pending_sales_review';
-      }
-      // For 'all' tab, no status filter is applied
-
       const response = await axios.get(
-        `${BASE_URL}/enrolled-clients?page=${currentPage}&limit=${pageSize}${statusFilter}`,
+        `${BASE_URL}/enrolled-clients/sales/all?page=${currentPage}&limit=${pageSize}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -128,8 +118,13 @@ const SalesEnrollment: React.FC = () => {
         }
       );
       if (response.data.success) {
-        setEnrolledClients(response.data.data);
-        setTotalPages(response.data.pagination.totalPages);
+        setEnrollmentData(response.data.data);
+        // Set total pages for the current tab
+        let tabKey = 'AllEnrollments';
+        if (activeTab === 'approved') tabKey = 'Approved';
+        else if (activeTab === 'admin_pending') tabKey = 'AdminReviewPending';
+        else if (activeTab === 'my_review') tabKey = 'MyReview';
+        setTotalPages(response.data.data[tabKey]?.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching enrolled clients:', error);
@@ -302,23 +297,19 @@ const SalesEnrollment: React.FC = () => {
     }
   };
 
-  const getFilteredClients = () => {
+  // Replace getFilteredClients to use backend data
+  const getFilteredClients = (): EnrolledClient[] => {
+    if (!enrollmentData) return [];
     if (activeTab === 'all') {
-      return enrolledClients;
+      return enrollmentData.AllEnrollments?.leads || [];
     } else if (activeTab === 'approved') {
-      return enrolledClients.filter(client => 
-        client.Approval_by_sales && client.Approval_by_admin
-      );
+      return enrollmentData.Approved?.leads || [];
     } else if (activeTab === 'admin_pending') {
-      return enrolledClients.filter(client => 
-        client.packageid && !client.Approval_by_admin && !client.has_update
-      );
+      return enrollmentData.AdminReviewPending?.leads || [];
     } else if (activeTab === 'my_review') {
-      return enrolledClients.filter(client => 
-        client.has_update && !client.Approval_by_admin
-      );
+      return enrollmentData.MyReview?.leads || [];
     }
-    return enrolledClients;
+    return [];
   };
 
   const formatCurrency = (amount: number | null) => {
@@ -331,8 +322,10 @@ const SalesEnrollment: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
       </div>
     );
   }
@@ -345,16 +338,16 @@ const SalesEnrollment: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <FaUserTie className="text-blue-600 text-xl" />
+                <FaUserTie className="text-blue-600 text-[35px]" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Sales Enrollment</h1>
-                <p className="text-gray-600">Manage enrolled clients and configure packages</p>
+                <h1 className="text-xl font-bold text-gray-900 text-left">Sales Enrollment Managment</h1>
+                <p className="text-gray-600 text-sm ">Manage enrolled clients and configure packages</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <FaGraduationCap className="text-blue-500" />
-              <span>{enrolledClients.length} Total Enrolled Clients</span>
+              <FaGraduationCap className="text-blue-500 " />
+              <span>{enrollmentData?.AllEnrollments?.pagination?.totalItems || 0} Total Enrolled Clients</span>
             </div>
           </div>
         </div>
@@ -365,14 +358,14 @@ const SalesEnrollment: React.FC = () => {
             <nav className="-mb-px flex">
               <button
                 onClick={() => setActiveTab('all')}
-                className={`py-2 px-4 border-b-2 font-medium text-sm ${
+                className={`py-3 px-6 border-b-2 font-medium text-base ${
                   activeTab === 'all'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <FaGraduationCap className="inline mr-2" />
-                All Enrollments ({getFilteredClients().length})
+                All Enrollments ({enrollmentData?.AllEnrollments?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('my_review')}
@@ -383,7 +376,7 @@ const SalesEnrollment: React.FC = () => {
                 }`}
               >
                 <FaEdit className="inline mr-2" />
-                My Review ({enrolledClients.filter(client => client.has_update && !client.Approval_by_admin).length})
+                My Review ({enrollmentData?.MyReview?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('admin_pending')}
@@ -394,7 +387,7 @@ const SalesEnrollment: React.FC = () => {
                 }`}
               >
                 <FaClock className="inline mr-2" />
-                Admin Review Pending ({enrolledClients.filter(client => client.packageid && !client.Approval_by_admin && !client.has_update).length})
+                Admin Review Pending ({enrollmentData?.AdminReviewPending?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('approved')}
@@ -405,7 +398,7 @@ const SalesEnrollment: React.FC = () => {
                 }`}
               >
                 <FaCheckCircle className="inline mr-2" />
-                Approved ({enrolledClients.filter(client => client.Approval_by_sales && client.Approval_by_admin).length})
+                Approved ({enrollmentData?.Approved?.pagination?.totalItems || 0})
               </button>
             </nav>
           </div>
@@ -432,9 +425,9 @@ const SalesEnrollment: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Lead Info */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-medium text-gray-900 mb-2">Lead Information</h3>
+              <h3 className="font-medium text-gray-900 mb-6 text-left ">Lead Information</h3>
               {selectedClient ? (
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm text-left">
                   <div>
                     <span className="font-medium">Name:</span> {selectedClient.lead.firstName} {selectedClient.lead.lastName}
                   </div>
@@ -902,7 +895,7 @@ const SalesEnrollment: React.FC = () => {
 
         {/* Enrolled Clients Grid */}
         <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6 border-b border-gray-200">
+          {/* <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
               {activeTab === 'all' && 'All Enrolled Clients'}
               {activeTab === 'approved' && 'Approved Enrollments'}
@@ -915,12 +908,13 @@ const SalesEnrollment: React.FC = () => {
               {activeTab === 'admin_pending' && 'Enrollments pending admin review'}
               {activeTab === 'my_review' && 'Review and approve/reject admin changes'}
             </p>
-          </div>
+          </div> */}
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Lead Details
                   </th>
@@ -933,15 +927,18 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {activeTab !== 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {getFilteredClients().map((client) => (
+                {getFilteredClients().map((client: EnrolledClient, idx: number) => (
                   <tr key={client.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
@@ -954,65 +951,80 @@ const SalesEnrollment: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="text-sm text-gray-900">
                         {client.package ? client.package.planName : 'Not Selected'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      {/* <div className="text-sm text-gray-500">
                         {client.package ? formatCurrency(client.package.enrollmentCharge) : 'N/A'}
-                      </div>
+                      </div> */}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="text-sm text-gray-900">
                         <div>Enrollment: {formatCurrency(
-                          (activeTab === 'my_review' || activeTab === 'approved') && client.edited_enrollment_charge !== null
-                            ? client.edited_enrollment_charge
-                            : client.payable_enrollment_charge
+                          activeTab === 'approved'
+                            ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
+                            : (activeTab === 'my_review' && client.edited_enrollment_charge !== null)
+                              ? client.edited_enrollment_charge
+                              : client.payable_enrollment_charge
                         )}</div>
                         <div>Offer Letter: {formatCurrency(
-                          (activeTab === 'my_review' || activeTab === 'approved') && client.edited_offer_letter_charge !== null
-                            ? client.edited_offer_letter_charge
-                            : client.payable_offer_letter_charge
+                          activeTab === 'approved'
+                            ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+                            : (activeTab === 'my_review' && client.edited_offer_letter_charge !== null)
+                              ? client.edited_offer_letter_charge
+                              : client.payable_offer_letter_charge
                         )}</div>
                         <div>
                           First Year: {
-                            (activeTab === 'my_review' || activeTab === 'approved') && client.edited_first_year_percentage !== null
-                              ? `${client.edited_first_year_percentage}%`
-                              : (activeTab === 'my_review' || activeTab === 'approved') && client.edited_first_year_fixed_charge !== null
+                            activeTab === 'approved'
+                              ? (client.edited_first_year_percentage !== null
+                                  ? `${client.edited_first_year_percentage}%`
+                                  : client.edited_first_year_fixed_charge !== null
+                                    ? formatCurrency(client.edited_first_year_fixed_charge)
+                                    : client.payable_first_year_percentage
+                                      ? `${client.payable_first_year_percentage}%`
+                                      : formatCurrency(client.payable_first_year_fixed_charge)
+                                )
+                              : (activeTab === 'my_review' && client.edited_first_year_percentage !== null)
+                                ? `${client.edited_first_year_percentage}%`
+                              : (activeTab === 'my_review' && client.edited_first_year_fixed_charge !== null)
                                 ? formatCurrency(client.edited_first_year_fixed_charge)
-                                : client.payable_first_year_percentage 
-                                  ? `${client.payable_first_year_percentage}%` 
-                                  : formatCurrency(client.payable_first_year_fixed_charge)
+                              : client.payable_first_year_percentage 
+                                ? `${client.payable_first_year_percentage}%` 
+                              : formatCurrency(client.payable_first_year_fixed_charge)
                           }
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       {getStatusBadge(client)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
-                        <button
-                          onClick={() => handleEdit(client)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                          title="Configure"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                      )}
-                      {activeTab === 'my_review' && (
-                        <button
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setShowUpdateForm(false);
-                          }}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Review Changes"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
+                    {activeTab !== 'approved' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+                        {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
+                          <button
+                            onClick={() => handleEdit(client)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            title="Configure"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                        )}
+                        {activeTab === 'my_review' && (
+                          <button
+                            onClick={() => {
+                              setSelectedClient(client);
+                              setShowUpdateForm(false);
+                            }}
+                            className="text-purple-600 hover:text-purple-900"
+                            title="Review Changes"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
