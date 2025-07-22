@@ -9,6 +9,7 @@ import AdminPermission from './adminPermissionModel.js';
 import ArchivedLead from './archivedLeadModel.js';
 import SpecialUserPermission from './specialUserPermissionModel.js';
 import EnrolledClients from './enrolledClientsModel.js';
+import Installments from './installmentsModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -328,6 +329,18 @@ User.hasMany(EnrolledClients, {
   as: 'updatedEnrolledClients'
 });
 
+// Installments associations
+Installments.belongsTo(EnrolledClients, {
+  foreignKey: 'enrolledClientId',
+  as: 'enrolledClient',
+  onDelete: 'CASCADE'
+});
+
+EnrolledClients.hasMany(Installments, {
+  foreignKey: 'enrolledClientId',
+  as: 'installments'
+});
+
 // Function to sync all models in the correct order
 export const syncModels = async () => {
   try {
@@ -377,6 +390,9 @@ export const syncModels = async () => {
     await EnrolledClients.sync({ alter: true });
     console.log('EnrolledClients table synced successfully');
 
+    await Installments.sync({ alter: true });
+    console.log('Installments table synced successfully');
+
     // Re-enable foreign key checks
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
 
@@ -398,5 +414,6 @@ export {
   AdminPermission,
   ArchivedLead,
   SpecialUserPermission,
-  EnrolledClients
+  EnrolledClients,
+  Installments
 };

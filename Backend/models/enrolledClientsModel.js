@@ -104,16 +104,12 @@ const EnrolledClients = sequelize.define(
     edited_enrollment_charge: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
-      validate: {
-        min: 0
-      }
+      validate: { min: 0 }
     },
     edited_offer_letter_charge: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
-      validate: {
-        min: 0
-      }
+      validate: { min: 0 }
     },
     edited_first_year_percentage: {
       type: DataTypes.DECIMAL(5, 2),
@@ -202,17 +198,17 @@ const EnrolledClients = sequelize.define(
     hooks: {
       beforeUpdate: async (enrolledClient, options) => {
         // Auto-approval logic based on requirements
-        const changes = enrolledClient.changed();
+        const changedFields = enrolledClient._changed || new Set();
         
         // If admin approves without changes (approved_by_admin = 1, has_update = 0)
-        if (changes.includes('Approval_by_admin') && 
+        if (changedFields.has('Approval_by_admin') && 
             enrolledClient.Approval_by_admin === true && 
             enrolledClient.has_update === false) {
           enrolledClient.Approval_by_sales = true;
         }
         
         // If sales accepts admin changes (approved_by_sales = 1, has_update = 0)
-        if (changes.includes('Approval_by_sales') && 
+        if (changedFields.has('Approval_by_sales') && 
             enrolledClient.Approval_by_sales === true && 
             enrolledClient.has_update === false) {
           enrolledClient.Approval_by_admin = true;
