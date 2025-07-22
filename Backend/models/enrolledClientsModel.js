@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
+import path from 'path';
 
 const EnrolledClients = sequelize.define(
   "enrolledclients",
@@ -157,6 +158,21 @@ const EnrolledClients = sequelize.define(
       references: {
         model: 'users',
         key: 'id'
+      }
+    },
+    resume: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isValidPath(value) {
+          if (value) {
+            // Normalize path to forward slashes for validation
+            const normalizedPath = value.split(path.sep).join('/');
+            if (!normalizedPath.startsWith('uploads/resumes/')) {
+              throw new Error('Invalid resume path');
+            }
+          }
+        }
       }
     }
   },

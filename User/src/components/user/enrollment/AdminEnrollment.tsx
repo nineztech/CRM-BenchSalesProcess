@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import PackageFeaturesPopup from './PackageFeaturesPopup';
+import ConfirmationPopup from './ConfirmationPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -30,6 +32,7 @@ interface EnrolledClient {
     lastName: string;
     primaryEmail: string;
     primaryContact: string;
+    contactNumbers: string[];
     status: string;
     technology: string[];
     country: string;
@@ -56,6 +59,7 @@ interface EnrolledClient {
     lastname: string;
     email: string;
   } | null;
+  resume: string | null;
 }
 
 interface Package {
@@ -79,8 +83,7 @@ interface FormData {
 }
 
 const AdminEnrollment: React.FC = () => {
-  const [enrolledClients, setEnrolledClients] = useState<EnrolledClient[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
+  const [_packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedClient, setSelectedClient] = useState<EnrolledClient | null>(null);
@@ -96,6 +99,13 @@ const AdminEnrollment: React.FC = () => {
     edited_first_year_fixed_charge: null,
     pricing_type: null
   });
+  const [enrollmentData, setEnrollmentData] = useState<any>(null);
+  const [showResumePreview, setShowResumePreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPackageFeatures, setShowPackageFeatures] = useState(false);
+  const [selectedPackageForFeatures, setSelectedPackageForFeatures] = useState<{name: string; features: string[]} | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
 
   const pageSize = 10;
 
@@ -105,21 +115,11 @@ const AdminEnrollment: React.FC = () => {
   }, [currentPage, activeTab]);
 
   const fetchEnrolledClients = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      let statusFilter = '';
-      
-      if (activeTab === 'my_review') {
-        statusFilter = '&status=pending_admin';
-      } else if (activeTab === 'approved') {
-        statusFilter = '&status=approved';
-      } else if (activeTab === 'sales_pending') {
-        statusFilter = '&status=pending_sales_review';
-      }
-      // For 'all' tab, no status filter is applied
-
       const response = await axios.get(
-        `${BASE_URL}/enrolled-clients?page=${currentPage}&limit=${pageSize}${statusFilter}`,
+        `${BASE_URL}/enrolled-clients/admin/all?page=${currentPage}&limit=${pageSize}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -128,8 +128,13 @@ const AdminEnrollment: React.FC = () => {
         }
       );
       if (response.data.success) {
-        setEnrolledClients(response.data.data);
-        setTotalPages(response.data.pagination.totalPages);
+        setEnrollmentData(response.data.data);
+        // Set total pages for the current tab
+        let tabKey = 'AllEnrollments';
+        if (activeTab === 'approved') tabKey = 'Approved';
+        else if (activeTab === 'sales_pending') tabKey = 'SalesReviewPending';
+        else if (activeTab === 'my_review') tabKey = 'MyReview';
+        setTotalPages(response.data.data[tabKey]?.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching enrolled clients:', error);
@@ -258,9 +263,71 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
+  const handleResumeUpload = async (file: File, clientId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('resume', file);
+      const response = await axios.post(
+        `${BASE_URL}/enrolled-clients/${clientId}/resume`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      if (response.data.success) {
+        alert('Resume uploaded successfully!');
+        fetchEnrolledClients();
+      }
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      alert('Failed to upload resume');
+    }
+  };
+
+  const handleResumePreview = async (resumePath: string | null, clientId: number) => {
+    if (!resumePath) {
+      alert('No resume available');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/enrolled-clients/${clientId}/resume`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setShowResumePreview(true);
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+      alert('Failed to load resume');
+    }
+  };
+
+  const handleShowFeatures = (packageName: string, features: string[]) => {
+    setSelectedPackageForFeatures({ name: packageName, features });
+    setShowPackageFeatures(true);
+  };
+
   const getStatusBadge = (client: EnrolledClient) => {
+    if (!client.packageid) {
+      return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Not Configured</span>;
+    }
     if (client.Approval_by_sales && client.Approval_by_admin) {
-      return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Fully Approved</span>;
+      return (
+        <div>
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Fully Approved</span>
+          <br />
+          <span className="text-gray-500 text-xs mt-1">Initial credentials email sent.</span>
+        </div>
+      );
     } else if (client.Approval_by_admin && !client.has_update) {
       return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Admin Approved</span>;
     } else if (client.has_update) {
@@ -278,29 +345,43 @@ const AdminEnrollment: React.FC = () => {
     }).format(amount);
   };
 
-  const getFilteredClients = () => {
+  // Replace getFilteredClients to use backend data
+  const getFilteredClients = (): EnrolledClient[] => {
+    if (!enrollmentData) return [];
     if (activeTab === 'all') {
-      return enrolledClients;
+      return enrollmentData.AllEnrollments?.leads || [];
     } else if (activeTab === 'approved') {
-      return enrolledClients.filter(client => 
-        client.Approval_by_admin && client.Approval_by_sales
-      );
+      return enrollmentData.Approved?.leads || [];
     } else if (activeTab === 'sales_pending') {
-      return enrolledClients.filter(client => 
-        client.has_update && !client.Approval_by_admin
-      );
+      return enrollmentData.SalesReviewPending?.leads || [];
     } else if (activeTab === 'my_review') {
-      return enrolledClients.filter(client => 
-        client.packageid && !client.Approval_by_admin && !client.has_update
-      );
+      return enrollmentData.MyReview?.leads || [];
     }
-    return enrolledClients;
+    return [];
+  };
+
+  const handleApprovalIconClick = (client: EnrolledClient) => {
+    setPendingApprovalClient(client);
+    setShowConfirmPopup(true);
+  };
+  const handleConfirmApproval = async () => {
+    if (pendingApprovalClient) {
+      await handleApprove(pendingApprovalClient);
+      setShowConfirmPopup(false);
+      setPendingApprovalClient(null);
+    }
+  };
+  const handleCancelApproval = () => {
+    setShowConfirmPopup(false);
+    setPendingApprovalClient(null);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+        </div>
       </div>
     );
   }
@@ -313,16 +394,16 @@ const AdminEnrollment: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <FaUserCog className="text-purple-600 text-xl" />
+                <FaUserCog className="text-purple-600 text-[35px]" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Enrollment</h1>
-                <p className="text-gray-600">Review and approve enrollment configurations</p>
+                <h1 className="text-xl font-bold text-gray-900 text-start">Admin Enrollment Managment </h1>
+                <p className="text-gray-600 text-sm">Review and approve enrollment configurations</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <FaGraduationCap className="text-purple-500" />
-              <span>{getFilteredClients().length} Enrollments</span>
+              <span>{enrollmentData?.AllEnrollments?.pagination?.totalItems || 0} Enrollments</span>
             </div>
           </div>
         </div>
@@ -333,14 +414,14 @@ const AdminEnrollment: React.FC = () => {
             <nav className="-mb-px flex">
               <button
                 onClick={() => setActiveTab('all')}
-                className={`py-2 px-4 border-b-2 font-medium text-sm ${
+                className={`py-3 px-6 border-b-2 font-semibold text-base ${
                   activeTab === 'all'
                     ? 'border-purple-500 text-purple-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <FaGraduationCap className="inline mr-2" />
-                All Enrollments
+                All Enrollments ({enrollmentData?.AllEnrollments?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('approved')}
@@ -351,7 +432,7 @@ const AdminEnrollment: React.FC = () => {
                 }`}
               >
                 <FaCheckCircle className="inline mr-2" />
-                Approved
+                Approved ({enrollmentData?.Approved?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('sales_pending')}
@@ -362,7 +443,7 @@ const AdminEnrollment: React.FC = () => {
                 }`}
               >
                 <FaClock className="inline mr-2" />
-                Sales Review Pending
+                Sales Review Pending ({enrollmentData?.SalesReviewPending?.pagination?.totalItems || 0})
               </button>
               <button
                 onClick={() => setActiveTab('my_review')}
@@ -373,7 +454,7 @@ const AdminEnrollment: React.FC = () => {
                 }`}
               >
                 <FaEdit className="inline mr-2" />
-                My Review
+                My Review ({enrollmentData?.MyReview?.pagination?.totalItems || 0})
               </button>
             </nav>
           </div>
@@ -400,17 +481,18 @@ const AdminEnrollment: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Lead and Package Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="bg-gray-50 rounded-lg p-4 text-left">
                     <h3 className="font-medium text-gray-900 mb-2">Lead Information</h3>
                     <div className="space-y-2 text-sm">
                       <div><span className="font-medium">Name:</span> {selectedClient.lead.firstName} {selectedClient.lead.lastName}</div>
                       <div><span className="font-medium">Email:</span> {selectedClient.lead.primaryEmail}</div>
+                      <div><span className="font-medium">Phone:</span> {selectedClient.lead.contactNumbers?.join(', ')}</div>
                       <div><span className="font-medium">Technology:</span> {selectedClient.lead.technology?.join(', ') || 'No technology specified'}</div>
                       <div><span className="font-medium">Visa Status:</span> {selectedClient.lead.visaStatus}</div>
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="bg-blue-50 rounded-lg p-4 text-start">
                     <h3 className="font-medium text-gray-900 mb-2">Package Information</h3>
                     <div className="space-y-2 text-sm">
                       <div><span className="font-medium">Package:</span> {selectedClient.package?.planName}</div>
@@ -596,9 +678,56 @@ const AdminEnrollment: React.FC = () => {
           </div>
         )}
 
+        {/* Add Resume Preview Modal */}
+        {showResumePreview && previewUrl && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl h-[95vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Resume Preview</h2>
+                <button
+                  onClick={() => {
+                    setShowResumePreview(false);
+                    if (previewUrl) {
+                      window.URL.revokeObjectURL(previewUrl);
+                      setPreviewUrl(null);
+                    }
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="flex-1 h-full">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full rounded-lg border-0"
+                  title="Resume Preview"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Package Features Popup */}
+        {selectedPackageForFeatures && (
+          <PackageFeaturesPopup
+            isOpen={showPackageFeatures}
+            onClose={() => {
+              setShowPackageFeatures(false);
+              setSelectedPackageForFeatures(null);
+            }}
+            packageName={selectedPackageForFeatures.name}
+            features={selectedPackageForFeatures.features}
+          />
+        )}
+
         {/* Enrolled Clients Grid */}
         <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6 border-b border-gray-200">
+          {/* <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
               {activeTab === 'all' && 'All Enrollments'}
               {activeTab === 'approved' && 'Approved Enrollments'}
@@ -611,14 +740,18 @@ const AdminEnrollment: React.FC = () => {
               {activeTab === 'sales_pending' && 'Enrollments sent back to sales for review'}
               {activeTab === 'my_review' && 'Review and approve enrollment configurations from sales team'}
             </p>
-          </div>
+          </div> */}
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Lead Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Enrolled Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Package & Sales Person
@@ -626,97 +759,177 @@ const AdminEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Pricing Configuration
                   </th>
+                
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Resume
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {activeTab === 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      First Call Status
+                    </th>
+                  )}
+                  {activeTab !== 'all' && activeTab !== 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {getFilteredClients().map((client) => (
+                {getFilteredClients().map((client: EnrolledClient, idx: number) => (
                   <tr key={client.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {client.lead.firstName} {client.lead.lastName}
                           </div>
                           <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+                          {client.lead.contactNumbers && (
+                            <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+                          )}
                           <div className="text-xs text-gray-400">
                             {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        <div className="font-medium">{client.package ? client.package.planName : 'Not Selected'}</div>
-                        <div className="text-gray-500">
-                          {client.salesPerson ? `${client.salesPerson.firstname} ${client.salesPerson.lastname}` : 'No Sales Person'}
-                        </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <span className="text-sm text-gray-900">
+                        {new Date(client.createdAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <div className="text-sm text-gray-900 flex items-center gap-2">
+                        {client.package ? (
+                          <>
+                            <button
+                              onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="View Package Features"
+                            >
+                              <FaInfoCircle className="w-4 h-4" />
+                            </button>
+                            {client.package.planName}
+                          </>
+                        ) : (
+                          'Not Selected'
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="text-sm text-gray-900">
                         <div>Enrollment: {formatCurrency(
-                          activeTab === 'sales_pending' && client.edited_enrollment_charge !== null
-                            ? client.edited_enrollment_charge
-                            : client.payable_enrollment_charge
+                          activeTab === 'approved'
+                            ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
+                            : activeTab === 'sales_pending' && client.edited_enrollment_charge !== null
+                              ? client.edited_enrollment_charge
+                              : client.payable_enrollment_charge
                         )}</div>
                         <div>Offer Letter: {formatCurrency(
-                          activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null
-                            ? client.edited_offer_letter_charge
-                            : client.payable_offer_letter_charge
+                          activeTab === 'approved'
+                            ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+                            : activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null
+                              ? client.edited_offer_letter_charge
+                              : client.payable_offer_letter_charge
                         )}</div>
                         <div>
                           First Year: {
-                            activeTab === 'sales_pending' && client.edited_first_year_percentage !== null
-                              ? `${client.edited_first_year_percentage}%`
+                            activeTab === 'approved'
+                              ? (client.edited_first_year_percentage !== null
+                                  ? `${client.edited_first_year_percentage}%`
+                                  : client.edited_first_year_fixed_charge !== null
+                                    ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
+                                    : client.payable_first_year_percentage
+                                      ? `${client.payable_first_year_percentage}%`
+                                      : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
+                                )
+                              : activeTab === 'sales_pending' && client.edited_first_year_percentage !== null
+                                ? `${client.edited_first_year_percentage}%`
                               : activeTab === 'sales_pending' && client.edited_first_year_fixed_charge !== null
-                                ? formatCurrency(client.edited_first_year_fixed_charge)
-                                : client.payable_first_year_percentage 
-                                  ? `${client.payable_first_year_percentage}%` 
-                                  : formatCurrency(client.payable_first_year_fixed_charge)
+                                ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
+                              : client.payable_first_year_percentage 
+                                ? `${client.payable_first_year_percentage}%` 
+                              : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
                           }
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {client.resume ? (
+                        <button
+                          onClick={() => handleResumePreview(client.resume, client.id)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+                          title="View Resume"
+                        >
+                          <FaFilePdf className="w-4 h-4" />
+                          <span>View</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No Resume</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-start">
+                      <a
+                        href={`mailto:${client.lead.primaryEmail}`}
+                        className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+                        title="Send Email"
+                      >
+                        {/* <FaEnvelope className="w-4 h-4" /> */}
+                        <span>Send Email</span>
+                      </a>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       {getStatusBadge(client)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
-                        {activeTab === 'my_review' && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(client)}
-                              className="text-green-600 hover:text-green-900"
-                              title="Quick Approve"
-                            >
-                              <FaCheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleReview(client)}
-                              className="text-purple-600 hover:text-purple-900"
-                              title="Review & Edit"
-                            >
-                              <FaEdit className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        {activeTab === 'all' && (
-                          <button
-                            onClick={() => handleReview(client)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    {activeTab === 'approved' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start">
+                        {(() => {
+                          const statuses = ['pending', 'onhold', 'Done'];
+                          const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                          let badgeColor = '';
+                          if (randomStatus === 'pending') {
+                            badgeColor = 'bg-yellow-100 text-yellow-800';
+                          } else if (randomStatus === 'onhold') {
+                            badgeColor = 'bg-red-100 text-red-800';
+                          } else {
+                            badgeColor = 'bg-green-100 text-green-800';
+                          }
+                          return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
+                        })()}
+                      </td>
+                    )}
+                    {activeTab !== 'all' && activeTab !== 'approved' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+                        <div className="flex gap-2">
+                          {activeTab === 'my_review' && (
+                            <>
+                              <button
+                                onClick={() => handleApprovalIconClick(client)}
+                                className="text-green-600 hover:text-green-900"
+                                title="Quick Approve"
+                              >
+                                <FaCheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleReview(client)}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Review & Edit"
+                              >
+                                <FaEdit className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -770,6 +983,14 @@ const AdminEnrollment: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Render ConfirmationPopup for approval */}
+      <ConfirmationPopup
+        open={showConfirmPopup}
+        message="Are you sure you want to approve?"
+        onConfirm={handleConfirmApproval}
+        onCancel={handleCancelApproval}
+      />
     </div>
   );
 };

@@ -7,9 +7,15 @@ import {
   updateEnrolledClientBySales,
   adminApprovalAction,
   salesApprovalAction,
-  deleteEnrolledClient
+  deleteEnrolledClient,
+  getAllEnrolledClientsForSales,
+  getAllEnrolledClientsForAdmin,
+  uploadResume,
+  deleteResume,
+  serveResume
 } from '../controllers/enrolledClientsController.js';
 import verifyToken  from '../middleware/auth.js';
+import { resumeUpload } from '../config/multerconfig.js';
 
 const router = express.Router();
 
@@ -18,7 +24,11 @@ router.post('/', verifyToken, createEnrolledClient);
 
 // Get all enrolled clients with pagination and filtering
 router.get('/', getAllEnrolledClients);
+// Get all enrolled clients for sales with categorized data
+router.get('/sales/all', getAllEnrolledClientsForSales);
 
+// Get all enrolled clients for admin with categorized data
+router.get('/admin/all', getAllEnrolledClientsForAdmin);
 // Get enrolled client by ID
 router.get('/:id', verifyToken, getEnrolledClientById);
 
@@ -36,5 +46,14 @@ router.put('/sales/approval/:id', verifyToken, salesApprovalAction);
 
 // Delete enrolled client
 router.delete('/:id', verifyToken, deleteEnrolledClient);
+
+// Upload resume
+router.post('/:id/resume', verifyToken, resumeUpload.single('resume'), uploadResume);
+
+// Delete resume
+router.delete('/:id/resume', verifyToken, deleteResume);
+
+// Serve resume file
+router.get('/:id/resume', verifyToken, serveResume);
 
 export default router; 

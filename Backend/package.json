@@ -27,6 +27,7 @@
     "jwt-decode": "^4.0.0",
     "moment-timezone": "^0.6.0",
     "mongoose": "^8.15.0",
+    "multer": "^2.0.2",
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.3",
     "react-hot-toast": "^2.5.2",

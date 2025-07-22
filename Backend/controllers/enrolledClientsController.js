@@ -3,6 +3,11 @@ import Lead from '../models/leadModel.js';
 import User from '../models/userModel.js';
 import Packages from '../models/packagesModel.js';
 import { Op } from 'sequelize';
+import fs from 'fs';
+import { promisify } from 'util';
+import path from 'path';
+import express from 'express';
+const unlinkAsync = promisify(fs.unlink);
 
 // Create enrolled client (automatically called when lead status changes to enrolled)
 export const createEnrolledClient = async (req, res) => {
@@ -117,7 +122,7 @@ export const getAllEnrolledClients = async (req, res) => {
         {
           model: Packages,
           as: 'package',
-          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice']
+          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -286,7 +291,11 @@ export const adminApprovalAction = async (req, res) => {
         Approval_by_admin: true,
         Admin_id,
         has_update: false,
-        updatedBy
+        updatedBy,
+        edited_enrollment_charge: enrolledClient.payable_enrollment_charge,
+        edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge,
+        edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
+        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
       });
       // Auto-approval by sales will be handled in the beforeUpdate hook
     } else {
@@ -477,4 +486,372 @@ const handleError = (error, res) => {
     message: 'Internal server error',
     error: error.message 
   });
+}; 
+
+// Get all enrolled clients for sales with categorized data
+export const getAllEnrolledClientsForSales = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sales_person_id } = req.query;
+    const offset = (page - 1) * limit;
+
+    const includeConfig = [
+      {
+        model: Lead,
+        as: 'lead',
+        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus'],
+        where: { status: 'Enrolled' } // Only get enrolled leads
+      },
+      {
+        model: User,
+        as: 'salesPerson',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: User,
+        as: 'admin',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: Packages,
+        as: 'package',
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
+      }
+    ];
+
+    // All Enrollments - get all enrolled leads
+    const allEnrollments = await EnrolledClients.findAndCountAll({
+      where: sales_person_id ? { Sales_person_id: sales_person_id } : {},
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Approved Enrollments
+    const approvedEnrollments = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Admin Review Pending
+    const adminReviewPending = await EnrolledClients.findAndCountAll({
+      where: {
+        packageid: { [Op.ne]: null },
+        Approval_by_admin: false,
+        has_update: false,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // My Review (Sales Review Pending)
+    const myReview = await EnrolledClients.findAndCountAll({
+      where: {
+        has_update: true,
+        Approval_by_admin: false,
+        ...(sales_person_id && { Sales_person_id: sales_person_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    const createPaginationInfo = (count) => ({
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      totalItems: count,
+      itemsPerPage: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Enrolled clients retrieved successfully',
+      data: {
+        AllEnrollments: {
+          leads: allEnrollments.rows,
+          pagination: createPaginationInfo(allEnrollments.count)
+        },
+        Approved: {
+          leads: approvedEnrollments.rows,
+          pagination: createPaginationInfo(approvedEnrollments.count)
+        },
+        AdminReviewPending: {
+          leads: adminReviewPending.rows,
+          pagination: createPaginationInfo(adminReviewPending.count)
+        },
+        MyReview: {
+          leads: myReview.rows,
+          pagination: createPaginationInfo(myReview.count)
+        }
+      }
+    });
+
+  } catch (error) {
+    handleError(error, res);
+  }
+};
+
+// Get all enrolled clients for admin with categorized data
+export const getAllEnrolledClientsForAdmin = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, admin_id } = req.query;
+    const offset = (page - 1) * limit;
+
+    const includeConfig = [
+      {
+        model: Lead,
+        as: 'lead',
+        attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers'],
+        where: { status: 'Enrolled' } // Only get enrolled leads
+      },
+      {
+        model: User,
+        as: 'salesPerson',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: User,
+        as: 'admin',
+        attributes: ['id', 'firstname', 'lastname', 'email']
+      },
+      {
+        model: Packages,
+        as: 'package',
+        attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice','features']
+      }
+    ];
+
+    // All Enrollments - get all enrolled leads
+    const allEnrollments = await EnrolledClients.findAndCountAll({
+      where: admin_id ? { Admin_id: admin_id } : {},
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Approved Enrollments
+    const approvedEnrollments = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Sales Review Pending
+    const salesReviewPending = await EnrolledClients.findAndCountAll({
+      where: {
+        has_update: true,
+        Approval_by_admin: false,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    // My Review (Admin Review Pending)
+    const myReview = await EnrolledClients.findAndCountAll({
+      where: {
+        packageid: { [Op.ne]: null },
+        Approval_by_admin: false,
+        has_update: false,
+        ...(admin_id && { Admin_id: admin_id })
+      },
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include: includeConfig,
+      order: [['createdAt', 'DESC']]
+    });
+
+    const createPaginationInfo = (count) => ({
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      totalItems: count,
+      itemsPerPage: parseInt(limit)
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Enrolled clients retrieved successfully',
+      data: {
+        AllEnrollments: {
+          leads: allEnrollments.rows,
+          pagination: createPaginationInfo(allEnrollments.count)
+        },
+        Approved: {
+          leads: approvedEnrollments.rows,
+          pagination: createPaginationInfo(approvedEnrollments.count)
+        },
+        SalesReviewPending: {
+          leads: salesReviewPending.rows,
+          pagination: createPaginationInfo(salesReviewPending.count)
+        },
+        MyReview: {
+          leads: myReview.rows,
+          pagination: createPaginationInfo(myReview.count)
+        }
+      }
+    });
+
+  } catch (error) {
+    handleError(error, res);
+  }
+}; 
+
+// Upload resume for enrolled client
+export const uploadResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No resume file provided'
+      });
+    }
+
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      // Delete uploaded file if client not found
+      await unlinkAsync(req.file.path);
+      return res.status(404).json({
+        success: false,
+        message: 'Enrolled client not found'
+      });
+    }
+
+    // Delete old resume if exists
+    if (enrolledClient.resume) {
+      try {
+        await unlinkAsync(enrolledClient.resume);
+      } catch (error) {
+        console.error('Error deleting old resume:', error);
+      }
+    }
+
+    // Normalize path with forward slashes
+    const normalizedPath = req.file.path.split(path.sep).join('/');
+
+    // Update resume path
+    await enrolledClient.update({
+      resume: normalizedPath,
+      updatedBy: req.user.id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume uploaded successfully',
+      data: {
+        resumePath: enrolledClient.resume
+      }
+    });
+
+  } catch (error) {
+    // Delete uploaded file if error occurs
+    if (req.file) {
+      try {
+        await unlinkAsync(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting file after upload error:', unlinkError);
+      }
+    }
+    console.error('Error uploading resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Delete resume
+export const deleteResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrolled client not found'
+      });
+    }
+
+    if (!enrolledClient.resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'No resume found for this client'
+      });
+    }
+
+    // Delete resume file
+    try {
+      await unlinkAsync(enrolledClient.resume);
+    } catch (error) {
+      console.error('Error deleting resume file:', error);
+    }
+
+    // Update client record
+    await enrolledClient.update({
+      resume: null,
+      updatedBy: req.user.id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}; 
+
+// Serve resume file
+export const serveResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient || !enrolledClient.resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume not found'
+      });
+    }
+
+    // Send the file
+    res.sendFile(enrolledClient.resume, { root: '.' });
+
+  } catch (error) {
+    console.error('Error serving resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
 }; 
