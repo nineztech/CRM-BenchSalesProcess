@@ -233,6 +233,80 @@ export const sendOtpEmail = async (userData) => {
   }
 };
 
+export const sendClientWelcomeEmail = async (clientData) => {
+  console.log('Attempting to send welcome email to client:', clientData.primaryEmail);
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    to: clientData.primaryEmail,
+    subject: 'Welcome to Your Client Portal - CRM Bench Sales Process',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <!-- Header -->
+            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Welcome to Your Client Portal</h1>
+            </div>
+
+            <!-- Content -->
+            <div class="content" style="padding: 32px 40px;">
+              <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Dear ${clientData.firstName} ${clientData.lastName},</p>
+              
+              <p style="color: #64748b; font-size: 15px; margin: 0 0 24px 0;">Welcome to the CRM Bench Sales Process client portal! Your account has been created successfully. Below are your login credentials:</p>
+
+              <!-- Credentials Box -->
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 16px 0;">
+                  <strong style="color: #334155;">Username:</strong>
+                  <span style="color: #64748b; font-family: monospace; font-size: 15px; margin-left: 8px;">${clientData.username}</span>
+                </p>
+                <p style="margin: 0;">
+                  <strong style="color: #334155;">Password:</strong>
+                  <span style="color: #64748b; font-family: monospace; font-size: 15px; margin-left: 8px;">${clientData.password}</span>
+                </p>
+              </div>
+
+              <p style="color: #64748b; font-size: 15px; margin: 0 0 24px 0;">For security reasons, we recommend changing your password after your first login.</p>
+
+              <div style="margin-top: 32px;">
+                <p style="color: #334155; font-size: 15px; margin: 0 0 8px 0;">Best regards,</p>
+                <p style="color: #334155; font-size: 15px; margin: 0;">CRM Bench Sales Process Team</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
+              <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">CRM Bench Sales Process</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+  };
+
+  try {
+    console.log('Sending client welcome email...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Client welcome email sent successfully:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending client welcome email:', error);
+    return false;
+  }
+};
+
 const getEmailHeader = (userData) => {
   // Handle both property name formats and add null checks
   const firstName = (userData?.firstname || userData?.firstName || '').toUpperCase();

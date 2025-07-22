@@ -7,6 +7,7 @@ import fs from 'fs';
 import { promisify } from 'util';
 import path from 'path';
 import express from 'express';
+import { createClientUser } from './clientUserController.js';
 const unlinkAsync = promisify(fs.unlink);
 
 // Create enrolled client (automatically called when lead status changes to enrolled)
@@ -297,6 +298,21 @@ export const adminApprovalAction = async (req, res) => {
         edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
         edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
       });
+
+      // Create client user if both admin and sales have approved
+      if (enrolledClient.Approval_by_sales) {
+        try {
+          const { clientUser, plainPassword } = await createClientUser(id);
+          // Here you can send email to client with their credentials
+          console.log('Client user created successfully:', {
+            username: clientUser.username,
+            password: plainPassword
+          });
+        } catch (error) {
+          console.error('Error creating client user:', error);
+          // Don't throw error here as the main approval process was successful
+        }
+      }
       // Auto-approval by sales will be handled in the beforeUpdate hook
     } else {
       // Admin rejects/updates with changes

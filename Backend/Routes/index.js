@@ -13,6 +13,7 @@ import searchRoutes from './searchRoutes.js'
 import enrolledClientsRoutes from './enrolledClientsRoutes.js'
 import installmentsRoutes from './installmentsRoutes.js'
 import clientAssignmentRoutes from './clientAssignmentRoutes.js'
+import clientUserRoutes from './clientUserRoutes.js';
 
 
 import express from 'express'
@@ -33,6 +34,7 @@ router.use('/search', searchRoutes)
 router.use('/enrolled-clients', enrolledClientsRoutes)
 router.use('/installments', installmentsRoutes)
 router.use('/client-assignments', clientAssignmentRoutes)
+router.use('/api/clientusers', clientUserRoutes);
 
 
 export default router
