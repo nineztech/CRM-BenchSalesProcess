@@ -9,6 +9,7 @@ import AdminPermission from './adminPermissionModel.js';
 import ArchivedLead from './archivedLeadModel.js';
 import SpecialUserPermission from './specialUserPermissionModel.js';
 import EnrolledClients from './enrolledClientsModel.js';
+import Installments from './installmentsModel.js';
 import ClientAssignment from './clientAssignmentModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
@@ -372,6 +373,17 @@ ClientAssignment.belongsTo(User, {
   onDelete: 'SET NULL'
 });
 
+// Installments associations
+Installments.belongsTo(EnrolledClients, {
+  foreignKey: 'enrolledClientId',
+  as: 'enrolledClient',
+  onDelete: 'CASCADE'
+});
+
+EnrolledClients.hasMany(Installments, {
+  foreignKey: 'enrolledClientId',
+  as: 'installments'
+});
 // User reverse associations for ClientAssignment
 User.hasMany(ClientAssignment, {
   foreignKey: 'assignedToId',
@@ -434,8 +446,8 @@ export const syncModels = async () => {
     await AdminPermission.sync({ alter: true });
     console.log('AdminPermission table synced successfully');
 
-    // Create Lead and ArchivedLead tables
-    // Create SpecialUserPermission table
+   await Installments.sync({ alter: true });
+    console.log('Installments table synced successfully');
     await SpecialUserPermission.sync({ alter: true });
     console.log('SpecialUserPermission table synced successfully');
 
@@ -481,5 +493,6 @@ export {
   ArchivedLead,
   SpecialUserPermission,
   EnrolledClients,
+  Installments,
   ClientAssignment
 };

@@ -5,13 +5,13 @@ import DepartmentRoute from './departmentRoutes.js'
 import PackagesRoute from './packagesRoutes.js'
 import LeadAssignRoute from './leadAssignmentRoutes.js'
 import activityRoutes from './activityRoutes.js'
-
 import rolePermissionRoutes from './rolePermissionRoutes.js'
 import adminPermissionRoutes from './adminPermissionRoutes.js'
 import archivedLeadRoutes from './archivedLeadRoutes.js'
 import specialUserPermissionRoutes from './specialUserPermissionRoutes.js'
 import searchRoutes from './searchRoutes.js'
 import enrolledClientsRoutes from './enrolledClientsRoutes.js'
+import installmentsRoutes from './installmentsRoutes.js'
 import clientAssignmentRoutes from './clientAssignmentRoutes.js'
 
 
@@ -31,6 +31,7 @@ router.use('/archived-leads', archivedLeadRoutes)
 router.use('/special-user-permission', specialUserPermissionRoutes)
 router.use('/search', searchRoutes)
 router.use('/enrolled-clients', enrolledClientsRoutes)
+router.use('/installments', installmentsRoutes)
 router.use('/client-assignments', clientAssignmentRoutes)
 
 
