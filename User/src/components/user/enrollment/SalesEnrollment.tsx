@@ -532,18 +532,20 @@ const SalesEnrollment: React.FC = () => {
 
       // If enrolled client update is successful, create initial payment and installments
       if (response.data.success) {
-        // Create initial payment as first installment if it exists
+        // Create initial payment first if it exists
         if (formData.initial_payment && formData.initial_payment > 0) {
           await axios.post(
             `${BASE_URL}/installments`,
             {
               enrolledClientId: selectedClient.id,
               charge_type: 'enrollment_charge',
-              installment_number: 1,
+              installment_number: 0, // Set to 0 for initial payment
               amount: formData.initial_payment,
               dueDate: new Date().toISOString().split('T')[0],
-              remark: 'Initial Payment',
-              is_initial_payment: true
+              remark: 'Initial Payment at Enrollment',
+              is_initial_payment: true, // This will be determined by installment_number in backend
+              paid: true, // Initial payment is always paid
+              paidDate: new Date().toISOString().split('T')[0]
             },
             {
               headers: {
@@ -554,7 +556,7 @@ const SalesEnrollment: React.FC = () => {
           );
         }
 
-        // Create remaining installments with adjusted installment numbers
+        // Create remaining installments with sequential numbering starting from 1
         if (formData.enrollment_installments.length > 0) {
           const installmentPromises = formData.enrollment_installments.map((installment, index) => 
             axios.post(
@@ -562,8 +564,11 @@ const SalesEnrollment: React.FC = () => {
               {
                 enrolledClientId: selectedClient.id,
                 charge_type: 'enrollment_charge',
-                installment_number: index + 2, // Start from 2 since 1 is initial payment
-                ...installment
+                installment_number: index + 1, // Start from 1 for regular installments
+                amount: installment.amount,
+                dueDate: installment.dueDate,
+                remark: installment.remark,
+                is_initial_payment: false // Regular installments are never initial payments
               },
               {
                 headers: {

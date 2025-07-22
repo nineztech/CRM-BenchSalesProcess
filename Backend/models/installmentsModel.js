@@ -19,7 +19,7 @@ const Installments = sequelize.define('installments', {
   installment_number: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    validate: { min: 1 }
+    validate: { min: 0 }
   },
   charge_type: {
     type: DataTypes.ENUM('enrollment_charge', 'offer_letter_charge', 'first_year_charge'),
