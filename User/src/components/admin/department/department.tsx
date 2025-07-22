@@ -44,6 +44,7 @@ interface Department {
   departmentName: string;
   subroles: string[];
   isSalesTeam: boolean;
+  isMarketingTeam: boolean;
   status: string;
   createdAt: string;
   updatedAt: string | null;
@@ -108,13 +109,16 @@ const AddDepartment: React.FC = () => {
   const [departmentName, setDepartmentName] = useState('');
   const [subroles, setSubroles] = useState<string[]>([]);
   const [isSalesTeam, setIsSalesTeam] = useState(false);
+  const [isMarketingTeam, setIsMarketingTeam] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [salesTeamExists, setSalesTeamExists] = useState(false);
+  const [marketingTeamExists, setMarketingTeamExists] = useState(false);
   const [existingSalesTeamDept, setExistingSalesTeamDept] = useState<{id: number, departmentName: string} | null>(null);
+  const [existingMarketingTeamDept, setExistingMarketingTeamDept] = useState<{id: number, departmentName: string} | null>(null);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -123,6 +127,7 @@ const AddDepartment: React.FC = () => {
   });
   const [showRolesPopup, setShowRolesPopup] = useState(false);
   const [savedDepartment, setSavedDepartment] = useState<{ id: number; name: string } | null>(null);
+  const [teamType, setTeamType] = useState('none'); // Add this new state
 
  const API_BASE_URL=import.meta.env.VITE_API_URL|| "http://localhost:5006/api"
 
@@ -169,7 +174,20 @@ const AddDepartment: React.FC = () => {
     }
     fetchDepartments();
     checkSalesTeamExists();
+    checkMarketingTeamExists();
   }, [navigate]);
+
+  useEffect(() => {
+    if (editingDepartment) {
+      if (editingDepartment.isSalesTeam) {
+        setTeamType('sales');
+      } else if (editingDepartment.isMarketingTeam) {
+        setTeamType('marketing');
+      } else {
+        setTeamType('none');
+      }
+    }
+  }, [editingDepartment]);
 
   const fetchDepartments = async () => {
     try {
@@ -181,6 +199,8 @@ const AddDepartment: React.FC = () => {
         setDepartments(response.data.data);
         setSalesTeamExists(response.data.data.some((dept: Department) => dept.isSalesTeam));
         setExistingSalesTeamDept(response.data.data.find((dept: Department) => dept.isSalesTeam) as {id: number, departmentName: string} | null);
+        setMarketingTeamExists(response.data.data.some((dept: Department) => dept.isMarketingTeam));
+        setExistingMarketingTeamDept(response.data.data.find((dept: Department) => dept.isMarketingTeam) as {id: number, departmentName: string} | null);
       } else {
         console.error("Failed to fetch departments", response.data.message);
         toast.error('Failed to fetch departments');
@@ -208,6 +228,18 @@ const AddDepartment: React.FC = () => {
     }
   };
 
+  const checkMarketingTeamExists = async () => {
+    try {
+      const response = await axiosInstance.get('/department/check/marketing-team');
+      if (response.data.success) {
+        setMarketingTeamExists(response.data.data.exists);
+        setExistingMarketingTeamDept(response.data.data.department);
+      }
+    } catch (error: unknown) {
+      console.error('Error checking marketing team existence:', error);
+    }
+  };
+
   const handleAddSubrole = () => {
     if (currentRole.trim()) {
       setSubroles([...subroles, currentRole.trim()]);
@@ -217,6 +249,29 @@ const AddDepartment: React.FC = () => {
 
   const handleRemoveSubrole = (index: number) => {
     setSubroles(subroles.filter((_, i) => i !== index));
+  };
+
+  const handleTeamTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    // Only allow change if not editing and team doesn't exist, or if editing this specific team
+    if (!editingDepartment) {
+      if ((value === 'sales' && !salesTeamExists) || 
+          (value === 'marketing' && !marketingTeamExists) || 
+          value === 'none') {
+        setTeamType(value);
+        setIsSalesTeam(value === 'sales');
+        setIsMarketingTeam(value === 'marketing');
+      }
+    } else {
+      // If editing, allow changes only for the current department
+      if ((value === 'sales' && (!salesTeamExists || editingDepartment.isSalesTeam)) || 
+          (value === 'marketing' && (!marketingTeamExists || editingDepartment.isMarketingTeam)) || 
+          value === 'none') {
+        setTeamType(value);
+        setIsSalesTeam(value === 'sales');
+        setIsMarketingTeam(value === 'marketing');
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -237,12 +292,19 @@ const AddDepartment: React.FC = () => {
       return;
     }
 
+    // Check if trying to create a new marketing team when one already exists
+    if (!editingDepartment && isMarketingTeam && marketingTeamExists) {
+      alert('A marketing team department already exists. Only one marketing team department is allowed.');
+      return;
+    }
+
     try {
       setIsLoading(true);
       const payload = {
         departmentName: departmentName.trim(),
         subroles: subroles,
-        isSalesTeam: isSalesTeam
+        isSalesTeam: isSalesTeam,
+        isMarketingTeam: isMarketingTeam
       };
 
       if (editingDepartment) {
@@ -262,9 +324,11 @@ const AddDepartment: React.FC = () => {
       setDepartmentName('');
       setSubroles([]);
       setIsSalesTeam(false);
+      setIsMarketingTeam(false);
       setEditingDepartment(null);
       fetchDepartments();
       checkSalesTeamExists();
+      checkMarketingTeamExists();
     } catch (error) {
       console.error('Error:', error);
       toast.error('Operation failed');
@@ -278,11 +342,19 @@ const AddDepartment: React.FC = () => {
     setDepartmentName(dept.departmentName);
     setSubroles(dept.subroles || []);
     setIsSalesTeam(dept.isSalesTeam);
+    setIsMarketingTeam(dept.isMarketingTeam);
+    setTeamType(dept.isSalesTeam ? 'sales' : dept.isMarketingTeam ? 'marketing' : 'none');
     
     // If editing the existing sales team department, update the state
     if (dept.isSalesTeam) {
       setSalesTeamExists(true);
       setExistingSalesTeamDept({ id: dept.id, departmentName: dept.departmentName });
+    }
+
+    // If editing the existing marketing team department, update the state
+    if (dept.isMarketingTeam) {
+      setMarketingTeamExists(true);
+      setExistingMarketingTeamDept({ id: dept.id, departmentName: dept.departmentName });
     }
   };
 
@@ -324,6 +396,17 @@ const AddDepartment: React.FC = () => {
     });
   };
 
+  const handleFormReset = () => {
+    setDepartmentName('');
+    setSubroles([]);
+    setIsSalesTeam(false);
+    setIsMarketingTeam(false);
+    setTeamType('none');
+    setEditingDepartment(null);
+    checkSalesTeamExists();
+    checkMarketingTeamExists();
+  };
+
   const filteredDepartments = departments.filter(dept =>
     dept.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     dept.creator?.firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -351,7 +434,7 @@ const AddDepartment: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="form-group">
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  <label className="text-xs text-start font-medium text-gray-600 mb-1.5 block">
                     Department Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -365,7 +448,7 @@ const AddDepartment: React.FC = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                  <label className="text-xs text-start font-medium text-gray-600 mb-1.5 block">
                     Add Roles <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
@@ -420,24 +503,49 @@ const AddDepartment: React.FC = () => {
                 </div>
               </div>
 
-              <div className="form-group flex flex-row gap-2">
-                  <input
-                     type="checkbox"
-                     checked={isSalesTeam}
-                     onChange={(e) => setIsSalesTeam(e.target.checked)}
-                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 "
-                     disabled={isLoading || (salesTeamExists && !editingDepartment?.isSalesTeam)}
-                   />
-                     <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
-                  
-                    Is Sales Team
-                  </label>
-                  {salesTeamExists && !editingDepartment?.isSalesTeam && (
-                    <span className="text-xs text-red-500 ml-2">
-                      (Sales team already exists: {existingSalesTeamDept?.departmentName})
-                    </span>
-                  )}
+              <div className="form-group space-y-2">
+                <label className="text-xs text-start ml-1 font-medium text-gray-600 mb-1.5 block">
+                  Team Type <span className="text-red-500">*</span>
+                </label>
+                <div className="relative w-48">
+                  <select
+                    value={teamType}
+                    onChange={handleTeamTypeChange}
+                    disabled={isLoading}
+                    className="w-full h-9 pl-3 pr-8 text-xs rounded-md border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all duration-200 bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none"
+                  >
+                    <option value="none">None</option>
+                    <option 
+                      value="sales" 
+                      disabled={salesTeamExists && (!editingDepartment || !editingDepartment.isSalesTeam)}
+                    >
+                      Sales Team {salesTeamExists && (!editingDepartment || !editingDepartment.isSalesTeam) ? '(Already Exists)' : ''}
+                    </option>
+                    <option 
+                      value="marketing" 
+                      disabled={marketingTeamExists && (!editingDepartment || !editingDepartment.isMarketingTeam)}
+                    >
+                      Marketing Team {marketingTeamExists && (!editingDepartment || !editingDepartment.isMarketingTeam) ? '(Already Exists)' : ''}
+                    </option>
+                  </select>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
+                {/* Show warning messages only when relevant */}
+                {teamType === 'sales' && salesTeamExists && !editingDepartment?.isSalesTeam && (
+                  <span className="text-xs text-red-500 block mt-1">
+                    Sales team already exists: {existingSalesTeamDept?.departmentName}
+                  </span>
+                )}
+                {teamType === 'marketing' && marketingTeamExists && !editingDepartment?.isMarketingTeam && (
+                  <span className="text-xs text-red-500 block mt-1">
+                    Marketing team already exists: {existingMarketingTeamDept?.departmentName}
+                  </span>
+                )}
+              </div>
 
               <div className="flex justify-end gap-3">
                 <motion.button
@@ -455,13 +563,7 @@ const AddDepartment: React.FC = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="button"
-                  onClick={() => {
-                    setDepartmentName('');
-                    setSubroles([]);
-                    setIsSalesTeam(false);
-                    setEditingDepartment(null);
-                    checkSalesTeamExists();
-                  }}
+                  onClick={handleFormReset}
                   disabled={isLoading}
                   className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 transition-colors duration-200 disabled:bg-gray-400"
                 >
@@ -515,6 +617,7 @@ const AddDepartment: React.FC = () => {
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[12%]">Department Name</th>
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[12%]">Roles</th>
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[8%]">Is Sales Team</th>
+                        <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[8%]">Is Marketing Team</th>
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[10%]">Created By</th>
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[15%]">Created At</th>
                         <th className=" p-2 text-start text-xs font-medium text-gray-600 bg-gray-50 border-b border-gray-200  w-[10%]">Updated By</th>
@@ -545,6 +648,9 @@ const AddDepartment: React.FC = () => {
                           </td>
                           <td className=" p-1.5 text-start text-sm text-gray-600 border-b border-gray-100 w-[8%] align-top">
                             {dept.isSalesTeam ? 'Yes' : 'No'}
+                          </td>
+                          <td className=" p-1.5 text-start text-sm text-gray-600 border-b border-gray-100 w-[8%] align-top">
+                            {dept.isMarketingTeam ? 'Yes' : 'No'}
                           </td>
                           <td className=" p-1.5 text-start text-sm text-gray-600 border-b border-gray-100 w-[10%] align-top">
                             {dept.creator ? `${dept.creator.firstname} ${dept.creator.lastname}` : 'N/A'}

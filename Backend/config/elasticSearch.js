@@ -423,7 +423,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
           searchQuery.bool.must.push({
             bool: {
               must_not: {
-                terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+                terms: { "status": ["Dead", "notinterested", "Enrolled", "open"] }
               }
             }
           });
@@ -446,7 +446,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
                 {
                   bool: {
                     must_not: {
-                      terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+                      terms: { "status": ["Dead", "notinterested", "Enrolled", "open"] }
                     }
                   }
                 }
@@ -472,7 +472,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
                 {
                   bool: {
                     must_not: {
-                      terms: { "status": ["Dead", "notinterested", "closed", "open"] }
+                      terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
                     }
                   }
                 }
@@ -487,10 +487,11 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
           });
           break;
 
-        case 'converted':
+        case 'Enrolled':
           searchQuery.bool.must.push({
-            term: { "status": "closed" }
-          });
+            term: { "status": "Enrolled" }
+          },
+        );
           break;
 
         case 'archived':

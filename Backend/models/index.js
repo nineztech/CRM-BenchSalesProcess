@@ -10,6 +10,7 @@ import ArchivedLead from './archivedLeadModel.js';
 import SpecialUserPermission from './specialUserPermissionModel.js';
 import EnrolledClients from './enrolledClientsModel.js';
 import Installments from './installmentsModel.js';
+import ClientAssignment from './clientAssignmentModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -329,6 +330,49 @@ User.hasMany(EnrolledClients, {
   as: 'updatedEnrolledClients'
 });
 
+// ClientAssignment associations
+ClientAssignment.belongsTo(EnrolledClients, {
+  foreignKey: 'clientId',
+  as: 'enrolledClient',
+  onDelete: 'CASCADE'
+});
+
+EnrolledClients.hasMany(ClientAssignment, {
+  foreignKey: 'clientId',
+  as: 'clientAssignments'
+});
+
+// User associations for ClientAssignment
+ClientAssignment.belongsTo(User, {
+  foreignKey: 'assignedToId',
+  as: 'assignedTo',
+  onDelete: 'RESTRICT'
+});
+
+ClientAssignment.belongsTo(User, {
+  foreignKey: 'previousAssignedId',
+  as: 'previousAssigned',
+  onDelete: 'SET NULL'
+});
+
+ClientAssignment.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator',
+  onDelete: 'RESTRICT'
+});
+
+ClientAssignment.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater',
+  onDelete: 'RESTRICT'
+});
+
+ClientAssignment.belongsTo(User, {
+  foreignKey: 'reassignedBy',
+  as: 'reassignedByUser',
+  onDelete: 'SET NULL'
+});
+
 // Installments associations
 Installments.belongsTo(EnrolledClients, {
   foreignKey: 'enrolledClientId',
@@ -339,6 +383,40 @@ Installments.belongsTo(EnrolledClients, {
 EnrolledClients.hasMany(Installments, {
   foreignKey: 'enrolledClientId',
   as: 'installments'
+});
+// User reverse associations for ClientAssignment
+User.hasMany(ClientAssignment, {
+  foreignKey: 'assignedToId',
+  as: 'assignedClientAssignments'
+});
+
+User.hasMany(ClientAssignment, {
+  foreignKey: 'previousAssignedId',
+  as: 'previousClientAssignments'
+});
+
+User.hasMany(ClientAssignment, {
+  foreignKey: 'createdBy',
+  as: 'createdClientAssignments'
+});
+
+User.hasMany(ClientAssignment, {
+  foreignKey: 'updatedBy',
+  as: 'updatedClientAssignments'
+});
+
+User.hasMany(ClientAssignment, {
+  foreignKey: 'reassignedBy',
+  as: 'reassignedClientAssignments'
+});
+
+// Add active assignment association to EnrolledClients
+EnrolledClients.hasOne(ClientAssignment, {
+  foreignKey: 'clientId',
+  as: 'activeAssignment',
+  scope: {
+    status: 'active'
+  }
 });
 
 // Function to sync all models in the correct order
@@ -368,8 +446,8 @@ export const syncModels = async () => {
     await AdminPermission.sync({ alter: true });
     console.log('AdminPermission table synced successfully');
 
-    // Create Lead and ArchivedLead tables
-    // Create SpecialUserPermission table
+   await Installments.sync({ alter: true });
+    console.log('Installments table synced successfully');
     await SpecialUserPermission.sync({ alter: true });
     console.log('SpecialUserPermission table synced successfully');
 
@@ -392,6 +470,8 @@ export const syncModels = async () => {
 
     await Installments.sync({ alter: true });
     console.log('Installments table synced successfully');
+    await ClientAssignment.sync({ alter: true });
+    console.log('ClientAssignment table synced successfully');
 
     // Re-enable foreign key checks
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
@@ -415,5 +495,6 @@ export {
   ArchivedLead,
   SpecialUserPermission,
   EnrolledClients,
-  Installments
+  Installments,
+  ClientAssignment
 };
