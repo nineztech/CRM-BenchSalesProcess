@@ -320,3 +320,129 @@ export const deleteInstallment = async (req, res) => {
     });
   }
 }; 
+
+// Admin approval/rejection for installment
+export const adminInstallmentApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      approved, 
+      admin_id, 
+      edited_amount,
+      edited_dueDate,
+      edited_remark,
+      updatedBy 
+    } = req.body;
+
+    const installment = await Installments.findByPk(id);
+    if (!installment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Installment not found' 
+      });
+    }
+
+    if (approved) {
+      // Admin approves without changes
+      await installment.update({
+        admin_id,
+        has_admin_update: false,
+        edited_amount: installment.amount,
+        edited_dueDate: installment.dueDate,
+        edited_remark: installment.remark
+      });
+      // Sales approval will be handled automatically if admin approves without changes
+      await installment.update({ sales_approval: true });
+    } else {
+      // Admin rejects/updates with changes
+      const updateData = {
+        admin_id,
+        has_admin_update: true,
+        sales_approval: false
+      };
+
+      // Add edited fields if provided
+      if (edited_amount !== undefined) {
+        updateData.edited_amount = edited_amount;
+      }
+      if (edited_dueDate !== undefined) {
+        updateData.edited_dueDate = edited_dueDate;
+      }
+      if (edited_remark !== undefined) {
+        updateData.edited_remark = edited_remark;
+      }
+
+      await installment.update(updateData);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: approved ? 'Installment approved by admin' : 'Installment updated by admin',
+      data: installment
+    });
+
+  } catch (error) {
+    console.error('Error in admin installment approval action:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+// Sales approval/rejection for admin changes to installment
+export const salesInstallmentApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved, updatedBy } = req.body;
+
+    const installment = await Installments.findByPk(id);
+    if (!installment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Installment not found' 
+      });
+    }
+
+    if (approved) {
+      // Sales accepts admin changes
+      await installment.update({
+        sales_approval: true,
+        has_admin_update: false,
+        // Apply admin's edited values
+        amount: installment.edited_amount || installment.amount,
+        dueDate: installment.edited_dueDate || installment.dueDate,
+        remark: installment.edited_remark || installment.remark,
+        // Clear edited values
+        edited_amount: null,
+        edited_dueDate: null,
+        edited_remark: null
+      });
+    } else {
+      // Sales rejects admin changes
+      await installment.update({
+        sales_approval: false,
+        has_admin_update: true,
+        // Clear edited values
+        edited_amount: null,
+        edited_dueDate: null,
+        edited_remark: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: approved ? 'Admin changes to installment approved by sales' : 'Admin changes to installment rejected by sales',
+      data: installment
+    });
+
+  } catch (error) {
+    console.error('Error in sales installment approval action:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+}; 

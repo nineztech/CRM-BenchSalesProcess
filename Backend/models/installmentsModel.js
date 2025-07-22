@@ -49,6 +49,35 @@ const Installments = sequelize.define('installments', {
   is_initial_payment: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  has_admin_update: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  edited_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    validate: { min: 0 }
+  },
+  edited_dueDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  edited_remark: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  admin_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  sales_approval: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   timestamps: true,
@@ -70,6 +99,15 @@ const Installments = sequelize.define('installments', {
     },
     {
       fields: ['is_initial_payment']
+    },
+    {
+      fields: ['has_admin_update']
+    },
+    {
+      fields: ['sales_approval']
+    },
+    {
+      fields: ['admin_id']
     },
     {
       fields: ['enrolledClientId', 'installment_number'],

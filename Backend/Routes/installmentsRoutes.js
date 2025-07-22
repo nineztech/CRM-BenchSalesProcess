@@ -4,7 +4,9 @@ import {
   getInstallmentsByEnrolledClient,
   getInstallmentById,
   updateInstallment,
-  deleteInstallment
+  deleteInstallment,
+  adminInstallmentApproval,
+  salesInstallmentApproval
 } from '../controllers/installmentsController.js';
 import verifyToken from '../middleware/auth.js';
 
@@ -24,5 +26,11 @@ router.put('/:id', verifyToken, updateInstallment);
 
 // Delete installment
 router.delete('/:id', verifyToken, deleteInstallment);
+
+// Admin approval/rejection route
+router.put('/admin/approval/:id', verifyToken, adminInstallmentApproval);
+
+// Sales approval/rejection route
+router.put('/sales/approval/:id', verifyToken, salesInstallmentApproval);
 
 export default router; 
