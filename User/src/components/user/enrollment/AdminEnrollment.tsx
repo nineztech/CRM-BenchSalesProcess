@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope, FaUserPlus, FaExchangeAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
 import ConfirmationPopup from './ConfirmationPopup';
+import AssignmentDialog from './AssignmentDialog';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -60,6 +61,11 @@ interface EnrolledClient {
     email: string;
   } | null;
   resume: string | null;
+  assignedTeamLead?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+  };
 }
 
 interface Package {
@@ -80,6 +86,20 @@ interface FormData {
   edited_first_year_percentage: number | null;
   edited_first_year_fixed_charge: number | null;
   pricing_type: 'percentage' | 'fixed' | null;
+}
+
+// Update the interface to match User interface from AssignmentDialog
+interface MarketingTeamLead {
+  id: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  status: string;
+  subrole: string;
+  departmentId: number;
+  department?: {
+    departmentName: string;
+  };
 }
 
 const AdminEnrollment: React.FC = () => {
@@ -106,13 +126,31 @@ const AdminEnrollment: React.FC = () => {
   const [selectedPackageForFeatures, setSelectedPackageForFeatures] = useState<{name: string; features: string[]} | null>(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const [selectedClientsForAssignment, setSelectedClientsForAssignment] = useState<EnrolledClient[]>([]);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [marketingTeamLeads, setMarketingTeamLeads] = useState<MarketingTeamLead[]>([]);
+  const [selectedTeamLead, setSelectedTeamLead] = useState<string>('');
+  const [isLoadingTeamLeads, setIsLoadingTeamLeads] = useState(false);
+  const [currentAssignments, setCurrentAssignments] = useState<{[key: number]: number}>({});
 
   const pageSize = 10;
 
   useEffect(() => {
     fetchEnrolledClients();
     fetchPackages();
+    fetchMarketingTeamLeads();
   }, [currentPage, activeTab]);
+
+  // Add this function to check if a client is assigned
+  const isClientAssigned = (clientId: number) => {
+    return currentAssignments.hasOwnProperty(clientId);
+  };
+
+  // Add this function to get current team lead for a client
+  const getCurrentTeamLead = (clientId: number) => {
+    return marketingTeamLeads.find(lead => lead.id === currentAssignments[clientId]);
+  };
 
   const fetchEnrolledClients = async () => {
     setLoading(true);
@@ -129,7 +167,16 @@ const AdminEnrollment: React.FC = () => {
       );
       if (response.data.success) {
         setEnrollmentData(response.data.data);
-        // Set total pages for the current tab
+        
+        // Extract current assignments
+        const assignments: {[key: number]: number} = {};
+        response.data.data.AllEnrollments?.leads.forEach((client: EnrolledClient) => {
+          if (client.assignedTeamLead) {
+            assignments[client.id] = client.assignedTeamLead.id;
+          }
+        });
+        setCurrentAssignments(assignments);
+
         let tabKey = 'AllEnrollments';
         if (activeTab === 'approved') tabKey = 'Approved';
         else if (activeTab === 'sales_pending') tabKey = 'SalesReviewPending';
@@ -151,6 +198,32 @@ const AdminEnrollment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const fetchMarketingTeamLeads = async () => {
+    setIsLoadingTeamLeads(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/client-assignments/marketing-team-leads`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.data.success) {
+        const teamLeads = response.data.data || [];
+        console.log('Fetched team leads:', teamLeads); // For debugging
+        setMarketingTeamLeads(teamLeads);
+      } else {
+        console.error('Failed to fetch team leads:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching marketing team leads:', error);
+      // Optionally show error to user
+      // alert('Failed to load team leads. Please try again.');
+    } finally {
+      setIsLoadingTeamLeads(false);
     }
   };
 
@@ -376,6 +449,405 @@ const AdminEnrollment: React.FC = () => {
     setPendingApprovalClient(null);
   };
 
+  // Add new function for handling client selection for assignment
+  const handleClientSelection = (client: EnrolledClient) => {
+    setSelectedClientsForAssignment(prev => {
+      const isSelected = prev.some(c => c.id === client.id);
+      if (isSelected) {
+        return prev.filter(c => c.id !== client.id);
+      } else {
+        return [...prev, client];
+      }
+    });
+  };
+
+  // Update the handleAssign function
+  const handleAssign = async (remarkText: string) => {
+    if (!selectedTeamLead) {
+      alert('Please select a team lead first');
+      return;
+    }
+
+    if (selectedClientsForAssignment.length === 0) {
+      alert('Please select at least one client to assign');
+      return;
+    }
+
+    setAssignmentLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      console.log('Attempting to assign clients:', {
+        selectedTeamLead,
+        clientCount: selectedClientsForAssignment.length,
+        remarkText
+      });
+
+      // Create assignments for each selected client
+      const assignmentPromises = selectedClientsForAssignment.map(client => 
+        axios.post(
+          `${BASE_URL}/client-assignments/assign`,
+          {
+            clientId: client.id,
+            assignedToId: Number(selectedTeamLead),
+            remarkText: remarkText.trim()
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        ).catch(error => {
+          // Log individual assignment errors
+          console.error(`Error assigning client ${client.id}:`, error.response?.data || error.message);
+          throw error; // Re-throw to be caught by Promise.all
+        })
+      );
+
+      await Promise.all(assignmentPromises);
+      
+      // Clear selections and close dialog
+      setSelectedClientsForAssignment([]);
+      setShowAssignmentDialog(false);
+      setSelectedTeamLead('');
+      
+      // Refresh the data
+      await fetchEnrolledClients();
+      
+      alert('Clients assigned successfully!');
+    } catch (error: any) {
+      console.error('Error assigning clients:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to assign clients';
+      alert(`Assignment failed: ${errorMessage}`);
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  // Add quick reassign function
+  const handleQuickReassign = async () => {
+    if (!selectedTeamLead || selectedClientsForAssignment.length === 0) {
+      alert('Please select a team lead and at least one client');
+      return;
+    }
+
+    setAssignmentLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Create assignments for each selected client
+      const assignmentPromises = selectedClientsForAssignment.map(client => 
+        axios.post(
+          `${BASE_URL}/client-assignments/assign`,
+          {
+            clientId: client.id,
+            assignedToId: Number(selectedTeamLead),
+            remarkText: 'Quick reassignment'
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      );
+
+      await Promise.all(assignmentPromises);
+      
+      // Clear selections
+      setSelectedClientsForAssignment([]);
+      setSelectedTeamLead('');
+      
+      // Refresh the data
+      fetchEnrolledClients();
+      
+      alert('Clients reassigned successfully!');
+    } catch (error) {
+      console.error('Error reassigning clients:', error);
+      alert('Failed to reassign clients');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const renderTableHeader = () => (
+    <tr>
+      {activeTab === 'approved' && (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <input
+            type="checkbox"
+            onChange={(e) => {
+              const clients = getFilteredClients();
+              if (e.target.checked) {
+                setSelectedClientsForAssignment(clients);
+              } else {
+                setSelectedClientsForAssignment([]);
+              }
+            }}
+            checked={selectedClientsForAssignment.length === getFilteredClients().length && getFilteredClients().length > 0}
+            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+        </th>
+      )}
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Lead Details
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+        Enrolled Date
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Package & Sales Person
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Pricing Configuration
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Resume
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Email
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Status
+      </th>
+      {activeTab === 'approved' && (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+          First Call Status
+        </th>
+      )}
+      {activeTab !== 'all' && activeTab !== 'approved' && (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Actions
+        </th>
+      )}
+      {activeTab === 'approved' && (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Current Assignment
+        </th>
+      )}
+    </tr>
+  );
+
+  const renderTableRow = (client: EnrolledClient, idx: number) => (
+    <tr key={client.id} className="hover:bg-gray-50">
+      {activeTab === 'approved' && (
+        <td className="px-6 py-4 whitespace-nowrap text-start">
+          <input
+            type="checkbox"
+            checked={selectedClientsForAssignment.some(c => c.id === client.id)}
+            onChange={() => handleClientSelection(client)}
+            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+        </td>
+      )}
+      <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <div className="flex items-center">
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {client.lead.firstName} {client.lead.lastName}
+            </div>
+            <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+            {client.lead.contactNumbers && (
+              <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+            )}
+            <div className="text-xs text-gray-400">
+              {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <span className="text-sm text-gray-900">
+          {new Date(client.createdAt).toLocaleDateString()}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <div className="text-sm text-gray-900 flex items-center gap-2">
+          {client.package ? (
+            <>
+              <button
+                onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
+                className="text-blue-600 hover:text-blue-900"
+                title="View Package Features"
+              >
+                <FaInfoCircle className="w-4 h-4" />
+              </button>
+              {client.package.planName}
+            </>
+          ) : (
+            'Not Selected'
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <div className="text-sm text-gray-900">
+          <div>Enrollment: {formatCurrency(
+            activeTab === 'approved'
+              ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
+              : activeTab === 'sales_pending' && client.edited_enrollment_charge !== null
+                ? client.edited_enrollment_charge
+                : client.payable_enrollment_charge
+          )}</div>
+          <div>Offer Letter: {formatCurrency(
+            activeTab === 'approved'
+              ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+              : activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null
+                ? client.edited_offer_letter_charge
+                : client.payable_offer_letter_charge
+          )}</div>
+          <div>
+            First Year: {
+              activeTab === 'approved'
+                ? (client.edited_first_year_percentage !== null
+                    ? `${client.edited_first_year_percentage}%`
+                    : client.edited_first_year_fixed_charge !== null
+                      ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
+                      : client.payable_first_year_percentage
+                        ? `${client.payable_first_year_percentage}%`
+                        : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
+                  )
+                : activeTab === 'sales_pending' && client.edited_first_year_percentage !== null
+                  ? `${client.edited_first_year_percentage}%`
+                : activeTab === 'sales_pending' && client.edited_first_year_fixed_charge !== null
+                  ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
+                : client.payable_first_year_percentage 
+                  ? `${client.payable_first_year_percentage}%` 
+                : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
+            }
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        {client.resume ? (
+          <button
+            onClick={() => handleResumePreview(client.resume, client.id)}
+            className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+            title="View Resume"
+          >
+            <FaFilePdf className="w-4 h-4" />
+            <span>View</span>
+          </button>
+        ) : (
+          <span className="text-gray-400 text-sm">No Resume</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-start">
+        <a
+          href={`mailto:${client.lead.primaryEmail}`}
+          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+          title="Send Email"
+        >
+          <span>Send Email</span>
+        </a>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        {getStatusBadge(client)}
+      </td>
+      {activeTab === 'approved' && (
+        <td className="px-6 py-4 whitespace-nowrap text-start">
+          {(() => {
+            const statuses = ['pending', 'onhold', 'Done'];
+            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+            let badgeColor = '';
+            if (randomStatus === 'pending') {
+              badgeColor = 'bg-yellow-100 text-yellow-800';
+            } else if (randomStatus === 'onhold') {
+              badgeColor = 'bg-red-100 text-red-800';
+            } else {
+              badgeColor = 'bg-green-100 text-green-800';
+            }
+            return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
+          })()}
+        </td>
+      )}
+      {activeTab !== 'all' && activeTab !== 'approved' && (
+        <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+          <div className="flex gap-2">
+            {activeTab === 'my_review' && (
+              <>
+                <button
+                  onClick={() => handleApprovalIconClick(client)}
+                  className="text-green-600 hover:text-green-900"
+                  title="Quick Approve"
+                >
+                  <FaCheckCircle className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleReview(client)}
+                  className="text-purple-600 hover:text-purple-900"
+                  title="Review & Edit"
+                >
+                  <FaEdit className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </td>
+      )}
+      {activeTab === 'approved' && (
+        <td className="px-6 py-4 whitespace-nowrap text-start">
+          {isClientAssigned(client.id) ? (
+            <div className="text-sm">
+              <span className="font-medium">Assigned to: </span>
+              {getCurrentTeamLead(client.id)?.firstname} {getCurrentTeamLead(client.id)?.lastname}
+            </div>
+          ) : (
+            <span className="text-gray-500 text-sm">Not assigned</span>
+          )}
+        </td>
+      )}
+    </tr>
+  );
+
+  const renderAssignmentButtons = () => {
+    if (activeTab === 'approved' && selectedClientsForAssignment.length > 0) {
+      const isReassignment = selectedClientsForAssignment.every(client => isClientAssigned(client.id));
+      const buttonText = isReassignment ? 'Reassign Selected' : 'Assign Selected';
+
+      return (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedTeamLead}
+              onChange={(e) => setSelectedTeamLead(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
+              disabled={isLoadingTeamLeads}
+            >
+              <option value="">{isLoadingTeamLeads ? 'Loading...' : 'Select Team Lead'}</option>
+              {!isLoadingTeamLeads && marketingTeamLeads.map((user) => {
+                const isCurrentTeamLead = selectedClientsForAssignment.some(
+                  client => currentAssignments[client.id] === user.id
+                );
+                return (
+                  <option 
+                    key={user.id} 
+                    value={user.id}
+                    disabled={isCurrentTeamLead}
+                  >
+                    {user.firstname} {user.lastname} {isCurrentTeamLead ? '(Current)' : ''}
+                  </option>
+                );
+              })}
+            </select>
+            <button
+              onClick={() => setShowAssignmentDialog(true)}
+              disabled={!selectedTeamLead || assignmentLoading}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <FaUserPlus />
+              {buttonText}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -408,9 +880,10 @@ const AdminEnrollment: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs with Assignment Buttons */}
         <div className="bg-white rounded-xl shadow-sm mb-6">
           <div className="border-b border-gray-200">
+            <div className="flex items-center justify-between px-6">
             <nav className="-mb-px flex">
               <button
                 onClick={() => setActiveTab('all')}
@@ -457,6 +930,8 @@ const AdminEnrollment: React.FC = () => {
                 My Review ({enrollmentData?.MyReview?.pagination?.totalItems || 0})
               </button>
             </nav>
+              {renderAssignmentButtons()}
+            </div>
           </div>
         </div>
 
@@ -745,192 +1220,11 @@ const AdminEnrollment: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lead Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    Enrolled Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Package & Sales Person
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pricing Configuration
-                  </th>
-                
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Resume
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  {activeTab === 'approved' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      First Call Status
-                    </th>
-                  )}
-                  {activeTab !== 'all' && activeTab !== 'approved' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
-                </tr>
+                {renderTableHeader()}
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {getFilteredClients().map((client: EnrolledClient, idx: number) => (
-                  <tr key={client.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <div className="flex items-center">
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {client.lead.firstName} {client.lead.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
-                          {client.lead.contactNumbers && (
-                            <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
-                          )}
-                          <div className="text-xs text-gray-400">
-                            {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <span className="text-sm text-gray-900">
-                        {new Date(client.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <div className="text-sm text-gray-900 flex items-center gap-2">
-                        {client.package ? (
-                          <>
-                            <button
-                              onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="View Package Features"
-                            >
-                              <FaInfoCircle className="w-4 h-4" />
-                            </button>
-                            {client.package.planName}
-                          </>
-                        ) : (
-                          'Not Selected'
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      <div className="text-sm text-gray-900">
-                        <div>Enrollment: {formatCurrency(
-                          activeTab === 'approved'
-                            ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
-                            : activeTab === 'sales_pending' && client.edited_enrollment_charge !== null
-                              ? client.edited_enrollment_charge
-                              : client.payable_enrollment_charge
-                        )}</div>
-                        <div>Offer Letter: {formatCurrency(
-                          activeTab === 'approved'
-                            ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
-                            : activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null
-                              ? client.edited_offer_letter_charge
-                              : client.payable_offer_letter_charge
-                        )}</div>
-                        <div>
-                          First Year: {
-                            activeTab === 'approved'
-                              ? (client.edited_first_year_percentage !== null
-                                  ? `${client.edited_first_year_percentage}%`
-                                  : client.edited_first_year_fixed_charge !== null
-                                    ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
-                                    : client.payable_first_year_percentage
-                                      ? `${client.payable_first_year_percentage}%`
-                                      : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
-                                )
-                              : activeTab === 'sales_pending' && client.edited_first_year_percentage !== null
-                                ? `${client.edited_first_year_percentage}%`
-                              : activeTab === 'sales_pending' && client.edited_first_year_fixed_charge !== null
-                                ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
-                              : client.payable_first_year_percentage 
-                                ? `${client.payable_first_year_percentage}%` 
-                              : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
-                          }
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {client.resume ? (
-                        <button
-                          onClick={() => handleResumePreview(client.resume, client.id)}
-                          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
-                          title="View Resume"
-                        >
-                          <FaFilePdf className="w-4 h-4" />
-                          <span>View</span>
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No Resume</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-start">
-                      <a
-                        href={`mailto:${client.lead.primaryEmail}`}
-                        className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
-                        title="Send Email"
-                      >
-                        {/* <FaEnvelope className="w-4 h-4" /> */}
-                        <span>Send Email</span>
-                      </a>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {getStatusBadge(client)}
-                    </td>
-                    {activeTab === 'approved' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-start">
-                        {(() => {
-                          const statuses = ['pending', 'onhold', 'Done'];
-                          const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-                          let badgeColor = '';
-                          if (randomStatus === 'pending') {
-                            badgeColor = 'bg-yellow-100 text-yellow-800';
-                          } else if (randomStatus === 'onhold') {
-                            badgeColor = 'bg-red-100 text-red-800';
-                          } else {
-                            badgeColor = 'bg-green-100 text-green-800';
-                          }
-                          return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
-                        })()}
-                      </td>
-                    )}
-                    {activeTab !== 'all' && activeTab !== 'approved' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
-                        <div className="flex gap-2">
-                          {activeTab === 'my_review' && (
-                            <>
-                              <button
-                                onClick={() => handleApprovalIconClick(client)}
-                                className="text-green-600 hover:text-green-900"
-                                title="Quick Approve"
-                              >
-                                <FaCheckCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleReview(client)}
-                                className="text-purple-600 hover:text-purple-900"
-                                title="Review & Edit"
-                              >
-                                <FaEdit className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
+                  renderTableRow(client, idx)
                 ))}
               </tbody>
             </table>
@@ -990,6 +1284,17 @@ const AdminEnrollment: React.FC = () => {
         message="Are you sure you want to approve?"
         onConfirm={handleConfirmApproval}
         onCancel={handleCancelApproval}
+      />
+
+      {/* Update the AssignmentDialog component */}
+      <AssignmentDialog
+        isOpen={showAssignmentDialog}
+        onClose={() => {
+          setShowAssignmentDialog(false);
+          setSelectedClientsForAssignment([]);
+        }}
+        onAssign={handleAssign}
+        selectedTeamLead={marketingTeamLeads.find(lead => lead.id === Number(selectedTeamLead))}
       />
     </div>
   );

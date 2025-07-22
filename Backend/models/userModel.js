@@ -1,6 +1,7 @@
 import { Sequelize, DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
 import bcrypt from "bcrypt";
+import Department from "./departmentModel.js";
 
 const User = sequelize.define(
   "users",
@@ -130,6 +131,12 @@ const User = sequelize.define(
     }
   }
 );
+
+// Add association
+User.belongsTo(Department, {
+  foreignKey: 'departmentId',
+  as: 'department'
+});
 
 // Compare password instance method
 User.prototype.comparePassword = async function (candidatePassword) {

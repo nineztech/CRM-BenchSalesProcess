@@ -4,7 +4,7 @@ import User from "../models/userModel.js";
 // Add Department
 export const addDepartment = async (req, res) => {
   try {
-    const { departmentName, subroles, isSalesTeam } = req.body;
+    const { departmentName, subroles, isSalesTeam, isMarketingTeam } = req.body;
     const userId = req.user?.id;
 
     if (!departmentName) {
@@ -45,6 +45,7 @@ export const addDepartment = async (req, res) => {
       departmentName: departmentName.trim(),
       subroles: subrolesArray,
       isSalesTeam: isSalesTeam || false,
+      isMarketingTeam: isMarketingTeam || false,
       createdBy: userId,
       status: 'active'
     });
@@ -136,7 +137,7 @@ export const getDepartmentById = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentName, subroles, status, isSalesTeam } = req.body;
+    const { departmentName, subroles, status, isSalesTeam, isMarketingTeam } = req.body;
     const userId = req.user?.id;
 
     const department = await Department.findByPk(id);
@@ -160,6 +161,7 @@ export const updateDepartment = async (req, res) => {
       departmentName: departmentName?.trim() || department.departmentName,
       subroles: subrolesArray,
       isSalesTeam: isSalesTeam !== undefined ? isSalesTeam : department.isSalesTeam,
+      isMarketingTeam: isMarketingTeam !== undefined ? isMarketingTeam : department.isMarketingTeam,
       status: status || department.status,
       updatedBy: userId,
       updatedAt: new Date()
@@ -273,6 +275,29 @@ export const checkSalesTeamExists = async (req, res) => {
     });
   } catch (error) {
     console.error("Error checking sales team department:", error);
+    handleError(error, res);
+  }
+};
+
+// Check if marketing team department exists
+export const checkMarketingTeamExists = async (req, res) => {
+  try {
+    const marketingTeamDepartment = await Department.findOne({
+      where: { isMarketingTeam: true }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        exists: !!marketingTeamDepartment,
+        department: marketingTeamDepartment ? {
+          id: marketingTeamDepartment.id,
+          departmentName: marketingTeamDepartment.departmentName
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error("Error checking marketing team department:", error);
     handleError(error, res);
   }
 };

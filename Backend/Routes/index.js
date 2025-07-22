@@ -12,6 +12,7 @@ import archivedLeadRoutes from './archivedLeadRoutes.js'
 import specialUserPermissionRoutes from './specialUserPermissionRoutes.js'
 import searchRoutes from './searchRoutes.js'
 import enrolledClientsRoutes from './enrolledClientsRoutes.js'
+import clientAssignmentRoutes from './clientAssignmentRoutes.js'
 
 
 import express from 'express'
@@ -30,6 +31,7 @@ router.use('/archived-leads', archivedLeadRoutes)
 router.use('/special-user-permission', specialUserPermissionRoutes)
 router.use('/search', searchRoutes)
 router.use('/enrolled-clients', enrolledClientsRoutes)
+router.use('/client-assignments', clientAssignmentRoutes)
 
 
 export default router

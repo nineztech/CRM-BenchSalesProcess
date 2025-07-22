@@ -38,6 +38,11 @@ const Department = sequelize.define(
       allowNull: false,
       defaultValue: false
     },
+    isMarketingTeam: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     createdBy: {
       type: DataTypes.INTEGER,
       allowNull: true,
