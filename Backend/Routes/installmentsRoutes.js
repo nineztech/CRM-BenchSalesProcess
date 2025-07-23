@@ -16,10 +16,10 @@ const router = express.Router();
 router.post('/', verifyToken, createInstallment);
 
 // Get all installments for an enrolled client
-router.get('/enrolled-client/:enrolledClientId', verifyToken, getInstallmentsByEnrolledClient);
+router.get('/enrolled-client/:enrolledClientId', getInstallmentsByEnrolledClient);
 
 // Get single installment by ID
-router.get('/:id', verifyToken, getInstallmentById);
+router.get('/:id', getInstallmentById);
 
 // Update installment
 router.put('/:id', verifyToken, updateInstallment);

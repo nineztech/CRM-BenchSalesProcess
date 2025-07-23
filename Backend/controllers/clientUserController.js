@@ -68,18 +68,18 @@ export const createClientUser = async (enrolledClientId) => {
     });
 
     // Send welcome email with credentials
-    try {
-      await sendClientWelcomeEmail({
-        firstName: clientUser.firstName,
-        lastName: clientUser.lastName,
-        username: username,
-        password: password,
-        primaryEmail: clientUser.primaryEmail
-      });
-    } catch (emailError) {
-      console.error('Error sending welcome email:', emailError);
-      // Don't throw error here as user creation was successful
-    }
+    // try {
+    //   await sendClientWelcomeEmail({
+    //     firstName: clientUser.firstName,
+    //     lastName: clientUser.lastName,
+    //     username: username,
+    //     password: password,
+    //     primaryEmail: clientUser.primaryEmail
+    //   });
+    // } catch (emailError) {
+    //   console.error('Error sending welcome email:', emailError);
+    //   // Don't throw error here as user creation was successful
+    // }
 
     // Return the client user with the plain password for email notification
     return {
