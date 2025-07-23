@@ -16,7 +16,7 @@ const sequelize = new Sequelize(
     dialectOptions: {
       connectTimeout: 10000, 
     },
-    logging: console.log, 
+    logging: false, 
   }
 );
 
