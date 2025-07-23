@@ -68,7 +68,8 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
@@ -76,12 +77,15 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   };
 
   const formatDate = (date: string) => {
-    const d = new Date(date);
+    // Add timezone offset to show correct date
+    const [year, month, day] = date.split('T')[0].split('-').map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    
     // Add ordinal suffix to day
-    const day = d.getDate();
-    const ordinal = (day: number) => {
-      if (day > 3 && day < 21) return 'th';
-      switch (day % 10) {
+    const dayNum = d.getUTCDate();
+    const ordinal = (dayNum: number) => {
+      if (dayNum > 3 && dayNum < 21) return 'th';
+      switch (dayNum % 10) {
         case 1: return 'st';
         case 2: return 'nd';
         case 3: return 'rd';
@@ -89,12 +93,12 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
       }
     };
     
-    const month = d.toLocaleDateString('en-US', {
+    const monthName = d.toLocaleDateString('en-US', {
       month: 'long',
       timeZone: 'UTC'
     });
     
-    return `${day}${ordinal(day)} ${month} ${d.getUTCFullYear()}`;
+    return `${dayNum}${ordinal(dayNum)} ${monthName} ${d.getUTCFullYear()}`;
   };
 
   if (!isOpen) return null;
