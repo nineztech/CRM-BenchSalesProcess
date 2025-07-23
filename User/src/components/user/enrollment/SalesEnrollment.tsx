@@ -80,6 +80,7 @@ interface Installment {
   amount: number;
   dueDate: string;
   remark: string;
+  errorMessage?: string;
 }
 
 interface FormData {
@@ -91,6 +92,8 @@ interface FormData {
   pricing_type: 'percentage' | 'fixed' | null;
   enrollment_installments: Installment[];
   initial_payment: number | null;
+  initialPaymentError?: string;
+  totalAmountError?: string | null;
 }
 
 interface InstallmentAmountInfo {
@@ -315,7 +318,7 @@ const SalesEnrollment: React.FC = () => {
     }
 
     // Calculate total of existing installments
-    const totalExistingAmount = formData.enrollment_installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const totalExistingAmount = formData.enrollment_installments.reduce((sum, inst) => sum + Number(inst.amount), 0);
     const remainingAmount = totalCharge - (formData.initial_payment + totalExistingAmount);
 
     if (remainingAmount <= 0) {
@@ -327,43 +330,48 @@ const SalesEnrollment: React.FC = () => {
       ...prev,
       enrollment_installments: [
         ...prev.enrollment_installments,
-        { amount: 0, dueDate: '', remark: '' }
+        { amount: remainingAmount, dueDate: '', remark: '' }
       ]
     }));
+
+    // Hide the plus button by setting showInitialPayment to false
+    setShowInitialPayment(false);
   };
 
   const updateInstallment = (index: number, field: keyof Installment, value: string | number) => {
     setFormData(prev => {
       const newInstallments = [...prev.enrollment_installments];
+      const enrollmentChargeNum = Number(prev.payable_enrollment_charge || 0);
       
       if (field === 'amount') {
         const numValue = Number(value);
-        const totalCharge = prev.payable_enrollment_charge || 0;
-        const initialPayment = prev.initial_payment || 0;
         const totalOtherInstallments = prev.enrollment_installments.reduce((sum, inst, i) => 
-          i === index ? sum : sum + inst.amount, 0);
+          i === index ? sum : sum + Number(inst.amount), 0);
+        const totalAmount = (prev.initial_payment || 0) + totalOtherInstallments + numValue;
         
-        const totalAmount = initialPayment + totalOtherInstallments + numValue;
-        
-        if (totalAmount > totalCharge) {
-          alert(`Total amount (${formatCurrency(totalAmount)}) cannot exceed total charge (${formatCurrency(totalCharge)})`);
-          setHasInstallmentError(true);
-          return prev;
+        if (totalAmount > enrollmentChargeNum) {
+          newInstallments[index] = { 
+            ...newInstallments[index], 
+            [field]: numValue,
+            errorMessage: `Total amount ($${totalAmount.toFixed(2)}) cannot exceed enrollment charge ($${enrollmentChargeNum.toFixed(2)})`
+          };
+          return {
+            ...prev,
+            enrollment_installments: newInstallments
+          };
         }
       }
 
       newInstallments[index] = { 
         ...newInstallments[index], 
-        [field]: value 
+        [field]: field === 'amount' ? Number(value) : value,
+        errorMessage: undefined
       };
-
-      // Calculate new total after update
-      const newTotal = newInstallments.reduce((sum, inst) => sum + inst.amount, 0) + (prev.initial_payment || 0);
-      setHasInstallmentError(newTotal > (prev.payable_enrollment_charge || 0));
 
       return {
         ...prev,
-        enrollment_installments: newInstallments
+        enrollment_installments: newInstallments,
+        initialPaymentError: undefined // Clear initial payment error when installment is valid
       };
     });
   };
@@ -502,10 +510,42 @@ const SalesEnrollment: React.FC = () => {
     );
   };
 
-  // Update handleSubmit to include installment_number
+  // Update validation function
+  const validateTotalAmount = () => {
+    const totalInstallments = formData.enrollment_installments.reduce((sum, inst) => sum + Number(inst.amount || 0), 0);
+    const totalAmount = Number(formData.initial_payment || 0) + totalInstallments;
+    const enrollmentCharge = Number(formData.payable_enrollment_charge || 0);
+
+    // If initial payment equals enrollment charge, no validation needed
+    if (Math.abs(formData.initial_payment! - enrollmentCharge) < 0.01) {
+      return null;
+    }
+
+    // Only validate total amount if there are installments
+    if (formData.enrollment_installments.length > 0 && Math.abs(totalAmount - enrollmentCharge) > 0.01) {
+      return `Total amount ($${Number(totalAmount).toFixed(2)}) must equal enrollment charge ($${Number(enrollmentCharge).toFixed(2)})`;
+    }
+    return null;
+  };
+
+  // Update handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
+
+    // Check for any validation errors
+    const hasFieldErrors = formData.initialPaymentError || 
+                         formData.enrollment_installments.some(inst => inst.errorMessage);
+
+    // Check total amount validation
+    const totalAmountError = validateTotalAmount();
+    if (totalAmountError || hasFieldErrors) {
+      setFormData(prev => ({
+        ...prev,
+        totalAmountError: totalAmountError
+      }));
+      return;
+    }
 
     setFormLoading(true);
     try {
@@ -515,7 +555,18 @@ const SalesEnrollment: React.FC = () => {
       const submitData = {
         ...formData,
         Sales_person_id: userId,
-        updatedBy: userId
+        updatedBy: userId,
+        // If admin has approved, sync the edited amounts with payable amounts
+        ...(selectedClient.Approval_by_admin && {
+          payable_enrollment_charge: formData.payable_enrollment_charge,
+          payable_offer_letter_charge: formData.payable_offer_letter_charge,
+          payable_first_year_percentage: formData.payable_first_year_percentage,
+          payable_first_year_fixed_charge: formData.payable_first_year_fixed_charge,
+          edited_enrollment_charge: formData.payable_enrollment_charge,
+          edited_offer_letter_charge: formData.payable_offer_letter_charge,
+          edited_first_year_percentage: formData.payable_first_year_percentage,
+          edited_first_year_fixed_charge: formData.payable_first_year_fixed_charge
+        })
       };
 
       // First update the enrolled client
@@ -530,45 +581,43 @@ const SalesEnrollment: React.FC = () => {
         }
       );
 
-      // If enrolled client update is successful, create initial payment and installments
+      // If enrolled client update is successful, handle installments
       if (response.data.success) {
-        // Create initial payment first if it exists
-        if (formData.initial_payment && formData.initial_payment > 0) {
-          await axios.post(
-            `${BASE_URL}/installments`,
-            {
-              enrolledClientId: selectedClient.id,
-              charge_type: 'enrollment_charge',
-              installment_number: 0, // Set to 0 for initial payment
-              amount: formData.initial_payment,
-              dueDate: new Date().toISOString().split('T')[0],
-              remark: 'Initial Payment at Enrollment',
-              is_initial_payment: true, // This will be determined by installment_number in backend
-              paid: true, // Initial payment is always paid
-              paidDate: new Date().toISOString().split('T')[0]
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
+        // First get existing installments
+        const existingInstallmentsResponse = await axios.get(
+          `${BASE_URL}/installments/enrolled-client/${selectedClient.id}?charge_type=enrollment_charge`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
-          );
-        }
+          }
+        );
 
-        // Create remaining installments with sequential numbering starting from 1
-        if (formData.enrollment_installments.length > 0) {
-          const installmentPromises = formData.enrollment_installments.map((installment, index) => 
-            axios.post(
-              `${BASE_URL}/installments`,
+        const existingInstallments = existingInstallmentsResponse.data.success ? 
+          existingInstallmentsResponse.data.data.installments : [];
+
+        // Always handle initial payment if it exists
+        if (formData.payable_enrollment_charge && formData.payable_enrollment_charge > 0) {
+          const existingInitialPayment = existingInstallments.find((inst: any) => inst.installment_number === 0);
+          
+          if (existingInitialPayment) {
+            // Update existing initial payment
+            await axios.put(
+              `${BASE_URL}/installments/${existingInitialPayment.id}`,
               {
-                enrolledClientId: selectedClient.id,
-                charge_type: 'enrollment_charge',
-                installment_number: index + 1, // Start from 1 for regular installments
-                amount: installment.amount,
-                dueDate: installment.dueDate,
-                remark: installment.remark,
-                is_initial_payment: false // Regular installments are never initial payments
+                amount: formData.initial_payment || formData.payable_enrollment_charge,
+                dueDate: new Date().toISOString().split('T')[0],
+                remark: 'Initial Payment at Enrollment',
+                is_initial_payment: true,
+                paid: true,
+                paidDate: new Date().toISOString().split('T')[0],
+                updatedBy: userId,
+                // If admin has approved, sync the edited amount with actual amount
+                ...(selectedClient.Approval_by_admin && {
+                  amount: formData.initial_payment || formData.payable_enrollment_charge,
+                  edited_amount: formData.initial_payment || formData.payable_enrollment_charge
+                })
               },
               {
                 headers: {
@@ -576,8 +625,92 @@ const SalesEnrollment: React.FC = () => {
                   'Content-Type': 'application/json'
                 }
               }
-            )
-          );
+            );
+          } else {
+            // Create new initial payment
+            await axios.post(
+              `${BASE_URL}/installments`,
+              {
+                enrolledClientId: selectedClient.id,
+                charge_type: 'enrollment_charge',
+                installment_number: 0,
+                amount: formData.initial_payment || formData.payable_enrollment_charge,
+                dueDate: new Date().toISOString().split('T')[0],
+                remark: 'Initial Payment at Enrollment',
+                is_initial_payment: true,
+                paid: true,
+                paidDate: new Date().toISOString().split('T')[0],
+                // If admin has approved, set edited amount same as amount
+                ...(selectedClient.Approval_by_admin && {
+                  edited_amount: formData.initial_payment || formData.payable_enrollment_charge
+                })
+              },
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+          }
+        }
+
+        // Handle remaining installments
+        if (formData.enrollment_installments.length > 0) {
+          const installmentPromises = formData.enrollment_installments.map((installment, index) => {
+            const existingInstallment = existingInstallments.find(
+              (inst: any) => inst.installment_number === (index + 1)
+            );
+
+            if (existingInstallment) {
+              // Update existing installment
+              return axios.put(
+                `${BASE_URL}/installments/${existingInstallment.id}`,
+                {
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  updatedBy: userId,
+                  // If admin has approved, sync the edited amount with actual amount
+                  ...(selectedClient.Approval_by_admin && {
+                    amount: installment.amount,
+                    edited_amount: installment.amount
+                  })
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            } else {
+              // Create new installment
+              return axios.post(
+                `${BASE_URL}/installments`,
+                {
+                  enrolledClientId: selectedClient.id,
+                  charge_type: 'enrollment_charge',
+                  installment_number: index + 1,
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  // If admin has approved, set edited amount same as amount
+                  ...(selectedClient.Approval_by_admin && {
+                    edited_amount: installment.amount
+                  })
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            }
+          });
 
           await Promise.all(installmentPromises);
         }
@@ -633,20 +766,67 @@ const SalesEnrollment: React.FC = () => {
     }
   };
 
-  const handleUpdateClick = () => {
+  // Update handleUpdateClick to properly handle initial payment and installments
+  const handleUpdateClick = async () => {
     if (!selectedClient) return;
     
-    // Pre-fill form with admin's modified configuration
-    setFormData({
-      packageid: selectedClient.packageid,
-      payable_enrollment_charge: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge,
-      payable_offer_letter_charge: selectedClient.edited_offer_letter_charge || selectedClient.payable_offer_letter_charge,
-      payable_first_year_percentage: selectedClient.edited_first_year_percentage || selectedClient.payable_first_year_percentage,
-      payable_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge || selectedClient.payable_first_year_fixed_charge,
-      pricing_type: selectedClient.edited_first_year_percentage ? 'percentage' : 'fixed',
-      enrollment_installments: selectedClient.enrollment_installments || [], // Assuming client object has this field
-      initial_payment: selectedClient.initial_payment || null // Assuming client object has this field
-    });
+    try {
+      // Fetch existing installments
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${BASE_URL}/installments/enrolled-client/${selectedClient.id}?charge_type=enrollment_charge`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const allInstallments = response.data.success ? response.data.data.installments : [];
+      
+      // Find initial payment (installment with installment_number = 0)
+      const initialPaymentInstallment = allInstallments.find((inst: any) => inst.installment_number === 0);
+      
+      // Get regular installments (installment_number > 0)
+      const regularInstallments = allInstallments
+        .filter((inst: any) => inst.installment_number > 0)
+        .sort((a: any, b: any) => a.installment_number - b.installment_number);
+
+      // Set form data with proper initial payment and installments
+      setFormData({
+        packageid: selectedClient.packageid,
+        payable_enrollment_charge: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge,
+        payable_offer_letter_charge: selectedClient.edited_offer_letter_charge || selectedClient.payable_offer_letter_charge,
+        payable_first_year_percentage: selectedClient.edited_first_year_percentage || selectedClient.payable_first_year_percentage,
+        payable_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge || selectedClient.payable_first_year_fixed_charge,
+        pricing_type: selectedClient.edited_first_year_percentage ? 'percentage' : 'fixed',
+        enrollment_installments: regularInstallments.map((inst: any) => ({
+          amount: Number(inst.edited_amount || inst.amount),
+          dueDate: inst.edited_dueDate || inst.dueDate,
+          remark: inst.edited_remark || inst.remark || '',
+          installment_number: inst.installment_number
+        })),
+        initial_payment: initialPaymentInstallment ? Number(initialPaymentInstallment.edited_amount || initialPaymentInstallment.amount) : null
+      });
+
+      if (initialPaymentInstallment) {
+        setShowInitialPayment(true);
+      }
+    } catch (error) {
+      console.error('Error fetching installments:', error);
+      // Set form data without installments as fallback
+      setFormData({
+        packageid: selectedClient.packageid,
+        payable_enrollment_charge: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge,
+        payable_offer_letter_charge: selectedClient.edited_offer_letter_charge || selectedClient.payable_offer_letter_charge,
+        payable_first_year_percentage: selectedClient.edited_first_year_percentage || selectedClient.payable_first_year_percentage,
+        payable_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge || selectedClient.payable_first_year_fixed_charge,
+        pricing_type: selectedClient.edited_first_year_percentage ? 'percentage' : 'fixed',
+        enrollment_installments: [],
+        initial_payment: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge
+      });
+    }
     
     setShowUpdateForm(true);
   };
@@ -809,6 +989,42 @@ const SalesEnrollment: React.FC = () => {
     }
   };
 
+  const getRemainingAmount = () => {
+    const totalCharge = formData.payable_enrollment_charge || 0;
+    const initialPayment = formData.initial_payment || 0;
+    const totalExistingAmount = formData.enrollment_installments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+    return totalCharge - (initialPayment + totalExistingAmount);
+  };
+
+  const getRemainingAmountForInstallment = (index: number) => {
+    const totalCharge = formData.payable_enrollment_charge || 0;
+    const initialPayment = formData.initial_payment || 0;
+    const totalExistingAmount = formData.enrollment_installments.reduce((sum, inst, i) => 
+      i === index ? sum : sum + Number(inst.amount), 0);
+    return totalCharge - (initialPayment + totalExistingAmount);
+  };
+
+  // Update handleInitialPaymentChange function
+  const handleInitialPaymentChange = (value: number) => {
+    setFormData(prev => {
+      const newInitialPayment = value;
+      const totalInstallments = prev.enrollment_installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
+      const totalAmount = newInitialPayment + totalInstallments;
+      const enrollmentChargeNum = Number(prev.payable_enrollment_charge || 0);
+      
+      let errorMessage = '';
+      if (totalAmount > enrollmentChargeNum) {
+        errorMessage = `Total amount ($${totalAmount.toFixed(2)}) cannot exceed enrollment charge ($${enrollmentChargeNum.toFixed(2)})`;
+      }
+
+      return {
+        ...prev,
+        initial_payment: newInitialPayment,
+        initialPaymentError: errorMessage // Add this to FormData interface
+      };
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -966,35 +1182,10 @@ const SalesEnrollment: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Enrollment Charge
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={formData.payable_enrollment_charge ?? ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
-                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="0.00"
-                    step="0.01"
-                    disabled={!selectedClient}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={addInstallment}
-                    className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none"
-                    title="Add Installment"
-                  >
-                    <FaPlus className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Offer Letter Charge
-                </label>
                 <input
                   type="number"
-                  value={formData.payable_offer_letter_charge ?? ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
+                  value={formData.payable_enrollment_charge ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="0.00"
                   step="0.01"
@@ -1002,121 +1193,151 @@ const SalesEnrollment: React.FC = () => {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Initial Payment
+                </label>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={formData.initial_payment ?? formData.payable_enrollment_charge ?? ''}
+                      onChange={(e) => {
+                        const inputValue = Number(e.target.value);
+                        handleInitialPaymentChange(inputValue);
+                        if (inputValue < (formData.payable_enrollment_charge || 0)) {
+                          setShowInitialPayment(true);
+                        }
+                      }}
+                      className={`w-full p-3 border ${
+                        formData.initialPaymentError ? 'border-red-300' : 'border-gray-300'
+                      } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                    {formData.initial_payment !== null && 
+                     formData.initial_payment < (formData.payable_enrollment_charge || 0) && 
+                     formData.enrollment_installments.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={addInstallment}
+                        className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Add Installment"
+                      >
+                        <FaPlus className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                  {formData.initialPaymentError && (
+                    <p className="text-red-500 text-sm mt-1">{formData.initialPaymentError}</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Installments Section */}
-            {formData.payable_enrollment_charge !== null && formData.payable_enrollment_charge > 0 && (
-              <div className="mt-6 border-t pt-6">
-                {/* <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Enrollment Charge Installments</h3>
-                  {!showInitialPayment && formData.enrollment_installments.length === 0 && (
-                    <button
-                      type="button"
-                      onClick={addInstallment}
-                      className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none"
-                      title="Add Installments"
-                    >
-                      <FaPlus className="w-5 h-5" />
-                    </button>
-                  )}
-                </div> */}
-
-                {showInitialPayment && (
-                  <InitialPaymentInput 
-                    totalCharge={formData.payable_enrollment_charge}
-                    onInitialPaymentSet={(amount) => {
-                      setFormData(prev => ({ ...prev, initial_payment: amount }));
-                    }}
-                    onCancel={() => {
-                      setShowInitialPayment(false);
-                      setFormData(prev => ({
-                        ...prev,
-                        initial_payment: prev.payable_enrollment_charge,
-                        enrollment_installments: []
-                      }));
-                    }}
-                  />
+            {formData.initial_payment !== null && formData.initial_payment < (formData.payable_enrollment_charge || 0) && (
+              <div className="mt-4">
+                <div className="text-sm text-gray-600 mb-3">
+                  Remaining amount to be added in installments: {formatCurrency(getRemainingAmount())}
+                </div>
+                {formData.totalAmountError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+                    <p className="text-red-600 text-sm">{formData.totalAmountError}</p>
+                  </div>
                 )}
-
-                {formData.initial_payment !== null && (
-                  formData.initial_payment < (formData.payable_enrollment_charge || 0) && (
-                    <>
-                      <InstallmentSummary formData={formData} />
-                      <div className="space-y-4 mt-4">
-                        {formData.enrollment_installments.map((installment, index) => (
-                          <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                            <div className="p-4">
-                              <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-base font-medium text-gray-900">Installment {index + 1}</h4>
-                                <button
-                                  type="button"
-                                  onClick={() => removeInstallment(index)}
-                                  className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
-                                >
-                                  <FaTrash className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-3 gap-6">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <span className="text-gray-500 sm:text-sm">$</span>
-                                    </div>
-                                    <input
-                                      type="number"
-                                      value={installment.amount}
-                                      onChange={(e) => updateInstallment(index, 'amount', Number(e.target.value))}
-                                      className="w-full pl-7 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                      placeholder="0.00"
-                                      step="0.01"
-                                      required
-                                    />
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
-                                  <input
-                                    type="date"
-                                    value={installment.dueDate}
-                                    onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    required
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">Remark</label>
-                                  <input
-                                    type="text"
-                                    value={installment.remark}
-                                    onChange={(e) => updateInstallment(index, 'remark', e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Add a note..."
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                <div className="space-y-4">
+                  {formData.enrollment_installments.map((installment, index) => (
+                    <div key={index} className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                      <div className="flex-none">
+                        <span className="text-sm font-medium text-gray-700">Installment {index + 1}</span>
                       </div>
-                      <div className="mt-4 flex justify-end">
+                      <div className="flex-1">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="flex flex-col">
+                            <input
+                              type="number"
+                              value={installment.amount}
+                              onChange={(e) => {
+                                const installmentAmount = Number(e.target.value);
+                                updateInstallment(index, 'amount', installmentAmount);
+                              }}
+                              className={`w-full p-2 border ${
+                                installment.errorMessage 
+                                  ? 'border-red-300' 
+                                  : 'border-gray-300'
+                              } rounded-md text-sm`}
+                              placeholder={index === formData.enrollment_installments.length - 1 ? String(getRemainingAmount()) : "0.00"}
+                              step="0.01"
+                              required
+                            />
+                            {installment.errorMessage && (
+                              <p className="text-red-500 text-xs mt-1">{installment.errorMessage}</p>
+                            )}
+                          </div>
+                          <div>
+                            <input
+                              type="date"
+                              value={installment.dueDate}
+                              onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={installment.remark}
+                              onChange={(e) => updateInstallment(index, 'remark', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                              placeholder="Add a note..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-none">
                         <button
                           type="button"
-                          onClick={addInstallment}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none"
-                          title="Add Another Installment"
+                          onClick={() => removeInstallment(index)}
+                          className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
                         >
-                          <FaPlus className="w-5 h-5" />
+                          <FaTrash className="w-4 h-4" />
                         </button>
+                        {index === formData.enrollment_installments.length - 1 && getRemainingAmount() > 0 && (
+                          <button
+                            type="button"
+                            onClick={addInstallment}
+                            className="ml-2 text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={getRemainingAmount() <= 0}
+                          >
+                            <FaPlus className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                    </>
-                  )
-                )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* First Year Pricing Type and Value */}
-            <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="grid grid-cols-3 gap-4 mt-4">
+               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Offer Letter Charge
+                </label>
+                <input
+                  type="number"
+                  value={formData.payable_offer_letter_charge ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0.00"
+                  step="0.01"
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   First Year Pricing Type
@@ -1130,9 +1351,8 @@ const SalesEnrollment: React.FC = () => {
                       checked={formData.pricing_type === 'percentage'}
                       onChange={() => handlePricingTypeChange('percentage')}
                       className="mr-2"
-                      disabled={!selectedClient || !!(formData.packageid && packages.find(pkg => pkg.id === formData.packageid)?.firstYearFixedPrice && !packages.find(pkg => pkg.id === formData.packageid)?.firstYearSalaryPercentage)}
                     />
-                    <span className={!selectedClient || (formData.packageid && packages.find(pkg => pkg.id === formData.packageid)?.firstYearFixedPrice && !packages.find(pkg => pkg.id === formData.packageid)?.firstYearSalaryPercentage) ? 'text-gray-400' : ''}>Percentage</span>
+                    <span>Percentage</span>
                   </label>
                   <label className="flex items-center">
                     <input
@@ -1142,9 +1362,8 @@ const SalesEnrollment: React.FC = () => {
                       checked={formData.pricing_type === 'fixed'}
                       onChange={() => handlePricingTypeChange('fixed')}
                       className="mr-2"
-                      disabled={!selectedClient || !!(formData.packageid && packages.find(pkg => pkg.id === formData.packageid)?.firstYearSalaryPercentage && !packages.find(pkg => pkg.id === formData.packageid)?.firstYearFixedPrice)}
                     />
-                    <span className={!selectedClient || (formData.packageid && packages.find(pkg => pkg.id === formData.packageid)?.firstYearSalaryPercentage && !packages.find(pkg => pkg.id === formData.packageid)?.firstYearFixedPrice) ? 'text-gray-400' : ''}>Fixed Amount</span>
+                    <span>Fixed Amount</span>
                   </label>
                 </div>
               </div>
@@ -1158,12 +1377,11 @@ const SalesEnrollment: React.FC = () => {
                       type="number"
                       value={formData.payable_first_year_percentage ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_percentage: Number(e.target.value) }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="0.00"
                       step="0.01"
                       max="100"
                       min="0"
-                      disabled={!selectedClient}
                       required
                     />
                   </div>
@@ -1176,16 +1394,16 @@ const SalesEnrollment: React.FC = () => {
                       type="number"
                       value={formData.payable_first_year_fixed_charge ?? ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_fixed_charge: Number(e.target.value) }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="0.00"
                       step="0.01"
                       min="0"
-                      disabled={!selectedClient}
                       required
                     />
                   </div>
                 )}
               </div>
+              
             </div>
 
             {/* Add Resume Upload Section before Form Actions */}
@@ -1253,10 +1471,10 @@ const SalesEnrollment: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={formLoading || !selectedClient || hasInstallmentError}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={formLoading || formData.initialPaymentError || formData.enrollment_installments.some(inst => inst.errorMessage)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {formLoading ? 'Updating...' : 'Update Enrollment'}
+                {formLoading ? 'Updating...' : 'Send Updated Configuration'}
               </button>
             </div>
           </form>
@@ -1441,72 +1659,145 @@ const SalesEnrollment: React.FC = () => {
                         type="number"
                         value={formData.payable_enrollment_charge ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
-                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
                         step="0.01"
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={addInstallment}
-                        className="p-2 text-blue-600 hover:text-blue-800 focus:outline-none"
-                        title="Add Installment"
-                      >
-                        <FaPlus className="w-5 h-5" />
-                      </button>
                     </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Initial Payment
+                  </label>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={formData.initial_payment ?? formData.payable_enrollment_charge ?? ''}
+                        onChange={(e) => {
+                          const inputValue = Number(e.target.value);
+                          handleInitialPaymentChange(inputValue);
+                          if (inputValue < (formData.payable_enrollment_charge || 0)) {
+                            setShowInitialPayment(true);
+                          }
+                        }}
+                        className={`w-full p-3 border ${
+                          formData.initialPaymentError ? 'border-red-300' : 'border-gray-300'
+                        } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                      {formData.initial_payment !== null && 
+                       formData.initial_payment < (formData.payable_enrollment_charge || 0) && 
+                       formData.enrollment_installments.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={addInstallment}
+                          className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Add Installment"
+                        >
+                          <FaPlus className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                    {formData.initialPaymentError && (
+                      <p className="text-red-500 text-sm mt-1">{formData.initialPaymentError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                    {/* Installments Section */}
+              {/* Installments Section */}
+              {formData.initial_payment !== null && formData.initial_payment < (formData.payable_enrollment_charge || 0) && (
+                <div className="mt-4">
+                  <div className="text-sm text-gray-600 mb-3">
+                    Remaining amount to be added in installments: {formatCurrency(getRemainingAmount())}
+                  </div>
+                  {formData.totalAmountError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+                      <p className="text-red-600 text-sm">{formData.totalAmountError}</p>
+                    </div>
+                  )}
+                  <div className="space-y-4">
                     {formData.enrollment_installments.map((installment, index) => (
-                      <div key={index} className="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-gray-700">Installment {index + 1}</h4>
+                      <div key={index} className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div className="flex-none">
+                          <span className="text-sm font-medium text-gray-700">Installment {index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="flex flex-col">
+                              <input
+                                type="number"
+                                value={installment.amount}
+                                onChange={(e) => {
+                                  const installmentAmount = Number(e.target.value);
+                                  updateInstallment(index, 'amount', installmentAmount);
+                                }}
+                                className={`w-full p-2 border ${
+                                  installment.errorMessage 
+                                    ? 'border-red-300' 
+                                    : 'border-gray-300'
+                                } rounded-md text-sm`}
+                                placeholder={index === formData.enrollment_installments.length - 1 ? String(getRemainingAmount()) : "0.00"}
+                                step="0.01"
+                                required
+                              />
+                              {installment.errorMessage && (
+                                <p className="text-red-500 text-xs mt-1">{installment.errorMessage}</p>
+                              )}
+                            </div>
+                            <div>
+                              <input
+                                type="date"
+                                value={installment.dueDate}
+                                onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                value={installment.remark}
+                                onChange={(e) => updateInstallment(index, 'remark', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                placeholder="Add a note..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-none">
                           <button
                             type="button"
                             onClick={() => removeInstallment(index)}
-                            className="text-red-600 hover:text-red-800 focus:outline-none"
+                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
                           >
                             <FaTrash className="w-4 h-4" />
                           </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Amount</label>
-                            <input
-                              type="number"
-                              value={installment.amount}
-                              onChange={(e) => updateInstallment(index, 'amount', Number(e.target.value))}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="0.00"
-                              step="0.01"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Due Date</label>
-                            <input
-                              type="date"
-                              value={installment.dueDate}
-                              onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Remark</label>
-                            <input
-                              type="text"
-                              value={installment.remark}
-                              onChange={(e) => updateInstallment(index, 'remark', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="Add a note..."
-                            />
-                          </div>
+                          {index === formData.enrollment_installments.length - 1 && getRemainingAmount() > 0 && (
+                            <button
+                              type="button"
+                              onClick={addInstallment}
+                              className="ml-2 text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={getRemainingAmount() <= 0}
+                            >
+                              <FaPlus className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* First Year Pricing Type and Value */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Offer Letter Charge
@@ -1521,10 +1812,6 @@ const SalesEnrollment: React.FC = () => {
                     required
                   />
                 </div>
-              </div>
-
-              {/* First Year Pricing Type and Value */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     First Year Pricing Type
@@ -1606,7 +1893,7 @@ const SalesEnrollment: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={formLoading}
+                  disabled={formLoading || hasInstallmentError}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {formLoading ? 'Updating...' : 'Send Updated Configuration'}
@@ -1673,6 +1960,8 @@ const SalesEnrollment: React.FC = () => {
             }}
             enrolledClientId={selectedClientForInstallments.id}
             totalCharge={selectedClientForInstallments.payable_enrollment_charge}
+            isMyReview={activeTab === 'my_review'}
+            editedTotalCharge={activeTab === 'my_review' ? selectedClientForInstallments.edited_enrollment_charge : undefined}
           />
         )}
 

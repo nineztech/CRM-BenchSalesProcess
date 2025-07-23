@@ -63,15 +63,27 @@ export const createInstallment = async (req, res) => {
     const { totalCharge, totalInstallments, remainingAmount } = await validateAndGetRemainingAmount(enrolledClientId, charge_type);
 
     // Determine if this is an initial payment based on installment_number
-    const isInitialPayment = installment_number === 0;
+    const isInitialPayment = installment_number === 0 || is_initial_payment;
 
-    // Skip remaining amount validation for initial payment
-    if (!isInitialPayment) {
-      // Validate if new installment amount exceeds remaining amount
-      if (amount > remainingAmount) {
+    // Skip remaining amount validation for initial payment that equals total charge
+    if (!isInitialPayment && !(Math.abs(amount - totalCharge) < 0.01)) {
+      // Calculate total of all installments including the new one
+      const allInstallments = await Installments.findAll({
+        where: { 
+          enrolledClientId,
+          charge_type,
+          installment_number: { [Op.gt]: 0 } // Exclude initial payment
+        }
+      });
+      
+      const existingTotal = allInstallments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+      const newTotal = existingTotal + Number(amount);
+
+      // If new total exceeds total charge, reject
+      if (Math.abs(newTotal - totalCharge) > 0.01 && newTotal > totalCharge) {
         return res.status(400).json({
           success: false,
-          message: `Installment amount exceeds remaining amount. Maximum allowed: ${remainingAmount}`,
+          message: `Total installment amount (${newTotal}) exceeds the total charge (${totalCharge})`,
           data: {
             totalCharge,
             totalInstallments,
@@ -259,6 +271,47 @@ export const updateInstallment = async (req, res) => {
       });
     }
 
+    // Get enrolled client to check approval status and total amount
+    const enrolledClient = await EnrolledClients.findByPk(installment.enrolledClientId);
+    const isFullyApproved = enrolledClient?.Approval_by_sales && enrolledClient?.Approval_by_admin;
+
+    // If amount is being updated, validate total amount
+    if (amount !== undefined) {
+      // Get all installments for this client except the current one
+      const otherInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: installment.enrolledClientId,
+          id: { [Op.ne]: id },
+          charge_type: installment.charge_type
+        }
+      });
+
+      // Calculate total amount including the new amount
+      const totalAmount = otherInstallments.reduce((sum, inst) => sum + Number(inst.amount), 0) + Number(amount);
+
+      // Get the target amount based on charge type
+      let targetAmount = 0;
+      switch (installment.charge_type) {
+        case 'enrollment_charge':
+          targetAmount = enrolledClient.payable_enrollment_charge;
+          break;
+        case 'offer_letter_charge':
+          targetAmount = enrolledClient.payable_offer_letter_charge;
+          break;
+        case 'first_year_charge':
+          targetAmount = enrolledClient.payable_first_year_fixed_charge;
+          break;
+      }
+
+      // Validate total amount
+      if (Math.abs(totalAmount - targetAmount) > 0.01) { // Using small epsilon for floating point comparison
+        return res.status(400).json({
+          success: false,
+          message: `Total installment amount (${totalAmount}) must equal ${installment.charge_type} (${targetAmount})`
+        });
+      }
+    }
+
     // If installment number is being changed, check for conflicts
     if (installment_number && installment_number !== installment.installment_number) {
       const existingInstallment = await Installments.findOne({
@@ -281,16 +334,17 @@ export const updateInstallment = async (req, res) => {
     const updateData = {};
     if (amount !== undefined) updateData.amount = amount;
     if (dueDate !== undefined) updateData.dueDate = dueDate;
-    if (paid !== undefined) {
-      updateData.paid = paid;
-      if (paid) {
-        updateData.paidDate = paidDate || new Date();
-      } else {
-        updateData.paidDate = null;
-      }
-    }
     if (remark !== undefined) updateData.remark = remark;
     if (installment_number !== undefined) updateData.installment_number = installment_number;
+
+    // Only set paid status for initial payment when fully approved
+    if (installment.is_initial_payment) {
+      updateData.paid = isFullyApproved;
+      updateData.paidDate = isFullyApproved ? new Date() : null;
+    } else if (paid !== undefined) {
+      updateData.paid = paid;
+      updateData.paidDate = paid ? (paidDate || new Date()) : null;
+    }
 
     await installment.update(updateData);
 

@@ -165,6 +165,7 @@ const AdminEnrollment: React.FC = () => {
   const [installments, setInstallments] = useState<any[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
+  const [installmentError, setInstallmentError] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -357,13 +358,44 @@ const AdminEnrollment: React.FC = () => {
     }));
   };
 
+  // Update validateInstallments function
+  const validateInstallments = (installments: FormData['edited_installments'], totalAmount: number | null): boolean => {
+    if (!totalAmount) return false;
+    
+    const sum = installments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const totalAmountNum = Number(totalAmount);
+    const isValid = Math.abs(sum - totalAmountNum) < 0.01;
+    
+    if (!isValid) {
+      setInstallmentError(`Total installment amount ($${sum.toFixed(2)}) must equal the enrollment charge ($${totalAmountNum.toFixed(2)})`);
+    } else {
+      setInstallmentError(null);
+    }
+    
+    return isValid;
+  };
+
+  // Update handleInstallmentChange function
   const handleInstallmentChange = (index: number, field: string, value: string | number) => {
     setFormData(prev => {
+      // Find the actual index in the full array (including both initial and regular payments)
+      const fullIndex = prev.edited_installments.findIndex(inst => 
+        inst.id === prev.edited_installments[index].id
+      );
+      
+      if (fullIndex === -1) return prev; // If installment not found, return previous state
+      
       const newInstallments = [...prev.edited_installments];
-      newInstallments[index] = {
-        ...newInstallments[index],
-        [field]: value
+      newInstallments[fullIndex] = {
+        ...newInstallments[fullIndex],
+        [field]: field === 'amount' ? Number(value) || 0 : value
       };
+      
+      // Validate total amount whenever an amount is changed
+      if (field === 'amount') {
+        validateInstallments(newInstallments, prev.edited_enrollment_charge);
+      }
+      
       return {
         ...prev,
         edited_installments: newInstallments
@@ -374,6 +406,14 @@ const AdminEnrollment: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
+
+    // Validate installments before proceeding
+    if (!formData.approved && formData.edited_installments.length > 0) {
+      const isValid = validateInstallments(formData.edited_installments, formData.edited_enrollment_charge);
+      if (!isValid) {
+        return; // Stop submission if validation fails
+      }
+    }
 
     setFormLoading(true);
     try {
@@ -1280,6 +1320,12 @@ const AdminEnrollment: React.FC = () => {
                         </div>
                       ) : (
                         <div className="space-y-4">
+                          {installmentError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-red-600 text-sm">{installmentError}</p>
+                            </div>
+                          )}
+                          
                           {/* Initial Payment Section */}
                           {formData.edited_installments.filter(inst => inst.is_initial_payment).map((installment, index) => (
                             <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
@@ -1292,11 +1338,11 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="number"
-                                  value={installment.amount}
+                                  value={installment.amount || ''}
                                   onChange={(e) => handleInstallmentChange(
                                     formData.edited_installments.findIndex(i => i.id === installment.id),
                                     'amount',
-                                    Number(e.target.value)
+                                    e.target.value
                                   )}
                                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                   placeholder="0.00"
@@ -1309,7 +1355,7 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="date"
-                                  value={installment.dueDate}
+                                  value={installment.dueDate || ''}
                                   onChange={(e) => handleInstallmentChange(
                                     formData.edited_installments.findIndex(i => i.id === installment.id),
                                     'dueDate',
@@ -1324,7 +1370,7 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="text"
-                                  value={installment.remark}
+                                  value={installment.remark || ''}
                                   onChange={(e) => handleInstallmentChange(
                                     formData.edited_installments.findIndex(i => i.id === installment.id),
                                     'remark',
@@ -1346,8 +1392,12 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="number"
-                                  value={installment.amount}
-                                  onChange={(e) => handleInstallmentChange(index, 'amount', Number(e.target.value))}
+                                  value={installment.amount || ''}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'amount',
+                                    e.target.value
+                                  )}
                                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                   placeholder="0.00"
                                   step="0.01"
@@ -1359,8 +1409,12 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="date"
-                                  value={installment.dueDate}
-                                  onChange={(e) => handleInstallmentChange(index, 'dueDate', e.target.value)}
+                                  value={installment.dueDate || ''}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'dueDate',
+                                    e.target.value
+                                  )}
                                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                 />
                               </div>
@@ -1370,14 +1424,36 @@ const AdminEnrollment: React.FC = () => {
                                 </label>
                                 <input
                                   type="text"
-                                  value={installment.remark}
-                                  onChange={(e) => handleInstallmentChange(index, 'remark', e.target.value)}
+                                  value={installment.remark || ''}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'remark',
+                                    e.target.value
+                                  )}
                                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                   placeholder="Add a note..."
                                 />
                               </div>
                             </div>
                           ))}
+
+                          {/* Add total amount display */}
+                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-700">Total Installment Amount:</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ${formData.edited_installments
+                                  .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0)
+                                  .toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-sm font-medium text-gray-700">Required Amount:</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ${Number(formData.edited_enrollment_charge || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

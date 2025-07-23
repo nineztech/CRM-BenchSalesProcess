@@ -10,6 +10,8 @@ interface InstallmentsPopupProps {
   onClose: () => void;
   enrolledClientId: number;
   totalCharge: number | null;
+  isMyReview?: boolean;  // Add this prop to determine if we're in My Review tab
+  editedTotalCharge?: number | null;  // Add this prop for edited total charge
 }
 
 interface Installment {
@@ -21,13 +23,18 @@ interface Installment {
   paidDate: string | null;
   charge_type: string;
   installment_number: number;
+  edited_amount?: number | null;
+  edited_dueDate?: string | null;
+  edited_remark?: string | null;
 }
 
 const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   isOpen,
   onClose,
   enrolledClientId,
-  totalCharge
+  totalCharge,
+  isMyReview = false,
+  editedTotalCharge
 }) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +68,8 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
@@ -69,13 +77,40 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString();
+    // Add timezone offset to show correct date
+    const [year, month, day] = date.split('T')[0].split('-').map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    
+    // Add ordinal suffix to day
+    const dayNum = d.getUTCDate();
+    const ordinal = (dayNum: number) => {
+      if (dayNum > 3 && dayNum < 21) return 'th';
+      switch (dayNum % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+    
+    const monthName = d.toLocaleDateString('en-US', {
+      month: 'long',
+      timeZone: 'UTC'
+    });
+    
+    return `${dayNum}${ordinal(dayNum)} ${monthName} ${d.getUTCFullYear()}`;
   };
 
   if (!isOpen) return null;
 
-  const totalPaid = installments.reduce((sum, inst) => inst.paid ? sum + Number(inst.amount) : sum, 0);
-  const totalPending = (totalCharge || 0) - totalPaid;
+  // Calculate totals based on whether we're showing edited values or original values
+  const totalPaid = installments.reduce((sum, inst) => {
+    const amount = isMyReview && inst.edited_amount !== undefined ? inst.edited_amount : inst.amount;
+    return inst.paid ? sum + Number(amount) : sum;
+  }, 0);
+
+  const effectiveTotalCharge = isMyReview && editedTotalCharge !== undefined ? editedTotalCharge : totalCharge;
+  const totalPending = (effectiveTotalCharge || 0) - totalPaid;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -85,7 +120,9 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
         className="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Installment Details</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {isMyReview ? 'Admin Modified Installment Details' : 'Installment Details'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -104,7 +141,7 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="bg-blue-50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Total Amount</h3>
-                <p className="text-lg font-semibold text-gray-900">{formatCurrency(totalCharge || 0)}</p>
+                <p className="text-lg font-semibold text-gray-900">{formatCurrency(effectiveTotalCharge || 0)}</p>
               </div>
               <div className="bg-green-50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Total Paid</h3>
@@ -148,10 +185,12 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
                         {installment.installment_number}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(installment.amount)}
+                        {formatCurrency(isMyReview && installment.edited_amount !== undefined ? 
+                          installment.edited_amount : installment.amount)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(installment.dueDate)}
+                        {formatDate(isMyReview && installment.edited_dueDate ? 
+                          installment.edited_dueDate : installment.dueDate)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {installment.paid ? (
@@ -168,7 +207,9 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
                         {installment.paidDate ? formatDate(installment.paidDate) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {installment.remark || '-'}
+                        {isMyReview && installment.edited_remark ? 
+                          installment.edited_remark : 
+                          installment.remark || '-'}
                       </td>
                     </tr>
                   ))}
