@@ -200,6 +200,27 @@ export const createDefaultActivities = async () => {
         editRoute: "/enrollment-admin",
         deleteRoute: "/enrollment-admin",
         status: "active"
+      },
+      // Finance Activities
+      {
+        name: "Account Management Admin",
+        category: "Finance",
+        description: "Manage and view finance receivables, including tracking incoming payments and outstanding balances.",
+        viewRoute: "/account-admin",
+        addRoute: "/account-admin",
+        editRoute: "/account-admin",
+        deleteRoute: "/account-admin",
+        status: "active"
+      },
+      {
+        name: "Account Management Sale",
+        category: "Finance",
+        description: "Manage and view finance disbursements, including outgoing payments and expense tracking.",
+        viewRoute: "/account-sale",
+        addRoute: "/account-sale",
+        editRoute: "/account-sale",
+        deleteRoute: "/account-sale",
+        status: "active"
       }
     ];
 

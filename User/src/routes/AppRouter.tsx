@@ -21,6 +21,9 @@ import DepartmentPermissions from '../components/admin/departmentPermissions/dep
 import Dashboard from '../components/common/Dashboard/Dashboard';
 import EmailTemplates from '../components/admin/email_templates/EmailTemplates';
 import { PermissionsProvider } from '../hooks/usePermissions';
+// Add imports for new finance pages
+import AccountSale from '../components/user/finance/AccountSale';
+import AccountAdmin from '../components/user/finance/AccountAdmin';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -103,6 +106,22 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <UserLayout>
                 <AdminEnrollment />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Finance routes */}
+          <Route path="/account-sale" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AccountSale />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/account-admin" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AccountAdmin />
               </UserLayout>
             </ProtectedRoute>
           } />

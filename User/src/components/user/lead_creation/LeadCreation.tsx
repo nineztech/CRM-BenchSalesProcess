@@ -357,7 +357,11 @@ const LeadCreationComponent: React.FC = () => {
           });
 
           if (allLeadsResponse.data.success) {
-            const allTabData = allLeadsResponse.data.data[activeStatusTab];
+            let allTabData = allLeadsResponse.data.data[activeStatusTab];
+            // Special handling for Enrolled tab: always filter only Enrolled leads
+            if (activeStatusTab === 'Enrolled') {
+              allTabData = allLeadsResponse.data.data['Enrolled'];
+            }
             if (allTabData && allTabData.leads) {
               // Filter all leads based on search query
               const searchLower = searchQuery.toLowerCase();
@@ -403,7 +407,11 @@ const LeadCreationComponent: React.FC = () => {
 
       // For users with view all permission or when not searching, proceed with normal API call
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      let endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      // Special handling for Enrolled tab: always search only in Enrolled object
+      if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
+        endpoint = baseEndpoint;
+      }
       console.log(`[API Request] Using endpoint: ${endpoint}`);
 
       let normalizedStatusGroup;
@@ -437,6 +445,60 @@ const LeadCreationComponent: React.FC = () => {
       if (searchQuery !== '') {
         params.query = searchQuery;
         params.statusGroup = normalizedStatusGroup;
+      }
+      // Special handling for Enrolled tab: only filter in Enrolled object
+      if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
+        // Fetch all Enrolled leads and filter client-side
+        try {
+          const enrolledResponse = await axios.get(baseEndpoint, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            params: {
+              page: 1,
+              limit: 1000,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+          if (enrolledResponse.data.success) {
+            const enrolledTabData = enrolledResponse.data.data['Enrolled'];
+            if (enrolledTabData && enrolledTabData.leads) {
+              const searchLower = searchQuery.toLowerCase();
+              const filteredLeads = enrolledTabData.leads.filter((lead: Lead) => {
+                return (
+                  lead.firstName?.toLowerCase().includes(searchLower) ||
+                  lead.lastName?.toLowerCase().includes(searchLower) ||
+                  lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+                  lead.primaryContact?.includes(searchQuery) ||
+                  lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+                  lead.country?.toLowerCase().includes(searchLower) ||
+                  lead.visaStatus?.toLowerCase().includes(searchLower) ||
+                  lead.status?.toLowerCase().includes(searchLower) ||
+                  lead.leadSource?.toLowerCase().includes(searchLower)
+                );
+              });
+              setLeadsData(prev => ({
+                ...prev,
+                Enrolled: {
+                  ...prev.Enrolled,
+                  leads: filteredLeads,
+                  pagination: {
+                    ...prev.Enrolled.pagination,
+                    total: filteredLeads.length,
+                    totalPages: Math.ceil(filteredLeads.length / pageSize),
+                    currentPage: 1
+                  }
+                }
+              }));
+              setIsLoading(false);
+              setIsSearching(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching Enrolled leads for search:', error);
+        }
       }
 
       console.log('[API Request] Params:', params);
