@@ -24,7 +24,7 @@ const Activity = sequelize.define(
       allowNull: false,
       validate: {
         notEmpty: true,
-        isIn: [['Lead', 'User', 'Department', 'Package', 'System']]
+        isIn: [['Lead', 'User', 'Department', 'Package', 'System', 'Finance']]
       }
     },
     status: {

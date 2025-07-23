@@ -357,7 +357,11 @@ const LeadCreationComponent: React.FC = () => {
           });
 
           if (allLeadsResponse.data.success) {
-            const allTabData = allLeadsResponse.data.data[activeStatusTab];
+            let allTabData = allLeadsResponse.data.data[activeStatusTab];
+            // Special handling for Enrolled tab: always filter only Enrolled leads
+            if (activeStatusTab === 'Enrolled') {
+              allTabData = allLeadsResponse.data.data['Enrolled'];
+            }
             if (allTabData && allTabData.leads) {
               // Filter all leads based on search query
               const searchLower = searchQuery.toLowerCase();
@@ -403,7 +407,11 @@ const LeadCreationComponent: React.FC = () => {
 
       // For users with view all permission or when not searching, proceed with normal API call
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      let endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      // Special handling for Enrolled tab: always search only in Enrolled object
+      if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
+        endpoint = baseEndpoint;
+      }
       console.log(`[API Request] Using endpoint: ${endpoint}`);
 
       let normalizedStatusGroup;
@@ -437,6 +445,60 @@ const LeadCreationComponent: React.FC = () => {
       if (searchQuery !== '') {
         params.query = searchQuery;
         params.statusGroup = normalizedStatusGroup;
+      }
+      // Special handling for Enrolled tab: only filter in Enrolled object
+      if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
+        // Fetch all Enrolled leads and filter client-side
+        try {
+          const enrolledResponse = await axios.get(baseEndpoint, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            params: {
+              page: 1,
+              limit: 1000,
+              sortBy: 'createdAt',
+              sortOrder: 'DESC'
+            }
+          });
+          if (enrolledResponse.data.success) {
+            const enrolledTabData = enrolledResponse.data.data['Enrolled'];
+            if (enrolledTabData && enrolledTabData.leads) {
+              const searchLower = searchQuery.toLowerCase();
+              const filteredLeads = enrolledTabData.leads.filter((lead: Lead) => {
+                return (
+                  lead.firstName?.toLowerCase().includes(searchLower) ||
+                  lead.lastName?.toLowerCase().includes(searchLower) ||
+                  lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+                  lead.primaryContact?.includes(searchQuery) ||
+                  lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+                  lead.country?.toLowerCase().includes(searchLower) ||
+                  lead.visaStatus?.toLowerCase().includes(searchLower) ||
+                  lead.status?.toLowerCase().includes(searchLower) ||
+                  lead.leadSource?.toLowerCase().includes(searchLower)
+                );
+              });
+              setLeadsData(prev => ({
+                ...prev,
+                Enrolled: {
+                  ...prev.Enrolled,
+                  leads: filteredLeads,
+                  pagination: {
+                    ...prev.Enrolled.pagination,
+                    total: filteredLeads.length,
+                    totalPages: Math.ceil(filteredLeads.length / pageSize),
+                    currentPage: 1
+                  }
+                }
+              }));
+              setIsLoading(false);
+              setIsSearching(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching Enrolled leads for search:', error);
+        }
       }
 
       console.log('[API Request] Params:', params);
@@ -914,11 +976,14 @@ const LeadCreationComponent: React.FC = () => {
 
   const handleEmailChange = (value: string, index: number) => {
     if (index === 0) {
-      setFormData(prev => ({
-        ...prev,
-        primaryEmail: value,
-        emails: [value, prev.emails[1]]
-      }));
+      // Only update primary email if not in editing mode
+      if (!isEditing) {
+        setFormData(prev => ({
+          ...prev,
+          primaryEmail: value,
+          emails: [value, prev.emails[1]]
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -1027,7 +1092,9 @@ const LeadCreationComponent: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         contactNumbers: [formData.primaryContact, formData.contactNumbers[1]].filter(Boolean),
-        emails: [formData.primaryEmail, formData.emails[1]].filter(Boolean),
+        emails: isEditing 
+          ? [selectedLead?.primaryEmail || formData.primaryEmail, formData.emails[1]].filter(Boolean)
+          : [formData.primaryEmail, formData.emails[1]].filter(Boolean),
         linkedinId: formData.linkedinId,
         technology: formData.technology.filter(Boolean),
         country: formData.country,
@@ -1807,10 +1874,15 @@ ${(() => {
                               placeholder="Enter primary email" 
                               className={`w-full px-4 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                                 errors.primaryEmail ? 'border-red-500' : 'border-gray-300'
-                              }`}
+                              } ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                              disabled={isEditing}
+                              title={isEditing ? "Primary email cannot be edited" : ""}
                             />
                             {errors.primaryEmail && (
                               <p className="mt-1.5 text-sm text-red-600">{errors.primaryEmail}</p>
+                            )}
+                            {isEditing && (
+                              <p className="mt-1 text-xs text-gray-500 italic">Primary email cannot be modified</p>
                             )}
                           </div>
 
@@ -1986,10 +2058,10 @@ ${(() => {
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                Creating Lead...
+                                {isEditing ? 'Updating Lead...' : 'Creating Lead...'}
                               </span>
                             ) : (
-                              'Create Lead'
+                              isEditing ? 'Update Lead' : 'Create Lead'
                             )}
                           </button>
                         </div>
