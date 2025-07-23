@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope, FaUserPlus, FaExchangeAlt } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope, FaUserPlus, FaExchangeAlt, FaListAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
 import ConfirmationPopup from './ConfirmationPopup';
 import AssignmentDialog from './AssignmentDialog';
+import InstallmentsPopup from './InstallmentsPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -86,6 +87,14 @@ interface FormData {
   edited_first_year_percentage: number | null;
   edited_first_year_fixed_charge: number | null;
   pricing_type: 'percentage' | 'fixed' | null;
+  edited_installments: {
+    id: number;
+    amount: number;
+    dueDate: string;
+    remark: string;
+    installment_number: number;
+    is_initial_payment?: boolean;
+  }[];
 }
 
 // Update the interface to match User interface from AssignmentDialog
@@ -102,6 +111,25 @@ interface MarketingTeamLead {
   };
 }
 
+// Add color themes mapping after the interfaces
+const packageColorThemes: { [key: string]: { bg: string; border: string; text: string } } = {
+  'Premium Plan': {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    text: 'text-purple-600'
+  },
+  'Standard Plan': {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-600'
+  },
+  'Basic Plan': {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-600'
+  }
+};
+
 const AdminEnrollment: React.FC = () => {
   const [_packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +145,8 @@ const AdminEnrollment: React.FC = () => {
     edited_offer_letter_charge: null,
     edited_first_year_percentage: null,
     edited_first_year_fixed_charge: null,
-    pricing_type: null
+    pricing_type: null,
+    edited_installments: []
   });
   const [enrollmentData, setEnrollmentData] = useState<any>(null);
   const [showResumePreview, setShowResumePreview] = useState(false);
@@ -133,6 +162,9 @@ const AdminEnrollment: React.FC = () => {
   const [selectedTeamLead, setSelectedTeamLead] = useState<string>('');
   const [isLoadingTeamLeads, setIsLoadingTeamLeads] = useState(false);
   const [currentAssignments, setCurrentAssignments] = useState<{[key: number]: number}>({});
+  const [installments, setInstallments] = useState<any[]>([]);
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
+  const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
 
   const pageSize = 10;
 
@@ -227,9 +259,45 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
+  const fetchInstallments = async (clientId: number) => {
+    setLoadingInstallments(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${BASE_URL}/installments/enrolled-client/${clientId}?charge_type=enrollment_charge`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        setInstallments(response.data.data.installments);
+        setFormData(prev => ({
+          ...prev,
+          edited_installments: response.data.data.installments.map((inst: any) => ({
+            id: inst.id,
+            amount: inst.amount,
+            dueDate: inst.dueDate,
+            remark: inst.remark,
+            installment_number: inst.installment_number,
+            is_initial_payment: inst.is_initial_payment
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching installments:', error);
+    } finally {
+      setLoadingInstallments(false);
+    }
+  };
+
   const handleReview = (client: EnrolledClient) => {
     setSelectedClient(client);
     setShowForm(true);
+    fetchInstallments(client.id);
     
     // Set form data with current values
     setFormData({
@@ -238,7 +306,8 @@ const AdminEnrollment: React.FC = () => {
       edited_offer_letter_charge: client.edited_offer_letter_charge || client.payable_offer_letter_charge,
       edited_first_year_percentage: client.edited_first_year_percentage || client.payable_first_year_percentage,
       edited_first_year_fixed_charge: client.edited_first_year_fixed_charge || client.payable_first_year_fixed_charge,
-      pricing_type: client.payable_first_year_percentage ? 'percentage' : 'fixed'
+      pricing_type: client.payable_first_year_percentage ? 'percentage' : 'fixed',
+      edited_installments: []
     });
   };
 
@@ -288,6 +357,20 @@ const AdminEnrollment: React.FC = () => {
     }));
   };
 
+  const handleInstallmentChange = (index: number, field: string, value: string | number) => {
+    setFormData(prev => {
+      const newInstallments = [...prev.edited_installments];
+      newInstallments[index] = {
+        ...newInstallments[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        edited_installments: newInstallments
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
@@ -309,6 +392,7 @@ const AdminEnrollment: React.FC = () => {
         })
       };
 
+      // First update the enrolled client
       const response = await axios.put(
         `${BASE_URL}/enrolled-clients/admin/approval/${selectedClient.id}`,
         submitData,
@@ -319,6 +403,30 @@ const AdminEnrollment: React.FC = () => {
           }
         }
       );
+
+      // If not approving, update installments
+      if (!formData.approved && formData.edited_installments.length > 0) {
+        const installmentPromises = formData.edited_installments.map(installment => 
+          axios.put(
+            `${BASE_URL}/installments/admin/approval/${installment.id}`,
+            {
+              approved: false,
+              admin_id: userId,
+              edited_amount: installment.amount,
+              edited_dueDate: installment.dueDate,
+              edited_remark: installment.remark
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+        );
+
+        await Promise.all(installmentPromises);
+      }
 
       if (response.data.success) {
         setShowForm(false);
@@ -572,6 +680,11 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
+  const handleViewInstallments = (client: EnrolledClient) => {
+    setSelectedClient(client);
+    setShowInstallmentsPopup(true);
+  };
+
   const renderTableHeader = () => (
     <tr>
       {activeTab === 'approved' && (
@@ -684,42 +797,69 @@ const AdminEnrollment: React.FC = () => {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-start">
-        <div className="text-sm text-gray-900">
-          <div>Enrollment: {formatCurrency(
-            activeTab === 'approved'
-              ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
-              : activeTab === 'sales_pending' && client.edited_enrollment_charge !== null
-                ? client.edited_enrollment_charge
-                : client.payable_enrollment_charge
-          )}</div>
-          <div>Offer Letter: {formatCurrency(
-            activeTab === 'approved'
-              ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
-              : activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null
-                ? client.edited_offer_letter_charge
-                : client.payable_offer_letter_charge
-          )}</div>
-          <div>
-            First Year: {
-              activeTab === 'approved'
-                ? (client.edited_first_year_percentage !== null
+        {client.package && (
+          <div className={`${packageColorThemes[client.package.planName]?.bg || 'bg-gray-50'} 
+                   ${packageColorThemes[client.package.planName]?.border || 'border-gray-200'} 
+                   border rounded-lg p-3 space-y-2`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleViewInstallments(client)}
+                  className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                  title="View Installments"
+                >
+                  <FaListAlt className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-gray-700">Enrollment:</span>
+              </div>
+              <span className="text-sm text-gray-900">
+                {formatCurrency(
+                  activeTab === 'approved'
+                    ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
+                    : (activeTab === 'sales_pending' && client.edited_enrollment_charge !== null)
+                      ? client.edited_enrollment_charge
+                      : client.payable_enrollment_charge
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
+              <span className="text-sm text-gray-900">
+                {formatCurrency(
+                  activeTab === 'approved'
+                    ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+                    : (activeTab === 'sales_pending' && client.edited_offer_letter_charge !== null)
+                      ? client.edited_offer_letter_charge
+                      : client.payable_offer_letter_charge
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">First Year:</span>
+              <span className="text-sm text-gray-900">
+                {activeTab === 'approved'
+                  ? (client.edited_first_year_percentage !== null
+                      ? `${client.edited_first_year_percentage}%`
+                      : client.edited_first_year_fixed_charge !== null
+                        ? formatCurrency(client.edited_first_year_fixed_charge)
+                        : client.payable_first_year_percentage
+                          ? `${client.payable_first_year_percentage}%`
+                          : formatCurrency(client.payable_first_year_fixed_charge)
+                    )
+                  : (activeTab === 'sales_pending' && client.edited_first_year_percentage !== null)
                     ? `${client.edited_first_year_percentage}%`
-                    : client.edited_first_year_fixed_charge !== null
-                      ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
-                      : client.payable_first_year_percentage
-                        ? `${client.payable_first_year_percentage}%`
-                        : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
-                  )
-                : activeTab === 'sales_pending' && client.edited_first_year_percentage !== null
-                  ? `${client.edited_first_year_percentage}%`
-                : activeTab === 'sales_pending' && client.edited_first_year_fixed_charge !== null
-                  ? formatCurrency(typeof client.edited_first_year_fixed_charge === 'number' ? client.edited_first_year_fixed_charge : null)
-                : client.payable_first_year_percentage 
-                  ? `${client.payable_first_year_percentage}%` 
-                : formatCurrency(typeof client.payable_first_year_fixed_charge === 'number' ? client.payable_first_year_fixed_charge : null)
-            }
+                  : (activeTab === 'sales_pending' && client.edited_first_year_fixed_charge !== null)
+                    ? formatCurrency(client.edited_first_year_fixed_charge)
+                  : client.payable_first_year_percentage 
+                    ? `${client.payable_first_year_percentage}%` 
+                    : formatCurrency(client.payable_first_year_fixed_charge)
+                }
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-start">
         {client.resume ? (
@@ -1032,103 +1172,216 @@ const AdminEnrollment: React.FC = () => {
 
                 {/* Modification Form */}
                 {formData.approved === false && (
-                  <div className="border rounded-lg p-4 bg-blue-50">
-                    <h3 className="font-medium text-gray-900 mb-4">Modify Pricing</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Modified Enrollment Charge
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.edited_enrollment_charge || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, edited_enrollment_charge: Number(e.target.value) }))}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          placeholder="0.00"
-                          step="0.01"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Modified Offer Letter Charge
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.edited_offer_letter_charge || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, edited_offer_letter_charge: Number(e.target.value) }))}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          placeholder="0.00"
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Year Pricing Type
-                      </label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="pricing_type"
-                            value="percentage"
-                            checked={formData.pricing_type === 'percentage'}
-                            onChange={() => handlePricingTypeChange('percentage')}
-                            className="mr-2"
-                          />
-                          Percentage
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="pricing_type"
-                            value="fixed"
-                            checked={formData.pricing_type === 'fixed'}
-                            onChange={() => handlePricingTypeChange('fixed')}
-                            className="mr-2"
-                          />
-                          Fixed Amount
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      {formData.pricing_type === 'percentage' ? (
+                  <>
+                    <div className="border rounded-lg p-4 bg-blue-50">
+                      <h3 className="font-medium text-gray-900 mb-4">Modify Pricing</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Modified First Year Salary Percentage (%)
+                            Modified Enrollment Charge
                           </label>
                           <input
                             type="number"
-                            value={formData.edited_first_year_percentage || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_percentage: Number(e.target.value) }))}
+                            value={formData.edited_enrollment_charge || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, edited_enrollment_charge: Number(e.target.value) }))}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                             placeholder="0.00"
                             step="0.01"
-                            max="100"
-                            min="0"
                           />
                         </div>
-                      ) : (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Modified First Year Fixed Charge ($)
+                            Modified Offer Letter Charge
                           </label>
                           <input
                             type="number"
-                            value={formData.edited_first_year_fixed_charge || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_fixed_charge: Number(e.target.value) }))}
+                            value={formData.edited_offer_letter_charge || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, edited_offer_letter_charge: Number(e.target.value) }))}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                             placeholder="0.00"
                             step="0.01"
-                            min="0"
                           />
+                        </div>
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Year Pricing Type
+                        </label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="pricing_type"
+                              value="percentage"
+                              checked={formData.pricing_type === 'percentage'}
+                              onChange={() => handlePricingTypeChange('percentage')}
+                              className="mr-2"
+                            />
+                            Percentage
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="pricing_type"
+                              value="fixed"
+                              checked={formData.pricing_type === 'fixed'}
+                              onChange={() => handlePricingTypeChange('fixed')}
+                              className="mr-2"
+                            />
+                            Fixed Amount
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        {formData.pricing_type === 'percentage' ? (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Modified First Year Salary Percentage (%)
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.edited_first_year_percentage || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_percentage: Number(e.target.value) }))}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              placeholder="0.00"
+                              step="0.01"
+                              max="100"
+                              min="0"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Modified First Year Fixed Charge ($)
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.edited_first_year_fixed_charge || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_fixed_charge: Number(e.target.value) }))}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              placeholder="0.00"
+                              step="0.01"
+                              min="0"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Installments Modification Section */}
+                    <div className="border rounded-lg p-4 bg-blue-50 mt-4">
+                      <h3 className="font-medium text-gray-900 mb-4">Modify Installments</h3>
+                      {loadingInstallments ? (
+                        <div className="text-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Initial Payment Section */}
+                          {formData.edited_installments.filter(inst => inst.is_initial_payment).map((installment, index) => (
+                            <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
+                              <div className="col-span-3 mb-2">
+                                <h4 className="text-sm font-semibold text-purple-700">Initial Payment</h4>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Amount
+                                </label>
+                                <input
+                                  type="number"
+                                  value={installment.amount}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'amount',
+                                    Number(e.target.value)
+                                  )}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  placeholder="0.00"
+                                  step="0.01"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Due Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={installment.dueDate}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'dueDate',
+                                    e.target.value
+                                  )}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Remark
+                                </label>
+                                <input
+                                  type="text"
+                                  value={installment.remark}
+                                  onChange={(e) => handleInstallmentChange(
+                                    formData.edited_installments.findIndex(i => i.id === installment.id),
+                                    'remark',
+                                    e.target.value
+                                  )}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  placeholder="Add a note..."
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Regular Installments Section */}
+                          {formData.edited_installments.filter(inst => !inst.is_initial_payment).map((installment, index) => (
+                            <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Amount
+                                </label>
+                                <input
+                                  type="number"
+                                  value={installment.amount}
+                                  onChange={(e) => handleInstallmentChange(index, 'amount', Number(e.target.value))}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  placeholder="0.00"
+                                  step="0.01"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Due Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={installment.dueDate}
+                                  onChange={(e) => handleInstallmentChange(index, 'dueDate', e.target.value)}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Remark
+                                </label>
+                                <input
+                                  type="text"
+                                  value={installment.remark}
+                                  onChange={(e) => handleInstallmentChange(index, 'remark', e.target.value)}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  placeholder="Add a note..."
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Form Actions */}
@@ -1296,6 +1549,18 @@ const AdminEnrollment: React.FC = () => {
         onAssign={handleAssign}
         selectedTeamLead={marketingTeamLeads.find(lead => lead.id === Number(selectedTeamLead))}
       />
+
+      {showInstallmentsPopup && selectedClient && (
+        <InstallmentsPopup
+          isOpen={showInstallmentsPopup}
+          onClose={() => {
+            setShowInstallmentsPopup(false);
+            setSelectedClient(null);
+          }}
+          enrolledClientId={selectedClient.id}
+          totalCharge={selectedClient.payable_enrollment_charge}
+        />
+      )}
     </div>
   );
 };
