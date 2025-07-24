@@ -303,11 +303,11 @@ export const updateInstallment = async (req, res) => {
           break;
       }
 
-      // Validate total amount
-      if (Math.abs(totalAmount - targetAmount) > 0.01) { // Using small epsilon for floating point comparison
+      // Validate total amount - allow less than or equal to target amount
+      if (totalAmount > targetAmount) {
         return res.status(400).json({
           success: false,
-          message: `Total installment amount (${totalAmount}) must equal ${installment.charge_type} (${targetAmount})`
+          message: `Total installment amount (${totalAmount}) cannot exceed ${installment.charge_type} (${targetAmount})`
         });
       }
     }
