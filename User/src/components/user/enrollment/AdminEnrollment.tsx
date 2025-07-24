@@ -6,6 +6,7 @@ import PackageFeaturesPopup from './PackageFeaturesPopup';
 import ConfirmationPopup from './ConfirmationPopup';
 import AssignmentDialog from './AssignmentDialog';
 import InstallmentsPopup from './InstallmentsPopup';
+import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -313,8 +314,6 @@ const AdminEnrollment: React.FC = () => {
   };
 
   const handleApprove = async (client: EnrolledClient) => {
-    if (!confirm('Are you sure you want to approve this enrollment without changes?')) return;
-
     setFormLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -337,13 +336,13 @@ const AdminEnrollment: React.FC = () => {
 
       if (response.data.success) {
         fetchEnrolledClients();
-        alert('Enrollment approved successfully!');
+        toast.success('Enrollment approved successfully!');
       } else {
-        alert(response.data.message || 'Error approving enrollment');
+        toast.error(response.data.message || 'Error approving enrollment');
       }
     } catch (error) {
       console.error('Error approving enrollment:', error);
-      alert('Error approving enrollment');
+      toast.error('Error approving enrollment');
     } finally {
       setFormLoading(false);
     }
@@ -472,13 +471,13 @@ const AdminEnrollment: React.FC = () => {
         setShowForm(false);
         setSelectedClient(null);
         fetchEnrolledClients();
-        alert(formData.approved ? 'Enrollment approved successfully!' : 'Enrollment updated and sent back to sales!');
+        toast.success(formData.approved ? 'Enrollment approved successfully!' : 'Enrollment updated and sent back to sales!');
       } else {
-        alert(response.data.message || 'Error processing enrollment');
+        toast.error(response.data.message || 'Error processing enrollment');
       }
     } catch (error) {
       console.error('Error processing enrollment:', error);
-      alert('Error processing enrollment');
+      toast.error('Error processing enrollment');
     } finally {
       setFormLoading(false);
     }
@@ -500,18 +499,18 @@ const AdminEnrollment: React.FC = () => {
         }
       );
       if (response.data.success) {
-        alert('Resume uploaded successfully!');
+        toast.success('Resume uploaded successfully!');
         fetchEnrolledClients();
       }
     } catch (error) {
       console.error('Error uploading resume:', error);
-      alert('Failed to upload resume');
+      toast.error('Failed to upload resume');
     }
   };
 
   const handleResumePreview = async (resumePath: string | null, clientId: number) => {
     if (!resumePath) {
-      alert('No resume available');
+      toast.error('No resume available');
       return;
     }
     try {
@@ -528,7 +527,7 @@ const AdminEnrollment: React.FC = () => {
       setShowResumePreview(true);
     } catch (error) {
       console.error('Error fetching resume:', error);
-      alert('Failed to load resume');
+      toast.error('Failed to load resume');
     }
   };
 
@@ -612,12 +611,12 @@ const AdminEnrollment: React.FC = () => {
   // Update the handleAssign function
   const handleAssign = async (remarkText: string) => {
     if (!selectedTeamLead) {
-      alert('Please select a team lead first');
+      toast.error('Please select a team lead first');
       return;
     }
 
     if (selectedClientsForAssignment.length === 0) {
-      alert('Please select at least one client to assign');
+      toast.error('Please select at least one client to assign');
       return;
     }
 
@@ -663,11 +662,11 @@ const AdminEnrollment: React.FC = () => {
       // Refresh the data
       await fetchEnrolledClients();
       
-      alert('Clients assigned successfully!');
+      toast.success('Clients assigned successfully!');
     } catch (error: any) {
       console.error('Error assigning clients:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to assign clients';
-      alert(`Assignment failed: ${errorMessage}`);
+      toast.error(`Assignment failed: ${errorMessage}`);
     } finally {
       setAssignmentLoading(false);
     }
@@ -676,7 +675,7 @@ const AdminEnrollment: React.FC = () => {
   // Add quick reassign function
   const handleQuickReassign = async () => {
     if (!selectedTeamLead || selectedClientsForAssignment.length === 0) {
-      alert('Please select a team lead and at least one client');
+      toast.error('Please select a team lead and at least one client');
       return;
     }
 
@@ -711,10 +710,10 @@ const AdminEnrollment: React.FC = () => {
       // Refresh the data
       fetchEnrolledClients();
       
-      alert('Clients reassigned successfully!');
+      toast.success('Clients reassigned successfully!');
     } catch (error) {
       console.error('Error reassigning clients:', error);
-      alert('Failed to reassign clients');
+      toast.error('Failed to reassign clients');
     } finally {
       setAssignmentLoading(false);
     }

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
 import ConfirmationPopup from './ConfirmationPopup';
 import InstallmentsPopup from './InstallmentsPopup';
+import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -252,7 +253,7 @@ const SalesEnrollment: React.FC = () => {
 
     } catch (error) {
       console.error('Error fetching installments:', error);
-      alert('Error fetching existing installments');
+      toast.error('Error fetching existing installments');
       
       // Set form data without installments as fallback
       setFormData({
@@ -303,7 +304,7 @@ const SalesEnrollment: React.FC = () => {
     
     const totalCharge = formData.payable_enrollment_charge || 0;
     if (totalCharge === 0) {
-      alert('Cannot add installments when enrollment charge is 0');
+      toast.error('Cannot add installments when enrollment charge is 0');
       return;
     }
 
@@ -313,7 +314,7 @@ const SalesEnrollment: React.FC = () => {
     }
 
     if (!formData.initial_payment) {
-      alert('Please enter the initial payment amount first');
+      toast.error('Please enter the initial payment amount first');
       return;
     }
 
@@ -322,7 +323,7 @@ const SalesEnrollment: React.FC = () => {
     const remainingAmount = totalCharge - (formData.initial_payment + totalExistingAmount);
 
     if (remainingAmount <= 0) {
-      alert('Total installment amount cannot exceed the remaining charge');
+      toast.error('Total installment amount cannot exceed the remaining charge');
       return;
     }
 
@@ -720,10 +721,10 @@ const SalesEnrollment: React.FC = () => {
       setShowUpdateForm(false);
       setShowForm(false);
       fetchEnrolledClients();
-      alert(showUpdateForm ? 'Configuration updated and sent to admin for confirmation!' : 'Enrollment updated successfully!');
+      toast.success(showUpdateForm ? 'Configuration updated and sent to admin for confirmation!' : 'Enrollment updated successfully!');
     } catch (error) {
       console.error('Error updating enrollment:', error);
-      alert('Error updating enrollment');
+      toast.error('Error updating enrollment');
     } finally {
       setFormLoading(false);
     }
@@ -754,13 +755,13 @@ const SalesEnrollment: React.FC = () => {
       if (response.data.success) {
         setSelectedClient(null);
         fetchEnrolledClients();
-        alert('Admin changes approved!');
+        toast.success('Admin changes approved!');
       } else {
-        alert(response.data.message || 'Error processing approval');
+        toast.error(response.data.message || 'Error processing approval');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Error processing approval');
+      toast.error('Error processing approval');
     } finally {
       setFormLoading(false);
     }
@@ -898,14 +899,14 @@ const SalesEnrollment: React.FC = () => {
       }
     } catch (error) {
       console.error('Error uploading resume:', error);
-      alert('Failed to upload resume');
+      toast.error('Failed to upload resume');
     }
   };
 
   // Add resume preview handler
   const handleResumePreview = async (resumePath: string | null, clientId: number) => {
     if (!resumePath) {
-      alert('No resume available');
+      toast.error('No resume available');
       return;
     }
     try {
@@ -923,7 +924,7 @@ const SalesEnrollment: React.FC = () => {
       setShowResumePreview(true);
     } catch (error) {
       console.error('Error fetching resume:', error);
-      alert('Failed to load resume');
+      toast.error('Failed to load resume');
     }
   };
 
