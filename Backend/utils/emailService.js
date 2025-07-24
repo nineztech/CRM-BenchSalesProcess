@@ -240,6 +240,11 @@ export const sendClientWelcomeEmail = async (clientData) => {
     from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
     to: clientData.primaryEmail,
     subject: 'Welcome to Your Client Portal - CRM Bench Sales Process',
+    attachments: [{
+      filename: 'Logo.webp',
+      path: '../User/src/assets/Logo.webp',
+      cid: 'companyLogo'
+    }],
     html: `
       <!DOCTYPE html>
       <html>
@@ -253,42 +258,63 @@ export const sendClientWelcomeEmail = async (clientData) => {
           </style>
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
-          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <div class="container" style="max-width: 800px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <!-- Header -->
-            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-              <h1 style="margin: 0; color: #0369a1; font-size: 24px; font-weight: 600;">Welcome to Your Client Portal</h1>
+            <div style="padding: 32px 40px; text-align: left; border-bottom: 1px solid #e2e8f0;); border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">Welcome to Your Client Portal</h1>
+              <p style="margin: 10px 0 0; color: #e0f2fe; font-size: 16px;">Your journey with us begins here</p>
             </div>
 
             <!-- Content -->
-            <div class="content" style="padding: 32px 40px;">
-              <p style="color: #334155; font-size: 16px; margin: 0 0 24px 0;">Dear ${clientData.firstName} ${clientData.lastName},</p>
+            <div class="content" style="padding: 40px;">
+              <p style="color: #334155; font-size: 18px; margin: 0 0 24px 0; font-weight: 500;">Dear ${clientData.firstName} ${clientData.lastName},</p>
               
-              <p style="color: #64748b; font-size: 15px; margin: 0 0 24px 0;">Welcome to the CRM Bench Sales Process client portal! Your account has been created successfully. Below are your login credentials:</p>
+              <p style="color: #64748b; font-size: 16px; margin: 0 0 32px 0; line-height: 1.6;">
+                Welcome to the CRM Bench Sales Process client portal! We're excited to have you on board. Your account has been created successfully, and you can now access our platform using the credentials below.
+              </p>
 
               <!-- Credentials Box -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 32px;">
-                <p style="margin: 0 0 16px 0;">
-                  <strong style="color: #334155;">Username:</strong>
-                  <span style="color: #64748b; font-family: monospace; font-size: 15px; margin-left: 8px;">${clientData.username}</span>
-                </p>
-                <p style="margin: 0;">
-                  <strong style="color: #334155;">Password:</strong>
-                  <span style="color: #64748b; font-family: monospace; font-size: 15px; margin-left: 8px;">${clientData.password}</span>
+              <div style="background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; margin-bottom: 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <h3 style="margin: 0 0 20px 0; color: #0369a1; font-size: 18px; font-weight: 600;">Your Login Credentials</h3>
+                <div style="display: grid; gap: 16px;">
+                  <div>
+                    <label style="display: block; color: #475569; font-size: 14px; margin-bottom: 4px;">Username</label>
+                    <div style="background: #ffffff; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 16px; color: #334155;">
+                      ${clientData.username}
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display: block; color: #475569; font-size: 14px; margin-bottom: 4px;">Password</label>
+                    <div style="background: #ffffff; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 16px; color: #334155;">
+                      ${clientData.password}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Security Notice -->
+              <div style=" border: 1px solid #fee2e2; border-radius: 8px; padding: 16px; margin-bottom: 32px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style=" font-size: 16px; font-weight: 600;">🔒 Security Recommendation</span>
+                </div>
+                <p style=" font-size: 14px; margin: 0; line-height: 1.5;">
+                  For your security, we strongly recommend changing your password after your first login. This helps ensure the privacy and security of your account.
                 </p>
               </div>
 
-              <p style="color: #64748b; font-size: 15px; margin: 0 0 24px 0;">For security reasons, we recommend changing your password after your first login.</p>
-
               <div style="margin-top: 32px;">
-                <p style="color: #334155; font-size: 15px; margin: 0 0 8px 0;">Best regards,</p>
-                <p style="color: #334155; font-size: 15px; margin: 0;">CRM Bench Sales Process Team</p>
+                <p style="color: #334155; font-size: 16px; margin: 0 0 8px 0;">Best regards,</p>
+                <p style="color: #334155; font-size: 16px; margin: 0;">CRM Bench Sales Process Team</p>
               </div>
             </div>
 
+            ${getEmailHeader(clientData)}
+
             <!-- Footer -->
-            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0; background-color: #f8fafc; border-radius: 0 0 12px 12px;">
               <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
               <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">CRM Bench Sales Process</p>
+              <p style="color: #666; margin: 8px 0 0 0; text-align: center;">"Empowering Career, Enriching Future"</p>
             </div>
           </div>
         </body>
