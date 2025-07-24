@@ -2,7 +2,7 @@ import EnrolledClients from '../models/enrolledClientsModel.js';
 import Lead from '../models/leadModel.js';
 import User from '../models/userModel.js';
 import Packages from '../models/packagesModel.js';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import fs from 'fs';
 import { promisify } from 'util';
 import path from 'path';
@@ -300,8 +300,22 @@ export const adminApprovalAction = async (req, res) => {
         edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
       });
 
+      // --- NEW LOGIC: Update all related installments' edit fields ---
+      const allInstallments = await Installments.findAll({
+        where: { enrolledClientId: id }
+      });
+      for (const inst of allInstallments) {
+        await inst.update({
+          edited_amount: inst.amount,
+          edited_dueDate: inst.dueDate,
+          edited_remark: inst.remark,
+          has_admin_update: false
+        });
+      }
+      // --- END NEW LOGIC ---
+
       // If both admin and sales have approved, mark initial payment as paid
-      if (enrolledClient.Approval_by_sales) {
+      if (enrolledClient.Approval_by_sales && !enrolledClient.clientUserCreated) {
         // Find and update initial payment
         const initialPayment = await Installments.findOne({
           where: {
@@ -318,15 +332,21 @@ export const adminApprovalAction = async (req, res) => {
           });
         }
 
-        // Create client user
+        // Create client user only if not already created
         try {
           const { clientUser, plainPassword } = await createClientUser(id);
           console.log('Client user created successfully:', {
             username: clientUser.username,
             password: plainPassword
           });
+          // Optionally, set a flag on enrolledClient to prevent future creation attempts
+          await enrolledClient.update({ clientUserCreated: true });
         } catch (error) {
-          console.error('Error creating client user:', error);
+          if (error.message === 'Client user already exists') {
+            // Do nothing, user already exists
+          } else {
+            console.error('Error creating client user:', error);
+          }
         }
       }
       // Auto-approval by sales will be handled in the beforeUpdate hook
@@ -885,5 +905,348 @@ export const serveResume = async (req, res) => {
       message: 'Internal server error',
       error: error.message
     });
+  }
+}; 
+
+// Helper function to check if client has all required installments
+const hasRequiredInstallments = async (clientId) => {
+  try {
+    // Check if enrollment charge is fully paid
+    const enrollmentInstallments = await Installments.findAll({
+      where: {
+        enrolledClientId: clientId,
+        charge_type: 'enrollment_charge',
+        paid: true
+      }
+    });
+
+    if (!enrollmentInstallments.length) return false;
+
+    // Check if offer letter installments exist
+    const offerLetterInstallments = await Installments.findAll({
+      where: {
+        enrolledClientId: clientId,
+        charge_type: 'offer_letter_charge'
+      }
+    });
+
+    if (!offerLetterInstallments.length) return false;
+
+    // Check if first year salary installments exist (if applicable)
+    const client = await EnrolledClients.findByPk(clientId);
+    if (client.payable_first_year_fixed_charge || client.payable_first_year_percentage) {
+      const firstYearInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: clientId,
+          charge_type: 'first_year_charge'
+        }
+      });
+
+      if (!firstYearInstallments.length) return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error checking installments:', error);
+    return false;
+  }
+};
+
+// Get all approved clients for sales accounts page
+export const getAllApprovedClientsSale = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get all approved clients
+    const approvedClients = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true
+      },
+      include: [
+        {
+          model: Lead,
+          as: 'lead',
+          attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers']
+        },
+        {
+          model: User,
+          as: 'salesPerson',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'admin',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: Packages,
+          as: 'package',
+          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+      distinct: true
+    });
+
+    // Get installments for each client
+    const accountsClients = await Promise.all(approvedClients.rows.map(async (client) => {
+      // Get enrollment installments
+      const enrollmentInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'enrollment_charge'
+        }
+      });
+
+      // Get offer letter installments
+      const offerLetterInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'offer_letter_charge'
+        }
+      });
+
+      // Get first year installments
+      const firstYearInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'first_year_charge'
+        }
+      });
+
+      // Check if enrollment is paid
+      const enrollmentPaid = enrollmentInstallments.some(inst => inst.is_initial_payment && inst.paid);
+
+      // Add installments info to client
+      const clientJson = client.toJSON();
+      clientJson.enrollment_installments = enrollmentInstallments;
+      clientJson.offer_letter_installments = offerLetterInstallments;
+      clientJson.first_year_installments = firstYearInstallments;
+      clientJson.enrollment_paid = enrollmentPaid;
+
+      return clientJson;
+    }));
+
+    // Filter clients that have paid enrollment
+    const filteredClients = accountsClients.filter(client => client.enrollment_paid);
+
+    // Calculate pagination
+    const totalItems = filteredClients.length;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    res.status(200).json({
+      success: true,
+      message: 'Approved clients for accounts retrieved successfully',
+      data: {
+        leads: filteredClients,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching approved clients for accounts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get all approved clients for admin accounts page
+export const getAllApprovedAdminSale = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get all approved clients
+    const approvedClients = await EnrolledClients.findAndCountAll({
+      where: {
+        Approval_by_sales: true,
+        Approval_by_admin: true
+      },
+      include: [
+        // Include your existing associations
+      ],
+      limit,
+      offset,
+      distinct: true
+    });
+
+    // Filter clients that have all required installments
+    const accountsClients = [];
+    for (const client of approvedClients.rows) {
+      const hasInstallments = await hasRequiredInstallments(client.id);
+      if (hasInstallments) {
+        accountsClients.push(client);
+      }
+    }
+
+    // Calculate pagination
+    const totalItems = accountsClients.length;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    res.status(200).json({
+      success: true,
+      message: 'Approved clients for admin accounts retrieved successfully',
+      data: {
+        leads: accountsClients,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching approved clients for admin accounts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+}; 
+
+// Update offer letter charge (Sales)
+export const updateOfferLetterCharge = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payable_offer_letter_charge, Sales_person_id, updatedBy } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    await enrolledClient.update({
+      payable_offer_letter_charge,
+      Sales_person_id,
+      updatedBy,
+      offer_letter_approval_by_sales: false,
+      offer_letter_approval_by_admin: false,
+      offer_letter_has_update: false
+    });
+    res.status(200).json({ success: true, message: 'Offer letter charge updated successfully by sales', data: enrolledClient });
+  } catch (error) {
+    console.error('Error updating offer letter charge:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Admin approval/rejection for offer letter charge
+export const adminOfferLetterApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved, Admin_id, edited_offer_letter_charge, updatedBy } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    if (approved) {
+      await enrolledClient.update({
+        offer_letter_approval_by_admin: true,
+        Admin_id,
+        offer_letter_has_update: false,
+        updatedBy,
+        edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge
+      });
+    } else {
+      const updateData = {
+        offer_letter_approval_by_admin: false,
+        Admin_id,
+        offer_letter_has_update: true,
+        updatedBy
+      };
+      if (edited_offer_letter_charge !== undefined) {
+        updateData.edited_offer_letter_charge = edited_offer_letter_charge;
+      }
+      await enrolledClient.update(updateData);
+    }
+    res.status(200).json({ success: true, message: approved ? 'Offer letter charge approved by admin' : 'Offer letter charge updated by admin', data: enrolledClient });
+  } catch (error) {
+    console.error('Error in admin offer letter approval:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Update first year salary charge (Sales)
+export const updateFirstYearCharge = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payable_first_year_percentage, payable_first_year_fixed_charge, Sales_person_id, updatedBy } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    if (payable_first_year_percentage && payable_first_year_fixed_charge) {
+      return res.status(400).json({ success: false, message: 'Cannot set both payable_first_year_percentage and payable_first_year_fixed_charge' });
+    }
+    await enrolledClient.update({
+      payable_first_year_percentage,
+      payable_first_year_fixed_charge,
+      Sales_person_id,
+      updatedBy,
+      first_year_approval_by_sales: false,
+      first_year_approval_by_admin: false,
+      first_year_has_update: false
+    });
+    res.status(200).json({ success: true, message: 'First year salary charge updated successfully by sales', data: enrolledClient });
+  } catch (error) {
+    console.error('Error updating first year salary charge:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Admin approval/rejection for first year salary charge
+export const adminFirstYearApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved, Admin_id, edited_first_year_percentage, edited_first_year_fixed_charge, updatedBy } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    if (approved) {
+      await enrolledClient.update({
+        first_year_approval_by_admin: true,
+        Admin_id,
+        first_year_has_update: false,
+        updatedBy,
+        edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
+        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
+      });
+    } else {
+      const updateData = {
+        first_year_approval_by_admin: false,
+        Admin_id,
+        first_year_has_update: true,
+        updatedBy
+      };
+      if (edited_first_year_percentage !== undefined) {
+        updateData.edited_first_year_percentage = edited_first_year_percentage;
+      }
+      if (edited_first_year_fixed_charge !== undefined) {
+        updateData.edited_first_year_fixed_charge = edited_first_year_fixed_charge;
+      }
+      await enrolledClient.update(updateData);
+    }
+    res.status(200).json({ success: true, message: approved ? 'First year salary charge approved by admin' : 'First year salary charge updated by admin', data: enrolledClient });
+  } catch (error) {
+    console.error('Error in admin first year approval:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 }; 

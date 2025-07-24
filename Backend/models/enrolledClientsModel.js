@@ -140,6 +140,36 @@ const EnrolledClients = sequelize.define(
         }
       }
     },
+    offer_letter_approval_by_sales: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    offer_letter_approval_by_admin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    offer_letter_has_update: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    first_year_approval_by_sales: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    first_year_approval_by_admin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    first_year_has_update: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     createdBy: {
       type: DataTypes.INTEGER,
       allowNull: true,

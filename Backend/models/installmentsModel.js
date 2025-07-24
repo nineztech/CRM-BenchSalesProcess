@@ -110,8 +110,7 @@ const Installments = sequelize.define('installments', {
       fields: ['admin_id']
     },
     {
-      fields: ['enrolledClientId', 'installment_number'],
-      unique: true
+      fields: [ 'installment_number', 'charge_type'],
     }
   ]
 });

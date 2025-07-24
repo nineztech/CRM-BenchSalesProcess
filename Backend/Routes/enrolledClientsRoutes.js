@@ -12,7 +12,13 @@ import {
   getAllEnrolledClientsForAdmin,
   uploadResume,
   deleteResume,
-  serveResume
+  serveResume,
+  getAllApprovedClientsSale,
+  getAllApprovedAdminSale,
+  updateOfferLetterCharge,
+  adminOfferLetterApproval,
+  updateFirstYearCharge,
+  adminFirstYearApproval
 } from '../controllers/enrolledClientsController.js';
 import verifyToken  from '../middleware/auth.js';
 import { resumeUpload } from '../config/multerconfig.js';
@@ -55,5 +61,14 @@ router.delete('/:id/resume', verifyToken, deleteResume);
 
 // Serve resume file
 router.get('/:id/resume', verifyToken, serveResume);
+
+// New routes for accounts pages
+router.get('/accounts/sales', verifyToken, getAllApprovedClientsSale);
+router.get('/accounts/admin', verifyToken, getAllApprovedAdminSale);
+
+router.put('/offer-letter/:id', updateOfferLetterCharge);
+router.put('/offer-letter/admin/:id', adminOfferLetterApproval);
+router.put('/first-year/:id', updateFirstYearCharge);
+router.put('/first-year/admin/:id', adminFirstYearApproval);
 
 export default router; 

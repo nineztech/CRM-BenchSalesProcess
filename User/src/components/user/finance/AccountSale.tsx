@@ -61,13 +61,13 @@ interface EnrolledClient {
 
 interface FormData {
   packageid: number | null;
-  payable_enrollment_charge: number | null;
   payable_offer_letter_charge: number | null;
   payable_first_year_percentage: number | null;
   payable_first_year_fixed_charge: number | null;
   pricing_type: 'percentage' | 'fixed' | null;
-  enrollment_installments: Installment[];
-  initial_payment: number | null;
+  offer_letter_installments: Installment[];
+  offer_letter_initial_payment: number | null;
+  offerLetterInitialPaymentError?: string;
 }
 
 interface Installment {
@@ -96,15 +96,14 @@ const AccountSale: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [formData, setFormData] = useState<FormData>({
     packageid: null,
-    payable_enrollment_charge: null,
     payable_offer_letter_charge: null,
     payable_first_year_percentage: null,
     payable_first_year_fixed_charge: null,
     pricing_type: null,
-    enrollment_installments: [],
-    initial_payment: null
+    offer_letter_installments: [],
+    offer_letter_initial_payment: null,
   });
-  const [showInitialPayment, setShowInitialPayment] = useState(false);
+  const [showOfferLetterInitialPayment, setShowOfferLetterInitialPayment] = useState(false);
   const [hasInstallmentError, setHasInstallmentError] = useState(false);
 
   useEffect(() => {
@@ -112,14 +111,14 @@ const AccountSale: React.FC = () => {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`${BASE_URL}/enrolled-clients/sales/all`, {
+        const response = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
         if (response.data.success) {
-          setClients(response.data.data.Approved.leads || []);
+          setClients(response.data.data.leads || []);
         }
       } catch (error) {
         setClients([]);
@@ -150,8 +149,9 @@ const AccountSale: React.FC = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${BASE_URL}/installments/enrolled-client/${client.id}?charge_type=enrollment_charge`,
+      // Fetch offer letter charge installments
+      const offerLetterResponse = await axios.get(
+        `${BASE_URL}/installments/enrolled-client/${client.id}?charge_type=offer_letter_charge`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -160,31 +160,32 @@ const AccountSale: React.FC = () => {
         }
       );
 
-      const existingInstallments = response.data.success ? response.data.data.installments : [];
-      const hasInstallments = existingInstallments.length > 0;
+      const existingOfferLetterInstallments = offerLetterResponse.data.success ? offerLetterResponse.data.data.installments : [];
+      
+      const hasOfferLetterInstallments = existingOfferLetterInstallments.length > 0;
 
-      let initialPayment = client.payable_enrollment_charge;
-      if (hasInstallments) {
-        const totalInstallments = existingInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
-        initialPayment = (client.payable_enrollment_charge || 0) - totalInstallments;
-        setShowInitialPayment(true);
+      let initialPayment = client.payable_offer_letter_charge;
+
+      if (hasOfferLetterInstallments) {
+        const totalInstallments = existingOfferLetterInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+        initialPayment = (client.payable_offer_letter_charge || 0) - totalInstallments;
+        setShowOfferLetterInitialPayment(true);
       }
       
       setFormData({
         packageid: client.packageid,
-        payable_enrollment_charge: client.payable_enrollment_charge || (selectedPackage?.enrollmentCharge || null),
         payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
-        enrollment_installments: existingInstallments.map((inst: any) => ({
+        offer_letter_installments: existingOfferLetterInstallments.map((inst: any) => ({
           amount: Number(inst.amount),
           dueDate: inst.dueDate,
           remark: inst.remark || ''
         })),
-        initial_payment: initialPayment
+        offer_letter_initial_payment: initialPayment,
       });
 
     } catch (error) {
@@ -193,15 +194,14 @@ const AccountSale: React.FC = () => {
       
       setFormData({
         packageid: client.packageid,
-        payable_enrollment_charge: client.payable_enrollment_charge || (selectedPackage?.enrollmentCharge || null),
         payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
-        enrollment_installments: [],
-        initial_payment: client.payable_enrollment_charge
+        offer_letter_installments: [],
+        offer_letter_initial_payment: client.payable_offer_letter_charge,
       });
     }
   };
@@ -209,17 +209,16 @@ const AccountSale: React.FC = () => {
   const handlePackageChange = (packageId: number) => {
     const selectedPackage = packages.find(pkg => pkg.id === packageId);
     if (selectedPackage) {
-      setShowInitialPayment(false);
+      setShowOfferLetterInitialPayment(false);
       setFormData(prev => ({
         ...prev,
         packageid: packageId,
-        payable_enrollment_charge: selectedPackage.enrollmentCharge,
         payable_offer_letter_charge: selectedPackage.offerLetterCharge,
         payable_first_year_percentage: selectedPackage.firstYearSalaryPercentage,
         payable_first_year_fixed_charge: selectedPackage.firstYearFixedPrice,
         pricing_type: selectedPackage.firstYearSalaryPercentage ? 'percentage' : 'fixed',
-        enrollment_installments: [],
-        initial_payment: null
+        offer_letter_installments: [],
+        offer_letter_initial_payment: null,
       }));
     }
   };
@@ -233,118 +232,28 @@ const AccountSale: React.FC = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClient) return;
-
-    setFormLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
-
-      const submitData = {
-        ...formData,
-        Sales_person_id: userId,
-        updatedBy: userId
-      };
-
-      const response = await axios.put(
-        `${BASE_URL}/enrolled-clients/sales/${selectedClient.id}`,
-        submitData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        if (formData.initial_payment && formData.initial_payment > 0) {
-          await axios.post(
-            `${BASE_URL}/installments`,
-            {
-              enrolledClientId: selectedClient.id,
-              charge_type: 'enrollment_charge',
-              installment_number: 1,
-              amount: formData.initial_payment,
-              dueDate: new Date().toISOString().split('T')[0],
-              remark: 'Initial Payment',
-              is_initial_payment: true
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-        }
-
-        if (formData.enrollment_installments.length > 0) {
-          const installmentPromises = formData.enrollment_installments.map((installment, index) => 
-            axios.post(
-              `${BASE_URL}/installments`,
-              {
-                enrolledClientId: selectedClient.id,
-                charge_type: 'enrollment_charge',
-                installment_number: index + 2,
-                ...installment
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            )
-          );
-
-          await Promise.all(installmentPromises);
-        }
-
-        setSelectedClient(null);
-        setShowForm(false);
-        const updatedResponse = await axios.get(`${BASE_URL}/enrolled-clients/sales/all`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (updatedResponse.data.success) {
-          setClients(updatedResponse.data.data.Approved.leads || []);
-        }
-        alert('Enrollment updated successfully!');
-      }
-    } catch (error) {
-      console.error('Error updating enrollment:', error);
-      alert('Error updating enrollment');
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const addInstallment = () => {
+  // Add new function for offer letter installments
+  const addOfferLetterInstallment = () => {
     if (!selectedClient) return;
     
-    const totalCharge = formData.payable_enrollment_charge || 0;
+    const totalCharge = formData.payable_offer_letter_charge || 0;
     if (totalCharge === 0) {
-      alert('Cannot add installments when enrollment charge is 0');
+      alert('Cannot add installments when offer letter charge is 0');
       return;
     }
 
-    if (!showInitialPayment) {
-      setShowInitialPayment(true);
+    if (!showOfferLetterInitialPayment) {
+      setShowOfferLetterInitialPayment(true);
       return;
     }
 
-    if (!formData.initial_payment) {
+    if (!formData.offer_letter_initial_payment) {
       alert('Please enter the initial payment amount first');
       return;
     }
 
-    const totalExistingAmount = formData.enrollment_installments.reduce((sum, inst) => sum + inst.amount, 0);
-    const remainingAmount = totalCharge - (formData.initial_payment + totalExistingAmount);
+    const totalExistingAmount = formData.offer_letter_installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const remainingAmount = totalCharge - (formData.offer_letter_initial_payment + totalExistingAmount);
 
     if (remainingAmount <= 0) {
       alert('Total installment amount cannot exceed the remaining charge');
@@ -353,22 +262,22 @@ const AccountSale: React.FC = () => {
 
     setFormData(prev => ({
       ...prev,
-      enrollment_installments: [
-        ...prev.enrollment_installments,
+      offer_letter_installments: [
+        ...prev.offer_letter_installments,
         { amount: 0, dueDate: '', remark: '' }
       ]
     }));
   };
 
-  const updateInstallment = (index: number, field: keyof Installment, value: string | number) => {
+  const updateOfferLetterInstallment = (index: number, field: keyof Installment, value: string | number) => {
     setFormData(prev => {
-      const newInstallments = [...prev.enrollment_installments];
+      const newInstallments = [...prev.offer_letter_installments];
       
       if (field === 'amount') {
         const numValue = Number(value);
-        const totalCharge = prev.payable_enrollment_charge || 0;
-        const initialPayment = prev.initial_payment || 0;
-        const totalOtherInstallments = prev.enrollment_installments.reduce((sum, inst, i) => 
+        const totalCharge = prev.payable_offer_letter_charge || 0;
+        const initialPayment = prev.offer_letter_initial_payment || 0;
+        const totalOtherInstallments = prev.offer_letter_installments.reduce((sum, inst, i) => 
           i === index ? sum : sum + inst.amount, 0);
         
         const totalAmount = initialPayment + totalOtherInstallments + numValue;
@@ -385,12 +294,233 @@ const AccountSale: React.FC = () => {
         [field]: value 
       };
 
-      const newTotal = newInstallments.reduce((sum, inst) => sum + inst.amount, 0) + (prev.initial_payment || 0);
-      setHasInstallmentError(newTotal > (prev.payable_enrollment_charge || 0));
+      return {
+        ...prev,
+        offer_letter_installments: newInstallments
+      };
+    });
+  };
+
+  const removeOfferLetterInstallment = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      offer_letter_installments: prev.offer_letter_installments.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleOfferLetterInitialPaymentChange = (value: number) => {
+    setFormData(prev => {
+      const newInitialPayment = value;
+      const totalInstallments = prev.offer_letter_installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
+      const totalAmount = newInitialPayment + totalInstallments;
+      const offerLetterChargeNum = Number(prev.payable_offer_letter_charge || 0);
+      
+      let errorMessage = '';
+      if (totalAmount > offerLetterChargeNum) {
+        errorMessage = `Total amount ($${totalAmount.toFixed(2)}) cannot exceed offer letter charge ($${offerLetterChargeNum.toFixed(2)})`;
+      }
 
       return {
         ...prev,
-        enrollment_installments: newInstallments
+        offer_letter_initial_payment: newInitialPayment,
+        offerLetterInitialPaymentError: errorMessage
+      };
+    });
+  };
+
+  const getOfferLetterRemainingAmount = () => {
+    const totalCharge = formData.payable_offer_letter_charge || 0;
+    const initialPayment = formData.offer_letter_initial_payment || 0;
+    const totalExistingAmount = formData.offer_letter_installments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+    return totalCharge - (initialPayment + totalExistingAmount);
+  };
+
+  // Update handleSubmit to include offer letter installments
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    setFormLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+      let offerLetterUpdated = false;
+      let firstYearUpdated = false;
+      // Detect changes
+      const offerLetterChanged = selectedClient.payable_offer_letter_charge !== formData.payable_offer_letter_charge;
+      const firstYearChanged = selectedClient.payable_first_year_percentage !== formData.payable_first_year_percentage || selectedClient.payable_first_year_fixed_charge !== formData.payable_first_year_fixed_charge;
+      // Update offer letter charge if changed
+      if (offerLetterChanged) {
+        const submitData = {
+          payable_offer_letter_charge: formData.payable_offer_letter_charge,
+          Sales_person_id: userId,
+          updatedBy: userId
+        };
+        const response = await axios.put(
+          `${BASE_URL}/enrolled-clients/offer-letter/${selectedClient.id}`,
+          submitData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        offerLetterUpdated = response.data.success;
+      }
+      // Update first year salary if changed
+      if (firstYearChanged) {
+        const submitData = {
+          payable_first_year_percentage: formData.payable_first_year_percentage,
+          payable_first_year_fixed_charge: formData.payable_first_year_fixed_charge,
+          Sales_person_id: userId,
+          updatedBy: userId
+        };
+        const response = await axios.put(
+          `${BASE_URL}/enrolled-clients/first-year/${selectedClient.id}`,
+          submitData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        firstYearUpdated = response.data.success;
+      }
+      // If nothing changed, show a message
+      const hasInstallmentChanges = (
+        (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) ||
+        (formData.offer_letter_installments && formData.offer_letter_installments.length > 0)
+      );
+      if (!offerLetterChanged && !firstYearChanged && !hasInstallmentChanges) {
+        alert('No changes detected.');
+        setFormLoading(false);
+        return;
+      }
+      // Proceed with installments logic as before
+      // Handle offer letter charge installments
+      if (formData.offer_letter_installments && formData.offer_letter_installments.length > 0) {
+        try {
+          const offerLetterInstallmentPromises = formData.offer_letter_installments.map((installment, index) => 
+            axios.post(
+              `${BASE_URL}/installments`,
+              {
+                enrolledClientId: selectedClient.id,
+                charge_type: 'offer_letter_charge',
+                installment_number: index + 1,
+                amount: Number(installment.amount),
+                dueDate: installment.dueDate,
+                remark: installment.remark || `Offer Letter Installment ${index + 1}`,
+                is_initial_payment: false,
+                paid: false // Don't mark as paid until admin approves
+              },
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            )
+          );
+          await Promise.all(offerLetterInstallmentPromises);
+        } catch (error) {
+          console.error('Error creating offer letter installments:', error);
+          throw error;
+        }
+      }
+
+      setSelectedClient(null);
+      setShowForm(false);
+      // Refresh clients
+      const updatedResponse = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (updatedResponse.data.success) {
+        setClients(updatedResponse.data.data.leads || []);
+      }
+      
+      if (offerLetterUpdated || firstYearUpdated) {
+        alert('Changes submitted successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating enrollment:', error);
+      alert('Error updating enrollment. Please check the console for details.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const addInstallment = () => {
+    if (!selectedClient) return;
+    
+    const totalCharge = formData.payable_offer_letter_charge || 0;
+    if (totalCharge === 0) {
+      alert('Cannot add installments when offer letter charge is 0');
+      return;
+    }
+
+    if (!showOfferLetterInitialPayment) {
+      setShowOfferLetterInitialPayment(true);
+      return;
+    }
+
+    if (!formData.offer_letter_initial_payment) {
+      alert('Please enter the initial payment amount first');
+      return;
+    }
+
+    const totalExistingAmount = formData.offer_letter_installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const remainingAmount = totalCharge - (formData.offer_letter_initial_payment + totalExistingAmount);
+
+    if (remainingAmount <= 0) {
+      alert('Total installment amount cannot exceed the remaining charge');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      offer_letter_installments: [
+        ...prev.offer_letter_installments,
+        { amount: 0, dueDate: '', remark: '' }
+      ]
+    }));
+  };
+
+  const updateInstallment = (index: number, field: keyof Installment, value: string | number) => {
+    setFormData(prev => {
+      const newInstallments = [...prev.offer_letter_installments];
+      
+      if (field === 'amount') {
+        const numValue = Number(value);
+        const totalCharge = prev.payable_offer_letter_charge || 0;
+        const initialPayment = prev.offer_letter_initial_payment || 0;
+        const totalOtherInstallments = prev.offer_letter_installments.reduce((sum, inst, i) => 
+          i === index ? sum : sum + inst.amount, 0);
+        
+        const totalAmount = initialPayment + totalOtherInstallments + numValue;
+        
+        if (totalAmount > totalCharge) {
+          alert(`Total amount (${formatCurrency(totalAmount)}) cannot exceed total charge (${formatCurrency(totalCharge)})`);
+          setHasInstallmentError(true);
+          return prev;
+        }
+      }
+
+      newInstallments[index] = { 
+        ...newInstallments[index], 
+        [field]: value 
+      };
+
+      const newTotal = newInstallments.reduce((sum, inst) => sum + inst.amount, 0) + (prev.offer_letter_initial_payment || 0);
+      setHasInstallmentError(newTotal > (prev.payable_offer_letter_charge || 0));
+
+      return {
+        ...prev,
+        offer_letter_installments: newInstallments
       };
     });
   };
@@ -398,7 +528,7 @@ const AccountSale: React.FC = () => {
   const removeInstallment = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      enrollment_installments: prev.enrollment_installments.filter((_, i) => i !== index)
+      offer_letter_installments: prev.offer_letter_installments.filter((_, i) => i !== index)
     }));
   };
 
@@ -500,19 +630,19 @@ const AccountSale: React.FC = () => {
                     <option value="">Select a package...</option>
                     {packages.map(pkg => (
                       <option key={pkg.id} value={pkg.id}>
-                        {pkg.planName} - {formatCurrency(pkg.enrollmentCharge)}
+                        {pkg.planName} - {formatCurrency(pkg.offerLetterCharge)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Enrollment Charge
+                    Offer Letter Charge
                   </label>
                   <input
                     type="number"
-                    value={formData.payable_enrollment_charge ?? ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payable_enrollment_charge: Number(e.target.value) }))}
+                    value={formData.payable_offer_letter_charge ?? ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100 cursor-not-allowed"
                     placeholder="0.00"
                     step="0.01"
@@ -520,34 +650,6 @@ const AccountSale: React.FC = () => {
                     disabled
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Offer Letter Charge
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={formData.payable_offer_letter_charge ?? ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, payable_offer_letter_charge: Number(e.target.value) }))}
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="0.00"
-                      step="0.01"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={addInstallment}
-                      className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none"
-                      title="Add Installment"
-                    >
-                      <FaPlus className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* First Year Pricing Type and Value */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     First Year Pricing Type
@@ -614,6 +716,121 @@ const AccountSale: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Offer Letter Initial Payment and Installments */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Offer Letter Initial Payment
+                </label>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={formData.offer_letter_initial_payment ?? formData.payable_offer_letter_charge ?? ''}
+                      onChange={(e) => {
+                        const inputValue = Number(e.target.value);
+                        handleOfferLetterInitialPaymentChange(inputValue);
+                        if (inputValue < (formData.payable_offer_letter_charge || 0)) {
+                          setShowOfferLetterInitialPayment(true);
+                        }
+                      }}
+                      className={`w-full p-3 border ${
+                        formData.offerLetterInitialPaymentError ? 'border-red-300' : 'border-gray-300'
+                      } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                    {formData.offer_letter_initial_payment !== null && 
+                     formData.offer_letter_initial_payment < (formData.payable_offer_letter_charge || 0) && 
+                     formData.offer_letter_installments.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={addInstallment}
+                        className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Add Installment"
+                      >
+                        <FaPlus className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                  {formData.offerLetterInitialPaymentError && (
+                    <p className="text-red-500 text-sm mt-1">{formData.offerLetterInitialPaymentError}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Offer Letter Installments Section */}
+              {formData.offer_letter_initial_payment !== null && 
+               formData.offer_letter_initial_payment < (formData.payable_offer_letter_charge || 0) && (
+                <div className="mt-4">
+                  <div className="text-sm text-gray-600 mb-3">
+                    Remaining amount to be added in installments: {formatCurrency(getOfferLetterRemainingAmount())}
+                  </div>
+                  <div className="space-y-4">
+                    {formData.offer_letter_installments.map((installment, index) => (
+                      <div key={index} className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div className="flex-none">
+                          <span className="text-sm font-medium text-gray-700">Installment {index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="flex flex-col">
+                              <input
+                                type="number"
+                                value={installment.amount}
+                                onChange={(e) => updateInstallment(index, 'amount', Number(e.target.value))}
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                placeholder="0.00"
+                                step="0.01"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="date"
+                                value={installment.dueDate}
+                                onChange={(e) => updateInstallment(index, 'dueDate', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                value={installment.remark}
+                                onChange={(e) => updateInstallment(index, 'remark', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                placeholder="Add a note..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-none">
+                          <button
+                            type="button"
+                            onClick={() => removeInstallment(index)}
+                            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                          {index === formData.offer_letter_installments.length - 1 && getOfferLetterRemainingAmount() > 0 && (
+                            <button
+                              type="button"
+                              onClick={addInstallment}
+                              className="ml-2 text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={getOfferLetterRemainingAmount() <= 0}
+                            >
+                              <FaPlus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Form Actions */}
               <div className="flex justify-end gap-3 pt-4 border-t">
@@ -690,12 +907,6 @@ const AccountSale: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       {client.package && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700">Enrollment:</span>
-                            <span className="text-sm text-gray-900">
-                              {formatCurrency(client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)}
-                            </span>
-                          </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
                             <span className="text-sm text-gray-900">
