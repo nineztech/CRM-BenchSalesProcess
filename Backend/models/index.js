@@ -468,9 +468,9 @@ export const syncModels = async () => {
     await EnrolledClients.sync({ alter: false });
     console.log('EnrolledClients table synced successfully');
 
-    await Installments.sync({ alter: false });
+    await Installments.sync({ alter: true });
     console.log('Installments table synced successfully');
-    await ClientAssignment.sync({ alter: false });
+    await ClientAssignment.sync({ alter: true });
     console.log('ClientAssignment table synced successfully');
 
     // Re-enable foreign key checks

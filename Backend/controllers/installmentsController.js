@@ -112,11 +112,12 @@ export const createInstallment = async (req, res) => {
       finalInstallmentNumber = installment_number;
     }
 
-    // Check if installment number already exists for this enrolled client
+    // Check if installment number already exists for this enrolled client and charge_type
     if (!isInitialPayment) {  // Skip check for initial payment
       const existingInstallment = await Installments.findOne({
         where: {
           enrolledClientId,
+          charge_type,
           installment_number: finalInstallmentNumber
         }
       });
@@ -124,7 +125,7 @@ export const createInstallment = async (req, res) => {
       if (existingInstallment) {
         return res.status(400).json({
           success: false,
-          message: `Installment number ${finalInstallmentNumber} already exists for this enrolled client`
+          message: `Installment number ${finalInstallmentNumber} already exists for this enrolled client and charge type`
         });
       }
     }
@@ -303,11 +304,11 @@ export const updateInstallment = async (req, res) => {
           break;
       }
 
-      // Validate total amount - allow less than or equal to target amount
-      if (totalAmount > targetAmount) {
+      // Validate total amount
+      if (Math.abs(totalAmount - targetAmount) > 0.01) { // Using small epsilon for floating point comparison
         return res.status(400).json({
           success: false,
-          message: `Total installment amount (${totalAmount}) cannot exceed ${installment.charge_type} (${targetAmount})`
+          message: `Total installment amount (${totalAmount}) must equal ${installment.charge_type} (${targetAmount})`
         });
       }
     }
