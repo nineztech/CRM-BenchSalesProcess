@@ -63,8 +63,8 @@ router.delete('/:id/resume', verifyToken, deleteResume);
 router.get('/:id/resume', verifyToken, serveResume);
 
 // New routes for accounts pages
-router.get('/accounts/sales', verifyToken, getAllApprovedClientsSale);
-router.get('/accounts/admin', verifyToken, getAllApprovedAdminSale);
+router.get('/accounts/sales', getAllApprovedClientsSale);
+router.get('/accounts/admin', getAllApprovedAdminSale);
 
 router.put('/offer-letter/:id', updateOfferLetterCharge);
 router.put('/offer-letter/admin/:id', adminOfferLetterApproval);

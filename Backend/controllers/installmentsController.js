@@ -147,6 +147,18 @@ export const createInstallment = async (req, res) => {
       paidDate: (isInitialPayment && isApproved) ? new Date() : null // Only set paid date if it's initial payment AND enrollment is approved
     });
 
+    // --- NEW LOGIC: If offer letter installment, send to admin for review ---
+    if (charge_type === 'offer_letter_charge') {
+      await EnrolledClients.update({
+        offer_letter_approval_by_sales: true,
+        offer_letter_approval_by_admin: false,
+        offer_letter_has_update: true
+      }, {
+        where: { id: enrolledClientId }
+      });
+    }
+    // --- END NEW LOGIC ---
+
     // Calculate new remaining amount after creating installment
     const newRemainingAmount = remainingAmount - amount;
 

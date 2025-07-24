@@ -988,8 +988,6 @@ export const getAllApprovedClientsSale = async (req, res) => {
         }
       ],
       order: [['createdAt', 'DESC']],
-      limit,
-      offset,
       distinct: true
     });
 
@@ -1002,7 +1000,6 @@ export const getAllApprovedClientsSale = async (req, res) => {
           charge_type: 'enrollment_charge'
         }
       });
-
       // Get offer letter installments
       const offerLetterInstallments = await Installments.findAll({
         where: {
@@ -1010,7 +1007,6 @@ export const getAllApprovedClientsSale = async (req, res) => {
           charge_type: 'offer_letter_charge'
         }
       });
-
       // Get first year installments
       const firstYearInstallments = await Installments.findAll({
         where: {
@@ -1018,42 +1014,78 @@ export const getAllApprovedClientsSale = async (req, res) => {
           charge_type: 'first_year_charge'
         }
       });
-
       // Check if enrollment is paid
       const enrollmentPaid = enrollmentInstallments.some(inst => inst.is_initial_payment && inst.paid);
-
       // Add installments info to client
       const clientJson = client.toJSON();
       clientJson.enrollment_installments = enrollmentInstallments;
       clientJson.offer_letter_installments = offerLetterInstallments;
       clientJson.first_year_installments = firstYearInstallments;
       clientJson.enrollment_paid = enrollmentPaid;
-
       return clientJson;
     }));
 
-    // Filter clients that have paid enrollment
+    // Only clients with paid enrollment
     const filteredClients = accountsClients.filter(client => client.enrollment_paid);
 
-    // Calculate pagination
-    const totalItems = filteredClients.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    // Categorize clients for each tab/object
+    const allApproved = [];
+    const myReview = [];
+    const adminReview = [];
+    const finalApproval = [];
+
+    for (const client of filteredClients) {
+      // Final Approval: both sales and admin have approved offer letter and first year
+      if (
+        client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin &&
+        client.first_year_approval_by_sales && client.first_year_approval_by_admin
+      ) {
+        finalApproval.push(client);
+      }
+      // My Review: sales needs to review admin changes
+      else if (client.has_update && client.Approval_by_admin === false) {
+        myReview.push(client);
+      }
+      // Admin Review: admin needs to review sales configuration
+      else if (
+        (client.offer_letter_has_update || client.first_year_has_update) &&
+        !(client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin && client.first_year_approval_by_sales && client.first_year_approval_by_admin)
+      ) {
+        adminReview.push(client);
+      }
+      // All Approved: all clients that have completed enrollment approval and paid enrollment
+      else {
+        allApproved.push(client);
+      }
+    }
+
+    // Pagination helper
+    const paginate = (arr) => {
+      const totalItems = arr.length;
+      const totalPages = Math.ceil(totalItems / limit) || 1;
+      return {
+        leads: arr.slice((page - 1) * limit, page * limit),
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+    };
 
     res.status(200).json({
       success: true,
       message: 'Approved clients for accounts retrieved successfully',
       data: {
-        leads: filteredClients,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
-        }
+        'All Approved': paginate(allApproved),
+        'My Review': paginate(myReview),
+        'Admin Review': paginate(adminReview),
+        'Final Approval': paginate(finalApproval)
       }
     });
-
   } catch (error) {
     console.error('Error fetching approved clients for accounts:', error);
     res.status(500).json({
@@ -1078,41 +1110,126 @@ export const getAllApprovedAdminSale = async (req, res) => {
         Approval_by_admin: true
       },
       include: [
-        // Include your existing associations
+        {
+          model: Lead,
+          as: 'lead',
+          attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers']
+        },
+        {
+          model: User,
+          as: 'salesPerson',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'admin',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: Packages,
+          as: 'package',
+          attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
+        }
       ],
-      limit,
-      offset,
+      order: [['createdAt', 'DESC']],
       distinct: true
     });
 
-    // Filter clients that have all required installments
-    const accountsClients = [];
-    for (const client of approvedClients.rows) {
-      const hasInstallments = await hasRequiredInstallments(client.id);
-      if (hasInstallments) {
-        accountsClients.push(client);
+    // Get installments for each client
+    const accountsClients = await Promise.all(approvedClients.rows.map(async (client) => {
+      // Get enrollment installments
+      const enrollmentInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'enrollment_charge'
+        }
+      });
+      // Get offer letter installments
+      const offerLetterInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'offer_letter_charge'
+        }
+      });
+      // Get first year installments
+      const firstYearInstallments = await Installments.findAll({
+        where: {
+          enrolledClientId: client.id,
+          charge_type: 'first_year_charge'
+        }
+      });
+      // Check if enrollment is paid
+      const enrollmentPaid = enrollmentInstallments.some(inst => inst.is_initial_payment && inst.paid);
+      // Add installments info to client
+      const clientJson = client.toJSON();
+      clientJson.enrollment_installments = enrollmentInstallments;
+      clientJson.offer_letter_installments = offerLetterInstallments;
+      clientJson.first_year_installments = firstYearInstallments;
+      clientJson.enrollment_paid = enrollmentPaid;
+      return clientJson;
+    }));
+
+    // Only clients with paid enrollment
+    const filteredClients = accountsClients.filter(client => client.enrollment_paid);
+
+    // Categorize clients for each tab/object
+    const allApproved = [];
+    const salesReviewPending = [];
+    const myReview = [];
+    const finalApproval = [];
+
+    for (const client of filteredClients) {
+      // Final Approval: both sales and admin have approved offer letter and first year
+      if (
+        client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin &&
+        client.first_year_approval_by_sales && client.first_year_approval_by_admin
+      ) {
+        finalApproval.push(client);
+      }
+      // Sales Review Pending: admin has made changes, waiting for sales to review
+      else if (client.has_update && client.Approval_by_admin === false) {
+        salesReviewPending.push(client);
+      }
+      // My Review: admin needs to review sales configuration
+      else if (
+        (client.offer_letter_has_update || client.first_year_has_update) &&
+        !(client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin && client.first_year_approval_by_sales && client.first_year_approval_by_admin)
+      ) {
+        myReview.push(client);
+      }
+      // All Approved: all clients that have completed enrollment approval and paid enrollment
+      else {
+        allApproved.push(client);
       }
     }
 
-    // Calculate pagination
-    const totalItems = accountsClients.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    // Pagination helper
+    const paginate = (arr) => {
+      const totalItems = arr.length;
+      const totalPages = Math.ceil(totalItems / limit) || 1;
+      return {
+        leads: arr.slice((page - 1) * limit, page * limit),
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+    };
 
     res.status(200).json({
       success: true,
       message: 'Approved clients for admin accounts retrieved successfully',
       data: {
-        leads: accountsClients,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
-        }
+        'All Approved': paginate(allApproved),
+        'Sales Review Pending': paginate(salesReviewPending),
+        'My Review': paginate(myReview),
+        'Final Approval': paginate(finalApproval)
       }
     });
-
   } catch (error) {
     console.error('Error fetching approved clients for admin accounts:', error);
     res.status(500).json({
@@ -1136,9 +1253,10 @@ export const updateOfferLetterCharge = async (req, res) => {
       payable_offer_letter_charge,
       Sales_person_id,
       updatedBy,
-      offer_letter_approval_by_sales: false,
+      offer_letter_approval_by_sales: true,
       offer_letter_approval_by_admin: false,
-      offer_letter_has_update: false
+      offer_letter_has_update: true,
+      has_update: true
     });
     res.status(200).json({ success: true, message: 'Offer letter charge updated successfully by sales', data: enrolledClient });
   } catch (error) {

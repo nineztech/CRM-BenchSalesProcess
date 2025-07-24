@@ -20,6 +20,7 @@ interface EnrolledClient {
   Approval_by_admin: boolean;
   Admin_id: number | null;
   has_update: boolean;
+  offer_letter_has_update?: boolean;
   lead: {
     firstName: string;
     lastName: string;
@@ -33,11 +34,29 @@ interface EnrolledClient {
   } | null;
 }
 
+interface TabData {
+  leads: EnrolledClient[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+interface TabsData {
+  [key: string]: TabData;
+}
+
 const AccountAdmin: React.FC = () => {
   const [clients, setClients] = useState<EnrolledClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<EnrolledClient | null>(null);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('');
+  const [tabsData, setTabsData] = useState<TabsData>({});
 
   useEffect(() => {
     fetchClients();
@@ -54,7 +73,11 @@ const AccountAdmin: React.FC = () => {
         },
       });
       if (response.data.success) {
-        setClients(response.data.data.leads || []);
+        setTabsData(response.data.data);
+        // Set active tab to first tab by default
+        const firstTabKey = Object.keys(response.data.data)[0];
+        setActiveTab(firstTabKey);
+        setClients(response.data.data[firstTabKey]?.leads || []);
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
@@ -150,6 +173,11 @@ const AccountAdmin: React.FC = () => {
     }).format(amount);
   };
 
+  // Update getFilteredClients to use tabsData
+  const getFilteredClients = () => {
+    return tabsData[activeTab]?.leads || [];
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -161,6 +189,27 @@ const AccountAdmin: React.FC = () => {
   return (
     <div className="p-6 ml-14 mt-10 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
+        {/* Tabs */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex">
+            {Object.entries(tabsData).map(([tabKey, tabData]) => (
+              <button
+                key={tabKey}
+                onClick={() => {
+                  setActiveTab(tabKey);
+                  setClients(tabData.leads);
+                }}
+                className={`py-3 px-6 border-b-2 font-medium text-base ${
+                  activeTab === tabKey
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tabKey} ({tabData.pagination.totalItems})
+              </button>
+            ))}
+          </nav>
+        </div>
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex items-center gap-3">
@@ -280,7 +329,7 @@ const AccountAdmin: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {clients.map((client, idx) => (
+                {getFilteredClients().map((client, idx) => (
                   <tr key={client.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">{idx + 1}</td>
                     <td className="px-6 py-4">
