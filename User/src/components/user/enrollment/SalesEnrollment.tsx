@@ -893,7 +893,7 @@ const SalesEnrollment: React.FC = () => {
       );
 
       if (response.data.success) {
-        alert('Resume uploaded successfully!');
+        setSelectedResume(file); // Set the selected file for display
         fetchEnrolledClients(); // Refresh data
       }
     } catch (error) {
@@ -1248,9 +1248,9 @@ const SalesEnrollment: React.FC = () => {
                     <p className="text-red-600 text-sm">{formData.totalAmountError}</p>
                   </div>
                 )}
-                <div className="space-y-4">
+                <div className="space-y-4 bg-blue-50">
                   {formData.enrollment_installments.map((installment, index) => (
-                    <div key={index} className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                    <div key={index} className="flex items-center gap-4  p-4 rounded-lg">
                       <div className="flex-none">
                         <span className="text-sm font-medium text-gray-700">Installment {index + 1}</span>
                       </div>
@@ -1410,12 +1410,9 @@ const SalesEnrollment: React.FC = () => {
             <div className="mt-6 border-t pt-6">
               <h3 className="font-medium text-gray-900 mb-4 text-left">Resume Upload</h3>
               <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  {/* <label className="block text-sm font-medium text-gray-700 mb-4 text-left">
-                    <FaFilePdf className="inline mr-2" />
-                    Upload Resume (PDF only)
-                  </label> */}
-                  <label className="mt-1 flex justify-center px-4 py-4 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-blue-50 cursor-pointer w-[400px]">
+                {/* Upload input and file name side by side */}
+                <div className="flex items-center w-full">
+                  <label className="flex justify-center px-4 py-4 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-blue-50 cursor-pointer w-[400px]">
                     <input
                       type="file"
                       name="resume"
@@ -1436,11 +1433,17 @@ const SalesEnrollment: React.FC = () => {
                       <p className="text-xs text-gray-500">PDF up to 5MB</p>
                     </div>
                   </label>
-                  {selectedResume && (
-                    <p className=" text-start mt-4 text-sm text-gray-600">
-                      Selected file: {selectedResume.name}
-                    </p>
-                  )}
+                  {/* Show the uploaded or selected resume name exactly to the right */}
+                  <div className="ml-6 flex items-center min-w-0">
+                    {(selectedResume && selectedResume.name) ? (
+                      <span className="text-sm text-gray-700 truncate">{selectedResume.name}</span>
+                    ) : (selectedClient && selectedClient.resume ? (
+                      <span className="text-sm text-gray-700 truncate">{(() => {
+                        const parts = selectedClient.resume.split(/[\\/]/);
+                        return parts[parts.length - 1];
+                      })()}</span>
+                    ) : null)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1471,7 +1474,7 @@ const SalesEnrollment: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={formLoading || formData.initialPaymentError || formData.enrollment_installments.some(inst => inst.errorMessage)}
+                disabled={Boolean(formLoading) || Boolean(formData.initialPaymentError) || formData.enrollment_installments.some(inst => !!inst.errorMessage)}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 {formLoading ? 'Updating...' : 'Send Updated Configuration'}
@@ -2013,11 +2016,11 @@ const SalesEnrollment: React.FC = () => {
                       First Call Status
                     </th>
                   )}
-                  {activeTab !== 'approved' && (
+                  {/* {activeTab !== 'approved' && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
-                  )}
+                  )} */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
