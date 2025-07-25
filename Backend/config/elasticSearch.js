@@ -295,7 +295,7 @@ const getStatusGroup = (lead) => {
 };
 
 // Function to search leads
-const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
+const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilter, salesFilter, createdByFilter) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
@@ -306,7 +306,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
       };
     }
 
-    console.log('🔍 Search query:', { query, statusGroup, page, limit });
+    console.log('🔍 Search query:', { query, statusGroup, page, limit, statusFilter, salesFilter, createdByFilter });
 
     const offset = (page - 1) * limit;
 
@@ -320,77 +320,65 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
             bool: {
               should: [
                 {
-                  bool: {
-                    should: [
-                      {
-                        wildcard: {
-                          "firstName": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 3
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "lastName": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 3
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "assignedUser.firstname": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 2
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "assignedUser.lastname": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 2
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "country": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 2
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "status": {
-                            value: `*${processedQuery.toLowerCase()}*`,
-                            boost: 2
-                          }
-                        }
-                      }
-                    ]
+                  wildcard: {
+                    "firstName": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
                   }
                 },
                 {
-                  bool: {
-                    should: [
-                      {
-                        wildcard: {
-                          "emails": {
-                            value: `*${processedQuery.toLowerCase()}*`
-                          }
-                        }
-                      },
-                      {
-                        wildcard: {
-                          "primaryEmail": {
-                            value: `*${processedQuery.toLowerCase()}*`
-                          }
-                        }
-                      }
-                    ]
+                  wildcard: {
+                    "lastName": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "assignedUser.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "assignedUser.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "country": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "status": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "emails": {
+                      value: `*${processedQuery.toLowerCase()}*`
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "primaryEmail": {
+                      value: `*${processedQuery.toLowerCase()}*`
+                    }
                   }
                 },
                 {
@@ -456,29 +444,41 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
           break;
 
         case 'inprocess':
-          searchQuery.bool.must.push({
-            bool: {
-              must: [
-                {
-                  exists: { field: "followUpDateTime" }
-                },
-                {
-                  range: {
-                    followUpDateTime: {
-                      gt: now.toISOString()
-                    }
-                  }
-                },
-                {
-                  bool: {
-                    must_not: {
-                      terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
-                    }
-                  }
-                }
-              ]
+          // For inProcess tab, we want leads that are in inProcess statuses
+          // If a specific status filter is applied, we should prioritize that
+          if (statusFilter) {
+            // If status filter is provided, just ensure it's a valid inProcess status
+            const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
+            if (inProcessStatuses.includes(statusFilter)) {
+              // The status filter will be applied later, so we don't need additional conditions here
+              console.log('🔍 Status filter provided for inProcess tab, will apply specific status filter');
             }
-          });
+          } else {
+            // If no status filter, apply the general inProcess conditions
+            searchQuery.bool.must.push({
+              bool: {
+                must: [
+                  {
+                    exists: { field: "followUpDateTime" }
+                  },
+                  {
+                    range: {
+                      followUpDateTime: {
+                        gt: now.toISOString()
+                      }
+                    }
+                  },
+                  {
+                    bool: {
+                      must_not: {
+                        terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
+                      }
+                    }
+                  }
+                ]
+              }
+            });
+          }
           break;
 
         case 'open':
@@ -499,6 +499,102 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
             terms: { "status": ["Dead", "notinterested"] }
           });
           break;
+      }
+    }
+
+    // Add additional filters if provided
+    if (statusFilter) {
+      console.log('🔍 Adding status filter:', statusFilter);
+      searchQuery.bool.must.push({
+        wildcard: { "status": `*${statusFilter.toLowerCase()}*` }
+      });
+    }
+
+    if (salesFilter) {
+      console.log('🔍 Adding sales filter:', salesFilter);
+      searchQuery.bool.must.push({
+        bool: {
+          should: [
+            {
+              term: { "assignedUser.firstname": salesFilter.split(' ')[0] }
+            },
+            {
+              term: { "assignedUser.lastname": salesFilter.split(' ')[1] || salesFilter.split(' ')[0] }
+            }
+          ],
+          minimum_should_match: 1
+        }
+      });
+    }
+
+    if (createdByFilter) {
+      console.log('🔍 Adding created by filter:', createdByFilter);
+      searchQuery.bool.must.push({
+        bool: {
+          should: [
+            {
+              term: { "creator.firstname": createdByFilter.split(' ')[0] }
+            },
+            {
+              term: { "creator.lastname": createdByFilter.split(' ')[1] || createdByFilter.split(' ')[0] }
+            }
+          ],
+          minimum_should_match: 1
+        }
+      });
+    }
+
+    console.log('🔍 Final search query with filters:', JSON.stringify(searchQuery, null, 2));
+
+    // Debug: Let's also check what leads exist with the specific status
+    if (statusFilter) {
+      try {
+        const debugResponse = await client.search({
+          index: LEAD_INDEX,
+          body: {
+            size: 5,
+            query: {
+              wildcard: { "status": `*${statusFilter.toLowerCase()}*` }
+            }
+          }
+        });
+        console.log('🔍 Debug: Found leads with status filter:', statusFilter, 'Count:', debugResponse.hits.total.value);
+        if (debugResponse.hits.hits.length > 0) {
+          console.log('🔍 Debug: Sample leads with this status:', debugResponse.hits.hits.map(hit => ({
+            id: hit._source.id,
+            firstName: hit._source.firstName,
+            lastName: hit._source.lastName,
+            status: hit._source.status
+          })));
+        }
+      } catch (debugError) {
+        console.log('🔍 Debug query failed:', debugError.message);
+      }
+    }
+
+    // Debug: Let's also check what leads exist with the search query
+    if (query) {
+      try {
+        const debugSearchResponse = await client.search({
+          index: LEAD_INDEX,
+          body: {
+            size: 5,
+            query: {
+              wildcard: { "firstName": `*${query.toLowerCase()}*` }
+            }
+          }
+        });
+        console.log('🔍 Debug: Found leads with search query:', query, 'Count:', debugSearchResponse.hits.total.value);
+        if (debugSearchResponse.hits.hits.length > 0) {
+          console.log('🔍 Debug: Sample leads with this search term:', debugSearchResponse.hits.hits.map(hit => ({
+            id: hit._source.id,
+            firstName: hit._source.firstName,
+            lastName: hit._source.lastName,
+            status: hit._source.status
+          })));
+        }
+      } catch (debugError) {
+        console.log('🔍 Debug search query failed:', debugError.message);
       }
     }
 

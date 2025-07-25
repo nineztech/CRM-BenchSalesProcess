@@ -328,11 +328,56 @@ export const getAllLeads = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'DESC';
+    const statusFilter = req.query.statusFilter;
+    const salesFilter = req.query.salesFilter;
+    const createdByFilter = req.query.createdByFilter;
+    
+    console.log('Backend getAllLeads received filters:', { statusFilter, salesFilter, createdByFilter });
 
     // Get current date for follow-up time calculations (use UTC to match stored datetime)
     const now = new Date();
     const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
     const twentyFourHoursFromNow = new Date(now.getTime() + twentyFourHoursInMs);
+
+    // Helper function to build filter conditions
+    const buildFilterConditions = (baseWhere) => {
+      let whereConditions = { ...baseWhere };
+
+      if (statusFilter) {
+        // If we have a status filter, check if it conflicts with the current tab's status conditions
+        // For inProcess tab, we should only show leads that are in inProcess statuses, not open
+        // For Enrolled tab, we should only show leads that are Enrolled, not other statuses
+        if (statusFilter === 'open' && whereConditions.status && whereConditions.status !== 'open') {
+          // If we're filtering for 'open' but the current tab doesn't show open leads, ignore this filter
+          console.log('Ignoring open status filter for non-open tab');
+        } else if (statusFilter === 'Enrolled' && whereConditions.status && whereConditions.status !== 'Enrolled') {
+          // If we're filtering for 'Enrolled' but the current tab doesn't show enrolled leads, ignore this filter
+          console.log('Ignoring Enrolled status filter for non-enrolled tab');
+        } else {
+          // Apply the status filter
+          whereConditions.status = statusFilter;
+        }
+      }
+
+      if (salesFilter) {
+        const [firstName, lastName] = salesFilter.split(' ');
+        whereConditions['$assignedUser.firstname$'] = firstName;
+        if (lastName) {
+          whereConditions['$assignedUser.lastname$'] = lastName;
+        }
+      }
+
+      if (createdByFilter) {
+        const [firstName, lastName] = createdByFilter.split(' ');
+        whereConditions['$creator.firstname$'] = firstName;
+        if (lastName) {
+          whereConditions['$creator.lastname$'] = lastName;
+        }
+      }
+
+      console.log('Built filter conditions (getAllLeads):', whereConditions);
+      return whereConditions;
+    };
 
     // Base include for all queries
     const includeOptions = [
@@ -360,12 +405,12 @@ export const getAllLeads = async (req, res) => {
 
     // Get team followup leads first
     const teamFollowupLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         is_Team_Followup: true,
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -377,7 +422,7 @@ export const getAllLeads = async (req, res) => {
 
     // Get leads with follow-up time <= 24 hours (followup)
     const followupLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         id: { [Op.notIn]: teamFollowupIds },
         followUpDateTime: {
           [Op.not]: null,
@@ -386,7 +431,7 @@ export const getAllLeads = async (req, res) => {
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -399,7 +444,7 @@ export const getAllLeads = async (req, res) => {
 
     // Get leads with follow-up time > 24 hours (inProcess) OR null followup date/time
     const inProcessLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         id: { [Op.notIn]: excludeIds },
         [Op.or]: [
           {
@@ -418,7 +463,7 @@ export const getAllLeads = async (req, res) => {
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -431,10 +476,10 @@ export const getAllLeads = async (req, res) => {
 
     // Get open leads (excluding leads already categorized)
     const openLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         id: { [Op.notIn]: excludeIds },
         status: 'open'
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -443,9 +488,9 @@ export const getAllLeads = async (req, res) => {
 
     // Get Enrolled leads
     const EnrolledLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         status: 'Enrolled'
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -454,11 +499,11 @@ export const getAllLeads = async (req, res) => {
 
     // Get archived leads
     const archivedLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         status: {
           [Op.in]: ['Dead', 'notinterested']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -544,6 +589,11 @@ export const getAssignedLeads = async (req, res) => {
     const offset = (page - 1) * limit;
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'DESC';
+    const statusFilter = req.query.statusFilter;
+    const salesFilter = req.query.salesFilter;
+    const createdByFilter = req.query.createdByFilter;
+    
+    console.log('Backend getAssignedLeads received filters:', { statusFilter, salesFilter, createdByFilter });
 
     // Check if user is authenticated
     if (!req.user || !req.user.id) {
@@ -594,15 +644,55 @@ export const getAssignedLeads = async (req, res) => {
       ]
     };
 
+    // Helper function to build filter conditions
+    const buildFilterConditions = (baseWhere) => {
+      let whereConditions = { ...baseWhere };
+
+      if (statusFilter) {
+        // If we have a status filter, check if it conflicts with the current tab's status conditions
+        // For inProcess tab, we should only show leads that are in inProcess statuses, not open
+        // For Enrolled tab, we should only show leads that are Enrolled, not other statuses
+        if (statusFilter === 'open' && whereConditions.status && whereConditions.status !== 'open') {
+          // If we're filtering for 'open' but the current tab doesn't show open leads, ignore this filter
+          console.log('Ignoring open status filter for non-open tab');
+        } else if (statusFilter === 'Enrolled' && whereConditions.status && whereConditions.status !== 'Enrolled') {
+          // If we're filtering for 'Enrolled' but the current tab doesn't show enrolled leads, ignore this filter
+          console.log('Ignoring Enrolled status filter for non-enrolled tab');
+        } else {
+          // Apply the status filter
+          whereConditions.status = statusFilter;
+        }
+      }
+
+      if (salesFilter) {
+        const [firstName, lastName] = salesFilter.split(' ');
+        whereConditions['$assignedUser.firstname$'] = firstName;
+        if (lastName) {
+          whereConditions['$assignedUser.lastname$'] = lastName;
+        }
+      }
+
+      if (createdByFilter) {
+        const [firstName, lastName] = createdByFilter.split(' ');
+        whereConditions['$creator.firstname$'] = firstName;
+        if (lastName) {
+          whereConditions['$creator.lastname$'] = lastName;
+        }
+      }
+
+      console.log('Built filter conditions (getAssignedLeads):', whereConditions);
+      return whereConditions;
+    };
+
     // Get team followup leads first
     const teamFollowupLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         ...assignedCondition,
         is_Team_Followup: true,
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -614,7 +704,7 @@ export const getAssignedLeads = async (req, res) => {
 
     // Get leads with follow-up time <= 24 hours (followup)
     const followupLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         ...assignedCondition,
         id: { [Op.notIn]: teamFollowupIds },
         followUpDateTime: {
@@ -624,7 +714,7 @@ export const getAssignedLeads = async (req, res) => {
         status: {
           [Op.notIn]: ['Dead', 'notinterested', 'Enrolled','open']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -637,7 +727,7 @@ export const getAssignedLeads = async (req, res) => {
 
     // Get leads with follow-up time > 24 hours (inProcess) OR null followup date/time
     const inProcessLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         [Op.and]: [
           {
             [Op.or]: [
@@ -666,7 +756,7 @@ export const getAssignedLeads = async (req, res) => {
             }
           }
         ]
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -679,11 +769,11 @@ export const getAssignedLeads = async (req, res) => {
 
     // Get open leads (excluding leads already categorized)
     const openLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         ...assignedCondition,
         id: { [Op.notIn]: excludeIds },
         status: 'open'
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -692,10 +782,10 @@ export const getAssignedLeads = async (req, res) => {
 
     // Get Enrolled leads
     const EnrolledLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         ...assignedCondition,
         status: 'Enrolled'
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,
@@ -704,12 +794,12 @@ export const getAssignedLeads = async (req, res) => {
 
     // Get archived leads
     const archivedLeads = await Lead.findAndCountAll({
-      where: {
+      where: buildFilterConditions({
         ...assignedCondition,
         status: {
           [Op.in]: ['Dead', 'notinterested']
         }
-      },
+      }),
       include: includeOptions,
       order: [[sortBy, sortOrder]],
       offset: offset,

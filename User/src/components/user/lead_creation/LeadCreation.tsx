@@ -212,6 +212,11 @@ const LeadCreationComponent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState('');
+  const [salesFilter, setSalesFilter] = useState('');
+  const [createdByFilter, setCreatedByFilter] = useState('');
+
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
     firstName: '',
@@ -291,6 +296,17 @@ const LeadCreationComponent: React.FC = () => {
 
   // Add new state for packages
   const [packages, setPackages] = useState([]);
+
+  // Add state for filter options
+  const [filterOptions, setFilterOptions] = useState<{
+    statuses: string[];
+    salesUsers: string[];
+    creators: string[];
+  }>({
+    statuses: [],
+    salesUsers: [],
+    creators: []
+  });
 
   // Add new state for email popup
   const [showEmailPopup, setShowEmailPopup] = useState(false);
@@ -442,9 +458,20 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
+      // Always add filter parameters if they exist, regardless of search query
+      if (statusFilter) params.statusFilter = statusFilter;
+      if (salesFilter) params.salesFilter = salesFilter;
+      if (createdByFilter) params.createdByFilter = createdByFilter;
+      
+      console.log('FetchLeads params:', params);
+      
       if (searchQuery !== '') {
         params.query = searchQuery;
         params.statusGroup = normalizedStatusGroup;
+        // When searching with filters, we want to search within the filtered data
+        // The backend will apply filters first, then search within those results
+        // This ensures that search results are limited to the filtered dataset
+        console.log('Searching within filtered data:', { searchQuery, statusFilter, salesFilter, createdByFilter });
       }
       // Special handling for Enrolled tab: only filter in Enrolled object
       if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
@@ -522,6 +549,7 @@ const LeadCreationComponent: React.FC = () => {
         if (searchQuery.trim() && hasViewAllLeadsPermission) {
           // Handle search results for users with view all permission
           console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
+          console.log('[Search + Filters] Search query:', searchQuery, 'Filters:', { statusFilter, salesFilter, createdByFilter });
           setLeadsData(prev => ({
             ...prev,
             [activeStatusTab]: {
@@ -534,6 +562,8 @@ const LeadCreationComponent: React.FC = () => {
               }
             }
           }));
+          // Extract filter options from search results
+          extractFilterOptions(data.leads || []);
         } else {
           // Handle regular fetch
           console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
@@ -546,6 +576,16 @@ const LeadCreationComponent: React.FC = () => {
             followup: data.followup,
             teamfollowup: data.teamfollowup
           }));
+          // Extract filter options from all leads
+          const allLeads = [
+            ...(data.open?.leads || []),
+            ...(data.inProcess?.leads || []),
+            ...(data.Enrolled?.leads || []),
+            ...(data.archived?.leads || []),
+            ...(data.followup?.leads || []),
+            ...(data.teamfollowup?.leads || [])
+          ];
+          extractFilterOptions(allLeads);
         }
       } else {
         console.error('[API Error] Failed to fetch leads:', response.data);
@@ -583,6 +623,13 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
+      // Always add filter parameters if they exist, regardless of search query
+      if (statusFilter) params.statusFilter = statusFilter;
+      if (salesFilter) params.salesFilter = salesFilter;
+      if (createdByFilter) params.createdByFilter = createdByFilter;
+      
+      console.log('HandlePageChange params:', params);
+      
       if (searchQuery !== '') {
         params.query = searchQuery;  // Send the exact search query without trimming
         // Normalize status group to match backend expectations
@@ -656,19 +703,68 @@ const LeadCreationComponent: React.FC = () => {
     }
   };
 
+  // Function to extract unique values for filters
+  const extractFilterOptions = (leads: Lead[]) => {
+    const statuses = new Set<string>();
+    const salesUsers = new Set<string>();
+    const creators = new Set<string>();
+
+    leads.forEach(lead => {
+      if (lead.status) statuses.add(lead.status);
+      if (lead.assignedUser) {
+        salesUsers.add(`${lead.assignedUser.firstname} ${lead.assignedUser.lastname}`);
+      }
+      if (lead.creator) {
+        creators.add(`${lead.creator.firstname} ${lead.creator.lastname}`);
+      }
+    });
+
+    // Filter statuses based on current tab to prevent invalid combinations
+    let filteredStatuses = Array.from(statuses).sort();
+    
+    // If we're in inProcess tab, don't show 'open' status
+    if (activeStatusTab === 'inProcess') {
+      filteredStatuses = filteredStatuses.filter(status => status !== 'open');
+    }
+    
+    // If we're in Enrolled tab, only show 'Enrolled' status
+    if (activeStatusTab === 'Enrolled') {
+      filteredStatuses = filteredStatuses.filter(status => status === 'Enrolled');
+    }
+    
+    // If we're in open tab, only show 'open' status
+    if (activeStatusTab === 'open') {
+      filteredStatuses = filteredStatuses.filter(status => status === 'open');
+    }
+
+    setFilterOptions({
+      statuses: filteredStatuses,
+      salesUsers: Array.from(salesUsers).sort(),
+      creators: Array.from(creators).sort()
+    });
+  };
+
   // Immediate search effect
   useEffect(() => {
+    console.log('Filter/Search effect triggered:', { searchQuery, statusFilter, salesFilter, createdByFilter });
     if (searchQuery !== '') {
       setIsSearching(true);
     }
     fetchLeads();
-  }, [searchQuery]);
+  }, [searchQuery, statusFilter, salesFilter, createdByFilter]);
 
   // Add clear search function
   const handleClearSearch = () => {
     setSearchQuery('');
     setIsSearching(false);
     fetchLeads();
+  };
+
+  // Add clear filters function
+  const handleClearFilters = () => {
+    setStatusFilter('');
+    setSalesFilter('');
+    setCreatedByFilter('');
   };
 
   // Effect to fetch leads when component mounts or when permissions change
@@ -701,16 +797,23 @@ const LeadCreationComponent: React.FC = () => {
       // Select endpoint based on View All Leads permission
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
 
+      const params: any = {
+        page: 1,
+        limit: newSize,
+        sortBy: 'createdAt',
+        sortOrder: 'DESC'
+      };
+
+      // Add filter parameters if they exist
+      if (statusFilter) params.statusFilter = statusFilter;
+      if (salesFilter) params.salesFilter = salesFilter;
+      if (createdByFilter) params.createdByFilter = createdByFilter;
+
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        params: {
-          page: 1,
-          limit: newSize,
-          sortBy: 'createdAt',
-          sortOrder: 'DESC'
-        }
+        params
       });
 
       if (response.data.success) {
@@ -1220,6 +1323,15 @@ const LeadCreationComponent: React.FC = () => {
       setIsLoading(true);
       setActiveStatusTab(status);
       setSelectedLeads([]); // Clear selected leads when changing tabs
+      
+      // Clear status filter if it's not valid for the new tab
+      if (status === 'inProcess' && statusFilter === 'open') {
+        setStatusFilter('');
+      } else if (status === 'Enrolled' && statusFilter !== 'Enrolled') {
+        setStatusFilter('');
+      } else if (status === 'open' && statusFilter !== 'open') {
+        setStatusFilter('');
+      }
 
       const token = localStorage.getItem('token');
       if (!token) {
@@ -1264,7 +1376,10 @@ const LeadCreationComponent: React.FC = () => {
             page: 1,
             limit: pageSize,
             query: searchQuery,
-            statusGroup: normalizedStatusGroup
+            statusGroup: normalizedStatusGroup,
+            ...(statusFilter && { statusFilter }),
+            ...(salesFilter && { salesFilter }),
+            ...(createdByFilter && { createdByFilter })
           }
         });
 
@@ -1284,17 +1399,24 @@ const LeadCreationComponent: React.FC = () => {
         }
       } else {
         // Regular tab change without search
+        const params: any = {
+          page: 1,
+          limit: pageSize,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC',
+          status: status
+        };
+
+        // Add filter parameters if they exist
+        if (statusFilter) params.statusFilter = statusFilter;
+        if (salesFilter) params.salesFilter = salesFilter;
+        if (createdByFilter) params.createdByFilter = createdByFilter;
+
         const response = await axios.get(endpoint, {
           headers: {
             'Authorization': `Bearer ${token}`
           },
-          params: {
-            page: 1,
-            limit: pageSize,
-            sortBy: 'createdAt',
-            sortOrder: 'DESC',
-            status: status
-          }
+          params
         });
 
         if (response.data.success) {
@@ -2083,29 +2205,40 @@ ${(() => {
                       <div className="flex items-center gap-4">
                         <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
                         {/* Update search input */}
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="Search by name, email, phone..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-80 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          {searchQuery && (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search by name, email, phone..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-80 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            {searchQuery && (
+                              <button
+                                onClick={handleClearSearch}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                title="Clear search"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                            {isSearching && !searchQuery && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                              </div>
+                            )}
+                          </div>
+                          {(statusFilter || salesFilter || createdByFilter) && (
                             <button
-                              onClick={handleClearSearch}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                              title="Clear search"
+                              onClick={handleClearFilters}
+                              className="px-3 py-2 text-xs bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                              title="Clear filters"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
+                              Clear Filters
                             </button>
-                          )}
-                          {isSearching && !searchQuery && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                            </div>
                           )}
                         </div>
                       </div>
@@ -2182,15 +2315,72 @@ ${(() => {
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
+                                  <div className="flex flex-col">
+                                    <span>Status</span>
+                                    <select
+                                      value={statusFilter}
+                                      onChange={(e) => {
+                                        console.log('Status filter changed to:', e.target.value);
+                                        setStatusFilter(e.target.value);
+                                      }}
+                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      <option value="">All Status</option>
+                                      {filterOptions.statuses.map((status) => (
+                                        <option key={status} value={status}>
+                                          {status}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </th>
                                 
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
+                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
+                                  <div className="flex flex-col">
+                                    <span>Sales</span>
+                                    <select
+                                      value={salesFilter}
+                                      onChange={(e) => {
+                                        console.log('Sales filter changed to:', e.target.value);
+                                        setSalesFilter(e.target.value);
+                                      }}
+                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      <option value="">All Sales</option>
+                                      {filterOptions.salesUsers.map((user) => (
+                                        <option key={user} value={user}>
+                                          {user}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </th>
                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
+                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
+                                  <div className="flex flex-col">
+                                    <span>Created By</span>
+                                    <select
+                                      value={createdByFilter}
+                                      onChange={(e) => {
+                                        console.log('Created by filter changed to:', e.target.value);
+                                        setCreatedByFilter(e.target.value);
+                                      }}
+                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      <option value="">All Creators</option>
+                                      {filterOptions.creators.map((creator) => (
+                                        <option key={creator} value={creator}>
+                                          {creator}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                               </tr>
