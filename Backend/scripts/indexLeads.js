@@ -170,7 +170,8 @@ export const reindexLeads = async () => {
                   }
                 }
               }
-            }
+            },
+            createdBy: { type: 'integer' }
           }
         }
       }
@@ -231,7 +232,8 @@ export const reindexLeads = async () => {
         const enrichedLeadData = {
           ...leadData,
           statusGroup: statusGroup.toLowerCase(), // ensure lowercase for consistency
-          is_Team_Followup: isTeamFollowup // ensure consistent field name
+          is_Team_Followup: isTeamFollowup, // ensure consistent field name
+          createdBy: leadData.createdBy // ensure createdBy is indexed
         };
 
         console.log(colors.yellow(`📝 Indexing lead ${lead.id} with status: ${leadData.status}, statusGroup: ${statusGroup}`));
@@ -275,4 +277,4 @@ export const reindexLeads = async () => {
 };
 
 // Run the reindexing
-reindexLeads(); 
+reindexLeads();

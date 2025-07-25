@@ -54,7 +54,8 @@ const createLeadIndex = async () => {
                   lastname: { type: 'text' },
                   email: { type: 'keyword' }
                 }
-              }
+              },
+              createdBy: { type: 'integer' }
             }
           }
         }
@@ -208,7 +209,8 @@ const indexLead = async (lead) => {
       ...lead,
       processedContactNumbers,
       // Keep original contact numbers as well
-      contactNumbers: Array.isArray(lead.contactNumbers) ? lead.contactNumbers : []
+      contactNumbers: Array.isArray(lead.contactNumbers) ? lead.contactNumbers : [],
+      createdBy: lead.createdBy // ensure createdBy is indexed
     };
 
     await client.index({
@@ -295,7 +297,7 @@ const getStatusGroup = (lead) => {
 };
 
 // Function to search leads
-const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
+const searchLeads = async (query, statusGroup, page = 1, limit = 10, assignedUserId, createdById) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
@@ -500,6 +502,14 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10) => {
           });
           break;
       }
+    }
+    // Add assignedUserId filter if provided
+    if (assignedUserId) {
+      searchQuery.bool.must.push({ term: { "assignedUser.id": parseInt(assignedUserId) } });
+    }
+    // Add createdById filter if provided
+    if (createdById) {
+      searchQuery.bool.must.push({ term: { "createdBy": parseInt(createdById) } });
     }
 
     console.log('📦 Elasticsearch query:', JSON.stringify(searchQuery, null, 2));

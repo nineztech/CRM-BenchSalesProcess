@@ -3,7 +3,7 @@ import { searchLeads } from '../config/elasticSearch.js';
 // Search leads with pagination
 export const searchLeadsController = async (req, res) => {
   try {
-    const { query, statusGroup, page = 1, limit = 10 } = req.query;
+    const { query, statusGroup, page = 1, limit = 10, assignedUserId, createdById } = req.query;
 
     // Validate required parameters
     if (!query) {
@@ -33,7 +33,7 @@ export const searchLeadsController = async (req, res) => {
     }
 
     // Search leads
-    const result = await searchLeads(query, statusGroup, parseInt(page), parseInt(limit));
+    const result = await searchLeads(query, statusGroup, parseInt(page), parseInt(limit), assignedUserId, createdById);
 
     return res.status(200).json({
       success: true,
