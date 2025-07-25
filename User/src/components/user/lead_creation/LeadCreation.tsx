@@ -323,12 +323,6 @@ const LeadCreationComponent: React.FC = () => {
   // Add isEditing state
   const [isEditing, setIsEditing] = useState(false);
 
-  // Add state for all users (for Created By filter)
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  // Add state for selected filters
-  const [selectedSalesFilter, setSelectedSalesFilter] = useState<string>('');
-  const [selectedCreatedByFilter, setSelectedCreatedByFilter] = useState<string>('');
-
   // Modify fetchLeads function to use correct endpoints
   const fetchLeads = async () => {
     try {
@@ -451,13 +445,6 @@ const LeadCreationComponent: React.FC = () => {
       if (searchQuery !== '') {
         params.query = searchQuery;
         params.statusGroup = normalizedStatusGroup;
-      }
-      // Add filters
-      if (selectedSalesFilter) {
-        params.assignedUserId = selectedSalesFilter;
-      }
-      if (selectedCreatedByFilter) {
-        params.createdById = selectedCreatedByFilter;
       }
       // Special handling for Enrolled tab: only filter in Enrolled object
       if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
@@ -1706,27 +1693,6 @@ ${(() => {
     }
   };
 
-  // Fetch all users for Created By filter
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${BASE_URL}/user/all`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setAllUsers((response.data.data && response.data.data.users) || []);
-      } catch (error) {
-        setAllUsers([]);
-      }
-    };
-    fetchAllUsers();
-  }, []);
-
-  // Add useEffect to refetch leads when filters change
-  useEffect(() => {
-    fetchLeads();
-  }, [selectedSalesFilter, selectedCreatedByFilter]);
-
   return (
     <RouteGuard activityName="Lead Management">
       <div className="ml-[20px] mt-6 p-8 bg-gray-50 min-h-screen">
@@ -2216,41 +2182,8 @@ ${(() => {
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
-                                  <div className="flex flex-col">
-                                    <span>Status</span>
-                                    <div className="flex gap-2 mt-1">
-                                      {/* Sales Filter Dropdown */}
-                                      <select
-                                        className="border px-2 py-1 rounded text-xs bg-white"
-                                        value={selectedSalesFilter}
-                                        onChange={e => {
-                                          setSelectedSalesFilter(e.target.value);
-                                          setLeadsData(prev => ({ ...prev, [activeStatusTab]: { ...prev[activeStatusTab], pagination: { ...prev[activeStatusTab].pagination, currentPage: 1 } } }));
-                                        }}
-                                      >
-                                        <option value="">All Sales</option>
-                                        {salesUsers.map(user => (
-                                          <option key={user.id} value={user.id}>{user.firstname} {user.lastname}</option>
-                                        ))}
-                                      </select>
-                                      {/* Created By Filter Dropdown */}
-                                      <select
-                                        className="border px-2 py-1 rounded text-xs bg-white"
-                                        value={selectedCreatedByFilter}
-                                        onChange={e => {
-                                          setSelectedCreatedByFilter(e.target.value);
-                                          setLeadsData(prev => ({ ...prev, [activeStatusTab]: { ...prev[activeStatusTab], pagination: { ...prev[activeStatusTab].pagination, currentPage: 1 } } }));
-                                        }}
-                                      >
-                                        <option value="">All Creators</option>
-                                        {allUsers.map(user => (
-                                          <option key={user.id} value={user.id}>{user.firstname} {user.lastname}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-                                </th>
+                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
+                                
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
@@ -2337,7 +2270,7 @@ ${(() => {
                                    
                                     </div>
                                   </td>
-                                  <td className="px-4 py-0 text-sm text-start border-b whitespace-nowrap">
+                                <td className="px-4 py-0 text-sm text-start border-b whitespace-nowrap">
                                     <div className="flex flex-col gap-1">
                                       <PermissionGuard 
                                         activityName="Lead Status Management" 

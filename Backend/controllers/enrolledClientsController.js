@@ -805,7 +805,7 @@ export const uploadResume = async (req, res) => {
     // Update resume path
     await enrolledClient.update({
       resume: normalizedPath,
-      updatedBy: req.user ? req.user.id : null
+      updatedBy: req.user.id
     });
 
     res.status(200).json({
