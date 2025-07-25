@@ -1035,26 +1035,31 @@ export const getAllApprovedClientsSale = async (req, res) => {
     const finalApproval = [];
 
     for (const client of filteredClients) {
-      // Final Approval: both sales and admin have approved offer letter and first year
+      // Final Approval: both sales and admin have approved offer letter and first year configurations
       if (
-        client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin &&
-        client.first_year_approval_by_sales && client.first_year_approval_by_admin
+        client.offer_letter_approval_by_sales && 
+        client.offer_letter_approval_by_admin &&
+        client.first_year_approval_by_sales && 
+        client.first_year_approval_by_admin
       ) {
         finalApproval.push(client);
       }
-      // My Review: sales needs to review admin changes
-      else if (client.has_update && client.Approval_by_admin === false) {
+      // My Review: admin has made changes and waiting for sales approval
+      else if (client.has_update && !client.Approval_by_admin) {
         myReview.push(client);
       }
-      // Admin Review: admin needs to review sales configuration
+      // Admin Review: sales has configured and waiting for admin approval
       else if (
         (client.offer_letter_has_update || client.first_year_has_update) &&
-        !(client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin && client.first_year_approval_by_sales && client.first_year_approval_by_admin)
+        !client.offer_letter_approval_by_admin
       ) {
         adminReview.push(client);
       }
-      // All Approved: all clients that have completed enrollment approval and paid enrollment
-      else {
+      // All Approved: leads that were approved during enrollment but haven't been configured for offer letter/first year
+      else if (
+        !client.offer_letter_installments.length &&
+        !client.first_year_installments.length
+      ) {
         allApproved.push(client);
       }
     }
@@ -1179,26 +1184,31 @@ export const getAllApprovedAdminSale = async (req, res) => {
     const finalApproval = [];
 
     for (const client of filteredClients) {
-      // Final Approval: both sales and admin have approved offer letter and first year
+      // Final Approval: both sales and admin have approved offer letter and first year configurations
       if (
-        client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin &&
-        client.first_year_approval_by_sales && client.first_year_approval_by_admin
+        client.offer_letter_approval_by_sales && 
+        client.offer_letter_approval_by_admin &&
+        client.first_year_approval_by_sales && 
+        client.first_year_approval_by_admin
       ) {
         finalApproval.push(client);
       }
-      // Sales Review Pending: admin has made changes, waiting for sales to review
-      else if (client.has_update && client.Approval_by_admin === false) {
+      // Sales Review Pending: admin has made changes and waiting for sales approval
+      else if (client.has_update && !client.Approval_by_admin) {
         salesReviewPending.push(client);
       }
-      // My Review: admin needs to review sales configuration
+      // My Review: sales has configured and waiting for admin review
       else if (
         (client.offer_letter_has_update || client.first_year_has_update) &&
-        !(client.offer_letter_approval_by_sales && client.offer_letter_approval_by_admin && client.first_year_approval_by_sales && client.first_year_approval_by_admin)
+        !client.offer_letter_approval_by_admin
       ) {
         myReview.push(client);
       }
-      // All Approved: all clients that have completed enrollment approval and paid enrollment
-      else {
+      // All Approved: leads that were approved during enrollment but haven't been configured for offer letter/first year
+      else if (
+        !client.offer_letter_installments.length &&
+        !client.first_year_installments.length
+      ) {
         allApproved.push(client);
       }
     }
