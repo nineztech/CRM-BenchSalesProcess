@@ -12,6 +12,7 @@ interface EnrolledClient {
   payable_offer_letter_charge: number | null;
   payable_first_year_percentage: number | null;
   payable_first_year_fixed_charge: number | null;
+  net_payable_first_year_price: number | null;
   Approval_by_sales: boolean;
   Sales_person_id: number | null;
   Approval_by_admin: boolean;
@@ -21,6 +22,10 @@ interface EnrolledClient {
   edited_offer_letter_charge: number | null;
   edited_first_year_percentage: number | null;
   edited_first_year_fixed_charge: number | null;
+  edited_net_payable_first_year_price: number | null;
+  final_approval_sales: boolean;
+  final_approval_by_admin: boolean;
+  has_update_in_final: boolean;
   createdBy: number;
   updatedBy: number | null;
   resume: string | null;
@@ -64,10 +69,15 @@ interface FormData {
   payable_offer_letter_charge: number | null;
   payable_first_year_percentage: number | null;
   payable_first_year_fixed_charge: number | null;
+  net_payable_first_year_price: number | null;
+  first_year_salary: number | null;
   pricing_type: 'percentage' | 'fixed' | null;
   offer_letter_installments: Installment[];
   offer_letter_initial_payment: number | null;
   offerLetterInitialPaymentError?: string;
+  first_year_installments: Installment[];
+  first_year_initial_payment: number | null;
+  firstYearInitialPaymentError?: string;
 }
 
 interface Installment {
@@ -117,11 +127,16 @@ const AccountSale: React.FC = () => {
     payable_offer_letter_charge: null,
     payable_first_year_percentage: null,
     payable_first_year_fixed_charge: null,
+    net_payable_first_year_price: null,
+    first_year_salary: null,
     pricing_type: null,
     offer_letter_installments: [],
     offer_letter_initial_payment: null,
+    first_year_installments: [],
+    first_year_initial_payment: null,
   });
   const [showOfferLetterInitialPayment, setShowOfferLetterInitialPayment] = useState(false);
+  const [showFirstYearInitialPayment, setShowFirstYearInitialPayment] = useState(false);
   const [hasInstallmentError, setHasInstallmentError] = useState(false);
 
   useEffect(() => {
@@ -199,6 +214,8 @@ const AccountSale: React.FC = () => {
         payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
+        net_payable_first_year_price: client.net_payable_first_year_price || null,
+        first_year_salary: null,
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
@@ -208,6 +225,8 @@ const AccountSale: React.FC = () => {
           remark: inst.remark || ''
         })),
         offer_letter_initial_payment: initialPayment,
+        first_year_installments: [],
+        first_year_initial_payment: null,
       });
 
     } catch (error) {
@@ -219,11 +238,15 @@ const AccountSale: React.FC = () => {
         payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
+        net_payable_first_year_price: client.net_payable_first_year_price || null,
+        first_year_salary: null,
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
         offer_letter_installments: [],
         offer_letter_initial_payment: client.payable_offer_letter_charge,
+        first_year_installments: [],
+        first_year_initial_payment: null,
       });
     }
   };
@@ -238,9 +261,13 @@ const AccountSale: React.FC = () => {
         payable_offer_letter_charge: selectedPackage.offerLetterCharge,
         payable_first_year_percentage: selectedPackage.firstYearSalaryPercentage,
         payable_first_year_fixed_charge: selectedPackage.firstYearFixedPrice,
+        net_payable_first_year_price: selectedPackage.firstYearFixedPrice || null,
+        first_year_salary: null,
         pricing_type: selectedPackage.firstYearSalaryPercentage ? 'percentage' : 'fixed',
         offer_letter_installments: [],
         offer_letter_initial_payment: null,
+        first_year_installments: [],
+        first_year_initial_payment: null,
       }));
     }
   };
@@ -250,8 +277,129 @@ const AccountSale: React.FC = () => {
       ...prev,
       pricing_type: type,
       payable_first_year_percentage: type === 'percentage' ? prev.payable_first_year_percentage : null,
-      payable_first_year_fixed_charge: type === 'fixed' ? prev.payable_first_year_fixed_charge : null
+      payable_first_year_fixed_charge: type === 'fixed' ? prev.payable_first_year_fixed_charge : null,
+      net_payable_first_year_price: type === 'fixed' ? prev.payable_first_year_fixed_charge : null,
+      first_year_salary: null
     }));
+  };
+
+  // Calculate net payable when first year salary changes
+  const handleFirstYearSalaryChange = (salary: number) => {
+    setFormData(prev => {
+      const percentage = prev.payable_first_year_percentage || 0;
+      const netPayable = (salary * percentage) / 100;
+      return {
+        ...prev,
+        first_year_salary: salary,
+        net_payable_first_year_price: netPayable
+      };
+    });
+  };
+
+  // Handle first year initial payment change
+  const handleFirstYearInitialPaymentChange = (value: number) => {
+    setFormData(prev => {
+      const newInitialPayment = Number(value.toFixed(2));
+      const totalInstallments = Number(prev.first_year_installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0).toFixed(2));
+      const totalAmount = Number((newInitialPayment + totalInstallments).toFixed(2));
+      const netPayableNum = Number(Number(prev.net_payable_first_year_price).toFixed(2));
+      
+      let errorMessage = '';
+      if (totalAmount > netPayableNum) {
+        errorMessage = `Total amount (${formatCurrency(totalAmount)}) cannot exceed net payable (${formatCurrency(netPayableNum)})`;
+      }
+
+      return {
+        ...prev,
+        first_year_initial_payment: newInitialPayment,
+        firstYearInitialPaymentError: errorMessage
+      };
+    });
+  };
+
+  // Add first year installment
+  const addFirstYearInstallment = () => {
+    if (!selectedClient) return;
+    
+    const totalCharge = formData.net_payable_first_year_price || 0;
+    if (totalCharge === 0) {
+      alert('Cannot add installments when net payable is 0');
+      return;
+    }
+
+    if (!showFirstYearInitialPayment) {
+      setShowFirstYearInitialPayment(true);
+      return;
+    }
+
+    if (!formData.first_year_initial_payment) {
+      alert('Please enter the initial payment amount first');
+      return;
+    }
+
+    const totalExistingAmount = formData.first_year_installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const remainingAmount = totalCharge - (formData.first_year_initial_payment + totalExistingAmount);
+
+    if (remainingAmount <= 0) {
+      alert('Total installment amount cannot exceed the remaining charge');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      first_year_installments: [
+        ...prev.first_year_installments,
+        { amount: 0, dueDate: '', remark: '' }
+      ]
+    }));
+  };
+
+  // Update first year installment
+  const updateFirstYearInstallment = (index: number, field: keyof Installment, value: string | number) => {
+    setFormData(prev => {
+      const newInstallments = [...prev.first_year_installments];
+      
+      if (field === 'amount') {
+        const numValue = Number(Number(value).toFixed(2));
+        const totalCharge = Number(Number(prev.net_payable_first_year_price).toFixed(2));
+        const initialPayment = Number(Number(prev.first_year_initial_payment || 0).toFixed(2));
+        const totalOtherInstallments = Number(prev.first_year_installments.reduce((sum, inst, i) => 
+          i === index ? sum : sum + Number(inst.amount), 0).toFixed(2));
+        
+        const totalAmount = Number((initialPayment + totalOtherInstallments + numValue).toFixed(2));
+        
+        if (totalAmount > totalCharge) {
+          alert(`Total amount (${formatCurrency(totalAmount)}) cannot exceed net payable (${formatCurrency(totalCharge)})`);
+          return prev;
+        }
+      }
+
+      newInstallments[index] = { 
+        ...newInstallments[index], 
+        [field]: field === 'amount' ? Number(Number(value).toFixed(2)) : value 
+      };
+
+      return {
+        ...prev,
+        first_year_installments: newInstallments
+      };
+    });
+  };
+
+  // Remove first year installment
+  const removeFirstYearInstallment = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      first_year_installments: prev.first_year_installments.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Get first year remaining amount
+  const getFirstYearRemainingAmount = () => {
+    const totalCharge = formData.net_payable_first_year_price || 0;
+    const initialPayment = formData.first_year_initial_payment || 0;
+    const totalExistingAmount = formData.first_year_installments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+    return totalCharge - (initialPayment + totalExistingAmount);
   };
 
   // Add new function for offer letter installments
@@ -377,40 +525,21 @@ const AccountSale: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
-      let offerLetterUpdated = false;
-      let firstYearUpdated = false;
+      let finalUpdated = false;
       // Detect changes
       const offerLetterChanged = selectedClient.payable_offer_letter_charge !== formData.payable_offer_letter_charge;
       const firstYearChanged = selectedClient.payable_first_year_percentage !== formData.payable_first_year_percentage || selectedClient.payable_first_year_fixed_charge !== formData.payable_first_year_fixed_charge;
-      // Update offer letter charge if changed
-      if (offerLetterChanged) {
+      // Update final configuration if any changes
+      if (offerLetterChanged || firstYearChanged) {
         const submitData = {
           payable_offer_letter_charge: formData.payable_offer_letter_charge,
-          Sales_person_id: userId,
-          updatedBy: userId
-        };
-        const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/offer-letter/${selectedClient.id}`,
-          submitData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        offerLetterUpdated = response.data.success;
-      }
-      // Update first year salary if changed
-      if (firstYearChanged) {
-        const submitData = {
           payable_first_year_percentage: formData.payable_first_year_percentage,
           payable_first_year_fixed_charge: formData.payable_first_year_fixed_charge,
           Sales_person_id: userId,
           updatedBy: userId
         };
         const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/first-year/${selectedClient.id}`,
+          `${BASE_URL}/enrolled-clients/final/${selectedClient.id}`,
           submitData,
           {
             headers: {
@@ -419,7 +548,7 @@ const AccountSale: React.FC = () => {
             }
           }
         );
-        firstYearUpdated = response.data.success;
+        finalUpdated = response.data.success;
       }
 
       // Handle offer letter charge installments
@@ -494,7 +623,7 @@ const AccountSale: React.FC = () => {
         setClients(updatedClients);
       }
       
-      if (offerLetterUpdated || firstYearUpdated) {
+      if (finalUpdated) {
         alert('Changes submitted successfully!');
       }
     } catch (error) {
@@ -877,7 +1006,8 @@ const AccountSale: React.FC = () => {
                     </div>
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-4">
+                {/* First Year Pricing Configuration */}
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       First Year Pricing Type
@@ -907,8 +1037,9 @@ const AccountSale: React.FC = () => {
                       </label>
                     </div>
                   </div>
-                  <div>
-                    {formData.pricing_type === 'percentage' ? (
+
+                  {formData.pricing_type === 'percentage' ? (
+                    <div className="grid grid-cols-4 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           First Year Salary Percentage (%)
@@ -925,15 +1056,14 @@ const AccountSale: React.FC = () => {
                           required
                         />
                       </div>
-                    ) : (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          First Year Fixed Charge ($)
+                          First Year Salary ($)
                         </label>
                         <input
                           type="number"
-                          value={formData.payable_first_year_fixed_charge ?? ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, payable_first_year_fixed_charge: Number(e.target.value) }))}
+                          value={formData.first_year_salary ?? ''}
+                          onChange={(e) => handleFirstYearSalaryChange(Number(e.target.value))}
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="0.00"
                           step="0.01"
@@ -941,8 +1071,209 @@ const AccountSale: React.FC = () => {
                           required
                         />
                       </div>
-                    )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Net Payable ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.net_payable_first_year_price ?? ''}
+                          className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                          disabled
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Initial Payment ($)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={formData.first_year_initial_payment ?? ''}
+                            onChange={(e) => {
+                              const inputValue = Number(e.target.value);
+                              handleFirstYearInitialPaymentChange(inputValue);
+                              if (inputValue < (formData.net_payable_first_year_price || 0)) {
+                                setShowFirstYearInitialPayment(true);
+                              }
+                            }}
+                            className={`w-full p-3 border ${
+                              formData.firstYearInitialPaymentError ? 'border-red-300' : 'border-gray-300'
+                            } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            required
+                          />
+                          {formData.first_year_initial_payment !== null && 
+                           formData.first_year_initial_payment < (formData.net_payable_first_year_price || 0) && 
+                           formData.first_year_installments.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={addFirstYearInstallment}
+                              className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Add Installment"
+                            >
+                              <FaPlus className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                        {formData.firstYearInitialPaymentError && (
+                          <p className="text-red-500 text-sm mt-1">{formData.firstYearInitialPaymentError}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Year Fixed Charge ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.payable_first_year_fixed_charge ?? ''}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              payable_first_year_fixed_charge: value,
+                              net_payable_first_year_price: value
+                            }));
+                          }}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Net Payable ($)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.net_payable_first_year_price ?? ''}
+                          className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                          disabled
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Initial Payment ($)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={formData.first_year_initial_payment ?? ''}
+                            onChange={(e) => {
+                              const inputValue = Number(e.target.value);
+                              handleFirstYearInitialPaymentChange(inputValue);
+                              if (inputValue < (formData.net_payable_first_year_price || 0)) {
+                                setShowFirstYearInitialPayment(true);
+                              }
+                            }}
+                            className={`w-full p-3 border ${
+                              formData.firstYearInitialPaymentError ? 'border-red-300' : 'border-gray-300'
+                            } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            required
+                          />
+                          {formData.first_year_initial_payment !== null && 
+                           formData.first_year_initial_payment < (formData.net_payable_first_year_price || 0) && 
+                           formData.first_year_installments.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={addFirstYearInstallment}
+                              className="p-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Add Installment"
+                            >
+                              <FaPlus className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                        {formData.firstYearInitialPaymentError && (
+                          <p className="text-red-500 text-sm mt-1">{formData.firstYearInitialPaymentError}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* First Year Remaining Amount */}
+                  <div className="text-sm text-gray-600 mb-0">
+                    Remaining amount to be added in installments: {formatCurrency(getFirstYearRemainingAmount())}
                   </div>
+
+                  {/* First Year Installments Section */}
+                  {formData.first_year_installments.length > 0 && (
+                    <div className="mt-0 bg-green-50">
+                      <div className="space-y-4">
+                        {formData.first_year_installments.map((installment, index) => (
+                          <div key={index} className="flex items-center gap-4 p-4 rounded-lg">
+                            <div className="flex-none">
+                              <span className="text-sm font-medium text-gray-700">First Year Installment {index + 1}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="grid grid-cols-3 gap-4">
+                                <div className="flex flex-col">
+                                  <input
+                                    type="number"
+                                    value={installment.amount}
+                                    onChange={(e) => updateFirstYearInstallment(index, 'amount', Number(e.target.value))}
+                                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <input
+                                    type="date"
+                                    value={installment.dueDate}
+                                    onChange={(e) => updateFirstYearInstallment(index, 'dueDate', e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <input
+                                    type="text"
+                                    value={installment.remark}
+                                    onChange={(e) => updateFirstYearInstallment(index, 'remark', e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                    placeholder="Add a note..."
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-none">
+                              <button
+                                type="button"
+                                onClick={() => removeFirstYearInstallment(index)}
+                                className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
+                              >
+                                <FaTrash className="w-4 h-4" />
+                              </button>
+                              {index === formData.first_year_installments.length - 1 && getFirstYearRemainingAmount() > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={addFirstYearInstallment}
+                                  className="ml-2 text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={getFirstYearRemainingAmount() <= 0}
+                                >
+                                  <FaPlus className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                

@@ -70,6 +70,11 @@ const EnrolledClients = sequelize.define(
         }
       }
     },
+    net_payable_first_year_price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      validate: { min: 0 }
+    },
     Approval_by_sales: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -140,32 +145,22 @@ const EnrolledClients = sequelize.define(
         }
       }
     },
-    offer_letter_approval_by_sales: {
+    edited_net_payable_first_year_price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      validate: { min: 0 }
+    },
+    final_approval_sales: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
     },
-    offer_letter_approval_by_admin: {
+    final_approval_by_admin: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
     },
-    offer_letter_has_update: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-    first_year_approval_by_sales: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-    first_year_approval_by_admin: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-    first_year_has_update: {
+    has_update_in_final: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false

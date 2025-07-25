@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaCheckCircle, FaTimes, FaEdit, FaFilePdf, FaBox, FaInfoCircle } from 'react-icons/fa';
+import ConfirmationPopup from '../enrollment/ConfirmationPopup';
+import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -20,7 +22,9 @@ interface EnrolledClient {
   Approval_by_admin: boolean;
   Admin_id: number | null;
   has_update: boolean;
-  offer_letter_has_update?: boolean;
+  final_approval_sales: boolean;
+  final_approval_by_admin: boolean;
+  has_update_in_final: boolean;
   lead: {
     firstName: string;
     lastName: string;
@@ -57,6 +61,8 @@ const AccountAdmin: React.FC = () => {
   const [showApprovalForm, setShowApprovalForm] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('');
   const [tabsData, setTabsData] = useState<TabsData>({});
+  const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -88,25 +94,24 @@ const AccountAdmin: React.FC = () => {
   };
 
   const handleApproval = async (approved: boolean) => {
-    if (!selectedClient) return;
+    const client = selectedClient || pendingApprovalClient;
+    if (!client) return;
     try {
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
-      let enrollmentApproved = false;
-      let offerLetterApproved = false;
-      let firstYearApproved = false;
-      // Detect which type of approval is needed
-      const offerLetterPending = selectedClient.edited_offer_letter_charge !== null && selectedClient.edited_offer_letter_charge !== selectedClient.payable_offer_letter_charge;
-      const firstYearPending = (selectedClient.edited_first_year_percentage !== null && selectedClient.edited_first_year_percentage !== selectedClient.payable_first_year_percentage) || (selectedClient.edited_first_year_fixed_charge !== null && selectedClient.edited_first_year_fixed_charge !== selectedClient.payable_first_year_fixed_charge);
-      const enrollmentPending = selectedClient.has_update && !offerLetterPending && !firstYearPending;
-      // Approve offer letter if pending
-      if (offerLetterPending) {
+      let finalApproved = false;
+      // Detect if final approval is needed
+      const finalPending = client.has_update_in_final;
+      // Approve final configuration if pending
+      if (finalPending) {
         const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/offer-letter/admin/${selectedClient.id}`,
+          `${BASE_URL}/enrolled-clients/final/admin/${client.id}`,
           {
             approved,
             Admin_id: userId,
-            edited_offer_letter_charge: selectedClient.edited_offer_letter_charge
+            edited_offer_letter_charge: client.edited_offer_letter_charge,
+            edited_first_year_percentage: client.edited_first_year_percentage,
+            edited_first_year_fixed_charge: client.edited_first_year_fixed_charge
           },
           {
             headers: {
@@ -115,54 +120,42 @@ const AccountAdmin: React.FC = () => {
             }
           }
         );
-        offerLetterApproved = response.data.success;
+        finalApproved = response.data.success;
       }
-      // Approve first year if pending
-      if (firstYearPending) {
-        const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/first-year/admin/${selectedClient.id}`,
-          {
-            approved,
-            Admin_id: userId,
-            edited_first_year_percentage: selectedClient.edited_first_year_percentage,
-            edited_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        firstYearApproved = response.data.success;
-      }
-      // Approve enrollment if pending
-      if (enrollmentPending) {
-        const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/accounts/admin/${selectedClient.id}`,
-          {
-            approved,
-            admin_id: userId
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        enrollmentApproved = response.data.success;
-      }
-      if (enrollmentApproved || offerLetterApproved || firstYearApproved) {
+      if (finalApproved) {
         setShowApprovalForm(false);
         setSelectedClient(null);
         fetchClients();
-        alert(approved ? 'Changes approved successfully!' : 'Changes rejected successfully!');
+        toast.success(approved ? 'Changes approved successfully!' : 'Changes rejected successfully!');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Error processing approval');
+      toast.error('Error processing approval');
     }
+  };
+
+  const handleApprovalIconClick = (client: EnrolledClient) => {
+    setPendingApprovalClient(client);
+    setShowConfirmPopup(true);
+  };
+
+  const handleConfirmApproval = async () => {
+    if (pendingApprovalClient) {
+      await handleApproval(true);
+      setShowConfirmPopup(false);
+      setPendingApprovalClient(null);
+      setSelectedClient(null);
+    }
+  };
+
+  const handleCancelApproval = () => {
+    setShowConfirmPopup(false);
+    setPendingApprovalClient(null);
+  };
+
+  const handleReview = (client: EnrolledClient) => {
+    setSelectedClient(client);
+    setShowApprovalForm(true);
   };
 
   const formatCurrency = (amount: number | null) => {
@@ -391,18 +384,22 @@ const AccountAdmin: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {client.has_update && (
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setShowApprovalForm(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Review Changes"
+                          onClick={() => handleApprovalIconClick(client)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Quick Approve"
                         >
-                          <FaEdit className="w-5 h-5" />
+                          <FaCheckCircle className="w-4 h-4" />
                         </button>
-                      )}
+                        <button
+                          onClick={() => handleReview(client)}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Review & Edit"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -411,6 +408,12 @@ const AccountAdmin: React.FC = () => {
           </div>
         </div>
       </div>
+      <ConfirmationPopup
+        open={showConfirmPopup}
+        onConfirm={handleConfirmApproval}
+        onCancel={handleCancelApproval}
+        message="Are you sure you want to approve these changes?"
+      />
     </div>
   );
 };

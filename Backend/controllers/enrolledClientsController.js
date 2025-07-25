@@ -1029,18 +1029,16 @@ export const getAllApprovedClientsSale = async (req, res) => {
     const filteredClients = accountsClients.filter(client => client.enrollment_paid);
 
     // Categorize clients for each tab/object
-    const allApproved = [];
+    let allApproved = [];
     const myReview = [];
     const adminReview = [];
     const finalApproval = [];
 
     for (const client of filteredClients) {
-      // Final Approval: both sales and admin have approved offer letter and first year configurations
+      // Final Approval: both sales and admin have approved final configuration
       if (
-        client.offer_letter_approval_by_sales && 
-        client.offer_letter_approval_by_admin &&
-        client.first_year_approval_by_sales && 
-        client.first_year_approval_by_admin
+        client.final_approval_sales && 
+        client.final_approval_by_admin
       ) {
         finalApproval.push(client);
       }
@@ -1050,8 +1048,8 @@ export const getAllApprovedClientsSale = async (req, res) => {
       }
       // Admin Review: sales has configured and waiting for admin approval
       else if (
-        (client.offer_letter_has_update || client.first_year_has_update) &&
-        !client.offer_letter_approval_by_admin
+        client.has_update_in_final &&
+        !client.final_approval_by_admin
       ) {
         adminReview.push(client);
       }
@@ -1063,6 +1061,15 @@ export const getAllApprovedClientsSale = async (req, res) => {
         allApproved.push(client);
       }
     }
+
+    // --- Add all "Approved" clients from getAllEnrolledClientsForSales to allApproved ---
+    // These are all clients with Approval_by_sales: true, Approval_by_admin: true
+    for (const client of filteredClients) {
+      if (!allApproved.some(c => c.id === client.id)) {
+        allApproved.push(client);
+      }
+    }
+    // --- End addition ---
 
     // Pagination helper
     const paginate = (arr) => {
@@ -1178,18 +1185,16 @@ export const getAllApprovedAdminSale = async (req, res) => {
     const filteredClients = accountsClients.filter(client => client.enrollment_paid);
 
     // Categorize clients for each tab/object
-    const allApproved = [];
+    let allApproved = [];
     const salesReviewPending = [];
     const myReview = [];
     const finalApproval = [];
 
     for (const client of filteredClients) {
-      // Final Approval: both sales and admin have approved offer letter and first year configurations
+      // Final Approval: both sales and admin have approved final configuration
       if (
-        client.offer_letter_approval_by_sales && 
-        client.offer_letter_approval_by_admin &&
-        client.first_year_approval_by_sales && 
-        client.first_year_approval_by_admin
+        client.final_approval_sales && 
+        client.final_approval_by_admin
       ) {
         finalApproval.push(client);
       }
@@ -1199,8 +1204,8 @@ export const getAllApprovedAdminSale = async (req, res) => {
       }
       // My Review: sales has configured and waiting for admin review
       else if (
-        (client.offer_letter_has_update || client.first_year_has_update) &&
-        !client.offer_letter_approval_by_admin
+        client.has_update_in_final &&
+        !client.final_approval_by_admin
       ) {
         myReview.push(client);
       }
@@ -1212,6 +1217,15 @@ export const getAllApprovedAdminSale = async (req, res) => {
         allApproved.push(client);
       }
     }
+
+    // --- Add all "Approved" clients from getAllEnrolledClientsForAdmin to allApproved ---
+    // These are all clients with Approval_by_sales: true, Approval_by_admin: true
+    for (const client of filteredClients) {
+      if (!allApproved.some(c => c.id === client.id)) {
+        allApproved.push(client);
+      }
+    }
+    // --- End addition ---
 
     // Pagination helper
     const paginate = (arr) => {
@@ -1250,6 +1264,106 @@ export const getAllApprovedAdminSale = async (req, res) => {
   }
 }; 
 
+// Update final configuration (Sales) - Combined offer letter and first year
+export const updateFinalConfiguration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      payable_offer_letter_charge, 
+      payable_first_year_percentage, 
+      payable_first_year_fixed_charge,
+      net_payable_first_year_price,
+      Sales_person_id, 
+      updatedBy 
+    } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    
+    // Validation: Only one of percentage or fixed charge should be provided
+    if (payable_first_year_percentage && payable_first_year_fixed_charge) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot set both payable_first_year_percentage and payable_first_year_fixed_charge' 
+      });
+    }
+
+    await enrolledClient.update({
+      payable_offer_letter_charge,
+      payable_first_year_percentage,
+      payable_first_year_fixed_charge,
+      net_payable_first_year_price,
+      Sales_person_id,
+      updatedBy,
+      final_approval_sales: true,
+      final_approval_by_admin: false,
+      has_update_in_final: true,
+      has_update: true
+    });
+    res.status(200).json({ success: true, message: 'Final configuration updated successfully by sales', data: enrolledClient });
+  } catch (error) {
+    console.error('Error updating final configuration:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Admin approval/rejection for final configuration
+export const adminFinalApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      approved, 
+      Admin_id, 
+      edited_offer_letter_charge, 
+      edited_first_year_percentage, 
+      edited_first_year_fixed_charge,
+      edited_net_payable_first_year_price,
+      updatedBy 
+    } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+    if (approved) {
+      await enrolledClient.update({
+        final_approval_by_admin: true,
+        Admin_id,
+        has_update_in_final: false,
+        updatedBy,
+        edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge,
+        edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
+        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge,
+        edited_net_payable_first_year_price: enrolledClient.net_payable_first_year_price
+      });
+    } else {
+      const updateData = {
+        final_approval_by_admin: false,
+        Admin_id,
+        has_update_in_final: true,
+        updatedBy
+      };
+      if (edited_offer_letter_charge !== undefined) {
+        updateData.edited_offer_letter_charge = edited_offer_letter_charge;
+      }
+      if (edited_first_year_percentage !== undefined) {
+        updateData.edited_first_year_percentage = edited_first_year_percentage;
+      }
+      if (edited_first_year_fixed_charge !== undefined) {
+        updateData.edited_first_year_fixed_charge = edited_first_year_fixed_charge;
+      }
+      if (edited_net_payable_first_year_price !== undefined) {
+        updateData.edited_net_payable_first_year_price = edited_net_payable_first_year_price;
+      }
+      await enrolledClient.update(updateData);
+    }
+    res.status(200).json({ success: true, message: approved ? 'Final configuration approved by admin' : 'Final configuration updated by admin', data: enrolledClient });
+  } catch (error) {
+    console.error('Error in admin final approval:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
 // Update offer letter charge (Sales)
 export const updateOfferLetterCharge = async (req, res) => {
   try {
@@ -1263,9 +1377,9 @@ export const updateOfferLetterCharge = async (req, res) => {
       payable_offer_letter_charge,
       Sales_person_id,
       updatedBy,
-      offer_letter_approval_by_sales: true,
-      offer_letter_approval_by_admin: false,
-      offer_letter_has_update: true,
+      final_approval_sales: true,
+      final_approval_by_admin: false,
+      has_update_in_final: true,
       has_update: true
     });
     res.status(200).json({ success: true, message: 'Offer letter charge updated successfully by sales', data: enrolledClient });
@@ -1286,17 +1400,17 @@ export const adminOfferLetterApproval = async (req, res) => {
     }
     if (approved) {
       await enrolledClient.update({
-        offer_letter_approval_by_admin: true,
+        final_approval_by_admin: true,
         Admin_id,
-        offer_letter_has_update: false,
+        has_update_in_final: false,
         updatedBy,
         edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge
       });
     } else {
       const updateData = {
-        offer_letter_approval_by_admin: false,
+        final_approval_by_admin: false,
         Admin_id,
-        offer_letter_has_update: true,
+        has_update_in_final: true,
         updatedBy
       };
       if (edited_offer_letter_charge !== undefined) {
@@ -1315,7 +1429,13 @@ export const adminOfferLetterApproval = async (req, res) => {
 export const updateFirstYearCharge = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payable_first_year_percentage, payable_first_year_fixed_charge, Sales_person_id, updatedBy } = req.body;
+    const { 
+      payable_first_year_percentage, 
+      payable_first_year_fixed_charge, 
+      net_payable_first_year_price,
+      Sales_person_id, 
+      updatedBy 
+    } = req.body;
     const enrolledClient = await EnrolledClients.findByPk(id);
     if (!enrolledClient) {
       return res.status(404).json({ success: false, message: 'Enrolled client not found' });
@@ -1326,11 +1446,12 @@ export const updateFirstYearCharge = async (req, res) => {
     await enrolledClient.update({
       payable_first_year_percentage,
       payable_first_year_fixed_charge,
+      net_payable_first_year_price,
       Sales_person_id,
       updatedBy,
-      first_year_approval_by_sales: false,
-      first_year_approval_by_admin: false,
-      first_year_has_update: false
+      final_approval_sales: false,
+      final_approval_by_admin: false,
+      has_update_in_final: false
     });
     res.status(200).json({ success: true, message: 'First year salary charge updated successfully by sales', data: enrolledClient });
   } catch (error) {
@@ -1343,25 +1464,33 @@ export const updateFirstYearCharge = async (req, res) => {
 export const adminFirstYearApproval = async (req, res) => {
   try {
     const { id } = req.params;
-    const { approved, Admin_id, edited_first_year_percentage, edited_first_year_fixed_charge, updatedBy } = req.body;
+    const { 
+      approved, 
+      Admin_id, 
+      edited_first_year_percentage, 
+      edited_first_year_fixed_charge, 
+      edited_net_payable_first_year_price,
+      updatedBy 
+    } = req.body;
     const enrolledClient = await EnrolledClients.findByPk(id);
     if (!enrolledClient) {
       return res.status(404).json({ success: false, message: 'Enrolled client not found' });
     }
     if (approved) {
       await enrolledClient.update({
-        first_year_approval_by_admin: true,
+        final_approval_by_admin: true,
         Admin_id,
-        first_year_has_update: false,
+        has_update_in_final: false,
         updatedBy,
         edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
-        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge
+        edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge,
+        edited_net_payable_first_year_price: enrolledClient.net_payable_first_year_price
       });
     } else {
       const updateData = {
-        first_year_approval_by_admin: false,
+        final_approval_by_admin: false,
         Admin_id,
-        first_year_has_update: true,
+        has_update_in_final: true,
         updatedBy
       };
       if (edited_first_year_percentage !== undefined) {
@@ -1369,6 +1498,9 @@ export const adminFirstYearApproval = async (req, res) => {
       }
       if (edited_first_year_fixed_charge !== undefined) {
         updateData.edited_first_year_fixed_charge = edited_first_year_fixed_charge;
+      }
+      if (edited_net_payable_first_year_price !== undefined) {
+        updateData.edited_net_payable_first_year_price = edited_net_payable_first_year_price;
       }
       await enrolledClient.update(updateData);
     }
