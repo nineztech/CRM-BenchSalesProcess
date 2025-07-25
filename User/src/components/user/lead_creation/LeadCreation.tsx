@@ -846,7 +846,7 @@ const LeadCreationComponent: React.FC = () => {
       if (activeStatusTab === 'followup') {
         fetchLeads();
       }
-    }, 60000); // Refresh every minute
+    }, 300000); // Refresh every 5 minutes
 
     return () => clearInterval(timer);
   }, [activeStatusTab]);
