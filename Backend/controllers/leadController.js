@@ -412,7 +412,7 @@ export const getAllLeads = async (req, res) => {
         }
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
@@ -433,7 +433,7 @@ export const getAllLeads = async (req, res) => {
         }
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
@@ -465,7 +465,7 @@ export const getAllLeads = async (req, res) => {
         }
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
@@ -694,7 +694,7 @@ export const getAssignedLeads = async (req, res) => {
         }
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
@@ -716,7 +716,7 @@ export const getAssignedLeads = async (req, res) => {
         }
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
@@ -758,7 +758,7 @@ export const getAssignedLeads = async (req, res) => {
         ]
       }),
       include: includeOptions,
-      order: [[sortBy, sortOrder]],
+      order: [['followUpDateTime', 'ASC']],
       offset: offset,
       limit: limit
     });
