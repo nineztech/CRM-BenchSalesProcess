@@ -46,6 +46,108 @@ const validateAndGetRemainingAmount = async (enrolledClientId, charge_type) => {
   };
 };
 
+// Create combined installments for offer letter and first year charges
+export const createCombinedInstallments = async (req, res) => {
+  try {
+    const { enrolledClientId, offerLetterInstallments, firstYearInstallments } = req.body;
+
+    // Validate enrolled client exists
+    const enrolledClient = await EnrolledClients.findByPk(enrolledClientId);
+    if (!enrolledClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrolled client not found'
+      });
+    }
+
+    // Validate offer letter charge
+    if (enrolledClient.payable_offer_letter_charge && (!offerLetterInstallments || offerLetterInstallments.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Offer letter installments are required when offer letter charge is set'
+      });
+    }
+
+    // Validate first year charge
+    if ((enrolledClient.payable_first_year_fixed_charge || enrolledClient.payable_first_year_percentage) && 
+        (!firstYearInstallments || firstYearInstallments.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'First year installments are required when first year charge is set'
+      });
+    }
+
+    const createdInstallments = [];
+
+    // Create offer letter installments
+    if (offerLetterInstallments && offerLetterInstallments.length > 0) {
+      const totalOfferLetterAmount = offerLetterInstallments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+      
+      if (Math.abs(totalOfferLetterAmount - (enrolledClient.payable_offer_letter_charge || 0)) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: `Total offer letter installment amount (${totalOfferLetterAmount}) does not match the payable offer letter charge (${enrolledClient.payable_offer_letter_charge})`
+        });
+      }
+
+      for (let i = 0; i < offerLetterInstallments.length; i++) {
+        const installment = offerLetterInstallments[i];
+        const createdInst = await Installments.create({
+          enrolledClientId,
+          charge_type: 'offer_letter_charge',
+          amount: installment.amount,
+          dueDate: installment.dueDate,
+          remark: installment.remark,
+          installment_number: i,
+          is_initial_payment: i === 0
+        });
+        createdInstallments.push(createdInst);
+      }
+    }
+
+    // Create first year installments
+    if (firstYearInstallments && firstYearInstallments.length > 0) {
+      const totalFirstYearAmount = firstYearInstallments.reduce((sum, inst) => sum + Number(inst.amount), 0);
+      const expectedFirstYearAmount = enrolledClient.net_payable_first_year_price || enrolledClient.payable_first_year_fixed_charge || 0;
+      
+      if (Math.abs(totalFirstYearAmount - expectedFirstYearAmount) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: `Total first year installment amount (${totalFirstYearAmount}) does not match the expected first year amount (${expectedFirstYearAmount})`
+        });
+      }
+
+      for (let i = 0; i < firstYearInstallments.length; i++) {
+        const installment = firstYearInstallments[i];
+        const createdInst = await Installments.create({
+          enrolledClientId,
+          charge_type: 'first_year_charge',
+          amount: installment.amount,
+          dueDate: installment.dueDate,
+          remark: installment.remark,
+          installment_number: i,
+          is_initial_payment: i === 0
+        });
+        createdInstallments.push(createdInst);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Combined installments created successfully',
+      data: createdInstallments
+    });
+
+  } catch (error) {
+    console.error('Error creating combined installments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 // Create installment
 export const createInstallment = async (req, res) => {
   try {
@@ -354,9 +456,11 @@ export const updateInstallment = async (req, res) => {
     if (installment.is_initial_payment) {
       updateData.paid = isFullyApproved;
       updateData.paidDate = isFullyApproved ? new Date() : null;
+      updateData.paid_at = isFullyApproved ? new Date() : null;
     } else if (paid !== undefined) {
       updateData.paid = paid;
       updateData.paidDate = paid ? (paidDate || new Date()) : null;
+      updateData.paid_at = paid ? new Date() : null;
     }
 
     await installment.update(updateData);

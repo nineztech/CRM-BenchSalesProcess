@@ -42,6 +42,10 @@ const Installments = sequelize.define('installments', {
     type: DataTypes.DATEONLY,
     allowNull: true
   },
+  paid_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   remark: {
     type: DataTypes.STRING,
     allowNull: true

@@ -328,7 +328,8 @@ export const adminApprovalAction = async (req, res) => {
         if (initialPayment) {
           await initialPayment.update({
             paid: true,
-            paidDate: new Date()
+            paidDate: new Date(),
+            paid_at: new Date()
           });
         }
 
@@ -1042,8 +1043,8 @@ export const getAllApprovedClientsSale = async (req, res) => {
       ) {
         finalApproval.push(client);
       }
-      // My Review: admin has made changes and waiting for sales approval
-      else if (client.has_update && !client.Approval_by_admin) {
+      // My Review: admin has made changes and sent back to sales for review
+      else if (client.has_update && client.final_approval_sales && !client.final_approval_by_admin) {
         myReview.push(client);
       }
       // Admin Review: sales has configured and waiting for admin approval
@@ -1198,8 +1199,8 @@ export const getAllApprovedAdminSale = async (req, res) => {
       ) {
         finalApproval.push(client);
       }
-      // Sales Review Pending: admin has made changes and waiting for sales approval
-      else if (client.has_update && !client.Approval_by_admin) {
+      // Sales Review Pending: admin has made changes and sent back to sales for review
+      else if (client.has_update && client.final_approval_sales && !client.final_approval_by_admin) {
         salesReviewPending.push(client);
       }
       // My Review: sales has configured and waiting for admin review
@@ -1273,6 +1274,7 @@ export const updateFinalConfiguration = async (req, res) => {
       payable_first_year_percentage, 
       payable_first_year_fixed_charge,
       net_payable_first_year_price,
+      first_year_salary,
       Sales_person_id, 
       updatedBy 
     } = req.body;
@@ -1289,11 +1291,21 @@ export const updateFinalConfiguration = async (req, res) => {
       });
     }
 
+    // Validation: First year salary is required when first year percentage is set
+    if (payable_first_year_percentage && !first_year_salary) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'First year salary is required when first year percentage is set' 
+      });
+    }
+
+    // Only update offer letter and first year fields, preserve enrollment charge
     await enrolledClient.update({
       payable_offer_letter_charge,
       payable_first_year_percentage,
       payable_first_year_fixed_charge,
       net_payable_first_year_price,
+      first_year_salary,
       Sales_person_id,
       updatedBy,
       final_approval_sales: true,
@@ -1319,6 +1331,7 @@ export const adminFinalApproval = async (req, res) => {
       edited_first_year_percentage, 
       edited_first_year_fixed_charge,
       edited_net_payable_first_year_price,
+      edited_first_year_salary,
       updatedBy 
     } = req.body;
     const enrolledClient = await EnrolledClients.findByPk(id);
@@ -1334,13 +1347,15 @@ export const adminFinalApproval = async (req, res) => {
         edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge,
         edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
         edited_first_year_fixed_charge: enrolledClient.payable_first_year_fixed_charge,
-        edited_net_payable_first_year_price: enrolledClient.net_payable_first_year_price
+        edited_net_payable_first_year_price: enrolledClient.net_payable_first_year_price,
+        edited_first_year_salary: enrolledClient.first_year_salary
       });
     } else {
       const updateData = {
         final_approval_by_admin: false,
         Admin_id,
-        has_update_in_final: true,
+        has_update_in_final: false,
+        has_update: true,
         updatedBy
       };
       if (edited_offer_letter_charge !== undefined) {
@@ -1354,6 +1369,9 @@ export const adminFinalApproval = async (req, res) => {
       }
       if (edited_net_payable_first_year_price !== undefined) {
         updateData.edited_net_payable_first_year_price = edited_net_payable_first_year_price;
+      }
+      if (edited_first_year_salary !== undefined) {
+        updateData.edited_first_year_salary = edited_first_year_salary;
       }
       await enrolledClient.update(updateData);
     }

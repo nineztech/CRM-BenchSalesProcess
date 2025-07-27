@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createInstallment,
+  createCombinedInstallments,
   getInstallmentsByEnrolledClient,
   getInstallmentById,
   updateInstallment,
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Create new installment
 router.post('/', verifyToken, createInstallment);
+
+// Create combined installments for offer letter and first year
+router.post('/combined', verifyToken, createCombinedInstallments);
 
 // Get all installments for an enrolled client
 router.get('/enrolled-client/:enrolledClientId', getInstallmentsByEnrolledClient);

@@ -18,7 +18,9 @@ import {
   updateOfferLetterCharge,
   adminOfferLetterApproval,
   updateFirstYearCharge,
-  adminFirstYearApproval
+  adminFirstYearApproval,
+  updateFinalConfiguration,
+  adminFinalApproval
 } from '../controllers/enrolledClientsController.js';
 import verifyToken  from '../middleware/auth.js';
 import { resumeUpload } from '../config/multerconfig.js';
@@ -70,5 +72,9 @@ router.put('/offer-letter/:id', updateOfferLetterCharge);
 router.put('/offer-letter/admin/:id', adminOfferLetterApproval);
 router.put('/first-year/:id', updateFirstYearCharge);
 router.put('/first-year/admin/:id', adminFirstYearApproval);
+
+// Combined final configuration route
+router.put('/final-configuration/:id', verifyToken, updateFinalConfiguration);
+router.put('/final-configuration/admin/:id', verifyToken, adminFinalApproval);
 
 export default router; 

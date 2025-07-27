@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaFilePdf, FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt } from 'react-icons/fa';
+import { FaFilePdf, FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt, FaInfoCircle } from 'react-icons/fa';
+import InstallmentsPopup from '../enrollment/InstallmentsPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -13,6 +14,7 @@ interface EnrolledClient {
   payable_first_year_percentage: number | null;
   payable_first_year_fixed_charge: number | null;
   net_payable_first_year_price: number | null;
+  first_year_salary: number | null;
   Approval_by_sales: boolean;
   Sales_person_id: number | null;
   Approval_by_admin: boolean;
@@ -23,6 +25,7 @@ interface EnrolledClient {
   edited_first_year_percentage: number | null;
   edited_first_year_fixed_charge: number | null;
   edited_net_payable_first_year_price: number | null;
+  edited_first_year_salary: number | null;
   final_approval_sales: boolean;
   final_approval_by_admin: boolean;
   has_update_in_final: boolean;
@@ -113,6 +116,25 @@ interface TabsData {
   [key: string]: TabData;
 }
 
+// Add color themes mapping
+const packageColorThemes: { [key: string]: { bg: string; border: string; text: string } } = {
+  'Premium Plan': {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    text: 'text-purple-600'
+  },
+  'Standard Plan': {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-600'
+  },
+  'Basic Plan': {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-600'
+  }
+};
+
 const AccountSale: React.FC = () => {
   const [clients, setClients] = useState<EnrolledClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,6 +160,9 @@ const AccountSale: React.FC = () => {
   const [showOfferLetterInitialPayment, setShowOfferLetterInitialPayment] = useState(false);
   const [showFirstYearInitialPayment, setShowFirstYearInitialPayment] = useState(false);
   const [hasInstallmentError, setHasInstallmentError] = useState(false);
+  const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
+  const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
+  const [installmentChargeType, setInstallmentChargeType] = useState<'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge'>('enrollment_charge');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -215,7 +240,7 @@ const AccountSale: React.FC = () => {
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
         net_payable_first_year_price: client.net_payable_first_year_price || null,
-        first_year_salary: null,
+        first_year_salary: client.first_year_salary || null,
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
@@ -239,7 +264,7 @@ const AccountSale: React.FC = () => {
         payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
         payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
         net_payable_first_year_price: client.net_payable_first_year_price || null,
-        first_year_salary: null,
+        first_year_salary: client.first_year_salary || null,
         pricing_type: client.payable_first_year_percentage ? 'percentage' : 
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
@@ -521,25 +546,51 @@ const AccountSale: React.FC = () => {
       return;
     }
 
+    // Validate first year salary is required when first year percentage is used
+    if (formData.payable_first_year_percentage && !formData.first_year_salary) {
+      alert('First year salary is required when first year percentage is used');
+      return;
+    }
+
+    // Validate first year installments if applicable
+    if (formData.payable_first_year_fixed_charge || formData.payable_first_year_percentage) {
+      const totalFirstYearAmount = Number(((formData.first_year_initial_payment ?? 0) +
+        formData.first_year_installments.reduce((sum, inst) => sum + Number(inst.amount), 0)).toFixed(2));
+      
+      const expectedFirstYearAmount = Number(Number(formData.net_payable_first_year_price).toFixed(2));
+      
+      if (Math.abs(totalFirstYearAmount - expectedFirstYearAmount) > 0.01) {
+        alert(`Total first year amount (${formatCurrency(totalFirstYearAmount)}) must equal the net payable first year price (${formatCurrency(expectedFirstYearAmount)})`);
+        return;
+      }
+    }
+
     setFormLoading(true);
     try {
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
       let finalUpdated = false;
+
       // Detect changes
       const offerLetterChanged = selectedClient.payable_offer_letter_charge !== formData.payable_offer_letter_charge;
-      const firstYearChanged = selectedClient.payable_first_year_percentage !== formData.payable_first_year_percentage || selectedClient.payable_first_year_fixed_charge !== formData.payable_first_year_fixed_charge;
-      // Update final configuration if any changes
+      const firstYearChanged = selectedClient.payable_first_year_percentage !== formData.payable_first_year_percentage || 
+                              selectedClient.payable_first_year_fixed_charge !== formData.payable_first_year_fixed_charge ||
+                              selectedClient.net_payable_first_year_price !== formData.net_payable_first_year_price ||
+                              selectedClient.first_year_salary !== formData.first_year_salary;
+
+      // Update final configuration if any changes using combined API
       if (offerLetterChanged || firstYearChanged) {
         const submitData = {
           payable_offer_letter_charge: formData.payable_offer_letter_charge,
           payable_first_year_percentage: formData.payable_first_year_percentage,
           payable_first_year_fixed_charge: formData.payable_first_year_fixed_charge,
+          net_payable_first_year_price: formData.net_payable_first_year_price,
+          first_year_salary: formData.first_year_salary || null,
           Sales_person_id: userId,
           updatedBy: userId
         };
         const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/final/${selectedClient.id}`,
+          `${BASE_URL}/enrolled-clients/final-configuration/${selectedClient.id}`,
           submitData,
           {
             headers: {
@@ -551,63 +602,76 @@ const AccountSale: React.FC = () => {
         finalUpdated = response.data.success;
       }
 
-      // Handle offer letter charge installments
-      if ((formData.offer_letter_initial_payment ?? 0) > 0 || formData.offer_letter_installments.length > 0) {
-        try {
-          // First create initial payment installment
-          if (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) {
-            await axios.post(
-              `${BASE_URL}/installments`,
-              {
-                enrolledClientId: selectedClient.id,
-                charge_type: 'offer_letter_charge',
-                installment_number: 0,
-                amount: Number(formData.offer_letter_initial_payment),
-                dueDate: new Date().toISOString().split('T')[0], // Today's date
-                remark: 'Initial Payment',
-                is_initial_payment: true,
-                paid: false
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-          }
+      // Prepare installments data for combined API
+      const offerLetterInstallments = [];
+      const firstYearInstallments = [];
 
-          // Then create other installments
-          const offerLetterInstallmentPromises = formData.offer_letter_installments.map((installment, index) => 
-            axios.post(
-              `${BASE_URL}/installments`,
-              {
-                enrolledClientId: selectedClient.id,
-                charge_type: 'offer_letter_charge',
-                installment_number: index + 1,
-                amount: Number(installment.amount),
-                dueDate: installment.dueDate,
-                remark: installment.remark || `Offer Letter Installment ${index + 1}`,
-                is_initial_payment: false,
-                paid: false
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
+      // Add offer letter initial payment if exists
+      if (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) {
+        offerLetterInstallments.push({
+          amount: Number(formData.offer_letter_initial_payment),
+          dueDate: new Date().toISOString().split('T')[0], // Today's date
+          remark: 'Initial Payment'
+        });
+      }
+
+      // Add offer letter regular installments
+      formData.offer_letter_installments.forEach((installment, index) => {
+        if (installment.amount > 0) {
+          offerLetterInstallments.push({
+            amount: Number(installment.amount),
+            dueDate: installment.dueDate,
+            remark: installment.remark || `Offer Letter Installment ${index + 1}`
+          });
+        }
+      });
+
+      // Add first year initial payment if exists
+      if (formData.first_year_initial_payment && formData.first_year_initial_payment > 0) {
+        firstYearInstallments.push({
+          amount: Number(formData.first_year_initial_payment),
+          dueDate: new Date().toISOString().split('T')[0], // Today's date
+          remark: 'Initial Payment'
+        });
+      }
+
+      // Add first year regular installments
+      formData.first_year_installments.forEach((installment, index) => {
+        if (installment.amount > 0) {
+          firstYearInstallments.push({
+            amount: Number(installment.amount),
+            dueDate: installment.dueDate,
+            remark: installment.remark || `First Year Installment ${index + 1}`
+          });
+        }
+      });
+
+      // Create combined installments using new API
+      if (offerLetterInstallments.length > 0 || firstYearInstallments.length > 0) {
+        try {
+          await axios.post(
+            `${BASE_URL}/installments/combined`,
+            {
+              enrolledClientId: selectedClient.id,
+              offerLetterInstallments,
+              firstYearInstallments
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
               }
-            )
+            }
           );
-          await Promise.all(offerLetterInstallmentPromises);
         } catch (error) {
-          console.error('Error creating offer letter installments:', error);
+          console.error('Error creating combined installments:', error);
           throw error;
         }
       }
 
       setSelectedClient(null);
       setShowForm(false);
+      
       // Refresh clients
       const updatedResponse = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, {
         headers: {
@@ -744,6 +808,12 @@ const AccountSale: React.FC = () => {
     } catch (error) { alert('Error approving client'); }
   };
 
+  const handleViewInstallments = (client: EnrolledClient, chargeType: 'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge') => {
+    setSelectedClientForInstallments(client);
+    setInstallmentChargeType(chargeType);
+    setShowInstallmentsPopup(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -756,6 +826,18 @@ const AccountSale: React.FC = () => {
 
   return (
     <div className="p-6 ml-14 mt-10 bg-gray-50 min-h-screen">
+          {/* Existing content below remains unchanged */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <span className="text-blue-600 text-[35px] font-bold">$</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 text-left">Finance Sale (Approved Enrollments)</h1>
+              <p className="text-gray-600 text-sm text-start">All approved enrolled clients</p>
+            </div>
+          </div>
+        </div>
       <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
@@ -778,18 +860,7 @@ const AccountSale: React.FC = () => {
             ))}
           </nav>
         </div>
-        {/* Existing content below remains unchanged */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-[35px] font-bold">$</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 text-left">Finance Sale (Approved Enrollments)</h1>
-              <p className="text-gray-600 text-sm ">All approved enrolled clients</p>
-            </div>
-          </div>
-        </div>
+    
 
         {/* Configuration Form */}
         {showForm && (
@@ -1353,15 +1424,52 @@ const AccountSale: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       {client.package && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                        <div className={`${packageColorThemes[client.package.planName]?.bg || 'bg-gray-50'} 
+                                 ${packageColorThemes[client.package.planName]?.border || 'border-gray-200'} 
+                                 border rounded-lg p-3 space-y-2`}>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'enrollment_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View Enrollment Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">Enrollment:</span>
+                            </div>
+                            <span className="text-sm text-gray-900">
+                              {formatCurrency(client.payable_enrollment_charge)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'offer_letter_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View Offer Letter Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
+                            </div>
                             <span className="text-sm text-gray-900">
                               {formatCurrency(client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)}
                             </span>
                           </div>
+
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700">First Year:</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'first_year_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View First Year Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">First Year:</span>
+                            </div>
                             <span className="text-sm text-gray-900">
                               {client.edited_first_year_percentage !== null
                                 ? `${client.edited_first_year_percentage}%`
@@ -1419,6 +1527,27 @@ const AccountSale: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showInstallmentsPopup && selectedClientForInstallments && (
+        <InstallmentsPopup
+          isOpen={showInstallmentsPopup}
+          onClose={() => {
+            setShowInstallmentsPopup(false);
+            setSelectedClientForInstallments(null);
+          }}
+          enrolledClientId={selectedClientForInstallments.id}
+          totalCharge={
+            installmentChargeType === 'enrollment_charge' 
+              ? selectedClientForInstallments.payable_enrollment_charge
+              : installmentChargeType === 'offer_letter_charge'
+                ? selectedClientForInstallments.payable_offer_letter_charge
+                : selectedClientForInstallments.net_payable_first_year_price
+          }
+          chargeType={installmentChargeType}
+          firstYearSalary={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.first_year_salary : undefined}
+          netPayableFirstYear={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.net_payable_first_year_price : undefined}
+        />
+      )}
     </div>
   );
 };

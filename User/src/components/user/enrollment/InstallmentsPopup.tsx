@@ -12,6 +12,9 @@ interface InstallmentsPopupProps {
   totalCharge: number | null;
   isMyReview?: boolean;  // Add this prop to determine if we're in My Review tab
   editedTotalCharge?: number | null;  // Add this prop for edited total charge
+  chargeType?: 'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge';  // Add charge type prop
+  firstYearSalary?: number | null;  // Add first year salary prop
+  netPayableFirstYear?: number | null;  // Add net payable first year prop
 }
 
 interface Installment {
@@ -34,7 +37,10 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   enrolledClientId,
   totalCharge,
   isMyReview = false,
-  editedTotalCharge
+  editedTotalCharge,
+  chargeType = 'enrollment_charge',
+  firstYearSalary,
+  netPayableFirstYear
 }) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +55,7 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${BASE_URL}/installments/enrolled-client/${enrolledClientId}?charge_type=enrollment_charge`,
+        `${BASE_URL}/installments/enrolled-client/${enrolledClientId}?charge_type=${chargeType}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -121,7 +127,7 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">
-            {isMyReview ? 'Admin Modified Installment Details' : 'Installment Details'}
+            {isMyReview ? 'Admin Modified Installment Details' : `${chargeType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Installment Details`}
           </h2>
           <button
             onClick={onClose}
@@ -138,7 +144,7 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className={`grid ${chargeType === 'first_year_charge' ? 'grid-cols-4' : 'grid-cols-3'} gap-4 mb-6`}>
               <div className="bg-blue-50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Total Amount</h3>
                 <p className="text-lg font-semibold text-gray-900">{formatCurrency(effectiveTotalCharge || 0)}</p>
@@ -151,6 +157,12 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Total Pending</h3>
                 <p className="text-lg font-semibold text-yellow-600">{formatCurrency(totalPending)}</p>
               </div>
+              {chargeType === 'first_year_charge' && firstYearSalary && (
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-600 mb-1">First Year Salary</h3>
+                  <p className="text-lg font-semibold text-purple-600">{formatCurrency(firstYearSalary)}</p>
+                </div>
+              )}
             </div>
 
             {/* Installments Table */}

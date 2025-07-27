@@ -75,6 +75,18 @@ const EnrolledClients = sequelize.define(
       allowNull: true,
       validate: { min: 0 }
     },
+    first_year_salary: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      validate: {
+        min: 0,
+        requiredIfPercentage(value) {
+          if (this.payable_first_year_percentage && (value === null || value === undefined)) {
+            throw new Error('First year salary is required when first year percentage is set');
+          }
+        }
+      }
+    },
     Approval_by_sales: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -146,6 +158,11 @@ const EnrolledClients = sequelize.define(
       }
     },
     edited_net_payable_first_year_price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      validate: { min: 0 }
+    },
+    edited_first_year_salary: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       validate: { min: 0 }

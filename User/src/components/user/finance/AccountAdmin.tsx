@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaCheckCircle, FaTimes, FaEdit, FaFilePdf, FaBox, FaInfoCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaTimes, FaEdit, FaFilePdf, FaBox, FaInfoCircle, FaListAlt } from 'react-icons/fa';
 import ConfirmationPopup from '../enrollment/ConfirmationPopup';
+import AdminConfigurationPopup from './AdminConfigurationPopup';
+import InstallmentsPopup from '../enrollment/InstallmentsPopup';
 import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
@@ -14,9 +16,13 @@ interface EnrolledClient {
   payable_offer_letter_charge: number | null;
   payable_first_year_percentage: number | null;
   payable_first_year_fixed_charge: number | null;
+  net_payable_first_year_price: number | null;
+  first_year_salary: number | null;
   edited_offer_letter_charge: number | null;
   edited_first_year_percentage: number | null;
   edited_first_year_fixed_charge: number | null;
+  edited_net_payable_first_year_price: number | null;
+  edited_first_year_salary: number | null;
   Approval_by_sales: boolean;
   Sales_person_id: number | null;
   Approval_by_admin: boolean;
@@ -25,6 +31,8 @@ interface EnrolledClient {
   final_approval_sales: boolean;
   final_approval_by_admin: boolean;
   has_update_in_final: boolean;
+  resume: string | null;
+  createdAt: string;
   lead: {
     firstName: string;
     lastName: string;
@@ -37,6 +45,25 @@ interface EnrolledClient {
     features: string[];
   } | null;
 }
+
+// Add color themes mapping
+const packageColorThemes: { [key: string]: { bg: string; border: string; text: string } } = {
+  'Premium Plan': {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    text: 'text-purple-600'
+  },
+  'Standard Plan': {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-600'
+  },
+  'Basic Plan': {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-600'
+  }
+};
 
 interface TabData {
   leads: EnrolledClient[];
@@ -57,12 +84,15 @@ interface TabsData {
 const AccountAdmin: React.FC = () => {
   const [clients, setClients] = useState<EnrolledClient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState<EnrolledClient | null>(null);
-  const [showApprovalForm, setShowApprovalForm] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('');
   const [tabsData, setTabsData] = useState<TabsData>({});
   const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [showConfigurationPopup, setShowConfigurationPopup] = useState(false);
+  const [selectedClientForEdit, setSelectedClientForEdit] = useState<EnrolledClient | null>(null);
+  const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
+  const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
+  const [installmentChargeType, setInstallmentChargeType] = useState<'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge'>('enrollment_charge');
 
   useEffect(() => {
     fetchClients();
@@ -94,7 +124,7 @@ const AccountAdmin: React.FC = () => {
   };
 
   const handleApproval = async (approved: boolean) => {
-    const client = selectedClient || pendingApprovalClient;
+    const client = pendingApprovalClient;
     if (!client) return;
     try {
       const token = localStorage.getItem('token');
@@ -105,13 +135,15 @@ const AccountAdmin: React.FC = () => {
       // Approve final configuration if pending
       if (finalPending) {
         const response = await axios.put(
-          `${BASE_URL}/enrolled-clients/final/admin/${client.id}`,
+          `${BASE_URL}/enrolled-clients/final-configuration/admin/${client.id}`,
           {
             approved,
             Admin_id: userId,
             edited_offer_letter_charge: client.edited_offer_letter_charge,
             edited_first_year_percentage: client.edited_first_year_percentage,
-            edited_first_year_fixed_charge: client.edited_first_year_fixed_charge
+            edited_first_year_fixed_charge: client.edited_first_year_fixed_charge,
+            edited_net_payable_first_year_price: client.edited_net_payable_first_year_price,
+            edited_first_year_salary: client.edited_first_year_salary
           },
           {
             headers: {
@@ -123,8 +155,6 @@ const AccountAdmin: React.FC = () => {
         finalApproved = response.data.success;
       }
       if (finalApproved) {
-        setShowApprovalForm(false);
-        setSelectedClient(null);
         fetchClients();
         toast.success(approved ? 'Changes approved successfully!' : 'Changes rejected successfully!');
       }
@@ -144,7 +174,6 @@ const AccountAdmin: React.FC = () => {
       await handleApproval(true);
       setShowConfirmPopup(false);
       setPendingApprovalClient(null);
-      setSelectedClient(null);
     }
   };
 
@@ -154,8 +183,14 @@ const AccountAdmin: React.FC = () => {
   };
 
   const handleReview = (client: EnrolledClient) => {
-    setSelectedClient(client);
-    setShowApprovalForm(true);
+    setSelectedClientForEdit(client);
+    setShowConfigurationPopup(true);
+  };
+
+  const handleViewInstallments = (client: EnrolledClient, chargeType: 'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge') => {
+    setSelectedClientForInstallments(client);
+    setInstallmentChargeType(chargeType);
+    setShowInstallmentsPopup(true);
   };
 
   const formatCurrency = (amount: number | null) => {
@@ -164,6 +199,16 @@ const AccountAdmin: React.FC = () => {
       style: 'currency',
       currency: 'USD'
     }).format(amount);
+  };
+
+  const getFirstCallStatus = () => {
+    const statuses = ['pending', 'onhold', 'Done'];
+    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+    let badgeColor = '';
+    if (randomStatus === 'pending') badgeColor = 'bg-yellow-100 text-yellow-800';
+    else if (randomStatus === 'onhold') badgeColor = 'bg-red-100 text-red-800';
+    else badgeColor = 'bg-green-100 text-green-800';
+    return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
   };
 
   // Update getFilteredClients to use tabsData
@@ -181,6 +226,17 @@ const AccountAdmin: React.FC = () => {
 
   return (
     <div className="p-6 ml-14 mt-10 bg-gray-50 min-h-screen">
+         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <span className="text-blue-600 text-[30px] font-bold">$</span>
+            </div>
+            <div>
+              <h1 className="text-xl text-start font-bold text-gray-900">Finance Admin</h1>
+              <p className="text-gray-600 text-start text-sm">Review and approve financial changes</p>
+            </div>
+          </div>
+        </div>
       <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
@@ -204,107 +260,9 @@ const AccountAdmin: React.FC = () => {
           </nav>
         </div>
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-[35px] font-bold">$</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Finance Admin</h1>
-              <p className="text-gray-600 text-sm">Review and approve financial changes</p>
-            </div>
-          </div>
-        </div>
+     
 
-        {/* Approval Form */}
-        {showApprovalForm && selectedClient && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Review Changes</h2>
-              <button
-                onClick={() => {
-                  setShowApprovalForm(false);
-                  setSelectedClient(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FaTimes />
-              </button>
-            </div>
 
-            <div className="space-y-6">
-              {/* Client Info */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-2">Client Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Name:</span> {selectedClient.lead.firstName} {selectedClient.lead.lastName}
-                  </div>
-                  <div>
-                    <span className="font-medium">Email:</span> {selectedClient.lead.primaryEmail}
-                  </div>
-                  <div>
-                    <span className="font-medium">Technology:</span> {selectedClient.lead.technology?.join(', ')}
-                  </div>
-                  <div>
-                    <span className="font-medium">Visa Status:</span> {selectedClient.lead.visaStatus}
-                  </div>
-                </div>
-              </div>
-
-              {/* Changes Comparison */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Current Values</h3>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="font-medium">Offer Letter Charge:</span><br />
-                      {formatCurrency(selectedClient.payable_offer_letter_charge)}
-                    </div>
-                    <div>
-                      <span className="font-medium">First Year:</span><br />
-                      {selectedClient.payable_first_year_percentage 
-                        ? `${selectedClient.payable_first_year_percentage}%` 
-                        : formatCurrency(selectedClient.payable_first_year_fixed_charge)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Proposed Changes</h3>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="font-medium">Offer Letter Charge:</span><br />
-                      {formatCurrency(selectedClient.edited_offer_letter_charge)}
-                    </div>
-                    <div>
-                      <span className="font-medium">First Year:</span><br />
-                      {selectedClient.edited_first_year_percentage 
-                        ? `${selectedClient.edited_first_year_percentage}%` 
-                        : formatCurrency(selectedClient.edited_first_year_fixed_charge)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <button
-                  onClick={() => handleApproval(false)}
-                  className="px-4 py-2 text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
-                >
-                  Reject Changes
-                </button>
-                <button
-                  onClick={() => handleApproval(true)}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Approve Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Clients Table */}
         <div className="bg-white rounded-xl shadow-sm">
@@ -313,66 +271,106 @@ const AccountAdmin: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Enrolled Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Charges</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proposed Changes</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resume</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">First Call Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {getFilteredClients().map((client, idx) => (
                   <tr key={client.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{idx + 1}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {client.lead.firstName} {client.lead.lastName}
-                      </div>
-                      <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
-                      <div className="text-xs text-gray-400">
-                        {client.lead.technology?.join(', ')} • {client.lead.visaStatus}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <FaBox className="text-blue-500" />
-                        <span>{client.package?.planName}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div>
-                          <span className="text-sm font-medium">Offer Letter:</span><br />
-                          {formatCurrency(client.payable_offer_letter_charge)}
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium">First Year:</span><br />
-                          {client.payable_first_year_percentage 
-                            ? `${client.payable_first_year_percentage}%` 
-                            : formatCurrency(client.payable_first_year_fixed_charge)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {client.has_update ? (
-                        <div className="space-y-1 text-blue-600">
-                          <div>
-                            <span className="text-sm font-medium">Offer Letter:</span><br />
-                            {formatCurrency(client.edited_offer_letter_charge)}
+                    <td className="px-6 py-4 whitespace-nowrap text-start">{idx + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <div className="flex items-center">
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {client.lead.firstName} {client.lead.lastName}
                           </div>
-                          <div>
-                            <span className="text-sm font-medium">First Year:</span><br />
-                            {client.edited_first_year_percentage 
-                              ? `${client.edited_first_year_percentage}%` 
-                              : formatCurrency(client.edited_first_year_fixed_charge)}
+                          <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+                          <div className="text-xs text-gray-400">
+                            {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
                           </div>
                         </div>
-                      ) : (
-                        <span className="text-gray-400">No changes</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <span className="text-sm text-gray-900">
+                        {new Date(client.createdAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <div className="text-sm text-gray-900 flex items-center gap-2">
+                        {client.package ? (
+                          <>{client.package.planName}</>
+                        ) : (
+                          'Not Selected'
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {client.package && (
+                        <div className={`${packageColorThemes[client.package.planName]?.bg || 'bg-gray-50'} 
+                                 ${packageColorThemes[client.package.planName]?.border || 'border-gray-200'} 
+                                 border rounded-lg p-3 space-y-2`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'enrollment_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View Enrollment Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">Enrollment:</span>
+                            </div>
+                            <span className="text-sm text-gray-900">
+                              {formatCurrency(client.payable_enrollment_charge)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'offer_letter_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View Offer Letter Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
+                            </div>
+                            <span className="text-sm text-gray-900">
+                              {formatCurrency(client.payable_offer_letter_charge)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewInstallments(client, 'first_year_charge')}
+                                className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+                                title="View First Year Installments"
+                              >
+                                <FaListAlt className="w-4 h-4" />
+                              </button>
+                              <span className="text-sm font-medium text-gray-700">First Year:</span>
+                            </div>
+                            <span className="text-sm text-gray-900">
+                              {client.payable_first_year_percentage 
+                                ? `${client.payable_first_year_percentage}%` 
+                                : formatCurrency(client.payable_first_year_fixed_charge)}
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
                       {client.has_update ? (
                         <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
                           Pending Review
@@ -383,7 +381,25 @@ const AccountAdmin: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {client.resume ? (
+                        <button className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="View Resume">
+                          <FaFilePdf className="w-4 h-4" />
+                          <span>View</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No Resume</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-start">
+                      <a href={`mailto:${client.lead.primaryEmail}`} className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="Send Email">
+                        <span>Send Email</span>
+                      </a>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      {getFirstCallStatus()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleApprovalIconClick(client)}
@@ -414,6 +430,37 @@ const AccountAdmin: React.FC = () => {
         onCancel={handleCancelApproval}
         message="Are you sure you want to approve these changes?"
       />
+
+      <AdminConfigurationPopup
+        isOpen={showConfigurationPopup}
+        onClose={() => {
+          setShowConfigurationPopup(false);
+          setSelectedClientForEdit(null);
+        }}
+        client={selectedClientForEdit}
+        onSuccess={fetchClients}
+      />
+
+      {showInstallmentsPopup && selectedClientForInstallments && (
+        <InstallmentsPopup
+          isOpen={showInstallmentsPopup}
+          onClose={() => {
+            setShowInstallmentsPopup(false);
+            setSelectedClientForInstallments(null);
+          }}
+          enrolledClientId={selectedClientForInstallments.id}
+          totalCharge={
+            installmentChargeType === 'enrollment_charge' 
+              ? selectedClientForInstallments.payable_enrollment_charge
+              : installmentChargeType === 'offer_letter_charge'
+                ? selectedClientForInstallments.payable_offer_letter_charge
+                : selectedClientForInstallments.net_payable_first_year_price
+          }
+          chargeType={installmentChargeType}
+          firstYearSalary={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.first_year_salary : undefined}
+          netPayableFirstYear={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.net_payable_first_year_price : undefined}
+        />
+      )}
     </div>
   );
 };
