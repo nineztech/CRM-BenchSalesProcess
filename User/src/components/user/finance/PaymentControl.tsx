@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import PaymentConfirmationPopup from './PaymentConfirmationPopup';
 import { 
   FaDollarSign, 
   FaCheckCircle, 
@@ -14,7 +15,12 @@ import {
   FaFilter,
   FaEye,
   FaEdit,
-  FaTimes
+  FaTimes,
+  FaChevronDown,
+  FaChevronUp,
+  FaEnvelope,
+  FaPhone,
+  FaMapMarkerAlt
 } from 'react-icons/fa';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
@@ -64,6 +70,28 @@ interface Installment {
   };
 }
 
+interface ClientGroup {
+  enrolledClientId: number;
+  lead: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    primaryEmail: string;
+    technology: string[];
+    visaStatus: string;
+  };
+  package: {
+    id: number;
+    planName: string;
+  } | null;
+  installments: Installment[];
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  paidCount: number;
+  pendingCount: number;
+}
+
 interface PaymentControlProps {}
 
 const PaymentControl: React.FC<PaymentControlProps> = () => {
@@ -75,6 +103,10 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
   const [chargeTypeFilter, setChargeTypeFilter] = useState<'all' | 'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge'>('all');
   const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [expandedClients, setExpandedClients] = useState<Set<number>>(new Set());
+  const [showConfirmationPopup, setShowConfirmationPopup] = useState(false);
+  const [confirmationAction, setConfirmationAction] = useState<'mark-paid' | 'mark-pending' | null>(null);
+  const [confirmationInstallment, setConfirmationInstallment] = useState<Installment | null>(null);
   const [editForm, setEditForm] = useState({
     net_amount: 0,
     paid: false,
@@ -148,6 +180,22 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
       alert('Error updating payment status');
     } finally {
       setUpdating(null);
+      setShowConfirmationPopup(false);
+      setConfirmationAction(null);
+      setConfirmationInstallment(null);
+    }
+  };
+
+  const handlePaymentStatusConfirmation = (installment: Installment, action: 'mark-paid' | 'mark-pending') => {
+    setConfirmationInstallment(installment);
+    setConfirmationAction(action);
+    setShowConfirmationPopup(true);
+  };
+
+  const handleConfirmPaymentStatus = () => {
+    if (confirmationInstallment && confirmationAction) {
+      const paid = confirmationAction === 'mark-paid';
+      handlePaymentStatusUpdate(confirmationInstallment.id, paid);
     }
   };
 
@@ -211,23 +259,78 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
     }
   };
 
-  const getFilteredInstallments = () => {
-    return installments.filter(installment => {
+  const toggleClientExpansion = (clientId: number) => {
+    setExpandedClients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId);
+      } else {
+        newSet.add(clientId);
+      }
+      return newSet;
+    });
+  };
+
+  const groupInstallmentsByClient = (): ClientGroup[] => {
+    const groups = new Map<number, ClientGroup>();
+    
+    installments.forEach(installment => {
+      const clientId = installment.enrolledClientId;
+      if (!groups.has(clientId)) {
+        groups.set(clientId, {
+          enrolledClientId: clientId,
+          lead: installment.enrolledClient.lead,
+          package: installment.enrolledClient.package,
+          installments: [],
+          totalAmount: 0,
+          paidAmount: 0,
+          pendingAmount: 0,
+          paidCount: 0,
+          pendingCount: 0
+        });
+      }
+      
+      const group = groups.get(clientId)!;
+      group.installments.push(installment);
+      group.totalAmount += installment.net_amount || installment.amount;
+      
+      if (installment.paid) {
+        group.paidAmount += installment.net_amount || installment.amount;
+        group.paidCount++;
+      } else {
+        group.pendingAmount += installment.net_amount || installment.amount;
+        group.pendingCount++;
+      }
+    });
+    
+    return Array.from(groups.values());
+  };
+
+  const getFilteredClientGroups = () => {
+    const clientGroups = groupInstallmentsByClient();
+    
+    return clientGroups.filter(group => {
       const matchesSearch = 
-        installment.enrolledClient.lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        installment.enrolledClient.lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        installment.enrolledClient.lead.primaryEmail.toLowerCase().includes(searchTerm.toLowerCase());
+        group.lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.lead.primaryEmail.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = 
         statusFilter === 'all' || 
-        (statusFilter === 'paid' && installment.paid) ||
-        (statusFilter === 'pending' && !installment.paid);
-      
+        (statusFilter === 'paid' && group.paidCount > 0) ||
+        (statusFilter === 'pending' && group.pendingCount > 0);
+
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const getFilteredInstallmentsForClient = (clientInstallments: Installment[]) => {
+    return clientInstallments.filter(installment => {
       const matchesChargeType = 
         chargeTypeFilter === 'all' || 
         installment.charge_type === chargeTypeFilter;
 
-      return matchesSearch && matchesStatus && matchesChargeType;
+      return matchesChargeType;
     });
   };
 
@@ -254,24 +357,24 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
   const getChargeTypeColor = (chargeType: string) => {
     switch (chargeType) {
       case 'enrollment_charge':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'offer_letter_charge':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'first_year_charge':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 border-green-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusBadge = (paid: boolean) => {
     return paid ? (
-      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1">
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1 border border-green-200">
         <FaCheckCircle className="w-3 h-3" />
         Paid
       </span>
     ) : (
-      <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-1">
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-1 border border-yellow-200">
         <FaClock className="w-3 h-3" />
         Pending
       </span>
@@ -289,7 +392,7 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
     );
   }
 
-  const filteredInstallments = getFilteredInstallments();
+  const filteredClientGroups = getFilteredClientGroups();
 
   return (
     <div className="p-6 ml-14 mt-10 bg-gray-50 min-h-screen">
@@ -307,62 +410,7 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Installments</p>
-                <p className="text-2xl font-bold text-gray-900">{installments.length}</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <FaFileInvoiceDollar className="text-blue-600 text-xl" />
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Paid Installments</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {installments.filter(inst => inst.paid).length}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <FaCheckCircle className="text-green-600 text-xl" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Installments</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {installments.filter(inst => !inst.paid).length}
-                </p>
-              </div>
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <FaClock className="text-yellow-600 text-xl" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {formatCurrency(installments.reduce((sum, inst) => sum + (inst.net_amount || inst.amount), 0))}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <FaDollarSign className="text-purple-600 text-xl" />
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -392,8 +440,8 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Status</option>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
+                <option value="paid">Has Paid</option>
+                <option value="pending">Has Pending</option>
               </select>
             </div>
 
@@ -426,69 +474,316 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
           </div>
         </div>
 
-        {/* Installments Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client Details</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charge Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Net Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInstallments.map((installment, idx) => (
-                  <tr key={installment.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <FaUser className="text-blue-600" />
-                          </div>
+        {/* Client Rows */}
+        <div className="space-y-4">
+          {filteredClientGroups.map((clientGroup) => {
+            const isExpanded = expandedClients.has(clientGroup.enrolledClientId);
+            const filteredInstallments = getFilteredInstallmentsForClient(clientGroup.installments);
+            
+            return (
+              <div key={clientGroup.enrolledClientId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Client Header Row */}
+                <div 
+                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
+                  onClick={() => toggleClientExpansion(clientGroup.enrolledClientId)}
+                >
+                  <div className="flex items-center justify-between">
+                    {/* Left Section - Client Info */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-shrink-0 h-12 w-12">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                          <FaUser className="text-white text-lg" />
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {installment.enrolledClient.lead.firstName} {installment.enrolledClient.lead.lastName}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h3 className="text-lg font-bold text-gray-900 truncate">
+                            {clientGroup.lead.firstName} {clientGroup.lead.lastName}
+                          </h3>
+                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm flex-shrink-0">
+                            {clientGroup.lead.visaStatus}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-4 text-xs text-gray-600">
+                          <div className="flex items-center space-x-1">
+                            <FaEnvelope className="w-3 h-3 text-blue-500" />
+                            <span className="truncate max-w-32">{clientGroup.lead.primaryEmail}</span>
                           </div>
-                          <div className="text-sm text-gray-500">{installment.enrolledClient.lead.primaryEmail}</div>
-                          <div className="text-xs text-gray-400">
-                            {installment.enrolledClient.lead.technology?.join(', ') || 'No technology'} • {installment.enrolledClient.lead.visaStatus}
+                          <div className="flex items-center space-x-1">
+                            <FaMapMarkerAlt className="w-3 h-3 text-green-500" />
+                            <span className="truncate max-w-24">{clientGroup.lead.technology?.join(', ') || 'No technology'}</span>
                           </div>
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Right Section - Payment Info */}
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">Package</div>
+                        <div className="text-sm font-medium text-gray-900">{clientGroup.package?.planName || 'No Package'}</div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">Total Amount</div>
+                        <div className="text-base font-bold text-purple-600">{formatCurrency(clientGroup.totalAmount)}</div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">Status</div>
+                        <div className="flex items-center space-x-1">
+                          <span className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200">
+                            {clientGroup.paidCount}P
+                          </span>
+                          <span className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
+                            {clientGroup.pendingCount}U
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center ml-2">
+                        {isExpanded ? (
+                          <FaChevronUp className="text-gray-400 w-4 h-4" />
+                        ) : (
+                          <FaChevronDown className="text-gray-400 w-4 h-4" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Installments Grid */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 bg-gray-50">
+                    <div className="p-6">
+
+                      
+                      {/* Enrollment Charges Table */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-lg font-semibold text-blue-700 flex items-center gap-2">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            Enrollment Charges
+                          </h5>
+                          <div className="text-sm text-gray-600">
+                            Total: {formatCurrency(filteredInstallments.filter(i => i.charge_type === 'enrollment_charge').reduce((sum, i) => sum + (Number(i.net_amount) || Number(i.amount) || 0), 0))}
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+                              <thead className="bg-blue-50 border-b border-blue-200">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider border-r border-blue-200">#</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider border-r border-blue-200">Original Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider border-r border-blue-200">Net Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider border-r border-blue-200">Due Date</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider border-r border-blue-200">Status</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredInstallments.filter(i => i.charge_type === 'enrollment_charge').map((installment, idx) => (
+                                  <tr key={installment.id} className="hover:bg-blue-50">
+                                                                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200 text-left">
+                                    {formatCurrency(installment.amount)}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600 border-r border-gray-200 text-left">
+                                    {formatCurrency(installment.net_amount || installment.amount)}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
+                                    <div className="flex items-center gap-2">
+                                      <FaCalendarAlt className="text-gray-400" />
+                                      {new Date(installment.dueDate).toLocaleDateString()}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200 text-left">
+                                    {getStatusBadge(installment.paid)}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-left">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleEditInstallment(installment)}
+                                        className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                                        title="Edit Payment"
+                                      >
+                                        <FaEdit className="w-4 h-4" />
+                                      </button>
+                                      {!installment.paid && (
+                                        <button
+                                          onClick={() => handlePaymentStatusConfirmation(installment, 'mark-paid')}
+                                          disabled={updating === installment.id}
+                                          className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                                          title="Mark as Paid"
+                                        >
+                                          <FaCheckCircle className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                      {installment.paid && (
+                                        <button
+                                          onClick={() => handlePaymentStatusConfirmation(installment, 'mark-pending')}
+                                          disabled={updating === installment.id}
+                                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                          title="Mark as Pending"
+                                        >
+                                          <FaClock className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {filteredInstallments.filter(i => i.charge_type === 'enrollment_charge').length === 0 && (
+                            <div className="text-center py-8">
+                              <FaReceipt className="mx-auto h-8 w-8 text-gray-400" />
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">No enrollment charges found</h3>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Offer Letter Charges Table */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-lg font-semibold text-purple-700 flex items-center gap-2">
+                            <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                            Offer Letter Charges
+                          </h5>
+                          <div className="text-sm text-gray-600">
+                            Total: {formatCurrency(filteredInstallments.filter(i => i.charge_type === 'offer_letter_charge').reduce((sum, i) => sum + (Number(i.net_amount) || Number(i.amount) || 0), 0))}
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-purple-50 border-b border-purple-200">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider border-r border-purple-200">#</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider border-r border-purple-200">Original Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider border-r border-purple-200">Net Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider border-r border-purple-200">Due Date</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider border-r border-purple-200">Status</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredInstallments.filter(i => i.charge_type === 'offer_letter_charge').map((installment, idx) => (
+                                  <tr key={installment.id} className="hover:bg-purple-50">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
+                                      {idx + 1}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200 text-left">
+                                      {formatCurrency(installment.amount)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-purple-600 border-r border-gray-200 text-left">
+                                      {formatCurrency(installment.net_amount || installment.amount)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
+                                      <div className="flex items-center gap-2">
+                                        <FaCalendarAlt className="text-gray-400" />
+                                        {new Date(installment.dueDate).toLocaleDateString()}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200 text-left">
+                                      {getStatusBadge(installment.paid)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-left">
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => handleEditInstallment(installment)}
+                                          className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                                          title="Edit Payment"
+                                        >
+                                          <FaEdit className="w-4 h-4" />
+                                        </button>
+                                        {!installment.paid && (
+                                          <button
+                                            onClick={() => handlePaymentStatusConfirmation(installment, 'mark-paid')}
+                                            disabled={updating === installment.id}
+                                            className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                                            title="Mark as Paid"
+                                          >
+                                            <FaCheckCircle className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                        {installment.paid && (
+                                          <button
+                                            onClick={() => handlePaymentStatusConfirmation(installment, 'mark-pending')}
+                                            disabled={updating === installment.id}
+                                            className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                            title="Mark as Pending"
+                                          >
+                                            <FaClock className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {filteredInstallments.filter(i => i.charge_type === 'offer_letter_charge').length === 0 && (
+                            <div className="text-center py-8">
+                              <FaReceipt className="mx-auto h-8 w-8 text-gray-400" />
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">No offer letter charges found</h3>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* First Year Charges Table */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            First Year Charges
+                          </h5>
+                          <div className="text-sm text-gray-600">
+                            Total: {formatCurrency(filteredInstallments.filter(i => i.charge_type === 'first_year_charge').reduce((sum, i) => sum + (Number(i.net_amount) || Number(i.amount) || 0), 0))}
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-green-50 border-b border-green-200">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider border-r border-green-200">#</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider border-r border-green-200">Original Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider border-r border-green-200">Net Amount</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider border-r border-green-200">Due Date</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider border-r border-green-200">Status</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredInstallments.filter(i => i.charge_type === 'first_year_charge').map((installment, idx) => (
+                                  <tr key={installment.id} className="hover:bg-green-50">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
+                                      {idx + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {installment.enrolledClient.package?.planName || 'No Package'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getChargeTypeColor(installment.charge_type)}`}>
-                        {getChargeTypeLabel(installment.charge_type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200 text-left">
                       {formatCurrency(installment.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-green-600 border-r border-gray-200 text-left">
                       {formatCurrency(installment.net_amount || installment.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 text-left">
                       <div className="flex items-center gap-2">
                         <FaCalendarAlt className="text-gray-400" />
                         {new Date(installment.dueDate).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200 text-left">
                       {getStatusBadge(installment.paid)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-left">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEditInstallment(installment)}
@@ -499,7 +794,7 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
                         </button>
                         {!installment.paid && (
                           <button
-                            onClick={() => handlePaymentStatusUpdate(installment.id, true)}
+                                            onClick={() => handlePaymentStatusConfirmation(installment, 'mark-paid')}
                             disabled={updating === installment.id}
                             className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
                             title="Mark as Paid"
@@ -509,7 +804,7 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
                         )}
                         {installment.paid && (
                           <button
-                            onClick={() => handlePaymentStatusUpdate(installment.id, false)}
+                                            onClick={() => handlePaymentStatusConfirmation(installment, 'mark-pending')}
                             disabled={updating === installment.id}
                             className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                             title="Mark as Pending"
@@ -524,12 +819,26 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
               </tbody>
             </table>
           </div>
+                          {filteredInstallments.filter(i => i.charge_type === 'first_year_charge').length === 0 && (
+                            <div className="text-center py-8">
+                              <FaReceipt className="mx-auto h-8 w-8 text-gray-400" />
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">No first year charges found</h3>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {filteredInstallments.length === 0 && (
-          <div className="text-center py-12">
-            <FaReceipt className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No installments found</h3>
+        {filteredClientGroups.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+            <FaUser className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No clients found</h3>
             <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter criteria.</p>
           </div>
         )}
@@ -628,6 +937,19 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
           </div>
         </div>
       )}
+
+      {/* Payment Confirmation Popup */}
+      <PaymentConfirmationPopup
+        isOpen={showConfirmationPopup}
+        onClose={() => {
+          setShowConfirmationPopup(false);
+          setConfirmationAction(null);
+          setConfirmationInstallment(null);
+        }}
+        onConfirm={handleConfirmPaymentStatus}
+        installment={confirmationInstallment}
+        action={confirmationAction}
+      />
     </div>
   );
 };

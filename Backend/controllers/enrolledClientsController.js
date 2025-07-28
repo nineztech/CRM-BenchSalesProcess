@@ -424,6 +424,43 @@ export const salesApprovalAction = async (req, res) => {
         has_update: false,
         updatedBy
       });
+      
+      // If both admin and sales have approved, mark initial payment as paid
+      if (enrolledClient.Approval_by_admin && !enrolledClient.clientUserCreated) {
+        // Find and update initial payment
+        const initialPayment = await Installments.findOne({
+          where: {
+            enrolledClientId: id,
+            installment_number: 0,
+            is_initial_payment: true
+          }
+        });
+
+        if (initialPayment) {
+          await initialPayment.update({
+            paid: true,
+            paidDate: new Date(),
+            paid_at: new Date()
+          });
+        }
+
+        // Create client user only if not already created
+        try {
+          const { clientUser, plainPassword } = await createClientUser(id);
+          console.log('Client user created successfully:', {
+            username: clientUser.username,
+            password: plainPassword
+          });
+          // Optionally, set a flag on enrolledClient to prevent future creation attempts
+          await enrolledClient.update({ clientUserCreated: true });
+        } catch (error) {
+          if (error.message === 'Client user already exists') {
+            // Do nothing, user already exists
+          } else {
+            console.error('Error creating client user:', error);
+          }
+        }
+      }
       // Auto-approval by admin will be handled in the beforeUpdate hook
     } else {
       // Sales rejects admin changes

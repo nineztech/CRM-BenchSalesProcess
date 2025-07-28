@@ -759,6 +759,49 @@ const SalesEnrollment: React.FC = () => {
       );
 
       if (response.data.success) {
+        // If approved, also mark initial payment as paid
+        if (approved) {
+          try {
+            // Find the initial payment installment
+            const installmentsResponse = await axios.get(
+              `${BASE_URL}/installments/enrolled-client/${selectedClient.id}?charge_type=enrollment_charge`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (installmentsResponse.data.success) {
+              const installments = installmentsResponse.data.data.installments;
+              const initialPayment = installments.find((inst: any) => inst.installment_number === 0);
+              
+              if (initialPayment) {
+                // Update the initial payment to mark it as paid
+                await axios.put(
+                  `${BASE_URL}/installments/${initialPayment.id}`,
+                  {
+                    paid: true,
+                    paidDate: new Date().toISOString().split('T')[0],
+                    paid_at: new Date().toISOString(),
+                    updatedBy: userId
+                  },
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                    }
+                  }
+                );
+              }
+            }
+          } catch (error) {
+            console.error('Error updating initial payment:', error);
+            // Don't fail the entire approval process if initial payment update fails
+          }
+        }
+
         setSelectedClient(null);
         fetchEnrolledClients();
         toast.success('Admin changes approved!');
