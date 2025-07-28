@@ -145,7 +145,7 @@ const ArchivedLead = sequelize.define(
     },
     leadstatus: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
         notEmpty: true,
         len: [1, 50]
