@@ -54,6 +54,22 @@ const createLeadIndex = async () => {
                   lastname: { type: 'text' },
                   email: { type: 'keyword' }
                 }
+              },
+              creator: {
+                properties: {
+                  id: { type: 'integer' },
+                  firstname: { type: 'text' },
+                  lastname: { type: 'text' },
+                  email: { type: 'keyword' }
+                }
+              },
+              updater: {
+                properties: {
+                  id: { type: 'integer' },
+                  firstname: { type: 'text' },
+                  lastname: { type: 'text' },
+                  email: { type: 'keyword' }
+                }
               }
             }
           }
@@ -353,6 +369,38 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 },
                 {
                   wildcard: {
+                    "creator.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "creator.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "updater.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "updater.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
                     "country": {
                       value: `*${processedQuery.toLowerCase()}*`,
                       boost: 2
@@ -427,7 +475,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   range: {
                     followUpDateTime: {
-                      lte: now.toISOString()
+                      lte: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
                     }
                   }
                 },
@@ -464,7 +512,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                   {
                     range: {
                       followUpDateTime: {
-                        gt: now.toISOString()
+                        gt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
                       }
                     }
                   },
