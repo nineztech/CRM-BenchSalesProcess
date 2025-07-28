@@ -29,6 +29,8 @@ interface EnrolledClient {
   edited_first_year_fixed_charge: number | null;
   createdAt: string;
   updatedAt: string;
+  is_training_required: boolean;
+  first_call_status: 'pending' | 'onhold' | 'done';
   lead: {
     id: number;
     firstName: string;
@@ -765,11 +767,12 @@ const AdminEnrollment: React.FC = () => {
       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
         Status
       </th>
-      {activeTab === 'approved' && (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-          First Call Status
-        </th>
-      )}
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Training Required
+      </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        First Call Status
+      </th>
       {activeTab !== 'all' && activeTab !== 'approved' && (
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Actions
@@ -926,23 +929,26 @@ const AdminEnrollment: React.FC = () => {
       <td className="px-6 py-4 whitespace-nowrap text-start">
         {getStatusBadge(client)}
       </td>
-      {activeTab === 'approved' && (
-        <td className="px-6 py-4 whitespace-nowrap text-start">
-          {(() => {
-            const statuses = ['pending', 'onhold', 'Done'];
-            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-            let badgeColor = '';
-            if (randomStatus === 'pending') {
-              badgeColor = 'bg-yellow-100 text-yellow-800';
-            } else if (randomStatus === 'onhold') {
-              badgeColor = 'bg-red-100 text-red-800';
-            } else {
-              badgeColor = 'bg-green-100 text-green-800';
-            }
-            return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
-          })()}
-        </td>
-      )}
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          client.is_training_required 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-gray-100 text-gray-800'
+        }`}>
+          {client.is_training_required ? 'Yes' : 'No'}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-start">
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          client.first_call_status === 'done' 
+            ? 'bg-green-100 text-green-800'
+            : client.first_call_status === 'onhold'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {client.first_call_status ? client.first_call_status.charAt(0).toUpperCase() + client.first_call_status.slice(1) : 'Pending'}
+        </span>
+      </td>
       {activeTab !== 'all' && activeTab !== 'approved' && (
         <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
           <div className="flex gap-2">
@@ -1458,6 +1464,31 @@ const AdminEnrollment: React.FC = () => {
                     </div>
                   </>
                 )}
+
+                {/* Training Required Checkbox */}
+                <div className="mt-6 border-t pt-6">
+                  <h3 className="font-medium text-gray-900 mb-4">Training Configuration</h3>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_training_required"
+                      checked={selectedClient?.is_training_required || false}
+                      onChange={(e) => {
+                        if (selectedClient) {
+                          // Update the selectedClient directly since this is admin view
+                          setSelectedClient({
+                            ...selectedClient,
+                            is_training_required: e.target.checked
+                          });
+                        }
+                      }}
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_training_required" className="ml-2 block text-sm text-gray-900">
+                      Training Required
+                    </label>
+                  </div>
+                </div>
 
                 {/* Form Actions */}
                 <div className="flex justify-end gap-3 pt-4 border-t">

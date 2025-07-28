@@ -212,6 +212,16 @@ const EnrolledClients = sequelize.define(
           }
         }
       }
+    },
+    is_training_required: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    first_call_status: {
+      type: DataTypes.ENUM('pending', 'onhold', 'done'),
+      allowNull: false,
+      defaultValue: 'pending'
     }
   },
   {

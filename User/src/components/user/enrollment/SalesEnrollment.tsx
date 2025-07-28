@@ -30,6 +30,8 @@ interface EnrolledClient {
   updatedAt: string;
   enrollment_installments: Installment[];
   initial_payment: number | null;
+  is_training_required: boolean;
+  first_call_status: 'pending' | 'onhold' | 'done';
   lead: {
     id: number;
     firstName: string;
@@ -95,6 +97,7 @@ interface FormData {
   initial_payment: number | null;
   initialPaymentError?: string;
   totalAmountError?: string | null;
+  is_training_required: boolean;
 }
 
 interface InstallmentAmountInfo {
@@ -141,7 +144,8 @@ const SalesEnrollment: React.FC = () => {
     payable_first_year_fixed_charge: null,
     pricing_type: null,
     enrollment_installments: [],
-    initial_payment: null
+    initial_payment: null,
+    is_training_required: false
   });
   const [enrollmentData, setEnrollmentData] = useState<any>(null);
   const [selectedResume, setSelectedResume] = useState<File | null>(null);
@@ -248,7 +252,8 @@ const SalesEnrollment: React.FC = () => {
           dueDate: inst.dueDate,
           remark: inst.remark || ''
         })),
-        initial_payment: initialPayment
+        initial_payment: initialPayment,
+        is_training_required: client.is_training_required || false
       });
 
     } catch (error) {
@@ -266,7 +271,8 @@ const SalesEnrollment: React.FC = () => {
                      client.payable_first_year_fixed_charge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
         enrollment_installments: [],
-        initial_payment: client.payable_enrollment_charge
+        initial_payment: client.payable_enrollment_charge,
+        is_training_required: client.is_training_required || false
       });
     }
   };
@@ -808,7 +814,8 @@ const SalesEnrollment: React.FC = () => {
           remark: inst.edited_remark || inst.remark || '',
           installment_number: inst.installment_number
         })),
-        initial_payment: initialPaymentInstallment ? Number(initialPaymentInstallment.edited_amount || initialPaymentInstallment.amount) : null
+        initial_payment: initialPaymentInstallment ? Number(initialPaymentInstallment.edited_amount || initialPaymentInstallment.amount) : null,
+        is_training_required: selectedClient.is_training_required || false
       });
 
       if (initialPaymentInstallment) {
@@ -825,7 +832,8 @@ const SalesEnrollment: React.FC = () => {
         payable_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge || selectedClient.payable_first_year_fixed_charge,
         pricing_type: selectedClient.edited_first_year_percentage ? 'percentage' : 'fixed',
         enrollment_installments: [],
-        initial_payment: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge
+        initial_payment: selectedClient.edited_enrollment_charge || selectedClient.payable_enrollment_charge,
+        is_training_required: selectedClient.is_training_required || false
       });
     }
     
@@ -1407,6 +1415,23 @@ const SalesEnrollment: React.FC = () => {
               
             </div>
 
+            {/* Training Required Checkbox */}
+            <div className="mt-6 border-t pt-6">
+              <h3 className="font-medium text-gray-900 mb-4 text-left">Training Configuration</h3>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_training_required"
+                  checked={formData.is_training_required}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_training_required: e.target.checked }))}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="is_training_required" className="ml-2 block text-sm text-gray-900">
+                  Training Required
+                </label>
+              </div>
+            </div>
+
             {/* Add Resume Upload Section before Form Actions */}
             <div className="mt-6 border-t pt-6">
               <h3 className="font-medium text-gray-900 mb-4 text-left">Resume Upload</h3>
@@ -1464,7 +1489,8 @@ const SalesEnrollment: React.FC = () => {
                     payable_first_year_fixed_charge: null,
                     pricing_type: null,
                     enrollment_installments: [],
-                    initial_payment: null
+                    initial_payment: null,
+                    is_training_required: false
                   });
                   setHasInstallmentError(false);
                 }}
@@ -2012,11 +2038,12 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
-                  {activeTab === 'approved' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      First Call Status
-                    </th>
-                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Training Required
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    First Call Status
+                  </th>
                   {/* {activeTab !== 'approved' && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -2159,23 +2186,26 @@ const SalesEnrollment: React.FC = () => {
                         <span>Send Email</span>
                       </a>
                     </td>
-                    {activeTab === 'approved' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-start">
-                          {(() => {
-                            const statuses = ['pending', 'onhold', 'Done'];
-                            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-                            let badgeColor = '';
-                            if (randomStatus === 'pending') {
-                              badgeColor = 'bg-yellow-100 text-yellow-800';
-                            } else if (randomStatus === 'onhold') {
-                              badgeColor = 'bg-red-100 text-red-800';
-                            } else {
-                              badgeColor = 'bg-green-100 text-green-800';
-                            }
-                            return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
-                          })()}
-                        </td>
-                      )}
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.is_training_required 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {client.is_training_required ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-start">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.first_call_status === 'done' 
+                          ? 'bg-green-100 text-green-800'
+                          : client.first_call_status === 'onhold'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {client.first_call_status ? client.first_call_status.charAt(0).toUpperCase() + client.first_call_status.slice(1) : 'Pending'}
+                      </span>
+                    </td>
                     {activeTab !== 'approved' && (
                       <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
                       {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (

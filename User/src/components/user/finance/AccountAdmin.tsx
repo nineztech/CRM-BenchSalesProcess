@@ -31,6 +31,8 @@ interface EnrolledClient {
   final_approval_sales: boolean;
   final_approval_by_admin: boolean;
   has_update_in_final: boolean;
+  is_training_required: boolean;
+  first_call_status: 'pending' | 'onhold' | 'done';
   resume: string | null;
   createdAt: string;
   lead: {
@@ -130,8 +132,10 @@ const AccountAdmin: React.FC = () => {
       const token = localStorage.getItem('token');
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
       let finalApproved = false;
+      
       // Detect if final approval is needed
       const finalPending = client.has_update_in_final;
+      
       // Approve final configuration if pending
       if (finalPending) {
         const response = await axios.put(
@@ -154,14 +158,22 @@ const AccountAdmin: React.FC = () => {
         );
         finalApproved = response.data.success;
       }
+      
       if (finalApproved) {
         fetchClients();
-        toast.success(approved ? 'Changes approved successfully!' : 'Changes rejected successfully!');
+        toast.success(approved ? 'Changes approved successfully!' : 'Changes sent back to sales for review!');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
       toast.error('Error processing approval');
     }
+  };
+
+  // Add new function for admin to make changes and send back to sales
+  const handleAdminChanges = async (client: EnrolledClient) => {
+    // This will be handled by the AdminConfigurationPopup component
+    setSelectedClientForEdit(client);
+    setShowConfigurationPopup(true);
   };
 
   const handleApprovalIconClick = (client: EnrolledClient) => {
@@ -191,6 +203,35 @@ const AccountAdmin: React.FC = () => {
     setSelectedClientForInstallments(client);
     setInstallmentChargeType(chargeType);
     setShowInstallmentsPopup(true);
+  };
+
+  const handleFirstCallStatusChange = async (client: EnrolledClient, newStatus: 'pending' | 'onhold' | 'done') => {
+    try {
+      const token = localStorage.getItem('token');
+      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+      
+      const response = await axios.put(
+        `${BASE_URL}/enrolled-clients/first-call-status/${client.id}`,
+        {
+          first_call_status: newStatus,
+          updatedBy: userId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success('First call status updated successfully!');
+        fetchClients();
+      }
+    } catch (error) {
+      console.error('Error updating first call status:', error);
+      toast.error('Error updating first call status');
+    }
   };
 
   const formatCurrency = (amount: number | null) => {
@@ -276,10 +317,11 @@ const AccountAdmin: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resume</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">First Call Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {(activeTab === 'my_review' || activeTab === 'My Review' || activeTab === 'my review') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -382,41 +424,45 @@ const AccountAdmin: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {client.resume ? (
-                        <button className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="View Resume">
-                          <FaFilePdf className="w-4 h-4" />
-                          <span>View</span>
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No Resume</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-start">
-                      <a href={`mailto:${client.lead.primaryEmail}`} className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="Send Email">
-                        <span>Send Email</span>
-                      </a>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.is_training_required 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {client.is_training_required ? 'Yes' : 'No'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {getFirstCallStatus()}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.first_call_status === 'pending' 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : client.first_call_status === 'onhold'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                      }`}>
+                        {client.first_call_status}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprovalIconClick(client)}
-                          className="text-green-600 hover:text-green-900"
-                          title="Quick Approve"
-                        >
-                          <FaCheckCircle className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleReview(client)}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Review & Edit"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {(activeTab === 'my_review' || activeTab === 'My Review' || activeTab === 'my review') && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprovalIconClick(client)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Quick Approve"
+                          >
+                            <FaCheckCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleReview(client)}
+                            className="text-purple-600 hover:text-purple-900"
+                            title="Review & Edit"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

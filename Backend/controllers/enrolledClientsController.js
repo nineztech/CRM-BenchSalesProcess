@@ -215,6 +215,7 @@ export const updateEnrolledClientBySales = async (req, res) => {
       payable_offer_letter_charge, 
       payable_first_year_percentage, 
       payable_first_year_fixed_charge,
+      is_training_required,
       Sales_person_id,
       updatedBy 
     } = req.body;
@@ -242,6 +243,7 @@ export const updateEnrolledClientBySales = async (req, res) => {
       payable_offer_letter_charge,
       payable_first_year_percentage,
       payable_first_year_fixed_charge,
+      is_training_required,
       Sales_person_id,
       updatedBy,
       Approval_by_sales: false,
@@ -1275,6 +1277,7 @@ export const updateFinalConfiguration = async (req, res) => {
       payable_first_year_fixed_charge,
       net_payable_first_year_price,
       first_year_salary,
+      is_training_required,
       Sales_person_id, 
       updatedBy 
     } = req.body;
@@ -1306,12 +1309,13 @@ export const updateFinalConfiguration = async (req, res) => {
       payable_first_year_fixed_charge,
       net_payable_first_year_price,
       first_year_salary,
+      is_training_required,
       Sales_person_id,
       updatedBy,
       final_approval_sales: true,
       final_approval_by_admin: false,
       has_update_in_final: true,
-      has_update: true
+      has_update: false // Reset has_update when sales submits for admin review
     });
     res.status(200).json({ success: true, message: 'Final configuration updated successfully by sales', data: enrolledClient });
   } catch (error) {
@@ -1339,10 +1343,12 @@ export const adminFinalApproval = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Enrolled client not found' });
     }
     if (approved) {
+      // Admin approves - move to final approval
       await enrolledClient.update({
         final_approval_by_admin: true,
         Admin_id,
         has_update_in_final: false,
+        has_update: false,
         updatedBy,
         edited_offer_letter_charge: enrolledClient.payable_offer_letter_charge,
         edited_first_year_percentage: enrolledClient.payable_first_year_percentage,
@@ -1351,11 +1357,12 @@ export const adminFinalApproval = async (req, res) => {
         edited_first_year_salary: enrolledClient.first_year_salary
       });
     } else {
+      // Admin rejects and makes changes - send back to sales for review
       const updateData = {
         final_approval_by_admin: false,
         Admin_id,
         has_update_in_final: false,
-        has_update: true,
+        has_update: true, // Set has_update to true to indicate admin has made changes
         updatedBy
       };
       if (edited_offer_letter_charge !== undefined) {
@@ -1525,6 +1532,86 @@ export const adminFirstYearApproval = async (req, res) => {
     res.status(200).json({ success: true, message: approved ? 'First year salary charge approved by admin' : 'First year salary charge updated by admin', data: enrolledClient });
   } catch (error) {
     console.error('Error in admin first year approval:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+}; 
+
+// Sales accepts admin changes and moves to final approval
+export const salesAcceptAdminChanges = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { Sales_person_id, updatedBy } = req.body;
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+
+    // Check if admin has made changes (has_update should be true)
+    if (!enrolledClient.has_update) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No admin changes to accept' 
+      });
+    }
+
+    // Apply admin's edited values to the main fields
+    await enrolledClient.update({
+      payable_offer_letter_charge: enrolledClient.edited_offer_letter_charge,
+      payable_first_year_percentage: enrolledClient.edited_first_year_percentage,
+      payable_first_year_fixed_charge: enrolledClient.edited_first_year_fixed_charge,
+      net_payable_first_year_price: enrolledClient.edited_net_payable_first_year_price,
+      first_year_salary: enrolledClient.edited_first_year_salary,
+      Sales_person_id,
+      updatedBy,
+      final_approval_sales: true,
+      final_approval_by_admin: true, // Set to true since sales accepts admin changes
+      has_update_in_final: false,
+      has_update: false
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Admin changes accepted by sales and moved to final approval', 
+      data: enrolledClient 
+    });
+  } catch (error) {
+    console.error('Error in sales accepting admin changes:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+// Update first call status
+export const updateFirstCallStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { first_call_status, updatedBy } = req.body;
+    
+    const enrolledClient = await EnrolledClients.findByPk(id);
+    if (!enrolledClient) {
+      return res.status(404).json({ success: false, message: 'Enrolled client not found' });
+    }
+
+    // Validate status value
+    const validStatuses = ['pending', 'onhold', 'done'];
+    if (!validStatuses.includes(first_call_status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid first call status. Must be one of: pending, onhold, done' 
+      });
+    }
+
+    await enrolledClient.update({
+      first_call_status,
+      updatedBy
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'First call status updated successfully', 
+      data: enrolledClient 
+    });
+  } catch (error) {
+    console.error('Error updating first call status:', error);
     res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 }; 

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaFilePdf, FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt, FaInfoCircle } from 'react-icons/fa';
+import { FaFilePdf, FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt, FaInfoCircle, FaCheckCircle } from 'react-icons/fa';
 import InstallmentsPopup from '../enrollment/InstallmentsPopup';
+import ConfirmationPopup from '../enrollment/ConfirmationPopup';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
@@ -29,6 +30,8 @@ interface EnrolledClient {
   final_approval_sales: boolean;
   final_approval_by_admin: boolean;
   has_update_in_final: boolean;
+  is_training_required: boolean;
+  first_call_status: 'pending' | 'onhold' | 'done';
   createdBy: number;
   updatedBy: number | null;
   resume: string | null;
@@ -74,6 +77,7 @@ interface FormData {
   payable_first_year_fixed_charge: number | null;
   net_payable_first_year_price: number | null;
   first_year_salary: number | null;
+  is_training_required: boolean;
   pricing_type: 'percentage' | 'fixed' | null;
   offer_letter_installments: Installment[];
   offer_letter_initial_payment: number | null;
@@ -151,6 +155,7 @@ const AccountSale: React.FC = () => {
     payable_first_year_fixed_charge: null,
     net_payable_first_year_price: null,
     first_year_salary: null,
+    is_training_required: false,
     pricing_type: null,
     offer_letter_installments: [],
     offer_letter_initial_payment: null,
@@ -163,6 +168,8 @@ const AccountSale: React.FC = () => {
   const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
   const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
   const [installmentChargeType, setInstallmentChargeType] = useState<'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge'>('enrollment_charge');
+  const [showConfirmationPopup, setShowConfirmationPopup] = useState(false);
+  const [selectedClientForApproval, setSelectedClientForApproval] = useState<EnrolledClient | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -209,8 +216,12 @@ const AccountSale: React.FC = () => {
     
     const selectedPackage = packages.find(pkg => pkg.id === client.packageid);
     
+    // Check if we're in "My Review" tab and use edited values
+    const isMyReview = activeTab === 'My Review';
+    
     try {
       const token = localStorage.getItem('token');
+      
       // Fetch offer letter charge installments
       const offerLetterResponse = await axios.get(
         `${BASE_URL}/installments/enrolled-client/${client.id}?charge_type=offer_letter_charge`,
@@ -222,56 +233,199 @@ const AccountSale: React.FC = () => {
         }
       );
 
+      // Fetch first year charge installments
+      const firstYearResponse = await axios.get(
+        `${BASE_URL}/installments/enrolled-client/${client.id}?charge_type=first_year_charge`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
       const existingOfferLetterInstallments = offerLetterResponse.data.success ? offerLetterResponse.data.data.installments : [];
+      const existingFirstYearInstallments = firstYearResponse.data.success ? firstYearResponse.data.data.installments : [];
       
       const hasOfferLetterInstallments = existingOfferLetterInstallments.length > 0;
+      const hasFirstYearInstallments = existingFirstYearInstallments.length > 0;
 
-      let initialPayment = client.payable_offer_letter_charge;
+      // Use edited values if in "My Review" tab, otherwise use original values
+      const offerLetterCharge = isMyReview && client.edited_offer_letter_charge !== null 
+        ? client.edited_offer_letter_charge 
+        : client.payable_offer_letter_charge;
+      
+      const firstYearPercentage = isMyReview && client.edited_first_year_percentage !== null 
+        ? client.edited_first_year_percentage 
+        : client.payable_first_year_percentage;
+      
+      const firstYearFixedCharge = isMyReview && client.edited_first_year_fixed_charge !== null 
+        ? client.edited_first_year_fixed_charge 
+        : client.payable_first_year_fixed_charge;
+      
+      const netPayableFirstYearPrice = isMyReview && client.edited_net_payable_first_year_price !== null 
+        ? client.edited_net_payable_first_year_price 
+        : client.net_payable_first_year_price;
+      
+      const firstYearSalary = isMyReview && client.edited_first_year_salary !== null 
+        ? client.edited_first_year_salary 
+        : client.first_year_salary;
 
+      // Calculate offer letter initial payment and filter installments
+      let offerLetterInitialPayment = offerLetterCharge;
+      let filteredOfferLetterInstallments = existingOfferLetterInstallments;
+      
       if (hasOfferLetterInstallments) {
-        const totalInstallments = existingOfferLetterInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
-        initialPayment = (client.payable_offer_letter_charge || 0) - totalInstallments;
+        // Find if there's an installment that represents the initial payment
+        const initialPaymentInstallment = existingOfferLetterInstallments.find((inst: any) => 
+          inst.remark?.toLowerCase().includes('initial') || 
+          inst.remark?.toLowerCase().includes('down payment') ||
+          inst.remark?.toLowerCase().includes('advance')
+        );
+        
+        if (initialPaymentInstallment) {
+          // Set initial payment to this installment's amount
+          offerLetterInitialPayment = Number(initialPaymentInstallment.amount);
+          // Remove this installment from the list
+          filteredOfferLetterInstallments = existingOfferLetterInstallments.filter((inst: any) => inst !== initialPaymentInstallment);
+        } else {
+          // Calculate initial payment as remaining amount
+          const totalOfferLetterInstallments = existingOfferLetterInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          offerLetterInitialPayment = (offerLetterCharge || 0) - totalOfferLetterInstallments;
+        }
         setShowOfferLetterInitialPayment(true);
+      }
+
+      // Calculate first year initial payment and filter installments
+      let firstYearInitialPayment = netPayableFirstYearPrice;
+      let filteredFirstYearInstallments = existingFirstYearInstallments;
+      
+      if (hasFirstYearInstallments) {
+        // Find if there's an installment that represents the initial payment
+        const initialPaymentInstallment = existingFirstYearInstallments.find((inst: any) => 
+          inst.remark?.toLowerCase().includes('initial') || 
+          inst.remark?.toLowerCase().includes('down payment') ||
+          inst.remark?.toLowerCase().includes('advance')
+        );
+        
+        if (initialPaymentInstallment) {
+          // Set initial payment to this installment's amount
+          firstYearInitialPayment = Number(initialPaymentInstallment.amount);
+          // Remove this installment from the list
+          filteredFirstYearInstallments = existingFirstYearInstallments.filter((inst: any) => inst !== initialPaymentInstallment);
+        } else {
+          // Calculate initial payment as remaining amount
+          const totalFirstYearInstallments = existingFirstYearInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          firstYearInitialPayment = (netPayableFirstYearPrice || 0) - totalFirstYearInstallments;
+        }
+      }
+
+      // If in "My Review" tab and admin has made changes, recalculate installments based on edited values
+      if (isMyReview && (client.edited_offer_letter_charge !== null || client.edited_net_payable_first_year_price !== null)) {
+        // Recalculate offer letter installments if admin changed the offer letter charge
+        if (client.edited_offer_letter_charge !== null && client.edited_offer_letter_charge !== client.payable_offer_letter_charge) {
+          const totalExistingInstallments = existingOfferLetterInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          const newTotalCharge = client.edited_offer_letter_charge;
+          
+          // If total installments exceed new charge, adjust them proportionally
+          if (totalExistingInstallments > newTotalCharge) {
+            const ratio = newTotalCharge / totalExistingInstallments;
+            filteredOfferLetterInstallments = existingOfferLetterInstallments.map((inst: any) => ({
+              ...inst,
+              amount: Number((Number(inst.amount) * ratio).toFixed(2))
+            }));
+          }
+          
+          // Recalculate initial payment
+          const newTotalInstallments = filteredOfferLetterInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          offerLetterInitialPayment = newTotalCharge - newTotalInstallments;
+        }
+
+        // Recalculate first year installments if admin changed the first year charge
+        if (client.edited_net_payable_first_year_price !== null && client.edited_net_payable_first_year_price !== client.net_payable_first_year_price) {
+          const totalExistingInstallments = existingFirstYearInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          const newTotalCharge = client.edited_net_payable_first_year_price;
+          
+          // If total installments exceed new charge, adjust them proportionally
+          if (totalExistingInstallments > newTotalCharge) {
+            const ratio = newTotalCharge / totalExistingInstallments;
+            filteredFirstYearInstallments = existingFirstYearInstallments.map((inst: any) => ({
+              ...inst,
+              amount: Number((Number(inst.amount) * ratio).toFixed(2))
+            }));
+          }
+          
+          // Recalculate initial payment
+          const newTotalInstallments = filteredFirstYearInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
+          firstYearInitialPayment = newTotalCharge - newTotalInstallments;
+        }
       }
       
       setFormData({
         packageid: client.packageid,
-        payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
-        payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
-        payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
-        net_payable_first_year_price: client.net_payable_first_year_price || null,
-        first_year_salary: client.first_year_salary || null,
-        pricing_type: client.payable_first_year_percentage ? 'percentage' : 
-                     client.payable_first_year_fixed_charge ? 'fixed' : 
+        payable_offer_letter_charge: offerLetterCharge || (selectedPackage?.offerLetterCharge || null),
+        payable_first_year_percentage: firstYearPercentage || (selectedPackage?.firstYearSalaryPercentage || null),
+        payable_first_year_fixed_charge: firstYearFixedCharge || (selectedPackage?.firstYearFixedPrice || null),
+        net_payable_first_year_price: netPayableFirstYearPrice || null,
+        first_year_salary: firstYearSalary || null,
+        is_training_required: client.is_training_required || false,
+        pricing_type: firstYearPercentage ? 'percentage' : 
+                     firstYearFixedCharge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
-        offer_letter_installments: existingOfferLetterInstallments.map((inst: any) => ({
+        offer_letter_installments: filteredOfferLetterInstallments.map((inst: any) => ({
           amount: Number(inst.amount),
           dueDate: inst.dueDate,
           remark: inst.remark || ''
         })),
-        offer_letter_initial_payment: initialPayment,
-        first_year_installments: [],
-        first_year_initial_payment: null,
+        offer_letter_initial_payment: offerLetterInitialPayment,
+        first_year_installments: filteredFirstYearInstallments.map((inst: any) => ({
+          amount: Number(inst.amount),
+          dueDate: inst.dueDate,
+          remark: inst.remark || ''
+        })),
+        first_year_initial_payment: firstYearInitialPayment,
       });
 
     } catch (error) {
       console.error('Error fetching installments:', error);
       alert('Error fetching existing installments');
       
+      // Use edited values if in "My Review" tab, otherwise use original values
+      const offerLetterCharge = isMyReview && client.edited_offer_letter_charge !== null 
+        ? client.edited_offer_letter_charge 
+        : client.payable_offer_letter_charge;
+      
+      const firstYearPercentage = isMyReview && client.edited_first_year_percentage !== null 
+        ? client.edited_first_year_percentage 
+        : client.payable_first_year_percentage;
+      
+      const firstYearFixedCharge = isMyReview && client.edited_first_year_fixed_charge !== null 
+        ? client.edited_first_year_fixed_charge 
+        : client.payable_first_year_fixed_charge;
+      
+      const netPayableFirstYearPrice = isMyReview && client.edited_net_payable_first_year_price !== null 
+        ? client.edited_net_payable_first_year_price 
+        : client.net_payable_first_year_price;
+      
+      const firstYearSalary = isMyReview && client.edited_first_year_salary !== null 
+        ? client.edited_first_year_salary 
+        : client.first_year_salary;
+      
       setFormData({
         packageid: client.packageid,
-        payable_offer_letter_charge: client.payable_offer_letter_charge || (selectedPackage?.offerLetterCharge || null),
-        payable_first_year_percentage: client.payable_first_year_percentage || (selectedPackage?.firstYearSalaryPercentage || null),
-        payable_first_year_fixed_charge: client.payable_first_year_fixed_charge || (selectedPackage?.firstYearFixedPrice || null),
-        net_payable_first_year_price: client.net_payable_first_year_price || null,
-        first_year_salary: client.first_year_salary || null,
-        pricing_type: client.payable_first_year_percentage ? 'percentage' : 
-                     client.payable_first_year_fixed_charge ? 'fixed' : 
+        payable_offer_letter_charge: offerLetterCharge || (selectedPackage?.offerLetterCharge || null),
+        payable_first_year_percentage: firstYearPercentage || (selectedPackage?.firstYearSalaryPercentage || null),
+        payable_first_year_fixed_charge: firstYearFixedCharge || (selectedPackage?.firstYearFixedPrice || null),
+        net_payable_first_year_price: netPayableFirstYearPrice || null,
+        first_year_salary: firstYearSalary || null,
+        is_training_required: client.is_training_required || false,
+        pricing_type: firstYearPercentage ? 'percentage' : 
+                     firstYearFixedCharge ? 'fixed' : 
                      (selectedPackage?.firstYearSalaryPercentage ? 'percentage' : 'fixed'),
         offer_letter_installments: [],
-        offer_letter_initial_payment: client.payable_offer_letter_charge,
+        offer_letter_initial_payment: offerLetterCharge,
         first_year_installments: [],
-        first_year_initial_payment: null,
+        first_year_initial_payment: netPayableFirstYearPrice,
       });
     }
   };
@@ -374,7 +528,7 @@ const AccountSale: React.FC = () => {
       ...prev,
       first_year_installments: [
         ...prev.first_year_installments,
-        { amount: 0, dueDate: '', remark: '' }
+        { amount: remainingAmount, dueDate: '', remark: '' }
       ]
     }));
   };
@@ -459,7 +613,7 @@ const AccountSale: React.FC = () => {
       ...prev,
       offer_letter_installments: [
         ...prev.offer_letter_installments,
-        { amount: 0, dueDate: '', remark: '' }
+        { amount: remainingAmount, dueDate: '', remark: '' }
       ]
     }));
   };
@@ -530,10 +684,72 @@ const AccountSale: React.FC = () => {
     return totalCharge - (initialPayment + totalExistingAmount);
   };
 
+  // Add new function for sales to accept admin changes
+  const handleAcceptAdminChanges = (client: EnrolledClient) => {
+    setSelectedClientForApproval(client);
+    setShowConfirmationPopup(true);
+  };
+
+  // Function to handle the actual approval after confirmation
+  const handleConfirmApproval = async () => {
+    if (!selectedClientForApproval) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+      
+      const response = await axios.put(
+        `${BASE_URL}/enrolled-clients/final-configuration/sales-accept/${selectedClientForApproval.id}`,
+        {
+          Sales_person_id: userId,
+          updatedBy: userId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        alert('Admin changes accepted successfully!');
+        // Refresh clients
+        const updatedResponse = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (updatedResponse.data.success) {
+          setTabsData(updatedResponse.data.data);
+          const firstTabKey = Object.keys(updatedResponse.data.data)[0];
+          setActiveTab(firstTabKey);
+          setClients(updatedResponse.data.data[firstTabKey]?.leads || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error accepting admin changes:', error);
+      alert('Error accepting admin changes');
+    } finally {
+      setShowConfirmationPopup(false);
+      setSelectedClientForApproval(null);
+    }
+  };
+
+  // Function to handle cancellation of approval
+  const handleCancelApproval = () => {
+    setShowConfirmationPopup(false);
+    setSelectedClientForApproval(null);
+  };
+
   // Update handleSubmit to include offer letter installments
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
+
+    // Check if we're in "My Review" tab
+    const isMyReview = activeTab === 'My Review';
 
     // Validate total offer letter amount matches with 2 decimal precision
     const totalOfferLetterAmount = Number(((formData.offer_letter_initial_payment ?? 0) +
@@ -571,21 +787,28 @@ const AccountSale: React.FC = () => {
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
       let finalUpdated = false;
 
-      // Detect changes
-      const offerLetterChanged = selectedClient.payable_offer_letter_charge !== formData.payable_offer_letter_charge;
-      const firstYearChanged = selectedClient.payable_first_year_percentage !== formData.payable_first_year_percentage || 
-                              selectedClient.payable_first_year_fixed_charge !== formData.payable_first_year_fixed_charge ||
-                              selectedClient.net_payable_first_year_price !== formData.net_payable_first_year_price ||
-                              selectedClient.first_year_salary !== formData.first_year_salary;
+      // Detect changes - use edited values for comparison if in "My Review" tab
+      const compareOfferLetterCharge = isMyReview ? selectedClient.edited_offer_letter_charge : selectedClient.payable_offer_letter_charge;
+      const compareFirstYearPercentage = isMyReview ? selectedClient.edited_first_year_percentage : selectedClient.payable_first_year_percentage;
+      const compareFirstYearFixedCharge = isMyReview ? selectedClient.edited_first_year_fixed_charge : selectedClient.payable_first_year_fixed_charge;
+      const compareNetPayableFirstYearPrice = isMyReview ? selectedClient.edited_net_payable_first_year_price : selectedClient.net_payable_first_year_price;
+      const compareFirstYearSalary = isMyReview ? selectedClient.edited_first_year_salary : selectedClient.first_year_salary;
 
-      // Update final configuration if any changes using combined API
-      if (offerLetterChanged || firstYearChanged) {
+      const offerLetterChanged = compareOfferLetterCharge !== formData.payable_offer_letter_charge;
+      const firstYearChanged = compareFirstYearPercentage !== formData.payable_first_year_percentage || 
+                              compareFirstYearFixedCharge !== formData.payable_first_year_fixed_charge ||
+                              compareNetPayableFirstYearPrice !== formData.net_payable_first_year_price ||
+                              compareFirstYearSalary !== formData.first_year_salary;
+
+      // Update final configuration if any changes OR if in "My Review" tab (always send for admin review)
+      if (offerLetterChanged || firstYearChanged || isMyReview) {
         const submitData = {
           payable_offer_letter_charge: formData.payable_offer_letter_charge,
           payable_first_year_percentage: formData.payable_first_year_percentage,
           payable_first_year_fixed_charge: formData.payable_first_year_fixed_charge,
           net_payable_first_year_price: formData.net_payable_first_year_price,
           first_year_salary: formData.first_year_salary || null,
+          is_training_required: formData.is_training_required,
           Sales_person_id: userId,
           updatedBy: userId
         };
@@ -602,70 +825,73 @@ const AccountSale: React.FC = () => {
         finalUpdated = response.data.success;
       }
 
-      // Prepare installments data for combined API
-      const offerLetterInstallments = [];
-      const firstYearInstallments = [];
+      // Only create installments if NOT in "My Review" tab
+      if (!isMyReview) {
+        // Prepare installments data for combined API
+        const offerLetterInstallments = [];
+        const firstYearInstallments = [];
 
-      // Add offer letter initial payment if exists
-      if (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) {
-        offerLetterInstallments.push({
-          amount: Number(formData.offer_letter_initial_payment),
-          dueDate: new Date().toISOString().split('T')[0], // Today's date
-          remark: 'Initial Payment'
-        });
-      }
-
-      // Add offer letter regular installments
-      formData.offer_letter_installments.forEach((installment, index) => {
-        if (installment.amount > 0) {
+        // Add offer letter initial payment if exists
+        if (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) {
           offerLetterInstallments.push({
-            amount: Number(installment.amount),
-            dueDate: installment.dueDate,
-            remark: installment.remark || `Offer Letter Installment ${index + 1}`
+            amount: Number(formData.offer_letter_initial_payment),
+            dueDate: new Date().toISOString().split('T')[0], // Today's date
+            remark: 'Initial Payment'
           });
         }
-      });
 
-      // Add first year initial payment if exists
-      if (formData.first_year_initial_payment && formData.first_year_initial_payment > 0) {
-        firstYearInstallments.push({
-          amount: Number(formData.first_year_initial_payment),
-          dueDate: new Date().toISOString().split('T')[0], // Today's date
-          remark: 'Initial Payment'
+        // Add offer letter regular installments
+        formData.offer_letter_installments.forEach((installment, index) => {
+          if (installment.amount > 0) {
+            offerLetterInstallments.push({
+              amount: Number(installment.amount),
+              dueDate: installment.dueDate,
+              remark: installment.remark || `Offer Letter Installment ${index + 1}`
+            });
+          }
         });
-      }
 
-      // Add first year regular installments
-      formData.first_year_installments.forEach((installment, index) => {
-        if (installment.amount > 0) {
+        // Add first year initial payment if exists
+        if (formData.first_year_initial_payment && formData.first_year_initial_payment > 0) {
           firstYearInstallments.push({
-            amount: Number(installment.amount),
-            dueDate: installment.dueDate,
-            remark: installment.remark || `First Year Installment ${index + 1}`
+            amount: Number(formData.first_year_initial_payment),
+            dueDate: new Date().toISOString().split('T')[0], // Today's date
+            remark: 'Initial Payment'
           });
         }
-      });
 
-      // Create combined installments using new API
-      if (offerLetterInstallments.length > 0 || firstYearInstallments.length > 0) {
-        try {
-          await axios.post(
-            `${BASE_URL}/installments/combined`,
-            {
-              enrolledClientId: selectedClient.id,
-              offerLetterInstallments,
-              firstYearInstallments
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        // Add first year regular installments
+        formData.first_year_installments.forEach((installment, index) => {
+          if (installment.amount > 0) {
+            firstYearInstallments.push({
+              amount: Number(installment.amount),
+              dueDate: installment.dueDate,
+              remark: installment.remark || `First Year Installment ${index + 1}`
+            });
+          }
+        });
+
+        // Create combined installments using new API
+        if (offerLetterInstallments.length > 0 || firstYearInstallments.length > 0) {
+          try {
+            await axios.post(
+              `${BASE_URL}/installments/combined`,
+              {
+                enrolledClientId: selectedClient.id,
+                offerLetterInstallments,
+                firstYearInstallments
+              },
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
               }
-            }
-          );
-        } catch (error) {
-          console.error('Error creating combined installments:', error);
-          throw error;
+            );
+          } catch (error) {
+            console.error('Error creating combined installments:', error);
+            throw error;
+          }
         }
       }
 
@@ -680,15 +906,18 @@ const AccountSale: React.FC = () => {
         },
       });
       if (updatedResponse.data.success) {
-        const updatedClients = (updatedResponse.data.data.leads || []).map((c: any) => {
-          const client: EnrolledClient = c;
-          return client.id === selectedClient.id ? { ...client, has_update: true } : client;
-        });
-        setClients(updatedClients);
+        setTabsData(updatedResponse.data.data);
+        const firstTabKey = Object.keys(updatedResponse.data.data)[0];
+        setActiveTab(firstTabKey);
+        setClients(updatedResponse.data.data[firstTabKey]?.leads || []);
       }
       
       if (finalUpdated) {
-        alert('Changes submitted successfully!');
+        if (isMyReview) {
+          alert('Configuration updated and sent back to admin for review!');
+        } else {
+          alert('Configuration submitted for admin review!');
+        }
       }
     } catch (error) {
       console.error('Error updating enrollment:', error);
@@ -729,7 +958,7 @@ const AccountSale: React.FC = () => {
       ...prev,
       offer_letter_installments: [
         ...prev.offer_letter_installments,
-        { amount: 0, dueDate: '', remark: '' }
+        { amount: remainingAmount, dueDate: '', remark: '' }
       ]
     }));
   };
@@ -1347,6 +1576,22 @@ const AccountSale: React.FC = () => {
                   )}
                 </div>
 
+                {/* Training Required Checkbox */}
+                <div className="mt-6">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_training_required"
+                      checked={formData.is_training_required}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_training_required: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_training_required" className="ml-2 block text-sm text-gray-900">
+                      Training Required
+                    </label>
+                  </div>
+                </div>
+
                
               </div>
 
@@ -1385,10 +1630,11 @@ const AccountSale: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resume</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">First Call Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {activeTab !== 'Final Approval' && activeTab !== 'Admin Review' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -1488,38 +1734,48 @@ const AccountSale: React.FC = () => {
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Approved</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {client.resume ? (
-                        <button className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="View Resume">
-                          <FaFilePdf className="w-4 h-4" />
-                          <span>View</span>
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No Resume</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-start">
-                      <a href={`mailto:${client.lead.primaryEmail}`} className="text-blue-600 hover:text-blue-900 flex items-center gap-2" title="Send Email">
-                        <span>Send Email</span>
-                      </a>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.is_training_required 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {client.is_training_required ? 'Yes' : 'No'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
-                      {getFirstCallStatus()}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        client.first_call_status === 'pending' 
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : client.first_call_status === 'onhold'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                      }`}>
+                        {client.first_call_status}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
-                      {activeTab === 'my_review' && (
-                        <>
-                          <button onClick={() => handleApprove(client)} className="text-green-600 hover:text-green-900 mr-2">Approve</button>
-                          <button onClick={() => handleEdit(client)} className="text-purple-600 hover:text-purple-900">Edit</button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleEdit(client)}
-                        className="text-purple-600 hover:text-blue-900 mr-3"
-                        title="Configure"
-                      >
-                        <FaEdit className="w-4 h-4" />
-                      </button>
-                    </td>
+                    {activeTab !== 'Final Approval' && activeTab !== 'Admin Review' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+                        {activeTab === 'My Review' && (
+                          <>
+                            <button 
+                              onClick={() => handleAcceptAdminChanges(client)} 
+                              className="text-green-600 hover:text-green-900 mr-2"
+                              title="Accept Admin Changes"
+                            >
+                              <FaCheckCircle className="w-4 h-4" />
+                            </button>
+                            {/* <button onClick={() => handleEdit(client)} className="text-purple-600 hover:text-purple-900">Edit</button> */}
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleEdit(client)}
+                          className="text-purple-600 hover:text-blue-900 mr-3"
+                          title="Configure"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -1546,8 +1802,23 @@ const AccountSale: React.FC = () => {
           chargeType={installmentChargeType}
           firstYearSalary={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.first_year_salary : undefined}
           netPayableFirstYear={installmentChargeType === 'first_year_charge' ? selectedClientForInstallments.net_payable_first_year_price : undefined}
+          isMyReview={activeTab === 'My Review'}
+          editedTotalCharge={
+            installmentChargeType === 'enrollment_charge' 
+              ? selectedClientForInstallments.edited_enrollment_charge
+              : installmentChargeType === 'offer_letter_charge'
+                ? selectedClientForInstallments.edited_offer_letter_charge
+                : selectedClientForInstallments.edited_net_payable_first_year_price
+          }
         />
       )}
+
+      <ConfirmationPopup
+        open={showConfirmationPopup}
+        message="Are you sure you want to accept the admin's changes? This will move the configuration to final approval."
+        onConfirm={handleConfirmApproval}
+        onCancel={handleCancelApproval}
+      />
     </div>
   );
 };

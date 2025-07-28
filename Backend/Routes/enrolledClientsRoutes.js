@@ -20,7 +20,9 @@ import {
   updateFirstYearCharge,
   adminFirstYearApproval,
   updateFinalConfiguration,
-  adminFinalApproval
+  adminFinalApproval,
+  salesAcceptAdminChanges,
+  updateFirstCallStatus
 } from '../controllers/enrolledClientsController.js';
 import verifyToken  from '../middleware/auth.js';
 import { resumeUpload } from '../config/multerconfig.js';
@@ -76,5 +78,9 @@ router.put('/first-year/admin/:id', adminFirstYearApproval);
 // Combined final configuration route
 router.put('/final-configuration/:id', verifyToken, updateFinalConfiguration);
 router.put('/final-configuration/admin/:id', verifyToken, adminFinalApproval);
+router.put('/final-configuration/sales-accept/:id', verifyToken, salesAcceptAdminChanges);
+
+// Update first call status
+router.put('/first-call-status/:id', verifyToken, updateFirstCallStatus);
 
 export default router; 
