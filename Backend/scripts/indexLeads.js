@@ -170,6 +170,64 @@ export const reindexLeads = async () => {
                   }
                 }
               }
+            },
+            creator: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                },
+                lastname: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                },
+                email: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                }
+              }
+            },
+            updater: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                },
+                lastname: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                },
+                email: { 
+                  type: 'text',
+                  analyzer: 'text_analyzer',
+                  search_analyzer: 'search_analyzer',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                }
+              }
             }
           }
         }
@@ -179,12 +237,22 @@ export const reindexLeads = async () => {
     // Create archived leads index
     await createArchivedLeadIndex();
 
-    // Get all leads with their assigned users
+    // Get all leads with their assigned users, creators, and updaters
     const leads = await Lead.findAll({
       include: [
         {
           model: User,
           as: 'assignedUser',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'updater',
           attributes: ['id', 'firstname', 'lastname', 'email']
         }
       ]

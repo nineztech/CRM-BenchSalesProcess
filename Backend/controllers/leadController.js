@@ -361,17 +361,25 @@ export const getAllLeads = async (req, res) => {
 
       if (salesFilter) {
         const [firstName, lastName] = salesFilter.split(' ');
-        whereConditions['$assignedUser.firstname$'] = firstName;
+        whereConditions['$assignedUser.firstname$'] = {
+          [Op.like]: `%${firstName}%`
+        };
         if (lastName) {
-          whereConditions['$assignedUser.lastname$'] = lastName;
+          whereConditions['$assignedUser.lastname$'] = {
+            [Op.like]: `%${lastName}%`
+          };
         }
       }
 
       if (createdByFilter) {
         const [firstName, lastName] = createdByFilter.split(' ');
-        whereConditions['$creator.firstname$'] = firstName;
+        whereConditions['$creator.firstname$'] = {
+          [Op.like]: `%${firstName}%`
+        };
         if (lastName) {
-          whereConditions['$creator.lastname$'] = lastName;
+          whereConditions['$creator.lastname$'] = {
+            [Op.like]: `%${lastName}%`
+          };
         }
       }
 
@@ -666,17 +674,25 @@ export const getAssignedLeads = async (req, res) => {
 
       if (salesFilter) {
         const [firstName, lastName] = salesFilter.split(' ');
-        whereConditions['$assignedUser.firstname$'] = firstName;
+        whereConditions['$assignedUser.firstname$'] = {
+          [Op.like]: `%${firstName}%`
+        };
         if (lastName) {
-          whereConditions['$assignedUser.lastname$'] = lastName;
+          whereConditions['$assignedUser.lastname$'] = {
+            [Op.like]: `%${lastName}%`
+          };
         }
       }
 
       if (createdByFilter) {
         const [firstName, lastName] = createdByFilter.split(' ');
-        whereConditions['$creator.firstname$'] = firstName;
+        whereConditions['$creator.firstname$'] = {
+          [Op.like]: `%${firstName}%`
+        };
         if (lastName) {
-          whereConditions['$creator.lastname$'] = lastName;
+          whereConditions['$creator.lastname$'] = {
+            [Op.like]: `%${lastName}%`
+          };
         }
       }
 

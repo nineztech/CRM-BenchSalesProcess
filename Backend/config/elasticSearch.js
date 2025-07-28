@@ -54,6 +54,22 @@ const createLeadIndex = async () => {
                   lastname: { type: 'text' },
                   email: { type: 'keyword' }
                 }
+              },
+              creator: {
+                properties: {
+                  id: { type: 'integer' },
+                  firstname: { type: 'text' },
+                  lastname: { type: 'text' },
+                  email: { type: 'keyword' }
+                }
+              },
+              updater: {
+                properties: {
+                  id: { type: 'integer' },
+                  firstname: { type: 'text' },
+                  lastname: { type: 'text' },
+                  email: { type: 'keyword' }
+                }
               }
             }
           }
@@ -306,8 +322,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       };
     }
 
-    console.log('🔍 Search query:', { query, statusGroup, page, limit, statusFilter, salesFilter, createdByFilter });
-
     const offset = (page - 1) * limit;
 
     // Process the search query if it looks like a phone number
@@ -346,6 +360,38 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   wildcard: {
                     "assignedUser.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "creator.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "creator.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "updater.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "updater.lastname": {
                       value: `*${processedQuery.toLowerCase()}*`,
                       boost: 2
                     }
@@ -399,7 +445,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
 
     // Add status group filter if provided
     if (statusGroup) {
-      console.log('🔍 Adding status group filter:', statusGroup);
       const now = new Date();
 
       // Define conditions based on status group
@@ -427,7 +472,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   range: {
                     followUpDateTime: {
-                      lte: now.toISOString()
+                      lte: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
                     }
                   }
                 },
@@ -445,39 +490,68 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
 
         case 'inprocess':
           // For inProcess tab, we want leads that are in inProcess statuses
-          // If a specific status filter is applied, we should prioritize that
-          if (statusFilter) {
-            // If status filter is provided, just ensure it's a valid inProcess status
-            const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
-            if (inProcessStatuses.includes(statusFilter)) {
-              // The status filter will be applied later, so we don't need additional conditions here
-              console.log('🔍 Status filter provided for inProcess tab, will apply specific status filter');
-            }
-          } else {
-            // If no status filter, apply the general inProcess conditions
-            searchQuery.bool.must.push({
-              bool: {
-                must: [
-                  {
-                    exists: { field: "followUpDateTime" }
-                  },
-                  {
-                    range: {
-                      followUpDateTime: {
-                        gt: now.toISOString()
+          // Always apply timer conditions for inProcess tab, regardless of status filter
+          const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
+          
+          // Always apply timer conditions for inProcess tab
+          // Include leads that either have a future followUpDateTime OR no followUpDateTime at all
+          // Exclude leads with past due timers (they should be in followup tab)
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                {
+                  bool: {
+                    should: [
+                      {
+                        bool: {
+                          must: [
+                            {
+                              exists: { field: "followUpDateTime" }
+                            },
+                            {
+                              range: {
+                                followUpDateTime: {
+                                  gt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        bool: {
+                          must_not: {
+                            exists: { field: "followUpDateTime" }
+                          }
+                        }
                       }
-                    }
-                  },
-                  {
-                    bool: {
-                      must_not: {
-                        terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
-                      }
+                    ],
+                    minimum_should_match: 1
+                  }
+                },
+                {
+                  bool: {
+                    must_not: {
+                      terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
                     }
                   }
-                ]
-              }
-            });
+                },
+                {
+                  bool: {
+                    must_not: {
+                      term: { "is_Team_Followup": true }
+                    }
+                  }
+                }
+              ]
+            }
+          });
+          
+          if (statusFilter) {
+            // If status filter is provided, log it but the timer conditions are already applied above
+            if (inProcessStatuses.includes(statusFilter)) {
+              // Status filter provided for inProcess tab, timer conditions still enforced
+            }
           }
           break;
 
@@ -504,101 +578,60 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
 
     // Add additional filters if provided
     if (statusFilter) {
-      console.log('🔍 Adding status filter:', statusFilter);
       searchQuery.bool.must.push({
         wildcard: { "status": `*${statusFilter.toLowerCase()}*` }
       });
     }
 
     if (salesFilter) {
-      console.log('🔍 Adding sales filter:', salesFilter);
-      searchQuery.bool.must.push({
+      const nameParts = salesFilter.trim().split(' ');
+      const firstName = nameParts[0]?.toLowerCase();
+      const lastName = nameParts[1]?.toLowerCase();
+      
+      const salesFilterQuery = {
         bool: {
           should: [
+            // Match full name in firstname field
             {
-              term: { "assignedUser.firstname": salesFilter.split(' ')[0] }
+              wildcard: { "assignedUser.firstname": `*${firstName}*` }
             },
+            // Match full name in lastname field
             {
-              term: { "assignedUser.lastname": salesFilter.split(' ')[1] || salesFilter.split(' ')[0] }
+              wildcard: { "assignedUser.lastname": `*${lastName || firstName}*` }
             }
           ],
           minimum_should_match: 1
         }
-      });
+      };
+      
+      searchQuery.bool.must.push(salesFilterQuery);
     }
 
     if (createdByFilter) {
-      console.log('🔍 Adding created by filter:', createdByFilter);
-      searchQuery.bool.must.push({
+      const nameParts = createdByFilter.trim().split(' ');
+      const firstName = nameParts[0]?.toLowerCase();
+      const lastName = nameParts[1]?.toLowerCase();
+      
+      const createdByFilterQuery = {
         bool: {
           should: [
+            // Match full name in firstname field
             {
-              term: { "creator.firstname": createdByFilter.split(' ')[0] }
+              wildcard: { "creator.firstname": `*${firstName}*` }
             },
+            // Match full name in lastname field
             {
-              term: { "creator.lastname": createdByFilter.split(' ')[1] || createdByFilter.split(' ')[0] }
+              wildcard: { "creator.lastname": `*${lastName || firstName}*` }
             }
           ],
           minimum_should_match: 1
         }
-      });
+      };
+      
+      searchQuery.bool.must.push(createdByFilterQuery);
     }
 
-    console.log('🔍 Final search query with filters:', JSON.stringify(searchQuery, null, 2));
 
-    // Debug: Let's also check what leads exist with the specific status
-    if (statusFilter) {
-      try {
-        const debugResponse = await client.search({
-          index: LEAD_INDEX,
-          body: {
-            size: 5,
-            query: {
-              wildcard: { "status": `*${statusFilter.toLowerCase()}*` }
-            }
-          }
-        });
-        console.log('🔍 Debug: Found leads with status filter:', statusFilter, 'Count:', debugResponse.hits.total.value);
-        if (debugResponse.hits.hits.length > 0) {
-          console.log('🔍 Debug: Sample leads with this status:', debugResponse.hits.hits.map(hit => ({
-            id: hit._source.id,
-            firstName: hit._source.firstName,
-            lastName: hit._source.lastName,
-            status: hit._source.status
-          })));
-        }
-      } catch (debugError) {
-        console.log('🔍 Debug query failed:', debugError.message);
-      }
-    }
-
-    // Debug: Let's also check what leads exist with the search query
-    if (query) {
-      try {
-        const debugSearchResponse = await client.search({
-          index: LEAD_INDEX,
-          body: {
-            size: 5,
-            query: {
-              wildcard: { "firstName": `*${query.toLowerCase()}*` }
-            }
-          }
-        });
-        console.log('🔍 Debug: Found leads with search query:', query, 'Count:', debugSearchResponse.hits.total.value);
-        if (debugSearchResponse.hits.hits.length > 0) {
-          console.log('🔍 Debug: Sample leads with this search term:', debugSearchResponse.hits.hits.map(hit => ({
-            id: hit._source.id,
-            firstName: hit._source.firstName,
-            lastName: hit._source.lastName,
-            status: hit._source.status
-          })));
-        }
-      } catch (debugError) {
-        console.log('🔍 Debug search query failed:', debugError.message);
-      }
-    }
-
-    console.log('📦 Elasticsearch query:', JSON.stringify(searchQuery, null, 2));
 
     const response = await client.search({
       index: LEAD_INDEX,
@@ -613,12 +646,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       }
     });
 
-    console.log('📊 Raw Elasticsearch response:', JSON.stringify(response.hits, null, 2));
-    console.log('📊 Search results:', {
-      total: response.hits.total.value,
-      hits: response.hits.hits.length,
-      statusGroup: statusGroup
-    });
+
 
     return {
       total: response.hits.total.value,
@@ -722,7 +750,7 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       };
     }
 
-    console.log('🔍 Archived leads search query:', { query, page, limit });
+
 
     const offset = (page - 1) * limit;
 
@@ -841,7 +869,7 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       }
     };
 
-    console.log('📦 Archived leads Elasticsearch query:', JSON.stringify(searchQuery, null, 2));
+
 
     const response = await client.search({
       index: ARCHIVED_LEAD_INDEX,
@@ -856,10 +884,7 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       }
     });
 
-    console.log('📊 Archived leads search results:', {
-      total: response.hits.total.value,
-      hits: response.hits.hits.length
-    });
+
 
     return {
       total: response.hits.total.value,
