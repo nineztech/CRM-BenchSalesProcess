@@ -221,6 +221,16 @@ export const createDefaultActivities = async () => {
         editRoute: "/account-sale",
         deleteRoute: "/account-sale",
         status: "active"
+      },
+      {
+        name: "Payment Control Management",
+        category: "Finance",
+        description: "Manage and track all installment payments, update payment status, and edit net amounts",
+        viewRoute: "/finance/payment-control",
+        addRoute: "/finance/payment-control",
+        editRoute: "/finance/payment-control",
+        deleteRoute: "/finance/payment-control",
+        status: "active"
       }
     ];
 

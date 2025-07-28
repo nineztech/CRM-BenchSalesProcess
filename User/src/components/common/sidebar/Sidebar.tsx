@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope, FaGraduationCap, FaUserTie, FaUserCog, FaMoneyBillWave, FaHandHoldingUsd } from 'react-icons/fa';
+import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope, FaGraduationCap, FaUserTie, FaUserCog, FaMoneyBillWave, FaHandHoldingUsd, FaCreditCard } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -161,6 +161,13 @@ const Sidebar: React.FC = () => {
           to: '/account-admin',
           text: 'Admin Enrolled Accounting',
           activity: 'Account Management Admin',
+          permission: 'view'
+        },
+        {
+          icon: <FaCreditCard />,
+          to: '/finance/payment-control',
+          text: 'Payment Control',
+          activity: 'Payment Control Management',
           permission: 'view'
         }
       ]

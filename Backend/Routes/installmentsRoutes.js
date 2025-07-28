@@ -7,7 +7,10 @@ import {
   updateInstallment,
   deleteInstallment,
   adminInstallmentApproval,
-  salesInstallmentApproval
+  salesInstallmentApproval,
+  getPaymentControlInstallments,
+  updatePaymentStatus,
+  updatePaymentControlInstallment
 } from '../controllers/installmentsController.js';
 import verifyToken from '../middleware/auth.js';
 
@@ -19,8 +22,19 @@ router.post('/', verifyToken, createInstallment);
 // Create combined installments for offer letter and first year
 router.post('/combined', verifyToken, createCombinedInstallments);
 
+// Payment control routes (must come before parameterized routes)
+router.get('/payment-control', verifyToken, getPaymentControlInstallments);
+router.put('/payment-status/:id', verifyToken, updatePaymentStatus);
+router.put('/payment-control/:id', verifyToken, updatePaymentControlInstallment);
+
 // Get all installments for an enrolled client
 router.get('/enrolled-client/:enrolledClientId', getInstallmentsByEnrolledClient);
+
+// Admin approval/rejection route
+router.put('/admin/approval/:id', verifyToken, adminInstallmentApproval);
+
+// Sales approval/rejection route
+router.put('/sales/approval/:id', verifyToken, salesInstallmentApproval);
 
 // Get single installment by ID
 router.get('/:id', getInstallmentById);
@@ -30,11 +44,5 @@ router.put('/:id', verifyToken, updateInstallment);
 
 // Delete installment
 router.delete('/:id', verifyToken, deleteInstallment);
-
-// Admin approval/rejection route
-router.put('/admin/approval/:id', verifyToken, adminInstallmentApproval);
-
-// Sales approval/rejection route
-router.put('/sales/approval/:id', verifyToken, salesInstallmentApproval);
 
 export default router; 

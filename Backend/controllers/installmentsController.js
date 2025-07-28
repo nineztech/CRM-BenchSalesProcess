@@ -1,5 +1,7 @@
 import Installments from '../models/installmentsModel.js';
 import EnrolledClients from '../models/enrolledClientsModel.js';
+import Lead from '../models/leadModel.js';
+import Packages from '../models/packagesModel.js';
 import { Op, Sequelize } from 'sequelize';
 
 // Helper function to calculate total installment amount
@@ -96,6 +98,7 @@ export const createCombinedInstallments = async (req, res) => {
           enrolledClientId,
           charge_type: 'offer_letter_charge',
           amount: installment.amount,
+          net_amount: installment.amount,
           dueDate: installment.dueDate,
           remark: installment.remark,
           installment_number: i,
@@ -123,6 +126,7 @@ export const createCombinedInstallments = async (req, res) => {
           enrolledClientId,
           charge_type: 'first_year_charge',
           amount: installment.amount,
+          net_amount: installment.amount,
           dueDate: installment.dueDate,
           remark: installment.remark,
           installment_number: i,
@@ -241,6 +245,7 @@ export const createInstallment = async (req, res) => {
       enrolledClientId,
       charge_type,
       amount,
+      net_amount: amount, // Set net_amount equal to amount by default
       dueDate: isInitialPayment ? new Date() : dueDate,
       remark: isInitialPayment ? 'Initial Payment' : remark,
       installment_number: finalInstallmentNumber,
@@ -461,6 +466,133 @@ export const updateInstallment = async (req, res) => {
       updateData.paid = paid;
       updateData.paidDate = paid ? (paidDate || new Date()) : null;
       updateData.paid_at = paid ? new Date() : null;
+    }
+
+    await installment.update(updateData);
+
+    res.status(200).json({
+      success: true,
+      message: 'Installment updated successfully',
+      data: installment
+    });
+
+  } catch (error) {
+    console.error('Error updating installment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get all installments for payment control
+export const getPaymentControlInstallments = async (req, res) => {
+  try {
+    const installments = await Installments.findAll({
+      include: [
+        {
+          model: EnrolledClients,
+          as: 'enrolledClient',
+          include: [
+            {
+              model: Lead,
+              as: 'lead',
+              attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'technology', 'visaStatus']
+            },
+            {
+              model: Packages,
+              as: 'package',
+              attributes: ['id', 'planName']
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment control installments retrieved successfully',
+      data: installments
+    });
+
+  } catch (error) {
+    console.error('Error fetching payment control installments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update payment status
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paid, paidDate, updatedBy } = req.body;
+
+    const installment = await Installments.findByPk(id);
+    if (!installment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Installment not found'
+      });
+    }
+
+    const updateData = {
+      paid,
+      paidDate: paid ? paidDate : null,
+      paid_at: paid ? new Date() : null
+    };
+
+    if (updatedBy) {
+      updateData.updatedBy = updatedBy;
+    }
+
+    await installment.update(updateData);
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment status updated successfully',
+      data: installment
+    });
+
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update installment for payment control
+export const updatePaymentControlInstallment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { net_amount, paid, paidDate, remark, updatedBy } = req.body;
+
+    const installment = await Installments.findByPk(id);
+    if (!installment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Installment not found'
+      });
+    }
+
+    const updateData = {
+      net_amount: net_amount || installment.amount,
+      paid,
+      paidDate: paid ? paidDate : null,
+      paid_at: paid ? new Date() : null,
+      remark: remark || installment.remark
+    };
+
+    if (updatedBy) {
+      updateData.updatedBy = updatedBy;
     }
 
     await installment.update(updateData);

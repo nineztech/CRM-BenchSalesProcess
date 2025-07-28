@@ -24,6 +24,7 @@ import { PermissionsProvider } from '../hooks/usePermissions';
 // Add imports for new finance pages
 import AccountSale from '../components/user/finance/AccountSale';
 import AccountAdmin from '../components/user/finance/AccountAdmin';
+import PaymentControl from '../components/user/finance/PaymentControl';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -122,6 +123,14 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <UserLayout>
                 <AccountAdmin />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/finance/payment-control" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <PaymentControl />
               </UserLayout>
             </ProtectedRoute>
           } />

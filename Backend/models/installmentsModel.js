@@ -30,6 +30,11 @@ const Installments = sequelize.define('installments', {
     allowNull: false,
     validate: { min: 0 }
   },
+  net_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    validate: { min: 0 }
+  },
   dueDate: {
     type: DataTypes.DATEONLY,
     allowNull: false
