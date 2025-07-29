@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaFilePdf, FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt, FaInfoCircle, FaCheckCircle } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaBox, FaPlus, FaTrash, FaListAlt, FaCheckCircle } from 'react-icons/fa';
 import InstallmentsPopup from '../enrollment/InstallmentsPopup';
 import ConfirmationPopup from '../enrollment/ConfirmationPopup';
 
@@ -140,7 +140,6 @@ const packageColorThemes: { [key: string]: { bg: string; border: string; text: s
 };
 
 const AccountSale: React.FC = () => {
-  const [clients, setClients] = useState<EnrolledClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -164,7 +163,7 @@ const AccountSale: React.FC = () => {
   });
   const [showOfferLetterInitialPayment, setShowOfferLetterInitialPayment] = useState(false);
   const [showFirstYearInitialPayment, setShowFirstYearInitialPayment] = useState(false);
-  const [hasInstallmentError, setHasInstallmentError] = useState(false);
+  // const [hasInstallmentError, setHasInstallmentError] = useState(false);
   const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
   const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
   const [installmentChargeType, setInstallmentChargeType] = useState<'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge'>('enrollment_charge');
@@ -183,21 +182,30 @@ const AccountSale: React.FC = () => {
           },
         });
         if (response.data.success) {
-          setTabsData(response.data.data);
-          // Set active tab to first tab by default
-          const firstTabKey = Object.keys(response.data.data)[0];
-          setActiveTab(firstTabKey);
-          setClients(response.data.data[firstTabKey]?.leads || []);
+                  setTabsData(response.data.data);
+        // Set active tab to first tab by default
+        const firstTabKey = Object.keys(response.data.data)[0];
+        setActiveTab(firstTabKey);
         }
-      } catch (error) {
-        setClients([]);
-      } finally {
+          } catch (error) {
+    } finally {
         setLoading(false);
       }
     };
     fetchData();
     fetchPackages();
   }, []);
+
+  // Effect to ensure net payable is populated when fixed charge is available
+  useEffect(() => {
+    if (formData.pricing_type === 'fixed' && formData.payable_first_year_fixed_charge && !formData.net_payable_first_year_price) {
+      setFormData(prev => ({
+        ...prev,
+        net_payable_first_year_price: prev.payable_first_year_fixed_charge,
+        first_year_initial_payment: prev.payable_first_year_fixed_charge
+      }));
+    }
+  }, [formData.pricing_type, formData.payable_first_year_fixed_charge, formData.net_payable_first_year_price]);
 
   const fetchPackages = async () => {
     try {
@@ -458,6 +466,7 @@ const AccountSale: React.FC = () => {
       payable_first_year_percentage: type === 'percentage' ? prev.payable_first_year_percentage : null,
       payable_first_year_fixed_charge: type === 'fixed' ? prev.payable_first_year_fixed_charge : null,
       net_payable_first_year_price: type === 'fixed' ? prev.payable_first_year_fixed_charge : null,
+      first_year_initial_payment: type === 'fixed' ? prev.payable_first_year_fixed_charge : null,
       first_year_salary: null
     }));
   };
@@ -581,81 +590,81 @@ const AccountSale: React.FC = () => {
     return totalCharge - (initialPayment + totalExistingAmount);
   };
 
-  // Add new function for offer letter installments
-  const addOfferLetterInstallment = () => {
-    if (!selectedClient) return;
+  // // Add new function for offer letter installments
+  // const addOfferLetterInstallment = () => {
+  //   if (!selectedClient) return;
     
-    const totalCharge = formData.payable_offer_letter_charge || 0;
-    if (totalCharge === 0) {
-      alert('Cannot add installments when offer letter charge is 0');
-      return;
-    }
+  //   const totalCharge = formData.payable_offer_letter_charge || 0;
+  //   if (totalCharge === 0) {
+  //     alert('Cannot add installments when offer letter charge is 0');
+  //     return;
+  //   }
 
-    if (!showOfferLetterInitialPayment) {
-      setShowOfferLetterInitialPayment(true);
-      return;
-    }
+  //   if (!showOfferLetterInitialPayment) {
+  //     setShowOfferLetterInitialPayment(true);
+  //     return;
+  //   }
 
-    if (!formData.offer_letter_initial_payment) {
-      alert('Please enter the initial payment amount first');
-      return;
-    }
+  //   if (!formData.offer_letter_initial_payment) {
+  //     alert('Please enter the initial payment amount first');
+  //     return;
+  //   }
 
-    const totalExistingAmount = formData.offer_letter_installments.reduce((sum, inst) => sum + inst.amount, 0);
-    const remainingAmount = totalCharge - (formData.offer_letter_initial_payment + totalExistingAmount);
+  //   const totalExistingAmount = formData.offer_letter_installments.reduce((sum, inst) => sum + inst.amount, 0);
+  //   const remainingAmount = totalCharge - (formData.offer_letter_initial_payment + totalExistingAmount);
 
-    if (remainingAmount <= 0) {
-      alert('Total installment amount cannot exceed the remaining charge');
-      return;
-    }
+  //   if (remainingAmount <= 0) {
+  //     alert('Total installment amount cannot exceed the remaining charge');
+  //     return;
+  //   }
 
-    setFormData(prev => ({
-      ...prev,
-      offer_letter_installments: [
-        ...prev.offer_letter_installments,
-        { amount: remainingAmount, dueDate: '', remark: '' }
-      ]
-    }));
-  };
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     offer_letter_installments: [
+  //       ...prev.offer_letter_installments,
+  //       { amount: remainingAmount, dueDate: '', remark: '' }
+  //     ]
+  //   }));
+  // };
 
-  const updateOfferLetterInstallment = (index: number, field: keyof Installment, value: string | number) => {
-    setFormData(prev => {
-      const newInstallments = [...prev.offer_letter_installments];
+  // const updateOfferLetterInstallment = (index: number, field: keyof Installment, value: string | number) => {
+  //   setFormData(prev => {
+  //     const newInstallments = [...prev.offer_letter_installments];
       
-      if (field === 'amount') {
-        const numValue = Number(Number(value).toFixed(2));
-        const totalCharge = Number((prev.payable_offer_letter_charge || 0).toFixed(2));
-        const initialPayment = Number((prev.offer_letter_initial_payment || 0).toFixed(2));
-        const totalOtherInstallments = Number(prev.offer_letter_installments.reduce((sum, inst, i) => 
-          i === index ? sum : sum + Number(inst.amount), 0).toFixed(2));
+  //     if (field === 'amount') {
+  //       const numValue = Number(Number(value).toFixed(2));
+  //       const totalCharge = Number((prev.payable_offer_letter_charge || 0).toFixed(2));
+  //       const initialPayment = Number((prev.offer_letter_initial_payment || 0).toFixed(2));
+  //       const totalOtherInstallments = Number(prev.offer_letter_installments.reduce((sum, inst, i) => 
+  //         i === index ? sum : sum + Number(inst.amount), 0).toFixed(2));
         
-        const totalAmount = Number((initialPayment + totalOtherInstallments + numValue).toFixed(2));
+  //       const totalAmount = Number((initialPayment + totalOtherInstallments + numValue).toFixed(2));
         
-        if (totalAmount > totalCharge) {
-          alert(`Total amount (${formatCurrency(totalAmount)}) cannot exceed total charge (${formatCurrency(totalCharge)})`);
-          setHasInstallmentError(true);
-          return prev;
-        }
-      }
+  //       if (totalAmount > totalCharge) {
+  //         alert(`Total amount (${formatCurrency(totalAmount)}) cannot exceed total charge (${formatCurrency(totalCharge)})`);
+  //         setHasInstallmentError(true);
+  //         return prev;
+  //       }
+  //     }
 
-      newInstallments[index] = { 
-        ...newInstallments[index], 
-        [field]: field === 'amount' ? Number(Number(value).toFixed(2)) : value 
-      };
+  //     newInstallments[index] = { 
+  //       ...newInstallments[index], 
+  //       [field]: field === 'amount' ? Number(Number(value).toFixed(2)) : value 
+  //     };
 
-      return {
-        ...prev,
-        offer_letter_installments: newInstallments
-      };
-    });
-  };
+  //     return {
+  //       ...prev,
+  //       offer_letter_installments: newInstallments
+  //     };
+  //   });
+  // };
 
-  const removeOfferLetterInstallment = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      offer_letter_installments: prev.offer_letter_installments.filter((_, i) => i !== index)
-    }));
-  };
+  // const removeOfferLetterInstallment = (index: number) => {
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     offer_letter_installments: prev.offer_letter_installments.filter((_, i) => i !== index)
+  //   }));
+  // };
 
   const handleOfferLetterInitialPaymentChange = (value: number) => {
     setFormData(prev => {
@@ -725,7 +734,6 @@ const AccountSale: React.FC = () => {
           setTabsData(updatedResponse.data.data);
           const firstTabKey = Object.keys(updatedResponse.data.data)[0];
           setActiveTab(firstTabKey);
-          setClients(updatedResponse.data.data[firstTabKey]?.leads || []);
         }
       }
     } catch (error) {
@@ -909,7 +917,6 @@ const AccountSale: React.FC = () => {
         setTabsData(updatedResponse.data.data);
         const firstTabKey = Object.keys(updatedResponse.data.data)[0];
         setActiveTab(firstTabKey);
-        setClients(updatedResponse.data.data[firstTabKey]?.leads || []);
       }
       
       if (finalUpdated) {
@@ -1009,15 +1016,15 @@ const AccountSale: React.FC = () => {
     }).format(amount);
   };
 
-  const getFirstCallStatus = () => {
-    const statuses = ['pending', 'onhold', 'Done'];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    let badgeColor = '';
-    if (randomStatus === 'pending') badgeColor = 'bg-yellow-100 text-yellow-800';
-    else if (randomStatus === 'onhold') badgeColor = 'bg-red-100 text-red-800';
-    else badgeColor = 'bg-green-100 text-green-800';
-    return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
-  };
+  // const getFirstCallStatus = () => {
+  //   const statuses = ['pending', 'onhold', 'Done'];
+  //   const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+  //   let badgeColor = '';
+  //   if (randomStatus === 'pending') badgeColor = 'bg-yellow-100 text-yellow-800';
+  //   else if (randomStatus === 'onhold') badgeColor = 'bg-red-100 text-red-800';
+  //   else badgeColor = 'bg-green-100 text-green-800';
+  //   return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
+  // };
 
   // Update getFilteredClients to use tabsData
   const getFilteredClients = () => {
@@ -1025,17 +1032,17 @@ const AccountSale: React.FC = () => {
   };
 
   // Add handleApprove function
-  const handleApprove = async (client: EnrolledClient) => {
-    // Mark as approved by sales, refresh list
-    try {
-      const token = localStorage.getItem('token');
-      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
-      await axios.put(`${BASE_URL}/enrolled-clients/accounts/sales/approve/${client.id}`, { approved: true, Sales_person_id: userId });
-      // Refresh clients
-      const response = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (response.data.success) setClients(response.data.data.leads || []);
-    } catch (error) { alert('Error approving client'); }
-  };
+  // const handleApprove = async (client: EnrolledClient) => {
+  //   // Mark as approved by sales, refresh list
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+  //     await axios.put(`${BASE_URL}/enrolled-clients/accounts/sales/approve/${client.id}`, { approved: true, Sales_person_id: userId });
+  //     // Refresh clients
+  //     const response = await axios.get(`${BASE_URL}/enrolled-clients/accounts/sales`, { headers: { 'Authorization': `Bearer ${token}` } });
+  //     if (response.data.success) setClients(response.data.data.leads || []);
+  //   } catch (error) { alert('Error approving client'); }
+  // };
 
   const handleViewInstallments = (client: EnrolledClient, chargeType: 'enrollment_charge' | 'offer_letter_charge' | 'first_year_charge') => {
     setSelectedClientForInstallments(client);
@@ -1076,7 +1083,6 @@ const AccountSale: React.FC = () => {
                 key={tabKey}
                 onClick={() => {
                   setActiveTab(tabKey);
-                  setClients(tabData.leads);
                 }}
                 className={`py-3 px-6 border-b-2 font-medium text-base ${
                   activeTab === tabKey
@@ -1180,10 +1186,16 @@ const AccountSale: React.FC = () => {
                         setFormData(prev => ({
                           ...prev,
                           payable_offer_letter_charge: newValue,
-                          offer_letter_initial_payment: newValue,
-                          offer_letter_installments: []
+                          // Only update initial payment and clear installments if NOT in "My Review" tab
+                          ...(activeTab !== 'My Review' && {
+                            offer_letter_initial_payment: newValue,
+                            offer_letter_installments: []
+                          })
                         }));
-                        setShowOfferLetterInitialPayment(false);
+                        // Only hide initial payment section if NOT in "My Review" tab
+                        if (activeTab !== 'My Review') {
+                          setShowOfferLetterInitialPayment(false);
+                        }
                       }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="0.00"
@@ -1438,7 +1450,8 @@ const AccountSale: React.FC = () => {
                             setFormData(prev => ({ 
                               ...prev, 
                               payable_first_year_fixed_charge: value,
-                              net_payable_first_year_price: value
+                              net_payable_first_year_price: value,
+                              first_year_initial_payment: value
                             }));
                           }}
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1701,7 +1714,10 @@ const AccountSale: React.FC = () => {
                               <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
                             </div>
                             <span className="text-sm text-gray-900">
-                              {formatCurrency(client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)}
+                              {activeTab === 'Admin Review' 
+                                ? formatCurrency(client.payable_offer_letter_charge)
+                                : formatCurrency(client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+                              }
                             </span>
                           </div>
 
@@ -1717,13 +1733,17 @@ const AccountSale: React.FC = () => {
                               <span className="text-sm font-medium text-gray-700">First Year:</span>
                             </div>
                             <span className="text-sm text-gray-900">
-                              {client.edited_first_year_percentage !== null
-                                ? `${client.edited_first_year_percentage}%`
-                                : client.edited_first_year_fixed_charge !== null
-                                  ? formatCurrency(client.edited_first_year_fixed_charge)
-                                  : client.payable_first_year_percentage
+                              {activeTab === 'Admin Review' 
+                                ? (client.payable_first_year_percentage
                                     ? `${client.payable_first_year_percentage}%`
-                                    : formatCurrency(client.payable_first_year_fixed_charge)
+                                    : formatCurrency(client.payable_first_year_fixed_charge))
+                                : (client.edited_first_year_percentage !== null
+                                    ? `${client.edited_first_year_percentage}%`
+                                    : client.edited_first_year_fixed_charge !== null
+                                      ? formatCurrency(client.edited_first_year_fixed_charge)
+                                      : client.payable_first_year_percentage
+                                        ? `${client.payable_first_year_percentage}%`
+                                        : formatCurrency(client.payable_first_year_fixed_charge))
                               }
                             </span>
                           </div>

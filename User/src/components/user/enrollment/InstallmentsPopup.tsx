@@ -40,7 +40,7 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   editedTotalCharge,
   chargeType = 'enrollment_charge',
   firstYearSalary,
-  netPayableFirstYear
+  
 }) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaCheckCircle, FaTimes, FaEdit, FaFilePdf, FaBox, FaInfoCircle, FaListAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaEdit, FaListAlt } from 'react-icons/fa';
 import ConfirmationPopup from '../enrollment/ConfirmationPopup';
 import AdminConfigurationPopup from './AdminConfigurationPopup';
 import InstallmentsPopup from '../enrollment/InstallmentsPopup';
@@ -84,7 +84,6 @@ interface TabsData {
 }
 
 const AccountAdmin: React.FC = () => {
-  const [clients, setClients] = useState<EnrolledClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('');
   const [tabsData, setTabsData] = useState<TabsData>({});
@@ -115,11 +114,9 @@ const AccountAdmin: React.FC = () => {
         // Set active tab to first tab by default
         const firstTabKey = Object.keys(response.data.data)[0];
         setActiveTab(firstTabKey);
-        setClients(response.data.data[firstTabKey]?.leads || []);
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
-      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -170,11 +167,11 @@ const AccountAdmin: React.FC = () => {
   };
 
   // Add new function for admin to make changes and send back to sales
-  const handleAdminChanges = async (client: EnrolledClient) => {
-    // This will be handled by the AdminConfigurationPopup component
-    setSelectedClientForEdit(client);
-    setShowConfigurationPopup(true);
-  };
+  // const handleAdminChanges = async (client: EnrolledClient) => {
+  //   // This will be handled by the AdminConfigurationPopup component
+  //   setSelectedClientForEdit(client);
+  //   setShowConfigurationPopup(true);
+  // };
 
   const handleApprovalIconClick = (client: EnrolledClient) => {
     setPendingApprovalClient(client);
@@ -205,34 +202,34 @@ const AccountAdmin: React.FC = () => {
     setShowInstallmentsPopup(true);
   };
 
-  const handleFirstCallStatusChange = async (client: EnrolledClient, newStatus: 'pending' | 'onhold' | 'done') => {
-    try {
-      const token = localStorage.getItem('token');
-      const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+  // const handleFirstCallStatusChange = async (client: EnrolledClient, newStatus: 'pending' | 'onhold' | 'done') => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
       
-      const response = await axios.put(
-        `${BASE_URL}/enrolled-clients/first-call-status/${client.id}`,
-        {
-          first_call_status: newStatus,
-          updatedBy: userId
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+  //     const response = await axios.put(
+  //       `${BASE_URL}/enrolled-clients/first-call-status/${client.id}`,
+  //       {
+  //         first_call_status: newStatus,
+  //         updatedBy: userId
+  //       },
+  //       {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json'
+  //         }
+  //       }
+  //     );
       
-      if (response.data.success) {
-        toast.success('First call status updated successfully!');
-        fetchClients();
-      }
-    } catch (error) {
-      console.error('Error updating first call status:', error);
-      toast.error('Error updating first call status');
-    }
-  };
+  //     if (response.data.success) {
+  //       toast.success('First call status updated successfully!');
+  //       fetchClients();
+  //     }
+  //   } catch (error) {
+  //     console.error('Error updating first call status:', error);
+  //     toast.error('Error updating first call status');
+  //   }
+  // };
 
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return 'Not Set';
@@ -242,15 +239,15 @@ const AccountAdmin: React.FC = () => {
     }).format(amount);
   };
 
-  const getFirstCallStatus = () => {
-    const statuses = ['pending', 'onhold', 'Done'];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    let badgeColor = '';
-    if (randomStatus === 'pending') badgeColor = 'bg-yellow-100 text-yellow-800';
-    else if (randomStatus === 'onhold') badgeColor = 'bg-red-100 text-red-800';
-    else badgeColor = 'bg-green-100 text-green-800';
-    return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
-  };
+  // const getFirstCallStatus = () => {
+  //   const statuses = ['pending', 'onhold', 'Done'];
+  //   const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+  //   let badgeColor = '';
+  //   if (randomStatus === 'pending') badgeColor = 'bg-yellow-100 text-yellow-800';
+  //   else if (randomStatus === 'onhold') badgeColor = 'bg-red-100 text-red-800';
+  //   else badgeColor = 'bg-green-100 text-green-800';
+  //   return <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColor}`}>{randomStatus}</span>;
+  // };
 
   // Update getFilteredClients to use tabsData
   const getFilteredClients = () => {
@@ -287,7 +284,6 @@ const AccountAdmin: React.FC = () => {
                 key={tabKey}
                 onClick={() => {
                   setActiveTab(tabKey);
-                  setClients(tabData.leads);
                 }}
                 className={`py-3 px-6 border-b-2 font-medium text-base ${
                   activeTab === tabKey
@@ -498,6 +494,14 @@ const AccountAdmin: React.FC = () => {
           totalCharge={
             installmentChargeType === 'enrollment_charge' 
               ? selectedClientForInstallments.payable_enrollment_charge
+              : installmentChargeType === 'offer_letter_charge'
+                ? selectedClientForInstallments.payable_offer_letter_charge
+                : selectedClientForInstallments.net_payable_first_year_price
+          }
+          isMyReview={true}
+          editedTotalCharge={
+            installmentChargeType === 'enrollment_charge' 
+              ? selectedClientForInstallments.payable_offer_letter_charge
               : installmentChargeType === 'offer_letter_charge'
                 ? selectedClientForInstallments.payable_offer_letter_charge
                 : selectedClientForInstallments.net_payable_first_year_price

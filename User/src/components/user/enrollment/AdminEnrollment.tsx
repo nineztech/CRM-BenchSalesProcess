@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUpload, FaEnvelope, FaUserPlus, FaExchangeAlt, FaListAlt } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserCog, FaGraduationCap, FaClock, FaCheckCircle, FaInfoCircle, FaFilePdf, FaUserPlus, FaListAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
@@ -165,7 +165,6 @@ const AdminEnrollment: React.FC = () => {
   const [selectedTeamLead, setSelectedTeamLead] = useState<string>('');
   const [isLoadingTeamLeads, setIsLoadingTeamLeads] = useState(false);
   const [currentAssignments, setCurrentAssignments] = useState<{[key: number]: number}>({});
-  const [installments, setInstallments] = useState<any[]>([]);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
   const [installmentError, setInstallmentError] = useState<string | null>(null);
@@ -278,10 +277,10 @@ const AdminEnrollment: React.FC = () => {
       );
 
       if (response.data.success) {
-        setInstallments(response.data.data.installments);
+        const fetchedInstallments = response.data.data.installments;
         setFormData(prev => ({
           ...prev,
-          edited_installments: response.data.data.installments.map((inst: any) => ({
+          edited_installments: fetchedInstallments.map((inst: any) => ({
             id: inst.id,
             amount: inst.amount,
             dueDate: inst.dueDate,
@@ -485,30 +484,30 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
-  const handleResumeUpload = async (file: File, clientId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('resume', file);
-      const response = await axios.post(
-        `${BASE_URL}/enrolled-clients/${clientId}/resume`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
-      if (response.data.success) {
-        toast.success('Resume uploaded successfully!');
-        fetchEnrolledClients();
-      }
-    } catch (error) {
-      console.error('Error uploading resume:', error);
-      toast.error('Failed to upload resume');
-    }
-  };
+  // const handleResumeUpload = async (file: File, clientId: number) => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     const formData = new FormData();
+  //     formData.append('resume', file);
+  //     const response = await axios.post(
+  //       `${BASE_URL}/enrolled-clients/${clientId}/resume`,
+  //       formData,
+  //       {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'multipart/form-data'
+  //         }
+  //       }
+  //     );
+  //     if (response.data.success) {
+  //       toast.success('Resume uploaded successfully!');
+  //       fetchEnrolledClients();
+  //     }
+  //   } catch (error) {
+  //     console.error('Error uploading resume:', error);
+  //     toast.error('Failed to upload resume');
+  //   }
+  // };
 
   const handleResumePreview = async (resumePath: string | null, clientId: number) => {
     if (!resumePath) {
@@ -675,51 +674,51 @@ const AdminEnrollment: React.FC = () => {
   };
 
   // Add quick reassign function
-  const handleQuickReassign = async () => {
-    if (!selectedTeamLead || selectedClientsForAssignment.length === 0) {
-      toast.error('Please select a team lead and at least one client');
-      return;
-    }
+  // const handleQuickReassign = async () => {
+  //   if (!selectedTeamLead || selectedClientsForAssignment.length === 0) {
+  //     toast.error('Please select a team lead and at least one client');
+  //     return;
+  //   }
 
-    setAssignmentLoading(true);
-    try {
-      const token = localStorage.getItem('token');
+  //   setAssignmentLoading(true);
+  //   try {
+  //     const token = localStorage.getItem('token');
       
-      // Create assignments for each selected client
-      const assignmentPromises = selectedClientsForAssignment.map(client => 
-        axios.post(
-          `${BASE_URL}/client-assignments/assign`,
-          {
-            clientId: client.id,
-            assignedToId: Number(selectedTeamLead),
-            remarkText: 'Quick reassignment'
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-      );
+  //     // Create assignments for each selected client
+  //     const assignmentPromises = selectedClientsForAssignment.map(client => 
+  //       axios.post(
+  //         `${BASE_URL}/client-assignments/assign`,
+  //         {
+  //           clientId: client.id,
+  //           assignedToId: Number(selectedTeamLead),
+  //           remarkText: 'Quick reassignment'
+  //         },
+  //         {
+  //           headers: {
+  //             'Authorization': `Bearer ${token}`,
+  //             'Content-Type': 'application/json'
+  //           }
+  //         }
+  //       )
+  //     );
 
-      await Promise.all(assignmentPromises);
+  //     await Promise.all(assignmentPromises);
       
-      // Clear selections
-      setSelectedClientsForAssignment([]);
-      setSelectedTeamLead('');
+  //     // Clear selections
+  //     setSelectedClientsForAssignment([]);
+  //     setSelectedTeamLead('');
       
-      // Refresh the data
-      fetchEnrolledClients();
+  //     // Refresh the data
+  //     fetchEnrolledClients();
       
-      toast.success('Clients reassigned successfully!');
-    } catch (error) {
-      console.error('Error reassigning clients:', error);
-      toast.error('Failed to reassign clients');
-    } finally {
-      setAssignmentLoading(false);
-    }
-  };
+  //     toast.success('Clients reassigned successfully!');
+  //   } catch (error) {
+  //     console.error('Error reassigning clients:', error);
+  //     toast.error('Failed to reassign clients');
+  //   } finally {
+  //     setAssignmentLoading(false);
+  //   }
+  // };
 
   const handleViewInstallments = (client: EnrolledClient) => {
     setSelectedClient(client);
@@ -1332,7 +1331,7 @@ const AdminEnrollment: React.FC = () => {
                           )}
                           
                           {/* Initial Payment Section */}
-                          {formData.edited_installments.filter(inst => inst.is_initial_payment).map((installment, index) => (
+                          {formData.edited_installments.filter(inst => inst.is_initial_payment).map((installment) => (
                             <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
                               <div className="col-span-3 mb-2">
                                 <h4 className="text-sm font-semibold text-purple-700">Initial Payment</h4>
@@ -1389,7 +1388,7 @@ const AdminEnrollment: React.FC = () => {
                           ))}
 
                           {/* Regular Installments Section */}
-                          {formData.edited_installments.filter(inst => !inst.is_initial_payment).map((installment, index) => (
+                          {formData.edited_installments.filter(inst => !inst.is_initial_payment).map((installment) => (
                             <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
