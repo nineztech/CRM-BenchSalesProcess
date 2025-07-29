@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaCheckCircle, FaClock, FaTimes, FaExclamationTriangle, FaUser, FaDollarSign, FaCalendarAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaClock, FaTimes, FaExclamationTriangle, FaUser, } from 'react-icons/fa';
 
 interface PaymentConfirmationPopupProps {
   isOpen: boolean;

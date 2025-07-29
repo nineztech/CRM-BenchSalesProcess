@@ -95,17 +95,18 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
   const [formLoading, setFormLoading] = useState(false);
   const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [installmentError, setInstallmentError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (client && isOpen) {
       setFormData({
         approved: false,
-        edited_offer_letter_charge: client.edited_offer_letter_charge || client.payable_offer_letter_charge,
-        edited_first_year_percentage: client.edited_first_year_percentage || client.payable_first_year_percentage,
-        edited_first_year_fixed_charge: client.edited_first_year_fixed_charge || client.payable_first_year_fixed_charge,
-        edited_net_payable_first_year_price: client.edited_net_payable_first_year_price || client.net_payable_first_year_price,
-        edited_first_year_salary: client.edited_first_year_salary || client.first_year_salary,
-        pricing_type: (client.edited_first_year_percentage || client.payable_first_year_percentage) ? 'percentage' : 'fixed',
+        edited_offer_letter_charge: client.payable_offer_letter_charge,
+        edited_first_year_percentage: client.payable_first_year_percentage,
+        edited_first_year_fixed_charge: client.payable_first_year_fixed_charge,
+        edited_net_payable_first_year_price: client.net_payable_first_year_price,
+        edited_first_year_salary: client.first_year_salary,
+        pricing_type: client.payable_first_year_percentage ? 'percentage' : 'fixed',
         edited_offer_letter_installments: [],
         edited_first_year_installments: []
       });
@@ -236,14 +237,29 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
     });
   };
 
+  const handleFirstYearPercentageChange = (percentage: number) => {
+    setFormData(prev => {
+      const salary = prev.edited_first_year_salary || 0;
+      const netPayable = (salary * percentage) / 100;
+      return {
+        ...prev,
+        edited_first_year_percentage: percentage,
+        edited_net_payable_first_year_price: netPayable
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
 
+    // Clear previous validation errors
+    setValidationErrors([]);
+    const errors: string[] = [];
+
     // Validate first year salary is required when first year percentage is used
     if (formData.edited_first_year_percentage && !formData.edited_first_year_salary) {
-      toast.error('First year salary is required when first year percentage is used');
-      return;
+      errors.push('First year salary is required when first year percentage is used');
     }
 
     // Validate installments before proceeding
@@ -251,9 +267,19 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
       const offerLetterValid = validateInstallments(formData.edited_offer_letter_installments, formData.edited_offer_letter_charge);
       const firstYearValid = validateInstallments(formData.edited_first_year_installments, formData.edited_net_payable_first_year_price);
       
-      if (!offerLetterValid || !firstYearValid) {
-        return; // Stop submission if validation fails
+      if (!offerLetterValid) {
+        errors.push('Offer letter installments total amount does not match the charge amount');
       }
+      if (!firstYearValid) {
+        errors.push('First year installments total amount does not match the net payable amount');
+      }
+    }
+
+    // If there are validation errors, show them and stop submission
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      errors.forEach(error => toast.error(error));
+      return;
     }
 
     setFormLoading(true);
@@ -426,23 +452,23 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium">Offer Letter Charge:</span><br />
-                  {formatCurrency(client.edited_offer_letter_charge)}
+                  {formatCurrency(client.payable_offer_letter_charge)}
                 </div>
                 <div>
                   <span className="font-medium">First Year:</span><br />
-                  {client.edited_first_year_percentage 
-                    ? `${client.edited_first_year_percentage}%` 
-                    : formatCurrency(client.edited_first_year_fixed_charge)}
+                  {client.payable_first_year_percentage 
+                    ? `${client.payable_first_year_percentage}%` 
+                    : formatCurrency(client.payable_first_year_fixed_charge)}
                 </div>
-                {client.edited_first_year_percentage && (
+                {client.payable_first_year_percentage && (
                   <div>
                     <span className="font-medium">First Year Salary:</span><br />
-                    {formatCurrency(client.edited_first_year_salary)}
+                    {formatCurrency(client.first_year_salary)}
                   </div>
                 )}
                 <div>
                   <span className="font-medium">Net Payable First Year:</span><br />
-                  {formatCurrency(client.edited_net_payable_first_year_price)}
+                  {formatCurrency(client.net_payable_first_year_price)}
                 </div>
               </div>
             </div>
@@ -482,6 +508,18 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
           {/* Modification Form */}
           {formData.approved === false && (
             <>
+              {/* Validation Errors Display */}
+              {validationErrors.length > 0 && (
+                <div className="border rounded-lg p-4 bg-red-50 mb-4">
+                  <h3 className="font-medium text-red-900 mb-2">Validation Errors</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index} className="text-red-700 text-sm">{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="border rounded-lg p-4 bg-blue-50">
                 <h3 className="font-medium text-gray-900 mb-4">Modify Configuration</h3>
                 
@@ -542,7 +580,7 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
                         <input
                           type="number"
                           value={formData.edited_first_year_percentage || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_percentage: Number(e.target.value) }))}
+                          onChange={(e) => handleFirstYearPercentageChange(Number(e.target.value))}
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="0.00"
                           step="0.01"
@@ -618,7 +656,7 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
                     )}
                     
                     {/* Initial Payment Section */}
-                    {formData.edited_offer_letter_installments.filter(inst => inst.is_initial_payment).map((installment, index) => (
+                    {formData.edited_offer_letter_installments.filter(inst => inst.is_initial_payment).map((installment) => (
                       <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
                         <div className="col-span-3 mb-2">
                           <h4 className="text-sm font-semibold text-purple-700">Initial Payment</h4>
@@ -678,7 +716,7 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
                     ))}
 
                     {/* Regular Installments Section */}
-                    {formData.edited_offer_letter_installments.filter(inst => !inst.is_initial_payment).map((installment, index) => (
+                    {formData.edited_offer_letter_installments.filter(inst => !inst.is_initial_payment).map((installment) => (
                       <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -765,7 +803,7 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
                 ) : (
                   <div className="space-y-4">
                     {/* Initial Payment Section */}
-                    {formData.edited_first_year_installments.filter(inst => inst.is_initial_payment).map((installment, index) => (
+                    {formData.edited_first_year_installments.filter(inst => inst.is_initial_payment).map((installment) => (
                       <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
                         <div className="col-span-3 mb-2">
                           <h4 className="text-sm font-semibold text-purple-700">Initial Payment</h4>
@@ -825,7 +863,7 @@ const AdminConfigurationPopup: React.FC<AdminConfigurationPopupProps> = ({
                     ))}
 
                     {/* Regular Installments Section */}
-                    {formData.edited_first_year_installments.filter(inst => !inst.is_initial_payment).map((installment, index) => (
+                    {formData.edited_first_year_installments.filter(inst => !inst.is_initial_payment).map((installment) => (
                       <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">

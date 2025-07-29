@@ -418,11 +418,16 @@ export const salesApprovalAction = async (req, res) => {
     }
 
     if (approved) {
-      // Sales accepts admin changes
+      // Sales accepts admin changes - copy edited values to payable fields
       await enrolledClient.update({
         Approval_by_sales: true,
         has_update: false,
-        updatedBy
+        updatedBy,
+        // Copy admin's edited values to payable fields
+        payable_enrollment_charge: enrolledClient.edited_enrollment_charge,
+        payable_offer_letter_charge: enrolledClient.edited_offer_letter_charge,
+        payable_first_year_percentage: enrolledClient.edited_first_year_percentage,
+        payable_first_year_fixed_charge: enrolledClient.edited_first_year_fixed_charge
       });
       
       // If both admin and sales have approved, mark initial payment as paid

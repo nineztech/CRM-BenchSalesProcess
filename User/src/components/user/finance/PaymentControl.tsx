@@ -2,24 +2,24 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import PaymentConfirmationPopup from './PaymentConfirmationPopup';
 import { 
-  FaDollarSign, 
+  // FaDollarSign, 
   FaCheckCircle, 
   FaClock, 
   FaCalendarAlt, 
   FaUser, 
-  FaFileInvoiceDollar,
+  // FaFileInvoiceDollar,
   FaMoneyBillWave,
   FaCreditCard,
   FaReceipt,
   FaSearch,
   FaFilter,
-  FaEye,
+  // FaEye,
   FaEdit,
   FaTimes,
   FaChevronDown,
   FaChevronUp,
   FaEnvelope,
-  FaPhone,
+  // FaPhone,
   FaMapMarkerAlt
 } from 'react-icons/fa';
 
@@ -341,31 +341,31 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
     }).format(amount);
   };
 
-  const getChargeTypeLabel = (chargeType: string) => {
-    switch (chargeType) {
-      case 'enrollment_charge':
-        return 'Enrollment';
-      case 'offer_letter_charge':
-        return 'Offer Letter';
-      case 'first_year_charge':
-        return 'First Year';
-      default:
-        return chargeType;
-    }
-  };
+  // const getChargeTypeLabel = (chargeType: string) => {
+  //   switch (chargeType) {
+  //     case 'enrollment_charge':
+  //       return 'Enrollment';
+  //     case 'offer_letter_charge':
+  //       return 'Offer Letter';
+  //     case 'first_year_charge':
+  //       return 'First Year';
+  //     default:
+  //       return chargeType;
+  //   }
+  // };
 
-  const getChargeTypeColor = (chargeType: string) => {
-    switch (chargeType) {
-      case 'enrollment_charge':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'offer_letter_charge':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'first_year_charge':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  // const getChargeTypeColor = (chargeType: string) => {
+  //   switch (chargeType) {
+  //     case 'enrollment_charge':
+  //       return 'bg-blue-100 text-blue-800 border-blue-200';
+  //     case 'offer_letter_charge':
+  //       return 'bg-purple-100 text-purple-800 border-purple-200';
+  //     case 'first_year_charge':
+  //       return 'bg-green-100 text-green-800 border-green-200';
+  //     default:
+  //       return 'bg-gray-100 text-gray-800 border-gray-200';
+  //   }
+  // };
 
   const getStatusBadge = (paid: boolean) => {
     return paid ? (
