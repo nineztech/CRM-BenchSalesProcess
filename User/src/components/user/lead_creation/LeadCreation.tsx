@@ -407,7 +407,9 @@ const LeadCreationComponent: React.FC = () => {
                   lead.country?.toLowerCase().includes(searchLower) ||
                   lead.visaStatus?.toLowerCase().includes(searchLower) ||
                   lead.status?.toLowerCase().includes(searchLower) ||
-                  lead.leadSource?.toLowerCase().includes(searchLower)
+                  lead.leadSource?.toLowerCase().includes(searchLower) ||
+                  lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                  lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                 );
               });
 
@@ -580,7 +582,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
               }
@@ -668,7 +672,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
               }
@@ -756,7 +762,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
               }
@@ -844,7 +852,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
               }
@@ -932,7 +942,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
               }
@@ -1867,7 +1879,9 @@ const LeadCreationComponent: React.FC = () => {
                     lead.country?.toLowerCase().includes(searchLower) ||
                     lead.visaStatus?.toLowerCase().includes(searchLower) ||
                     lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower)
+                    lead.leadSource?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
                   );
                 });
                 setLeadsData(prev => ({
@@ -2819,26 +2833,6 @@ ${(() => {
                             {showFilterDropdown && (
                               <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 filter-dropdown-container max-h-96 overflow-y-auto">
                                 <div className="space-y-4">
-                                  {/* Status Filter */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                    <select
-                                      value={statusFilter}
-                                      onChange={(e) => {
-                                        console.log('Status filter changed to:', e.target.value);
-                                        setStatusFilter(e.target.value);
-                                      }}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                    >
-                                      <option value="">All Status</option>
-                                      {filterOptions.statuses.map((status) => (
-                                        <option key={status} value={status}>
-                                          {status}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  
                                   {/* Sales Filter */}
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Sales</label>
@@ -2854,6 +2848,26 @@ ${(() => {
                                       {filterOptions.salesUsers.map((user) => (
                                         <option key={user} value={user}>
                                           {user}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  
+                                  {/* Status Filter */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                    <select
+                                      value={statusFilter}
+                                      onChange={(e) => {
+                                        console.log('Status filter changed to:', e.target.value);
+                                        setStatusFilter(e.target.value);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    >
+                                      <option value="">All Status</option>
+                                      {filterOptions.statuses.map((status) => (
+                                        <option key={status} value={status}>
+                                          {status}
                                         </option>
                                       ))}
                                     </select>
