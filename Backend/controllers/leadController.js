@@ -1714,3 +1714,91 @@ export const archiveLead = async (req, res) => {
     });
   }
 };
+
+// Get filter options (sales users and creators) from all leads
+export const getFilterOptions = async (req, res) => {
+  try {
+    // Get all leads with assigned users and creators
+    const leads = await Lead.findAll({
+      include: [
+        {
+          model: User,
+          as: 'assignedUser',
+          attributes: ['firstname', 'lastname']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['firstname', 'lastname']
+        }
+      ],
+      attributes: ['status']
+    });
+
+    // Extract unique sales users
+    const salesUsersSet = new Set();
+    leads.forEach(lead => {
+      if (lead.assignedUser && lead.assignedUser.firstname && lead.assignedUser.lastname) {
+        salesUsersSet.add(`${lead.assignedUser.firstname} ${lead.assignedUser.lastname}`);
+      }
+    });
+
+    // Extract unique creators
+    const creatorsSet = new Set();
+    leads.forEach(lead => {
+      if (lead.creator && lead.creator.firstname && lead.creator.lastname) {
+        creatorsSet.add(`${lead.creator.firstname} ${lead.creator.lastname}`);
+      }
+    });
+
+    // Extract unique statuses
+    const statusesSet = new Set();
+    leads.forEach(lead => {
+      if (lead.status) {
+        statusesSet.add(lead.status);
+      }
+    });
+
+    // Convert to arrays and sort
+    const salesUsers = Array.from(salesUsersSet).sort();
+    const creators = Array.from(creatorsSet).sort();
+    const statuses = Array.from(statusesSet).sort();
+
+    // Add all possible statuses to ensure they're always available
+    const allPossibleStatuses = [
+      'open', 'Enrolled', 'Dead', 'notinterested', 'DNR1', 'DNR2', 'DNR3', 
+      'interested', 'not working', 'follow up', 'wrong no', 'call again later',
+      'teamfollowup'
+    ];
+
+    allPossibleStatuses.forEach(status => {
+      if (!statuses.includes(status)) {
+        statuses.push(status);
+      }
+    });
+
+    console.log('Filter options found:', {
+      salesUsersCount: salesUsers.length,
+      creatorsCount: creators.length,
+      statusesCount: statuses.length,
+      salesUsers: salesUsers.slice(0, 5), // Log first 5 for debugging
+      creators: creators.slice(0, 5) // Log first 5 for debugging
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        salesUsers,
+        creators,
+        statuses: statuses.sort()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting filter options:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error occurred while getting filter options'
+    });
+  }
+};

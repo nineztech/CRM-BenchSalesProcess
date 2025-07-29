@@ -8,7 +8,8 @@ import {
   archiveLead,
   getAssignedLeads,
   updateTeamFollowupStatus,
-  toggleTeamFollowup
+  toggleTeamFollowup,
+  getFilterOptions
 } from '../controllers/leadController.js'
 import express from 'express'
 import authenticate from '../middleware/auth.js'
@@ -23,6 +24,12 @@ leadRoute.get("/", getAllLeads)
 
 // Get leads assigned to logged-in user
 leadRoute.get("/assigned", authenticate, getAssignedLeads)
+
+// Get filter options (sales users and creators)
+leadRoute.get("/filter-options", authenticate, getFilterOptions)
+
+// Get filter options for assigned leads
+leadRoute.get("/assigned/filter-options", authenticate, getFilterOptions)
 
 // Get leads by status group (open, Enrolled, archived, inProcess, followUp)
 leadRoute.get("/group/:statusGroup", getLeadsByStatusGroup)
