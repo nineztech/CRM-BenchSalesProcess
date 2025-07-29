@@ -327,6 +327,16 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
     // Process the search query if it looks like a phone number
     const processedQuery = query.match(/^\+?\d+$/) ? processPhoneNumber(query) : query;
 
+    console.log('Debug: Search Parameters', {
+      query: processedQuery,
+      statusGroup,
+      page,
+      limit,
+      statusFilter,
+      salesFilter,
+      createdByFilter
+    });
+
     const searchQuery = {
       bool: {
         must: [
@@ -607,56 +617,60 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       searchQuery.bool.must.push(salesFilterQuery);
     }
 
+    // Add creator filter if provided
     if (createdByFilter) {
-      const nameParts = createdByFilter.trim().split(' ');
-      const firstName = nameParts[0]?.toLowerCase();
-      const lastName = nameParts[1]?.toLowerCase();
-      
-      const createdByFilterQuery = {
+      const [firstName, lastName] = createdByFilter.split(' ');
+      searchQuery.bool.must.push({
         bool: {
           should: [
-            // Match full name in firstname field
             {
-              wildcard: { "creator.firstname": `*${firstName}*` }
+              wildcard: {
+                "creator.firstname": {
+                  value: `*${firstName.toLowerCase()}*`
+                }
+              }
             },
-            // Match full name in lastname field
-            {
-              wildcard: { "creator.lastname": `*${lastName || firstName}*` }
-            }
-          ],
-          minimum_should_match: 1
+            ...(lastName ? [{
+              wildcard: {
+                "creator.lastname": {
+                  value: `*${lastName.toLowerCase()}*`
+                }
+              }
+            }] : [])
+          ]
         }
-      };
-      
-      searchQuery.bool.must.push(createdByFilterQuery);
+      });
     }
 
-
+    console.log('Debug: Constructed Elasticsearch Query', JSON.stringify(searchQuery, null, 2));
 
     const response = await client.search({
       index: LEAD_INDEX,
       body: {
+        query: searchQuery,
         from: offset,
         size: limit,
-        query: searchQuery,
-        sort: [
-          { _score: 'desc' },
-          { id: 'desc' }
-        ]
+        sort: [{ 'createdAt': { order: 'desc' } }]
       }
     });
 
+    console.log('Debug: Elasticsearch Response', {
+      total: response.hits.total.value,
+      hits: response.hits.hits.length
+    });
 
+    const leads = response.hits.hits.map(hit => hit._source);
+
+    console.log('Debug: Creators in Results', 
+      leads.map(lead => lead.creator ? `${lead.creator.firstname} ${lead.creator.lastname}` : 'No Creator')
+    );
 
     return {
       total: response.hits.total.value,
-      leads: response.hits.hits.map(hit => ({
-        ...hit._source,
-        score: hit._score
-      }))
+      leads: leads
     };
   } catch (error) {
-    console.error('❌ Error searching leads:', error);
+    console.error('Error in searchLeads:', error);
     if (error.meta?.body?.error) {
       console.error('Elasticsearch error details:', JSON.stringify(error.meta.body.error, null, 2));
     }
