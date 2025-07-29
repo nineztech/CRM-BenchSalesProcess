@@ -2291,7 +2291,7 @@ ${(() => {
                               </div>
                             )}
                           </div>
-                          <div className="relative filter-dropdown-container ml-2" style={{ zIndex: 1000 }}>
+                          <div className="relative filter-dropdown-container ml-2">
                             <button
                               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                               className={`px-3 py-1.5 mr-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 border ${
@@ -2317,7 +2317,7 @@ ${(() => {
                             
                             {/* Filter Dropdown */}
                             {showFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-30 p-4 filter-dropdown-container max-h-96 overflow-y-auto">
+                              <div className="absolute left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-[30] filter-dropdown-container max-h-96">
                                 <div className="space-y-4">
                                   {/* Sales Filter */}
                                   <div>
@@ -2891,7 +2891,7 @@ ${(() => {
           loading={reassignRemarkLoading}
         />
         {showCallPopup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
               <h3 className="text-lg font-semibold mb-4">Call {callLeadName}</h3>
               <div className="mb-4">
