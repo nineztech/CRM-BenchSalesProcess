@@ -216,6 +216,22 @@ const LeadCreationComponent: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [salesFilter, setSalesFilter] = useState('');
   const [createdByFilter, setCreatedByFilter] = useState('');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showFilterDropdown && !target.closest('.filter-dropdown-container')) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilterDropdown]);
 
   // Form and error states
   const [formData, setFormData] = useState<Lead>({
@@ -2743,20 +2759,20 @@ ${(() => {
 
               {/* Status Tabs */}
               <PermissionGuard activityName="Lead Management" action="view">
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div className="bg-white rounded-xl shadow-lg">
                   <div className="px-8 py-4">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-4">
                         <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
                         {/* Update search input */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 relative">
                           <div className="relative">
                             <input
                               type="text"
                               placeholder="Search by name, email, phone..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-80 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="w-64 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             {searchQuery && (
                               <button
@@ -2775,17 +2791,133 @@ ${(() => {
                               </div>
                             )}
                           </div>
+                          <div className="relative filter-dropdown-container ml-2" style={{ zIndex: 1000 }}>
+                            <button
+                              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                              className={`px-3 py-1.5 mr-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 border ${
+                                statusFilter || salesFilter || createdByFilter
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                              }`}
+                              title="Filter options"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                              </svg>
+                              Filter
+                              {(statusFilter || salesFilter || createdByFilter) && (
+                                <span className="ml-1  bg-indigo-600 text-white text-xs font-medium rounded-full min-w-[16px] flex items-center justify-center">
+                                  {(statusFilter ? 1 : 0) + (salesFilter ? 1 : 0) + (createdByFilter ? 1 : 0)}
+                                </span>
+                              )}
+                              <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilterDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            
+                            {/* Filter Dropdown */}
+                            {showFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 filter-dropdown-container max-h-96 overflow-y-auto">
+                                <div className="space-y-4">
+                                  {/* Status Filter */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                    <select
+                                      value={statusFilter}
+                                      onChange={(e) => {
+                                        console.log('Status filter changed to:', e.target.value);
+                                        setStatusFilter(e.target.value);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    >
+                                      <option value="">All Status</option>
+                                      {filterOptions.statuses.map((status) => (
+                                        <option key={status} value={status}>
+                                          {status}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  
+                                  {/* Sales Filter */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Sales</label>
+                                    <select
+                                      value={salesFilter}
+                                      onChange={(e) => {
+                                        console.log('Sales filter changed to:', e.target.value);
+                                        setSalesFilter(e.target.value);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    >
+                                      <option value="">All Sales</option>
+                                      {filterOptions.salesUsers.map((user) => (
+                                        <option key={user} value={user}>
+                                          {user}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  
+                                  {/* Created By Filter */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Created By</label>
+                                    <select
+                                      value={createdByFilter}
+                                      onChange={(e) => {
+                                        console.log('Created by filter changed to:', e.target.value);
+                                        setCreatedByFilter(e.target.value);
+                                      }}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    >
+                                      <option value="">All Creators</option>
+                                      {filterOptions.creators.map((creator) => (
+                                        <option key={creator} value={creator}>
+                                          {creator}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  
+                                  {/* Action Buttons */}
+                                  <div className="flex gap-2 pt-2">
+                                    <button
+                                      onClick={() => setShowFilterDropdown(false)}
+                                      className="flex-1 px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-all duration-200 border border-gray-200"
+                                    >
+                                      Close
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setStatusFilter('');
+                                        setSalesFilter('');
+                                        setCreatedByFilter('');
+                                      }}
+                                      className="flex-1 px-3 py-2 text-sm font-medium bg-red-50 text-red-700 rounded-md hover:bg-red-100 transition-all duration-200 border border-red-200"
+                                    >
+                                      Clear All
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
                           {(statusFilter || salesFilter || createdByFilter) && (
                             <button
                               onClick={handleClearFilters}
-                              className="px-3 py-2 text-xs bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                              className="inline-flex items-center gap-1.5 mr-3.5 px-3 py-1.5 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded-md hover:bg-gray-100 hover:border-gray-300 hover:text-gray-700 transition-all duration-200 shadow-sm"
                               title="Clear filters"
                             >
-                              Clear Filters
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Clear
                             </button>
                           )}
                         </div>
                       </div>
+                      
                       <div className="flex items-center gap-4">
                         <PermissionGuard 
                           activityName="Lead Assignment Management" 
@@ -2859,72 +2991,15 @@ ${(() => {
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Candidate name</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Email</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Contact</th>
-                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
-                                  <div className="flex flex-col">
-                                    <span>Status</span>
-                                    <select
-                                      value={statusFilter}
-                                      onChange={(e) => {
-                                        console.log('Status filter changed to:', e.target.value);
-                                        setStatusFilter(e.target.value);
-                                      }}
-                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    >
-                                      <option value="">All Status</option>
-                                      {filterOptions.statuses.map((status) => (
-                                        <option key={status} value={status}>
-                                          {status}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </th>
+                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Status</th>
                                 
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">LinkedIn</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Visa</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Country</th>
-                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
-                                  <div className="flex flex-col">
-                                    <span>Sales</span>
-                                    <select
-                                      value={salesFilter}
-                                      onChange={(e) => {
-                                        console.log('Sales filter changed to:', e.target.value);
-                                        setSalesFilter(e.target.value);
-                                      }}
-                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    >
-                                      <option value="">All Sales</option>
-                                      {filterOptions.salesUsers.map((user) => (
-                                        <option key={user} value={user}>
-                                          {user}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </th>
+                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Sales</th>
                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Technology</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created At</th>
-                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">
-                                  <div className="flex flex-col">
-                                    <span>Created By</span>
-                                    <select
-                                      value={createdByFilter}
-                                      onChange={(e) => {
-                                        console.log('Created by filter changed to:', e.target.value);
-                                        setCreatedByFilter(e.target.value);
-                                      }}
-                                      className="mt-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    >
-                                      <option value="">All Creators</option>
-                                      {filterOptions.creators.map((creator) => (
-                                        <option key={creator} value={creator}>
-                                          {creator}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </th>
+                                <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Created By</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Updated By</th>
                                 <th className="px-6 py-1 text-left text-xs font-medium text-gray-500 border-b whitespace-nowrap">Action</th>
                               </tr>
@@ -3228,12 +3303,16 @@ ${(() => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      Showing {((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize) + 1} to {
-                        Math.min(
-                          leadsData[activeStatusTab].pagination.currentPage * pageSize,
-                          leadsData[activeStatusTab].pagination.total
-                        )
-                      } of {leadsData[activeStatusTab].pagination.total} leads
+                      {leadsData[activeStatusTab].pagination.total > 0 ? (
+                        <>Showing {((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize) + 1} to {
+                          Math.min(
+                            leadsData[activeStatusTab].pagination.currentPage * pageSize,
+                            leadsData[activeStatusTab].pagination.total
+                          )
+                        } of {leadsData[activeStatusTab].pagination.total} leads</>
+                      ) : (
+                        <>No leads found</>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button

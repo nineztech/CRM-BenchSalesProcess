@@ -76,8 +76,8 @@ export const Navbar: React.FC = () => {
       <div className="h-full pl-[64px] pr-6 flex items-center">
         {/* Centered Content */}
         <div className="flex-1 flex justify-center">
-          <h1 className="text-base font-semibold text-gray-800 tracking-wide font-inter">
-            CRM - Customer Requirement Management
+          <h1 className="text-xl font-semibold text-gray-800 tracking-wide font-inter">
+            OOPZ CRM PRO
           </h1>
         </div>
 
