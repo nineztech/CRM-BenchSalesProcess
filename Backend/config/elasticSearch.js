@@ -21,7 +21,6 @@ const createLeadIndex = async () => {
     // First check if Elasticsearch is available
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available. The application will continue without search functionality.');
       return;
     }
 
@@ -75,15 +74,12 @@ const createLeadIndex = async () => {
           }
         }
       });
-      console.log('Lead index created successfully');
     }
 
     // Also create archived leads index
     await createArchivedLeadIndex();
   } catch (error) {
-    console.error('Error creating lead index:', error);
-    // Don't throw the error, just log it and continue
-    // This allows the application to start even if Elasticsearch is not available
+    // Error handling without console output
   }
 };
 
@@ -92,7 +88,6 @@ const createArchivedLeadIndex = async () => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available. The application will continue without search functionality.');
       return;
     }
 
@@ -133,10 +128,9 @@ const createArchivedLeadIndex = async () => {
           }
         }
       });
-      console.log('Archived lead index created successfully');
     }
   } catch (error) {
-    console.error('Error creating archived lead index:', error);
+    // Error handling without console output
   }
 };
 
@@ -144,10 +138,8 @@ const createArchivedLeadIndex = async () => {
 const checkElasticsearchConnection = async () => {
   try {
     await client.ping();
-    console.log('✅ Elasticsearch is available');
     return true;
   } catch (error) {
-    console.error('❌ Elasticsearch is not available:', error.message);
     return false;
   }
 };
@@ -210,7 +202,6 @@ const indexLead = async (lead) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available for indexing');
       return;
     }
 
@@ -233,10 +224,7 @@ const indexLead = async (lead) => {
       body: leadToIndex,
       refresh: true
     });
-
-    console.log(`✅ Progress: ${lead.id} lead indexed`);
   } catch (error) {
-    console.error(`❌ Error indexing lead ${lead.id}:`, error);
     throw error;
   }
 };
@@ -258,8 +246,7 @@ const updateLead = async (lead) => {
       }
     });
   } catch (error) {
-    console.error('Error updating lead:', error);
-    // Don't throw the error, just log it
+    // Error handling without console output
   }
 };
 
@@ -274,8 +261,7 @@ const deleteLead = async (leadId) => {
       id: leadId.toString()
     });
   } catch (error) {
-    console.error('Error deleting lead:', error);
-    // Don't throw the error, just log it
+    // Error handling without console output
   }
 };
 
@@ -315,7 +301,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available for search');
       return {
         total: 0,
         leads: []
@@ -631,8 +616,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       searchQuery.bool.must.push(createdByFilterQuery);
     }
 
-
-
     const response = await client.search({
       index: LEAD_INDEX,
       body: {
@@ -646,8 +629,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       }
     });
 
-
-
     return {
       total: response.hits.total.value,
       leads: response.hits.hits.map(hit => ({
@@ -656,10 +637,6 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       }))
     };
   } catch (error) {
-    console.error('❌ Error searching leads:', error);
-    if (error.meta?.body?.error) {
-      console.error('Elasticsearch error details:', JSON.stringify(error.meta.body.error, null, 2));
-    }
     return {
       total: 0,
       leads: []
@@ -672,7 +649,6 @@ const indexArchivedLead = async (archivedLead) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available for indexing archived lead');
       return;
     }
 
@@ -695,10 +671,7 @@ const indexArchivedLead = async (archivedLead) => {
       body: archivedLeadToIndex,
       refresh: true
     });
-
-    console.log(`✅ Archived lead ${archivedLead.id} indexed successfully`);
   } catch (error) {
-    console.error(`❌ Error indexing archived lead ${archivedLead.id}:`, error);
     throw error;
   }
 };
@@ -717,8 +690,7 @@ const updateArchivedLead = async (archivedLead) => {
       }
     });
   } catch (error) {
-    console.error('Error updating archived lead:', error);
-    // Don't throw the error, just log it
+    // Error handling without console output
   }
 };
 
@@ -733,8 +705,7 @@ const deleteArchivedLead = async (archivedLeadId) => {
       id: archivedLeadId.toString()
     });
   } catch (error) {
-    console.error('Error deleting archived lead:', error);
-    // Don't throw the error, just log it
+    // Error handling without console output
   }
 };
 
@@ -743,14 +714,11 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
-      console.warn('⚠️ Elasticsearch is not available for search');
       return {
         total: 0,
         leads: []
       };
     }
-
-
 
     const offset = (page - 1) * limit;
 
@@ -869,8 +837,6 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       }
     };
 
-
-
     const response = await client.search({
       index: ARCHIVED_LEAD_INDEX,
       body: {
@@ -884,8 +850,6 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       }
     });
 
-
-
     return {
       total: response.hits.total.value,
       leads: response.hits.hits.map(hit => ({
@@ -894,10 +858,6 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
       }))
     };
   } catch (error) {
-    console.error('❌ Error searching archived leads:', error);
-    if (error.meta?.body?.error) {
-      console.error('Elasticsearch error details:', JSON.stringify(error.meta.body.error, null, 2));
-    }
     return {
       total: 0,
       leads: []

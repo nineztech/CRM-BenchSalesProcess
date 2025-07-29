@@ -372,72 +372,8 @@ const LeadCreationComponent: React.FC = () => {
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
 
-      // For users without view all permission, we'll fetch all leads first then filter
-      if (!hasViewAllLeadsPermission && searchQuery) {
-        try {
-          // Fetch all leads for the current tab without pagination
-          const allLeadsResponse = await axios.get(`${BASE_URL}/lead/assigned`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000, // Large number to get all leads
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-
-          if (allLeadsResponse.data.success) {
-            let allTabData = allLeadsResponse.data.data[activeStatusTab];
-            // Special handling for Enrolled tab: always filter only Enrolled leads
-            if (activeStatusTab === 'Enrolled') {
-              allTabData = allLeadsResponse.data.data['Enrolled'];
-            }
-            if (allTabData && allTabData.leads) {
-              // Filter all leads based on search query
-              const searchLower = searchQuery.toLowerCase();
-              const filteredLeads = allTabData.leads.filter((lead: Lead) => {
-                return (
-                  lead.firstName?.toLowerCase().includes(searchLower) ||
-                  lead.lastName?.toLowerCase().includes(searchLower) ||
-                  lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                  lead.primaryContact?.includes(searchQuery) ||
-                  lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                  lead.country?.toLowerCase().includes(searchLower) ||
-                  lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                  lead.status?.toLowerCase().includes(searchLower) ||
-                  lead.leadSource?.toLowerCase().includes(searchLower) ||
-                  lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                  lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                );
-              });
-
-              // Update the current tab with filtered results
-              setLeadsData(prev => ({
-                ...prev,
-                [activeStatusTab]: {
-                  ...prev[activeStatusTab],
-                  leads: filteredLeads,
-                  pagination: {
-                    ...prev[activeStatusTab].pagination,
-                    total: filteredLeads.length,
-                    totalPages: Math.ceil(filteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching all leads for search:', error);
-          // If fetching all leads fails, fall back to regular API call
-        }
-      }
+      // For users without view all permission, we'll use the search endpoint for consistency
+      // This ensures that search always goes through the backend for proper pagination
 
       // For users with view all permission or when not searching, proceed with normal API call
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
@@ -522,455 +458,7 @@ const LeadCreationComponent: React.FC = () => {
           });
         }
       }
-      // Special handling for Enrolled tab: only filter in Enrolled object
-      if (activeStatusTab === 'Enrolled' && (searchQuery !== '' || statusFilter || salesFilter || createdByFilter)) {
-        // Fetch all Enrolled leads and filter client-side
-        try {
-          const enrolledResponse = await axios.get(baseEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-          if (enrolledResponse.data.success) {
-            const enrolledTabData = enrolledResponse.data.data['Enrolled'];
-            if (enrolledTabData && enrolledTabData.leads) {
-              // First apply filters to the leads
-              let filteredLeads = enrolledTabData.leads;
-              
-              // Apply status filter if active
-              if (statusFilter && statusFilter !== 'Enrolled') {
-                filteredLeads = filteredLeads.filter((lead: Lead) => lead.status === statusFilter);
-              }
-              
-              // Apply sales filter if active
-              if (salesFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const assignedUser = lead.assignedUser;
-                  if (!assignedUser) return false;
-                  const fullName = `${assignedUser.firstname} ${assignedUser.lastname}`.toLowerCase();
-                  return fullName.includes(salesFilter.toLowerCase());
-                });
-              }
-              
-              // Apply created by filter if active
-              if (createdByFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const creator = lead.creator;
-                  if (!creator) return false;
-                  const fullName = `${creator.firstname} ${creator.lastname}`.toLowerCase();
-                  return fullName.includes(createdByFilter.toLowerCase());
-                });
-              }
-              
-              // Then apply search within the filtered data if search query exists
-              let finalFilteredLeads = filteredLeads;
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                finalFilteredLeads = filteredLeads.filter((lead: Lead) => {
-                  return (
-                    lead.firstName?.toLowerCase().includes(searchLower) ||
-                    lead.lastName?.toLowerCase().includes(searchLower) ||
-                    lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                    lead.primaryContact?.includes(searchQuery) ||
-                    lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                    lead.country?.toLowerCase().includes(searchLower) ||
-                    lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                    lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                  );
-                });
-              }
-              
-              setLeadsData(prev => ({
-                ...prev,
-                Enrolled: {
-                  ...prev.Enrolled,
-                  leads: finalFilteredLeads,
-                  pagination: {
-                    ...prev.Enrolled.pagination,
-                    total: finalFilteredLeads.length,
-                    totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching Enrolled leads for search:', error);
-        }
-      }
-
-      // Special handling for inProcess tab: only filter in inProcess object
-      if (activeStatusTab === 'inProcess' && (searchQuery !== '' || statusFilter || salesFilter || createdByFilter)) {
-        // Fetch all inProcess leads and filter client-side
-        try {
-          const inProcessResponse = await axios.get(baseEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-          if (inProcessResponse.data.success) {
-            const inProcessTabData = inProcessResponse.data.data['inProcess'];
-            if (inProcessTabData && inProcessTabData.leads) {
-              // First apply filters to the leads
-              let filteredLeads = inProcessTabData.leads;
-              
-              // Apply status filter if active
-              if (statusFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => lead.status === statusFilter);
-              }
-              
-              // Apply sales filter if active
-              if (salesFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const assignedUser = lead.assignedUser;
-                  if (!assignedUser) return false;
-                  const fullName = `${assignedUser.firstname} ${assignedUser.lastname}`.toLowerCase();
-                  return fullName.includes(salesFilter.toLowerCase());
-                });
-              }
-              
-              // Apply created by filter if active
-              if (createdByFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const creator = lead.creator;
-                  if (!creator) return false;
-                  const fullName = `${creator.firstname} ${creator.lastname}`.toLowerCase();
-                  return fullName.includes(createdByFilter.toLowerCase());
-                });
-              }
-              
-              // Then apply search within the filtered data if search query exists
-              let finalFilteredLeads = filteredLeads;
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                finalFilteredLeads = filteredLeads.filter((lead: Lead) => {
-                  return (
-                    lead.firstName?.toLowerCase().includes(searchLower) ||
-                    lead.lastName?.toLowerCase().includes(searchLower) ||
-                    lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                    lead.primaryContact?.includes(searchQuery) ||
-                    lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                    lead.country?.toLowerCase().includes(searchLower) ||
-                    lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                    lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                  );
-                });
-              }
-              
-              setLeadsData(prev => ({
-                ...prev,
-                inProcess: {
-                  ...prev.inProcess,
-                  leads: finalFilteredLeads,
-                  pagination: {
-                    ...prev.inProcess.pagination,
-                    total: finalFilteredLeads.length,
-                    totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching inProcess leads for search:', error);
-        }
-      }
-
-      // Special handling for followup tab: only filter in followup object
-      if (activeStatusTab === 'followup' && (searchQuery !== '' || statusFilter || salesFilter || createdByFilter)) {
-        // Fetch all followup leads and filter client-side
-        try {
-          const followupResponse = await axios.get(baseEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-          if (followupResponse.data.success) {
-            const followupTabData = followupResponse.data.data['followup'];
-            if (followupTabData && followupTabData.leads) {
-              // First apply filters to the leads
-              let filteredLeads = followupTabData.leads;
-              
-              // Apply status filter if active
-              if (statusFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => lead.status === statusFilter);
-              }
-              
-              // Apply sales filter if active
-              if (salesFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const assignedUser = lead.assignedUser;
-                  if (!assignedUser) return false;
-                  const fullName = `${assignedUser.firstname} ${assignedUser.lastname}`.toLowerCase();
-                  return fullName.includes(salesFilter.toLowerCase());
-                });
-              }
-              
-              // Apply created by filter if active
-              if (createdByFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const creator = lead.creator;
-                  if (!creator) return false;
-                  const fullName = `${creator.firstname} ${creator.lastname}`.toLowerCase();
-                  return fullName.includes(createdByFilter.toLowerCase());
-                });
-              }
-              
-              // Then apply search within the filtered data if search query exists
-              let finalFilteredLeads = filteredLeads;
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                finalFilteredLeads = filteredLeads.filter((lead: Lead) => {
-                  return (
-                    lead.firstName?.toLowerCase().includes(searchLower) ||
-                    lead.lastName?.toLowerCase().includes(searchLower) ||
-                    lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                    lead.primaryContact?.includes(searchQuery) ||
-                    lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                    lead.country?.toLowerCase().includes(searchLower) ||
-                    lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                    lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                  );
-                });
-              }
-              
-              setLeadsData(prev => ({
-                ...prev,
-                followup: {
-                  ...prev.followup,
-                  leads: finalFilteredLeads,
-                  pagination: {
-                    ...prev.followup.pagination,
-                    total: finalFilteredLeads.length,
-                    totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching followup leads for search:', error);
-        }
-      }
-
-      // Special handling for open tab: only filter in open object
-      if (activeStatusTab === 'open' && (searchQuery !== '' || statusFilter || salesFilter || createdByFilter)) {
-        // Fetch all open leads and filter client-side
-        try {
-          const openResponse = await axios.get(baseEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-          if (openResponse.data.success) {
-            const openTabData = openResponse.data.data['open'];
-            if (openTabData && openTabData.leads) {
-              // First apply filters to the leads
-              let filteredLeads = openTabData.leads;
-              
-              // Apply status filter if active
-              if (statusFilter && statusFilter !== 'open') {
-                filteredLeads = filteredLeads.filter((lead: Lead) => lead.status === statusFilter);
-              }
-              
-              // Apply sales filter if active
-              if (salesFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const assignedUser = lead.assignedUser;
-                  if (!assignedUser) return false;
-                  const fullName = `${assignedUser.firstname} ${assignedUser.lastname}`.toLowerCase();
-                  return fullName.includes(salesFilter.toLowerCase());
-                });
-              }
-              
-              // Apply created by filter if active
-              if (createdByFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const creator = lead.creator;
-                  if (!creator) return false;
-                  const fullName = `${creator.firstname} ${creator.lastname}`.toLowerCase();
-                  return fullName.includes(createdByFilter.toLowerCase());
-                });
-              }
-              
-              // Then apply search within the filtered data if search query exists
-              let finalFilteredLeads = filteredLeads;
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                finalFilteredLeads = filteredLeads.filter((lead: Lead) => {
-                  return (
-                    lead.firstName?.toLowerCase().includes(searchLower) ||
-                    lead.lastName?.toLowerCase().includes(searchLower) ||
-                    lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                    lead.primaryContact?.includes(searchQuery) ||
-                    lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                    lead.country?.toLowerCase().includes(searchLower) ||
-                    lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                    lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                  );
-                });
-              }
-              
-              setLeadsData(prev => ({
-                ...prev,
-                open: {
-                  ...prev.open,
-                  leads: finalFilteredLeads,
-                  pagination: {
-                    ...prev.open.pagination,
-                    total: finalFilteredLeads.length,
-                    totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching open leads for search:', error);
-        }
-      }
-
-      // Special handling for teamfollowup tab: only filter in teamfollowup object
-      if (activeStatusTab === 'teamfollowup' && (searchQuery !== '' || statusFilter || salesFilter || createdByFilter)) {
-        // Fetch all teamfollowup leads and filter client-side
-        try {
-          const teamfollowupResponse = await axios.get(baseEndpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            params: {
-              page: 1,
-              limit: 1000,
-              sortBy: 'createdAt',
-              sortOrder: 'DESC'
-            }
-          });
-          if (teamfollowupResponse.data.success) {
-            const teamfollowupTabData = teamfollowupResponse.data.data['teamfollowup'];
-            if (teamfollowupTabData && teamfollowupTabData.leads) {
-              // First apply filters to the leads
-              let filteredLeads = teamfollowupTabData.leads;
-              
-              // Apply status filter if active
-              if (statusFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => lead.status === statusFilter);
-              }
-              
-              // Apply sales filter if active
-              if (salesFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const assignedUser = lead.assignedUser;
-                  if (!assignedUser) return false;
-                  const fullName = `${assignedUser.firstname} ${assignedUser.lastname}`.toLowerCase();
-                  return fullName.includes(salesFilter.toLowerCase());
-                });
-              }
-              
-              // Apply created by filter if active
-              if (createdByFilter) {
-                filteredLeads = filteredLeads.filter((lead: Lead) => {
-                  const creator = lead.creator;
-                  if (!creator) return false;
-                  const fullName = `${creator.firstname} ${creator.lastname}`.toLowerCase();
-                  return fullName.includes(createdByFilter.toLowerCase());
-                });
-              }
-              
-              // Then apply search within the filtered data if search query exists
-              let finalFilteredLeads = filteredLeads;
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                finalFilteredLeads = filteredLeads.filter((lead: Lead) => {
-                  return (
-                    lead.firstName?.toLowerCase().includes(searchLower) ||
-                    lead.lastName?.toLowerCase().includes(searchLower) ||
-                    lead.primaryEmail?.toLowerCase().includes(searchLower) ||
-                    lead.primaryContact?.includes(searchQuery) ||
-                    lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
-                    lead.country?.toLowerCase().includes(searchLower) ||
-                    lead.visaStatus?.toLowerCase().includes(searchLower) ||
-                    lead.status?.toLowerCase().includes(searchLower) ||
-                    lead.leadSource?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
-                    lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
-                  );
-                });
-              }
-              
-              setLeadsData(prev => ({
-                ...prev,
-                teamfollowup: {
-                  ...prev.teamfollowup,
-                  leads: finalFilteredLeads,
-                  pagination: {
-                    ...prev.teamfollowup.pagination,
-                    total: finalFilteredLeads.length,
-                    totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
-                    currentPage: 1
-                  }
-                }
-              }));
-              setIsLoading(false);
-              setIsSearching(false);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching teamfollowup leads for search:', error);
-        }
-      }
+      // All search and filter operations now go through the backend for consistent pagination
 
 
 
@@ -1025,15 +513,13 @@ const LeadCreationComponent: React.FC = () => {
             [activeStatusTab]: {
               leads: filteredLeads,
               pagination: {
-                total: filteredLeads.length,
-                totalPages: Math.ceil(filteredLeads.length / pageSize),
+                total: data.total || filteredLeads.length,
+                totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / pageSize),
                 currentPage: data.currentPage || 1,
                 limit: pageSize
               }
             }
           }));
-          // Don't extract filter options from search results to preserve existing filter options
-          // This prevents the status filter from being cleared when searching
         } else {
           // Handle regular fetch
           console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
@@ -1063,16 +549,6 @@ const LeadCreationComponent: React.FC = () => {
             teamfollowup: data.teamfollowup,
             [activeStatusTab]: currentTabData // Update current tab with filtered data
           }));
-          // Extract filter options from all leads
-          const allLeads = [
-            ...(data.open?.leads || []),
-            ...(data.inProcess?.leads || []),
-            ...(data.Enrolled?.leads || []),
-            ...(data.archived?.leads || []),
-            ...(data.followup?.leads || []),
-            ...(data.teamfollowup?.leads || [])
-          ];
-          extractFilterOptions(allLeads);
         }
       } else {
         console.error('[API Error] Failed to fetch leads:', response.data);
@@ -1167,8 +643,8 @@ const LeadCreationComponent: React.FC = () => {
             [activeStatusTab]: {
               leads: filteredLeads,
               pagination: {
-                total: filteredLeads.length,
-                totalPages: Math.ceil(filteredLeads.length / pageSize),
+                total: data.total || filteredLeads.length,
+                totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / pageSize),
                 currentPage: newPage,
                 limit: pageSize
               }
@@ -1201,36 +677,41 @@ const LeadCreationComponent: React.FC = () => {
   };
 
   // Function to extract unique values for filters
-  const extractFilterOptions = (leads: Lead[]) => {
-    const statuses = new Set<string>();
-    const salesUsers = new Set<string>();
-    const creators = new Set<string>();
-
-    // Add all possible statuses including DNR3
-    const allPossibleStatuses = [
-      'open', 'Enrolled', 'Dead', 'notinterested', 'DNR1', 'DNR2', 'DNR3', 
-      'interested', 'not working', 'follow up', 'wrong no', 'call again later',
-      'teamfollowup'
-    ];
-
-    leads.forEach(lead => {
-      if (lead.status) statuses.add(lead.status);
-      if (lead.assignedUser) {
-        salesUsers.add(`${lead.assignedUser.firstname} ${lead.assignedUser.lastname}`);
+  const fetchFilterOptions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found for filter options fetch');
+        return;
       }
-      if (lead.creator) {
-        creators.add(`${lead.creator.firstname} ${lead.creator.lastname}`);
+
+      const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
+      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead/filter-options` : `${BASE_URL}/lead/assigned/filter-options`;
+
+      console.log('Fetching filter options from:', endpoint);
+
+      const response = await axios.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const { salesUsers, creators, statuses } = response.data.data;
+        
+        console.log('Received filter options:', { salesUsers, creators, statuses });
+
+        setFilterOptions({
+          statuses: statuses || [],
+          salesUsers: salesUsers || [],
+          creators: creators || []
+        });
+      } else {
+        console.error('Failed to fetch filter options:', response.data);
       }
-    });
-
-    // Combine found statuses with all possible statuses to ensure all are available
-    allPossibleStatuses.forEach(status => statuses.add(status));
-
-    setFilterOptions({
-      statuses: Array.from(statuses).sort(),
-      salesUsers: Array.from(salesUsers).sort(),
-      creators: Array.from(creators).sort()
-    });
+    } catch (error: any) {
+      console.error('Error fetching filter options:', error);
+    }
   };
 
   // Immediate search effect
@@ -1241,6 +722,11 @@ const LeadCreationComponent: React.FC = () => {
     }
     fetchLeads();
   }, [searchQuery, statusFilter, salesFilter, createdByFilter]);
+
+  // Fetch filter options when component mounts
+  useEffect(() => {
+    fetchFilterOptions();
+  }, []);
 
   // Add clear search function
   const handleClearSearch = () => {
@@ -2805,7 +2291,7 @@ ${(() => {
                               </div>
                             )}
                           </div>
-                          <div className="relative filter-dropdown-container ml-2" style={{ zIndex: 1000 }}>
+                          <div className="relative filter-dropdown-container ml-2">
                             <button
                               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                               className={`px-3 py-1.5 mr-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 border ${
@@ -2831,7 +2317,7 @@ ${(() => {
                             
                             {/* Filter Dropdown */}
                             {showFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-4 filter-dropdown-container max-h-96 overflow-y-auto">
+                              <div className="absolute left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl p-4 z-[30] filter-dropdown-container max-h-96">
                                 <div className="space-y-4">
                                   {/* Sales Filter */}
                                   <div>
@@ -3405,7 +2891,7 @@ ${(() => {
           loading={reassignRemarkLoading}
         />
         {showCallPopup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 relative">
               <h3 className="text-lg font-semibold mb-4">Call {callLeadName}</h3>
               <div className="mb-4">

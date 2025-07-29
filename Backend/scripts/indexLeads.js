@@ -4,14 +4,11 @@ import colors from 'colors';
 
 export const reindexLeads = async () => {
   try {
-    console.log(colors.yellow('🔄 Starting to reindex all leads...'));
-
     // First, check if the index exists
     const indexExists = await client.indices.exists({ index: LEAD_INDEX });
     
     // If it exists, delete it
     if (indexExists) {
-      console.log(colors.blue('📦 Deleting existing index...'));
       await client.indices.delete({ index: LEAD_INDEX });
     }
 
@@ -20,12 +17,10 @@ export const reindexLeads = async () => {
     
     // If it exists, delete it
     if (archivedIndexExists) {
-      console.log(colors.blue('📦 Deleting existing archived leads index...'));
       await client.indices.delete({ index: ARCHIVED_LEAD_INDEX });
     }
 
     // Recreate the index with proper mappings
-    console.log(colors.blue('📦 Creating new index with mappings...'));
     await client.indices.create({
       index: LEAD_INDEX,
       body: {
@@ -269,9 +264,6 @@ export const reindexLeads = async () => {
       ]
     });
 
-    console.log(colors.blue(`📊 Found ${leads.length} leads to reindex`));
-    console.log(colors.blue(`📊 Found ${archivedLeads.length} archived leads to reindex`));
-
     // Index each lead
     let successCount = 0;
     let errorCount = 0;
@@ -301,15 +293,11 @@ export const reindexLeads = async () => {
           statusGroup: statusGroup.toLowerCase(), // ensure lowercase for consistency
           is_Team_Followup: isTeamFollowup // ensure consistent field name
         };
-
-        console.log(colors.yellow(`📝 Indexing lead ${lead.id} with status: ${leadData.status}, statusGroup: ${statusGroup}`));
         
         await indexLead(enrichedLeadData);
         successCount++;
-        process.stdout.write(`\r${colors.green('✅ Progress:')} ${successCount}/${leads.length + archivedLeads.length} leads indexed`);
       } catch (error) {
         errorCount++;
-        console.error(colors.red(`\n❌ Error indexing lead ${lead.id}:`), error);
       }
     }
 
@@ -318,27 +306,15 @@ export const reindexLeads = async () => {
       try {
         const archivedLeadData = archivedLead.toJSON();
         
-        console.log(colors.yellow(`📝 Indexing archived lead ${archivedLead.id} with leadstatus: ${archivedLeadData.leadstatus}`));
-        
         await indexArchivedLead(archivedLeadData);
         successCount++;
-        process.stdout.write(`\r${colors.green('✅ Progress:')} ${successCount}/${leads.length + archivedLeads.length} leads indexed`);
       } catch (error) {
         errorCount++;
-        console.error(colors.red(`\n❌ Error indexing archived lead ${archivedLead.id}:`), error);
       }
     }
 
-    console.log(colors.green(`\n\n✅ Reindexing completed:`));
-    console.log(colors.blue(`📊 Total leads: ${leads.length}`));
-    console.log(colors.blue(`📊 Total archived leads: ${archivedLeads.length}`));
-    console.log(colors.green(`✅ Successfully indexed: ${successCount}`));
-    console.log(colors.red(`❌ Failed to index: ${errorCount}`));
-
-    // process.exit(0);
   } catch (error) {
-    console.error(colors.red('❌ Error during reindexing:'), error);
-    // process.exit(1);
+    // Error handling without console output
   }
 };
 
