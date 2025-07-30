@@ -20,6 +20,7 @@ interface InstallmentsPopupProps {
 interface Installment {
   id: number;
   amount: number;
+  net_amount: number | null;  // Add net_amount field
   dueDate: string;
   remark: string;
   paid: boolean;
@@ -109,14 +110,32 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
 
   if (!isOpen) return null;
 
-  // Calculate totals based on whether we're showing edited values or original values
-  const totalPaid = installments.reduce((sum, inst) => {
-    const amount = isMyReview && inst.edited_amount !== undefined ? inst.edited_amount : inst.amount;
-    return inst.paid ? sum + Number(amount) : sum;
+  // Helper function to get the effective amount for an installment
+  const getEffectiveAmount = (installment: Installment) => {
+    // Priority: net_amount > edited_amount > amount
+    if (installment.net_amount !== null && installment.net_amount !== undefined) {
+      return installment.net_amount;
+    }
+    if (isMyReview && installment.edited_amount !== undefined && installment.edited_amount !== null) {
+      return installment.edited_amount;
+    }
+    return installment.amount;
+  };
+
+  // Calculate totals based on effective amounts (net amounts)
+  const totalNetAmount = installments.reduce((sum, inst) => {
+    const effectiveAmount = getEffectiveAmount(inst);
+    return sum + Number(effectiveAmount);
   }, 0);
 
-  const effectiveTotalCharge = isMyReview && editedTotalCharge !== undefined ? editedTotalCharge : totalCharge;
-  const totalPending = (effectiveTotalCharge || 0) - totalPaid;
+  const totalPaid = installments.reduce((sum, inst) => {
+    const effectiveAmount = getEffectiveAmount(inst);
+    return inst.paid ? sum + Number(effectiveAmount) : sum;
+  }, 0);
+
+  // Use net amount total instead of the passed totalCharge
+  const effectiveTotalCharge = totalNetAmount;
+  const totalPending = effectiveTotalCharge - totalPaid;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -146,15 +165,15 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
             {/* Summary Cards */}
             <div className={`grid ${chargeType === 'first_year_charge' ? 'grid-cols-4' : 'grid-cols-3'} gap-4 mb-6`}>
               <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Amount</h3>
-                <p className="text-lg font-semibold text-gray-900">{formatCurrency(effectiveTotalCharge || 0)}</p>
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Net Amount</h3>
+                <p className="text-lg font-semibold text-gray-900">{formatCurrency(effectiveTotalCharge)}</p>
               </div>
               <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Paid</h3>
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Paid (Net)</h3>
                 <p className="text-lg font-semibold text-green-600">{formatCurrency(totalPaid)}</p>
               </div>
               <div className="bg-yellow-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Pending</h3>
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Pending (Net)</h3>
                 <p className="text-lg font-semibold text-yellow-600">{formatCurrency(totalPending)}</p>
               </div>
               {chargeType === 'first_year_charge' && firstYearSalary && (
@@ -174,7 +193,10 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
                       Installment #
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
+                      Original Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Net Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Due Date
@@ -191,40 +213,52 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {installments.map((installment) => (
-                    <tr key={installment.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {installment.installment_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(isMyReview && installment.edited_amount !== undefined ? 
-                          installment.edited_amount : installment.amount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(isMyReview && installment.edited_dueDate ? 
-                          installment.edited_dueDate : installment.dueDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {installment.paid ? (
-                          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center w-fit gap-1">
-                            <FaCheckCircle /> Paid
+                  {installments.map((installment) => {
+                    const effectiveAmount = getEffectiveAmount(installment);
+                    const hasNetAmount = installment.net_amount !== null && installment.net_amount !== undefined;
+                    
+                    return (
+                      <tr key={installment.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {installment.installment_number}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatCurrency(installment.amount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={`${hasNetAmount && installment.net_amount !== installment.amount ? 'text-blue-600 font-semibold' : ''}`}>
+                            {formatCurrency(effectiveAmount)}
                           </span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center w-fit gap-1">
-                            <FaClock /> Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {installment.paidDate ? formatDate(installment.paidDate) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {isMyReview && installment.edited_remark ? 
-                          installment.edited_remark : 
-                          installment.remark || '-'}
-                      </td>
-                    </tr>
-                  ))}
+                          {hasNetAmount && installment.net_amount !== installment.amount && (
+                            <span className="ml-1 text-xs text-blue-500">(updated)</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatDate(isMyReview && installment.edited_dueDate ? 
+                            installment.edited_dueDate : installment.dueDate)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {installment.paid ? (
+                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center w-fit gap-1">
+                              <FaCheckCircle /> Paid
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center w-fit gap-1">
+                              <FaClock /> Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {installment.paidDate ? formatDate(installment.paidDate) : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {isMyReview && installment.edited_remark ? 
+                            installment.edited_remark : 
+                            installment.remark || '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
