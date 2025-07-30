@@ -302,13 +302,13 @@ const AdminEnrollment: React.FC = () => {
     setShowForm(true);
     fetchInstallments(client.id);
     
-    // Set form data with current values
+    // Set form data with current values - copy payable fields to editable fields
     setFormData({
       approved: false,
-      edited_enrollment_charge: client.edited_enrollment_charge || client.payable_enrollment_charge,
-      edited_offer_letter_charge: client.edited_offer_letter_charge || client.payable_offer_letter_charge,
-      edited_first_year_percentage: client.edited_first_year_percentage || client.payable_first_year_percentage,
-      edited_first_year_fixed_charge: client.edited_first_year_fixed_charge || client.payable_first_year_fixed_charge,
+      edited_enrollment_charge: client.payable_enrollment_charge,
+      edited_offer_letter_charge: client.payable_offer_letter_charge,
+      edited_first_year_percentage: client.payable_first_year_percentage,
+      edited_first_year_fixed_charge: client.payable_first_year_fixed_charge,
       pricing_type: client.payable_first_year_percentage ? 'percentage' : 'fixed',
       edited_installments: []
     });

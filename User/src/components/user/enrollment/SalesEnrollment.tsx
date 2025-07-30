@@ -667,7 +667,14 @@ const SalesEnrollment: React.FC = () => {
         `${BASE_URL}/enrolled-clients/sales/approval/${selectedClient.id}`,
         {
           approved,
-          updatedBy: userId
+          updatedBy: userId,
+          // When sales approves, copy edited amounts to payable amounts
+          ...(approved && {
+            payable_enrollment_charge: selectedClient.edited_enrollment_charge,
+            payable_offer_letter_charge: selectedClient.edited_offer_letter_charge,
+            payable_first_year_percentage: selectedClient.edited_first_year_percentage,
+            payable_first_year_fixed_charge: selectedClient.edited_first_year_fixed_charge
+          })
         },
         {
           headers: {
@@ -697,14 +704,17 @@ const SalesEnrollment: React.FC = () => {
               const initialPayment = installments.find((inst: any) => inst.installment_number === 0);
               
               if (initialPayment) {
-                // Update the initial payment to mark it as paid
+                // Update the initial payment to mark it as paid and copy edited amount to amount
                 await axios.put(
                   `${BASE_URL}/installments/${initialPayment.id}`,
                   {
                     paid: true,
                     paidDate: new Date().toISOString().split('T')[0],
                     paid_at: new Date().toISOString(),
-                    updatedBy: userId
+                    updatedBy: userId,
+                    // Copy edited_amount to amount when sales approves
+                    amount: initialPayment.edited_amount || initialPayment.amount,
+                    net_amount: initialPayment.edited_net_amount || initialPayment.net_amount
                   },
                   {
                     headers: {
@@ -714,6 +724,29 @@ const SalesEnrollment: React.FC = () => {
                   }
                 );
               }
+
+              // Update all other installments to copy edited amounts to amounts
+              const otherInstallments = installments.filter((inst: any) => inst.installment_number > 0);
+              const installmentPromises = otherInstallments.map((installment: any) =>
+                axios.put(
+                  `${BASE_URL}/installments/${installment.id}`,
+                  {
+                    amount: installment.edited_amount || installment.amount,
+                    net_amount: installment.edited_net_amount || installment.net_amount,
+                    dueDate: installment.edited_dueDate || installment.dueDate,
+                    remark: installment.edited_remark || installment.remark,
+                    updatedBy: userId
+                  },
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json'
+                    }
+                  }
+                )
+              );
+
+              await Promise.all(installmentPromises);
             }
           } catch (error) {
             console.error('Error updating initial payment:', error);
