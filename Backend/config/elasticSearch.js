@@ -464,10 +464,19 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   bool: {
                     must_not: {
-                      terms: { "status": ["Dead", "notinterested", "Enrolled", "open"] }
+                      terms: { "status": ["Dead", "notinterested", "Enrolled", "open","teamfollowup"] }
+                    }
+                  }
+                  
+                },
+                 {
+                  bool: {
+                    must_not: {
+                      term: { "is_Team_Followup": true }
                     }
                   }
                 }
+                
               ]
             }
           });
