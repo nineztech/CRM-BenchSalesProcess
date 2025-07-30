@@ -2186,6 +2186,7 @@ ${(() => {
                               <option value="Indeed">Indeed</option>
                               <option value="LinkedIn">LinkedIn</option>
                               <option value="Referral">Referral</option>
+                              <option value="Manual">Manual</option>
                               <option value="Other">Other</option>
                             </select>
                             {errors.leadSource && (
@@ -2263,7 +2264,7 @@ ${(() => {
                   <div className="px-8 py-4">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">Leads</h2>
                         {/* Update search input */}
                         <div className="flex items-center gap-2 relative">
                           <div className="relative">
