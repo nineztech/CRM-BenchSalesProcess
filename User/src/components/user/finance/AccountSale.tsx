@@ -760,10 +760,11 @@ const AccountSale: React.FC = () => {
     const isMyReview = activeTab === 'My Review';
 
     // Validate total offer letter amount matches with 2 decimal precision
-    const totalOfferLetterAmount = Number(((formData.offer_letter_initial_payment ?? 0) +
-      formData.offer_letter_installments.reduce((sum, inst) => sum + Number(inst.amount), 0)).toFixed(2));
+    const offerLetterInitialPayment = Number(formData.offer_letter_initial_payment ?? 0);
+    const offerLetterInstallmentsTotal = formData.offer_letter_installments.reduce((sum, inst) => sum + Number(inst.amount || 0), 0);
+    const totalOfferLetterAmount = Number((offerLetterInitialPayment + offerLetterInstallmentsTotal).toFixed(2));
     
-    const offerLetterCharge = Number(Number(formData.payable_offer_letter_charge).toFixed(2));
+    const offerLetterCharge = Number(Number(formData.payable_offer_letter_charge || 0).toFixed(2));
     
     if (Math.abs(totalOfferLetterAmount - offerLetterCharge) > 0.01) {
       alert(`Total amount (${formatCurrency(totalOfferLetterAmount)}) must equal the offer letter charge (${formatCurrency(offerLetterCharge)})`);
@@ -778,10 +779,11 @@ const AccountSale: React.FC = () => {
 
     // Validate first year installments if applicable
     if (formData.payable_first_year_fixed_charge || formData.payable_first_year_percentage) {
-      const totalFirstYearAmount = Number(((formData.first_year_initial_payment ?? 0) +
-        formData.first_year_installments.reduce((sum, inst) => sum + Number(inst.amount), 0)).toFixed(2));
+      const initialPayment = Number(formData.first_year_initial_payment ?? 0);
+      const installmentsTotal = formData.first_year_installments.reduce((sum, inst) => sum + Number(inst.amount || 0), 0);
+      const totalFirstYearAmount = Number((initialPayment + installmentsTotal).toFixed(2));
       
-      const expectedFirstYearAmount = Number(Number(formData.net_payable_first_year_price).toFixed(2));
+      const expectedFirstYearAmount = Number(Number(formData.net_payable_first_year_price || 0).toFixed(2));
       
       if (Math.abs(totalFirstYearAmount - expectedFirstYearAmount) > 0.01) {
         alert(`Total first year amount (${formatCurrency(totalFirstYearAmount)}) must equal the net payable first year price (${formatCurrency(expectedFirstYearAmount)})`);
@@ -792,6 +794,10 @@ const AccountSale: React.FC = () => {
     setFormLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Authentication token not found. Please login again.');
+        return;
+      }
       const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
       let finalUpdated = false;
 
@@ -833,9 +839,12 @@ const AccountSale: React.FC = () => {
         finalUpdated = response.data.success;
       }
 
-      // Only create installments if NOT in "My Review" tab
-      if (!isMyReview) {
-        // Prepare installments data for combined API
+      // Handle installments based on whether we're in "My Review" tab or not
+      if (isMyReview) {
+        // In "My Review" tab, update existing installments
+        await updateExistingInstallments(selectedClient.id, formData, token, userId);
+      } else {
+        // Not in "My Review" tab, create new installments
         const offerLetterInstallments = [];
         const firstYearInstallments = [];
 
@@ -931,6 +940,244 @@ const AccountSale: React.FC = () => {
       alert('Error updating enrollment. Please check the console for details.');
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  // Helper function to update existing installments (for "My Review" tab)
+  const updateExistingInstallments = async (clientId: number, formData: FormData, token: string, userId: number) => {
+    try {
+      // Update offer letter installments
+      if (formData.payable_offer_letter_charge && formData.payable_offer_letter_charge > 0) {
+        // Get existing offer letter installments
+        const existingOfferLetterResponse = await axios.get(
+          `${BASE_URL}/installments/enrolled-client/${clientId}?charge_type=offer_letter_charge`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const existingOfferLetterInstallments = existingOfferLetterResponse.data.success ? 
+          existingOfferLetterResponse.data.data.installments : [];
+
+        // Handle offer letter initial payment
+        const existingOfferLetterInitialPayment = existingOfferLetterInstallments.find((inst: any) => inst.installment_number === 0);
+        
+        if (existingOfferLetterInitialPayment) {
+          // Update existing initial payment
+          await axios.put(
+            `${BASE_URL}/installments/${existingOfferLetterInitialPayment.id}`,
+            {
+              amount: formData.offer_letter_initial_payment || formData.payable_offer_letter_charge,
+              dueDate: new Date().toISOString().split('T')[0],
+              remark: 'Initial Payment',
+              is_initial_payment: true,
+              updatedBy: userId,
+              edited_amount: formData.offer_letter_initial_payment || formData.payable_offer_letter_charge
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        } else if (formData.offer_letter_initial_payment && formData.offer_letter_initial_payment > 0) {
+          // Create new initial payment
+          await axios.post(
+            `${BASE_URL}/installments`,
+            {
+              enrolledClientId: clientId,
+              charge_type: 'offer_letter_charge',
+              installment_number: 0,
+              amount: formData.offer_letter_initial_payment,
+              dueDate: new Date().toISOString().split('T')[0],
+              remark: 'Initial Payment',
+              is_initial_payment: true,
+              edited_amount: formData.offer_letter_initial_payment
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+
+        // Handle offer letter regular installments
+        if (formData.offer_letter_installments.length > 0) {
+          const offerLetterInstallmentPromises = formData.offer_letter_installments.map((installment, index) => {
+            const existingInstallment = existingOfferLetterInstallments.find(
+              (inst: any) => inst.installment_number === (index + 1)
+            );
+
+            if (existingInstallment) {
+              // Update existing installment
+              return axios.put(
+                `${BASE_URL}/installments/${existingInstallment.id}`,
+                {
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  updatedBy: userId,
+                  edited_amount: installment.amount
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            } else {
+              // Create new installment
+              return axios.post(
+                `${BASE_URL}/installments`,
+                {
+                  enrolledClientId: clientId,
+                  charge_type: 'offer_letter_charge',
+                  installment_number: index + 1,
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  edited_amount: installment.amount
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            }
+          });
+
+          await Promise.all(offerLetterInstallmentPromises);
+        }
+      }
+
+      // Update first year installments
+      if (formData.net_payable_first_year_price && formData.net_payable_first_year_price > 0) {
+        // Get existing first year installments
+        const existingFirstYearResponse = await axios.get(
+          `${BASE_URL}/installments/enrolled-client/${clientId}?charge_type=first_year_charge`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const existingFirstYearInstallments = existingFirstYearResponse.data.success ? 
+          existingFirstYearResponse.data.data.installments : [];
+
+        // Handle first year initial payment
+        const existingFirstYearInitialPayment = existingFirstYearInstallments.find((inst: any) => inst.installment_number === 0);
+        
+        if (existingFirstYearInitialPayment) {
+          // Update existing initial payment
+          await axios.put(
+            `${BASE_URL}/installments/${existingFirstYearInitialPayment.id}`,
+            {
+              amount: formData.first_year_initial_payment || formData.net_payable_first_year_price,
+              dueDate: new Date().toISOString().split('T')[0],
+              remark: 'Initial Payment',
+              is_initial_payment: true,
+              updatedBy: userId,
+              edited_amount: formData.first_year_initial_payment || formData.net_payable_first_year_price
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        } else if (formData.first_year_initial_payment && formData.first_year_initial_payment > 0) {
+          // Create new initial payment
+          await axios.post(
+            `${BASE_URL}/installments`,
+            {
+              enrolledClientId: clientId,
+              charge_type: 'first_year_charge',
+              installment_number: 0,
+              amount: formData.first_year_initial_payment,
+              dueDate: new Date().toISOString().split('T')[0],
+              remark: 'Initial Payment',
+              is_initial_payment: true,
+              edited_amount: formData.first_year_initial_payment
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+
+        // Handle first year regular installments
+        if (formData.first_year_installments.length > 0) {
+          const firstYearInstallmentPromises = formData.first_year_installments.map((installment, index) => {
+            const existingInstallment = existingFirstYearInstallments.find(
+              (inst: any) => inst.installment_number === (index + 1)
+            );
+
+            if (existingInstallment) {
+              // Update existing installment
+              return axios.put(
+                `${BASE_URL}/installments/${existingInstallment.id}`,
+                {
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  updatedBy: userId,
+                  edited_amount: installment.amount
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            } else {
+              // Create new installment
+              return axios.post(
+                `${BASE_URL}/installments`,
+                {
+                  enrolledClientId: clientId,
+                  charge_type: 'first_year_charge',
+                  installment_number: index + 1,
+                  amount: installment.amount,
+                  dueDate: installment.dueDate,
+                  remark: installment.remark,
+                  is_initial_payment: false,
+                  edited_amount: installment.amount
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            }
+          });
+
+          await Promise.all(firstYearInstallmentPromises);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating existing installments:', error);
+      throw error;
     }
   };
 

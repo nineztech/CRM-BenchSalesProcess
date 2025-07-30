@@ -316,14 +316,15 @@ export const adminApprovalAction = async (req, res) => {
       }
       // --- END NEW LOGIC ---
 
-      // If both admin and sales have approved, mark initial payment as paid
+      // If both admin and sales have approved, mark initial payment as paid (only for enrollment charge)
       if (enrolledClient.Approval_by_sales && !enrolledClient.clientUserCreated) {
-        // Find and update initial payment
+        // Find and update initial payment for enrollment charge only
         const initialPayment = await Installments.findOne({
           where: {
             enrolledClientId: id,
             installment_number: 0,
-            is_initial_payment: true
+            is_initial_payment: true,
+            charge_type: 'enrollment_charge'
           }
         });
 
@@ -430,14 +431,15 @@ export const salesApprovalAction = async (req, res) => {
         payable_first_year_fixed_charge: enrolledClient.edited_first_year_fixed_charge
       });
       
-      // If both admin and sales have approved, mark initial payment as paid
+      // If both admin and sales have approved, mark initial payment as paid (only for enrollment charge)
       if (enrolledClient.Approval_by_admin && !enrolledClient.clientUserCreated) {
-        // Find and update initial payment
+        // Find and update initial payment for enrollment charge only
         const initialPayment = await Installments.findOne({
           where: {
             enrolledClientId: id,
             installment_number: 0,
-            is_initial_payment: true
+            is_initial_payment: true,
+            charge_type: 'enrollment_charge'
           }
         });
 
@@ -1398,6 +1400,21 @@ export const adminFinalApproval = async (req, res) => {
         edited_net_payable_first_year_price: enrolledClient.net_payable_first_year_price,
         edited_first_year_salary: enrolledClient.first_year_salary
       });
+
+      // --- NEW LOGIC: Update all related installments' edit fields ---
+      const allInstallments = await Installments.findAll({
+        where: { enrolledClientId: id }
+      });
+      for (const inst of allInstallments) {
+        await inst.update({
+          edited_amount: inst.amount,
+          net_amount: inst.amount,
+          edited_dueDate: inst.dueDate,
+          edited_remark: inst.remark,
+          has_admin_update: false
+        });
+      }
+      // --- END NEW LOGIC ---
     } else {
       // Admin rejects and makes changes - send back to sales for review
       const updateData = {
@@ -1610,6 +1627,18 @@ export const salesAcceptAdminChanges = async (req, res) => {
       has_update_in_final: false,
       has_update: false
     });
+
+    // --- NEW LOGIC: Update all related installments' amount and net_amount fields ---
+    const allInstallments = await Installments.findAll({
+      where: { enrolledClientId: id }
+    });
+    for (const inst of allInstallments) {
+      await inst.update({
+        amount: inst.edited_amount,
+        net_amount: inst.edited_amount
+      });
+    }
+    // --- END NEW LOGIC ---
 
     res.status(200).json({ 
       success: true, 

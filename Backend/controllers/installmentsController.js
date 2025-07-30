@@ -250,8 +250,8 @@ export const createInstallment = async (req, res) => {
       remark: isInitialPayment ? 'Initial Payment' : remark,
       installment_number: finalInstallmentNumber,
       is_initial_payment: isInitialPayment,
-      paid: isInitialPayment && isApproved, // Only mark as paid if it's initial payment AND enrollment is approved
-      paidDate: (isInitialPayment && isApproved) ? new Date() : null // Only set paid date if it's initial payment AND enrollment is approved
+      paid: isInitialPayment && isApproved && charge_type === 'enrollment_charge', // Only mark as paid if it's initial payment AND enrollment is approved AND it's enrollment charge
+      paidDate: (isInitialPayment && isApproved && charge_type === 'enrollment_charge') ? new Date() : null // Only set paid date if it's initial payment AND enrollment is approved AND it's enrollment charge
     });
 
     // --- NEW LOGIC: If offer letter installment, send to admin for review ---
@@ -424,12 +424,12 @@ export const updateInstallment = async (req, res) => {
       }
 
       // Validate total amount
-      if (Math.abs(totalAmount - targetAmount) > 0.01) { // Using small epsilon for floating point comparison
-        return res.status(400).json({
-          success: false,
-          message: `Total installment amount (${totalAmount}) must equal ${installment.charge_type} (${targetAmount})`
-        });
-      }
+      // if (Math.abs(totalAmount - targetAmount) > 0.01) { // Using small epsilon for floating point comparison
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: `Total installment amount (${totalAmount}) must equal ${installment.charge_type} (${targetAmount})`
+      //   });
+      // }
     }
 
     // If installment number is being changed, check for conflicts
@@ -457,11 +457,11 @@ export const updateInstallment = async (req, res) => {
     if (remark !== undefined) updateData.remark = remark;
     if (installment_number !== undefined) updateData.installment_number = installment_number;
 
-    // Only set paid status for initial payment when fully approved
+    // Only set paid status for initial payment when fully approved (only for enrollment charge)
     if (installment.is_initial_payment) {
-      updateData.paid = isFullyApproved;
-      updateData.paidDate = isFullyApproved ? new Date() : null;
-      updateData.paid_at = isFullyApproved ? new Date() : null;
+      updateData.paid = isFullyApproved && installment.charge_type === 'enrollment_charge';
+      updateData.paidDate = (isFullyApproved && installment.charge_type === 'enrollment_charge') ? new Date() : null;
+      updateData.paid_at = (isFullyApproved && installment.charge_type === 'enrollment_charge') ? new Date() : null;
     } else if (paid !== undefined) {
       updateData.paid = paid;
       updateData.paidDate = paid ? (paidDate || new Date()) : null;
