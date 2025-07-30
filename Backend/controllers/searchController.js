@@ -40,38 +40,29 @@ export const searchLeadsController = async (req, res) => {
       }
     }
 
-    // Optimize limit to prevent excessive queries
-    const optimizedLimit = Math.min(parseInt(limit), 100);
-    const optimizedPage = Math.max(parseInt(page), 1);
-
     // Search leads with filters
     const result = await searchLeads(
       query, 
       statusGroup, 
-      optimizedPage, 
-      optimizedLimit,
+      parseInt(page), 
+      parseInt(limit),
       statusFilter,
       salesFilter,
       createdByFilter
     );
-
-    // Set cache headers for better performance
-    res.set({
-      'Cache-Control': 'private, max-age=60', // Cache for 1 minute
-      'ETag': `"${Date.now()}-${result.total}"`
-    });
 
     return res.status(200).json({
       success: true,
       message: 'Leads retrieved successfully',
       data: {
         total: result.total,
-        page: optimizedPage,
-        limit: optimizedLimit,
+        page: parseInt(page),
+        limit: parseInt(limit),
         leads: result.leads
       }
     });
   } catch (error) {
+    console.error('Error searching leads:', error);
     return res.status(500).json({
       success: false,
       message: 'Error searching leads',

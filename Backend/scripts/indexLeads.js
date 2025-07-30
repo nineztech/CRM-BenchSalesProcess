@@ -20,15 +20,12 @@ export const reindexLeads = async () => {
       await client.indices.delete({ index: ARCHIVED_LEAD_INDEX });
     }
 
-    // Recreate the index with proper mappings and performance optimizations
+    // Recreate the index with proper mappings
     await client.indices.create({
       index: LEAD_INDEX,
       body: {
         settings: {
           "index.max_ngram_diff": 19,
-          "index.number_of_shards": 1,
-          "index.number_of_replicas": 0,
-          "index.refresh_interval": "30s",
           analysis: {
             analyzer: {
               text_analyzer: {
@@ -65,79 +62,79 @@ export const reindexLeads = async () => {
           }
         },
         mappings: {
-          properties: {
-            id: { type: 'integer' },
-            is_Team_Followup: { type: 'boolean' },
-            followUpDateTime: { type: 'date' },
-            firstName: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            lastName: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            contactNumbers: { 
-              type: 'keyword'
-            },
-            processedContactNumbers: {
-              type: 'text',
-              analyzer: 'phone_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            emails: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            primaryEmail: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            technology: { type: 'keyword' },
-            country: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            countryCode: { type: 'keyword' },
-            visaStatus: { type: 'keyword' },
-            status: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
-            statusGroup: { 
-              type: 'text',
-              analyzer: 'text_analyzer',
-              search_analyzer: 'search_analyzer',
-              fields: {
-                keyword: { type: 'keyword' }
-              }
-            },
+                      properties: {
+              id: { type: 'integer' },
+              is_Team_Followup: { type: 'boolean' },
+              followUpDateTime: { type: 'date' },
+              firstName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              lastName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              contactNumbers: { 
+                type: 'keyword'
+              },
+              processedContactNumbers: {
+                type: 'text',
+                analyzer: 'phone_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              emails: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              primaryEmail: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              technology: { type: 'keyword' },
+              country: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              countryCode: { type: 'keyword' },
+              visaStatus: { type: 'keyword' },
+              status: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              statusGroup: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
             leadSource: { type: 'keyword' },
             assignTo: { type: 'integer' },
             assignedUser: {
@@ -267,84 +264,52 @@ export const reindexLeads = async () => {
       ]
     });
 
-    // Index leads using bulk operations for better performance
+    // Index each lead
     let successCount = 0;
     let errorCount = 0;
 
-    // Process leads in batches
-    const batchSize = 100;
-    for (let i = 0; i < leads.length; i += batchSize) {
-      const batch = leads.slice(i, i + batchSize);
-      const bulkBody = [];
-
-      for (const lead of batch) {
-        try {
-          const leadData = lead.toJSON();
-          
-          // Determine the status group
-          let statusGroup = 'open';
-          if (leadData.status) {
-            if (leadData.status === 'Enrolled') {
-              statusGroup = 'Enrolled';
-            } else if (['Dead', 'notinterested'].includes(leadData.status)) {
-              statusGroup = 'archived';
-            } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'].includes(leadData.status)) {
-              statusGroup = 'inProcess';
-            }
+    for (const lead of leads) {
+      try {
+        const leadData = lead.toJSON();
+        
+        // Determine the status group
+        let statusGroup = 'open';
+        if (leadData.status) {
+          if (leadData.status === 'Enrolled') {
+            statusGroup = 'Enrolled';
+          } else if (['Dead', 'notinterested'].includes(leadData.status)) {
+            statusGroup = 'archived';
+          } else if (['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'].includes(leadData.status)) {
+            statusGroup = 'inProcess';
           }
-
-          // Check if lead is in team followup
-          const isTeamFollowup = leadData.is_Team_Followup === true || leadData.is_team_followup === true;
-
-          // Add status group and team followup flag to lead data
-          const enrichedLeadData = {
-            ...leadData,
-            statusGroup: statusGroup.toLowerCase(),
-            is_Team_Followup: isTeamFollowup
-          };
-          
-          bulkBody.push({ index: { _index: LEAD_INDEX, _id: enrichedLeadData.id.toString() } });
-          bulkBody.push(enrichedLeadData);
-          successCount++;
-        } catch (error) {
-          errorCount++;
         }
-      }
 
-      if (bulkBody.length > 0) {
-        try {
-          await client.bulk({ body: bulkBody });
-        } catch (error) {
-          errorCount += batch.length;
-          successCount -= batch.length;
-        }
+        // Check if lead is in team followup
+        const isTeamFollowup = leadData.is_Team_Followup === true || leadData.is_team_followup === true;
+
+        // Add status group and team followup flag to lead data
+        const enrichedLeadData = {
+          ...leadData,
+          statusGroup: statusGroup.toLowerCase(), // ensure lowercase for consistency
+          is_Team_Followup: isTeamFollowup // ensure consistent field name
+        };
+        
+        await indexLead(enrichedLeadData);
+        successCount++;
+      } catch (error) {
+        errorCount++;
       }
     }
 
-    // Index archived leads using bulk operations
-    for (let i = 0; i < archivedLeads.length; i += batchSize) {
-      const batch = archivedLeads.slice(i, i + batchSize);
-      const bulkBody = [];
-
-      for (const archivedLead of batch) {
-        try {
-          const archivedLeadData = archivedLead.toJSON();
-          
-          bulkBody.push({ index: { _index: ARCHIVED_LEAD_INDEX, _id: archivedLeadData.id.toString() } });
-          bulkBody.push(archivedLeadData);
-          successCount++;
-        } catch (error) {
-          errorCount++;
-        }
-      }
-
-      if (bulkBody.length > 0) {
-        try {
-          await client.bulk({ body: bulkBody });
-        } catch (error) {
-          errorCount += batch.length;
-          successCount -= batch.length;
-        }
+    // Index each archived lead
+    for (const archivedLead of archivedLeads) {
+      try {
+        const archivedLeadData = archivedLead.toJSON();
+        
+        await indexArchivedLead(archivedLeadData);
+        successCount++;
+      } catch (error) {
+        errorCount++;
       }
     }
 
