@@ -202,7 +202,23 @@ const indexLead = async (lead) => {
   try {
     const isAvailable = await checkElasticsearchConnection();
     if (!isAvailable) {
+      console.log('Elasticsearch connection not available');
       return;
+    }
+
+    // Ensure lead has required fields
+    if (!lead || !lead.id) {
+      console.log('Invalid lead data for indexing');
+      return;
+    }
+
+    // Check if the index exists, if not, create it
+    const indexExists = await client.indices.exists({ index: LEAD_INDEX });
+    if (!indexExists) {
+      console.log('Lead index does not exist, creating it...');
+      await createLeadIndex();
+      // Wait a moment for the index to be ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // Process contact numbers to create searchable versions without country codes
@@ -225,6 +241,7 @@ const indexLead = async (lead) => {
       refresh: true
     });
   } catch (error) {
+    console.error(`Error indexing lead ${lead?.id}:`, error.message);
     throw error;
   }
 };

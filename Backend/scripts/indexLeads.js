@@ -4,23 +4,32 @@ import colors from 'colors';
 
 export const reindexLeads = async () => {
   try {
-    // First, check if the index exists
-    const indexExists = await client.indices.exists({ index: LEAD_INDEX });
+    console.log('Starting reindex process...');
     
-    // If it exists, delete it
-    if (indexExists) {
-      await client.indices.delete({ index: LEAD_INDEX });
+    // First, let's check what indices exist and delete any leads-related indices
+    try {
+      const indices = await client.cat.indices({ format: 'json' });
+      console.log('Existing indices:', indices.map(idx => idx.index));
+      
+      // Delete any indices that start with 'leads'
+      for (const index of indices) {
+        if (index.index.startsWith('leads')) {
+          console.log(`Deleting index: ${index.index}`);
+          await client.indices.delete({ 
+            index: index.index, 
+            ignore_unavailable: true 
+          });
+        }
+      }
+    } catch (error) {
+      console.log('Error checking/deleting indices:', error.message);
     }
 
-    // Check if archived leads index exists
-    const archivedIndexExists = await client.indices.exists({ index: ARCHIVED_LEAD_INDEX });
-    
-    // If it exists, delete it
-    if (archivedIndexExists) {
-      await client.indices.delete({ index: ARCHIVED_LEAD_INDEX });
-    }
+    // Wait for deletion to complete
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Recreate the index with proper mappings
+    console.log('Creating new lead index...');
     await client.indices.create({
       index: LEAD_INDEX,
       body: {
@@ -230,7 +239,12 @@ export const reindexLeads = async () => {
     });
 
     // Create archived leads index
+    console.log('Creating archived lead index...');
     await createArchivedLeadIndex();
+
+    // Get total count of leads first
+    const totalLeads = await Lead.count();
+    console.log(`Total leads in database: ${totalLeads}`);
 
     // Get all leads with their assigned users, creators, and updaters
     const leads = await Lead.findAll({
@@ -250,8 +264,21 @@ export const reindexLeads = async () => {
           as: 'updater',
           attributes: ['id', 'firstname', 'lastname', 'email']
         }
-      ]
+      ],
+      // Ensure we get all records
+      where: {},
+      limit: null,
+      offset: null
     });
+
+    console.log(`Retrieved ${leads.length} leads from database`);
+
+    // Check for leads with specific dates (July 1st)
+    const julyFirstLeads = leads.filter(lead => {
+      const createdAt = new Date(lead.createdAt);
+      return createdAt.getDate() === 1 && createdAt.getMonth() === 6; // July is month 6 (0-indexed)
+    });
+    console.log(`Found ${julyFirstLeads.length} leads created on July 1st`);
 
     // Get all archived leads with their assigned users
     const archivedLeads = await ArchivedLead.findAll({
@@ -264,13 +291,23 @@ export const reindexLeads = async () => {
       ]
     });
 
+    console.log(`Retrieved ${archivedLeads.length} archived leads from database`);
+
     // Index each lead
     let successCount = 0;
     let errorCount = 0;
 
+    console.log('Starting to index leads...');
     for (const lead of leads) {
       try {
         const leadData = lead.toJSON();
+        
+        // Ensure we have valid data
+        if (!leadData.id) {
+          console.error('Lead missing ID:', leadData);
+          errorCount++;
+          continue;
+        }
         
         // Determine the status group
         let statusGroup = 'open';
@@ -296,12 +333,24 @@ export const reindexLeads = async () => {
         
         await indexLead(enrichedLeadData);
         successCount++;
+        
+        // Log progress every 50 leads
+        if (successCount % 50 === 0) {
+          console.log(`Indexed ${successCount} leads so far...`);
+        }
       } catch (error) {
         errorCount++;
+        console.error(`Error indexing lead ${lead.id}:`, error.message);
       }
     }
 
+    console.log(`Successfully indexed ${successCount} leads`);
+    if (errorCount > 0) {
+      console.log(`Failed to index ${errorCount} leads`);
+    }
+
     // Index each archived lead
+    console.log('Starting to index archived leads...');
     for (const archivedLead of archivedLeads) {
       try {
         const archivedLeadData = archivedLead.toJSON();
@@ -310,11 +359,29 @@ export const reindexLeads = async () => {
         successCount++;
       } catch (error) {
         errorCount++;
+        console.error(`Error indexing archived lead ${archivedLead.id}:`, error.message);
       }
     }
 
+    console.log(`Total indexed: ${successCount} leads, Errors: ${errorCount}`);
+    
+    // Verify the indexing by checking the index count
+    try {
+      const indexStats = await client.indices.stats({ index: LEAD_INDEX });
+      const documentCount = indexStats.body.indices[LEAD_INDEX].total.docs.count;
+      console.log(`Elasticsearch index contains ${documentCount} documents`);
+      
+      if (documentCount !== successCount) {
+        console.warn(`Warning: Indexed ${successCount} leads but Elasticsearch shows ${documentCount} documents`);
+      }
+    } catch (verifyError) {
+      console.error('Error verifying index count:', verifyError.message);
+    }
+    
+    console.log('Reindex process completed successfully!');
+
   } catch (error) {
-    // Error handling without console output
+    console.error('Error during reindex process:', error);
   }
 };
 
