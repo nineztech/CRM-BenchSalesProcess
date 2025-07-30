@@ -1,14 +1,19 @@
 import { Client } from '@elastic/elasticsearch';
 
-// Create Elasticsearch client with retry configuration
+// Create Elasticsearch client with optimized configuration
 const client = new Client({
   node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
-  maxRetries: 5,
-  requestTimeout: 60000,
+  maxRetries: 3,
+  requestTimeout: 30000,
   sniffOnStart: false,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  // Performance optimizations
+  compression: true,
+  keepAlive: true,
+  maxSockets: 10,
+  minSockets: 2
 });
 
 // Define lead index mapping
@@ -29,45 +34,204 @@ const createLeadIndex = async () => {
       await client.indices.create({
         index: LEAD_INDEX,
         body: {
+          settings: {
+            "index.max_ngram_diff": 19,
+            analysis: {
+              analyzer: {
+                text_analyzer: {
+                  type: "custom",
+                  tokenizer: "standard",
+                  filter: ["lowercase", "ngram_filter"]
+                },
+                search_analyzer: {
+                  type: "custom",
+                  tokenizer: "standard",
+                  filter: ["lowercase"]
+                },
+                phone_analyzer: {
+                  type: "custom",
+                  tokenizer: "ngram",
+                  filter: ["lowercase"],
+                  char_filter: ["digit_only"]
+                }
+              },
+              char_filter: {
+                digit_only: {
+                  type: "pattern_replace",
+                  pattern: "[^0-9]",
+                  replacement: ""
+                }
+              },
+              filter: {
+                ngram_filter: {
+                  type: "ngram",
+                  min_gram: 1,
+                  max_gram: 20
+                }
+              }
+            }
+          },
           mappings: {
             properties: {
               id: { type: 'integer' },
               is_Team_Followup: { type: 'boolean' },
-              firstName: { type: 'text' },
-              lastName: { type: 'text' },
-              contactNumbers: { type: 'keyword' },
-              emails: { type: 'keyword' },
-              primaryEmail: { type: 'keyword' },
+              followUpDateTime: { type: 'date' },
+              firstName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              lastName: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              contactNumbers: { 
+                type: 'keyword'
+              },
+              processedContactNumbers: {
+                type: 'text',
+                analyzer: 'phone_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              emails: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              primaryEmail: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
               technology: { type: 'keyword' },
-              country: { type: 'keyword' },
+              country: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
               countryCode: { type: 'keyword' },
               visaStatus: { type: 'keyword' },
-              status: { type: 'keyword' },
-              statusGroup: { type: 'keyword' },
+              status: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
+              statusGroup: { 
+                type: 'text',
+                analyzer: 'text_analyzer',
+                search_analyzer: 'search_analyzer',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
               leadSource: { type: 'keyword' },
               assignTo: { type: 'integer' },
               assignedUser: {
                 properties: {
                   id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
+                  firstname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  lastname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  email: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  }
                 }
               },
               creator: {
                 properties: {
                   id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
+                  firstname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  lastname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  email: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  }
                 }
               },
               updater: {
                 properties: {
                   id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
+                  firstname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  lastname: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  },
+                  email: { 
+                    type: 'text',
+                    analyzer: 'text_analyzer',
+                    search_analyzer: 'search_analyzer',
+                    fields: {
+                      keyword: { type: 'keyword' }
+                    }
+                  }
                 }
               }
             }
@@ -221,8 +385,7 @@ const indexLead = async (lead) => {
     await client.index({
       index: LEAD_INDEX,
       id: lead.id.toString(),
-      body: leadToIndex,
-      refresh: true
+      body: leadToIndex
     });
   } catch (error) {
     throw error;
@@ -312,116 +475,31 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
     // Process the search query if it looks like a phone number
     const processedQuery = query.match(/^\+?\d+$/) ? processPhoneNumber(query) : query;
 
+    // Build efficient search query using multi_match instead of multiple wildcards
     const searchQuery = {
       bool: {
         must: [
           {
-            bool: {
-              should: [
-                {
-                  wildcard: {
-                    "firstName": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 3
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "lastName": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 3
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "assignedUser.firstname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "assignedUser.lastname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "creator.firstname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "creator.lastname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "updater.firstname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "updater.lastname": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "country": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "status": {
-                      value: `*${processedQuery.toLowerCase()}*`,
-                      boost: 2
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "emails": {
-                      value: `*${processedQuery.toLowerCase()}*`
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "primaryEmail": {
-                      value: `*${processedQuery.toLowerCase()}*`
-                    }
-                  }
-                },
-                {
-                  wildcard: {
-                    "processedContactNumbers": {
-                      value: `*${processedQuery}*`,
-                      boost: 2
-                    }
-                  }
-                }
+            multi_match: {
+              query: processedQuery,
+              type: "best_fields",
+              fields: [
+                "firstName^3",
+                "lastName^3", 
+                "assignedUser.firstname^2",
+                "assignedUser.lastname^2",
+                "creator.firstname^2",
+                "creator.lastname^2",
+                "updater.firstname^2",
+                "updater.lastname^2",
+                "country^2",
+                "status^2",
+                "emails",
+                "primaryEmail",
+                "processedContactNumbers^2"
               ],
-              minimum_should_match: 1
+              fuzziness: "AUTO",
+              operator: "or"
             }
           }
         ]
@@ -441,7 +519,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
           searchQuery.bool.must.push({
             bool: {
               must_not: {
-                terms: { "status": ["Dead", "notinterested", "Enrolled", "open"] }
+                terms: { "status.keyword": ["Dead", "notinterested", "Enrolled", "open"] }
               }
             }
           });
@@ -464,7 +542,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   bool: {
                     must_not: {
-                      terms: { "status": ["Dead", "notinterested", "Enrolled", "open"] }
+                      terms: { "status.keyword": ["Dead", "notinterested", "Enrolled", "open"] }
                     }
                   }
                 }
@@ -475,12 +553,9 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
 
         case 'inprocess':
           // For inProcess tab, we want leads that are in inProcess statuses
-          // Always apply timer conditions for inProcess tab, regardless of status filter
           const inProcessStatuses = ['DNR1', 'DNR2', 'DNR3', 'interested', 'not working', 'follow up', 'wrong no', 'call again later'];
           
-          // Always apply timer conditions for inProcess tab
-          // Include leads that either have a future followUpDateTime OR no followUpDateTime at all
-          // Exclude leads with past due timers (they should be in followup tab)
+          // Simplified and optimized inProcess query
           searchQuery.bool.must.push({
             bool: {
               must: [
@@ -490,9 +565,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                       {
                         bool: {
                           must: [
-                            {
-                              exists: { field: "followUpDateTime" }
-                            },
+                            { exists: { field: "followUpDateTime" } },
                             {
                               range: {
                                 followUpDateTime: {
@@ -503,13 +576,7 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                           ]
                         }
                       },
-                      {
-                        bool: {
-                          must_not: {
-                            exists: { field: "followUpDateTime" }
-                          }
-                        }
-                      }
+                      { bool: { must_not: { exists: { field: "followUpDateTime" } } } }
                     ],
                     minimum_should_match: 1
                   }
@@ -517,54 +584,40 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 {
                   bool: {
                     must_not: {
-                      terms: { "status": ["Dead", "notinterested", "Enrolled","Team Followup", "open"] }
+                      terms: { "status.keyword": ["Dead", "notinterested", "Enrolled", "Team Followup", "open"] }
                     }
                   }
                 },
-                {
-                  bool: {
-                    must_not: {
-                      term: { "is_Team_Followup": true }
-                    }
-                  }
-                }
+                { bool: { must_not: { term: { "is_Team_Followup": true } } } }
               ]
             }
           });
-          
-          if (statusFilter) {
-            // If status filter is provided, log it but the timer conditions are already applied above
-            if (inProcessStatuses.includes(statusFilter)) {
-              // Status filter provided for inProcess tab, timer conditions still enforced
-            }
-          }
           break;
 
         case 'open':
           searchQuery.bool.must.push({
-            term: { "status": "open" }
+            term: { "status.keyword": "open" }
           });
           break;
 
         case 'Enrolled':
           searchQuery.bool.must.push({
-            term: { "status": "Enrolled" }
-          },
-        );
+            term: { "status.keyword": "Enrolled" }
+          });
           break;
 
         case 'archived':
           searchQuery.bool.must.push({
-            terms: { "status": ["Dead", "notinterested"] }
+            terms: { "status.keyword": ["Dead", "notinterested"] }
           });
           break;
       }
     }
 
-    // Add additional filters if provided
+    // Add additional filters if provided - use efficient term queries
     if (statusFilter) {
       searchQuery.bool.must.push({
-        wildcard: { "status": `*${statusFilter.toLowerCase()}*` }
+        term: { "status.keyword": statusFilter }
       });
     }
 
@@ -576,13 +629,11 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       const salesFilterQuery = {
         bool: {
           should: [
-            // Match full name in firstname field
             {
-              wildcard: { "assignedUser.firstname": `*${firstName}*` }
+              match: { "assignedUser.firstname": firstName }
             },
-            // Match full name in lastname field
             {
-              wildcard: { "assignedUser.lastname": `*${lastName || firstName}*` }
+              match: { "assignedUser.lastname": lastName || firstName }
             }
           ],
           minimum_should_match: 1
@@ -600,13 +651,11 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
       const createdByFilterQuery = {
         bool: {
           should: [
-            // Match full name in firstname field
             {
-              wildcard: { "creator.firstname": `*${firstName}*` }
+              match: { "creator.firstname": firstName }
             },
-            // Match full name in lastname field
             {
-              wildcard: { "creator.lastname": `*${lastName || firstName}*` }
+              match: { "creator.lastname": lastName || firstName }
             }
           ],
           minimum_should_match: 1
@@ -625,7 +674,12 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
         sort: [
           { _score: 'desc' },
           { id: 'desc' }
-        ]
+        ],
+        // Performance optimizations
+        _source: {
+          excludes: ['processedContactNumbers'] // Exclude large fields from response
+        },
+        timeout: '30s'
       }
     });
 
@@ -668,8 +722,7 @@ const indexArchivedLead = async (archivedLead) => {
     await client.index({
       index: ARCHIVED_LEAD_INDEX,
       id: archivedLead.id.toString(),
-      body: archivedLeadToIndex,
-      refresh: true
+      body: archivedLeadToIndex
     });
   } catch (error) {
     throw error;

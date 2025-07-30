@@ -358,9 +358,6 @@ const LeadCreationComponent: React.FC = () => {
   // Modify fetchLeads function to use correct endpoints
   const fetchLeads = async () => {
     try {
-      console.log('[Fetch Leads] Starting fetch operation');
-      console.log('[Search Query]', searchQuery ? `Searching for: "${searchQuery}"` : 'No search query');
-      
       setIsLoading(true);
       setApiError(null);
 
@@ -382,7 +379,7 @@ const LeadCreationComponent: React.FC = () => {
       if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
         endpoint = baseEndpoint;
       }
-      console.log(`[API Request] Using endpoint: ${endpoint}`);
+
 
       let normalizedStatusGroup;
       switch(activeStatusTab) {
@@ -429,7 +426,7 @@ const LeadCreationComponent: React.FC = () => {
         params.statusFilter = 'open';
       }
       
-      console.log('FetchLeads params:', params);
+
       
       if (searchQuery !== '') {
         params.query = searchQuery;
@@ -437,33 +434,16 @@ const LeadCreationComponent: React.FC = () => {
         // When searching with filters, we want to search within the filtered data
         // The backend will apply filters first, then search within those results
         // This ensures that search results are limited to the filtered dataset
-        console.log('Searching within filtered data:', { searchQuery, statusFilter, salesFilter, createdByFilter });
-        
         // If there are active filters, we need to ensure the search is performed on filtered data
         // The backend should apply filters first, then search within those results
         if (statusFilter || salesFilter || createdByFilter) {
-          console.log('Search with filters: Applying filters first, then searching within filtered results');
-          console.log('🔍 Search behavior: Filters will be applied first, then search will be performed on the filtered dataset');
-          
-          // Ensure that when both search and filters are active, the search is performed on filtered data
-          // The backend should combine filters with search query properly
-          console.log('🔍 Search + Filter combination: Ensuring search works on filtered dataset');
-          console.log('🔍 Search + Filter Debug - Request:', {
-            searchQuery,
-            statusFilter,
-            salesFilter,
-            createdByFilter,
-            statusGroup: normalizedStatusGroup,
-            endpoint
-          });
         }
       }
       // All search and filter operations now go through the backend for consistent pagination
 
 
 
-      console.log('[API Request] Params:', params);
-      console.log('🔍 Search + Filter behavior: Filters applied first, then search performed on filtered dataset');
+      
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -473,35 +453,16 @@ const LeadCreationComponent: React.FC = () => {
       });
 
       if (response.data.success) {
-        console.log('[API Response] Success:', {
-          searchActive: !!searchQuery,
-          totalResults: searchQuery ? response.data.data.total : response.data.data[activeStatusTab]?.pagination.total,
-          currentPage: searchQuery ? response.data.data.currentPage : response.data.data[activeStatusTab]?.pagination.currentPage
-        });
-        
         if (searchQuery && (statusFilter || salesFilter || createdByFilter)) {
-          console.log('🔍 Search + Filter Results: Search performed on filtered dataset');
         }
         
         const { data } = response.data;
         
         if (searchQuery.trim() && hasViewAllLeadsPermission) {
           // Handle search results for users with view all permission
-          console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
-          console.log('[Search + Filters] Search query:', searchQuery, 'Filters:', { statusFilter, salesFilter, createdByFilter });
-          
           // When searching with filters, ensure we're searching within filtered data
           // The backend should have applied filters first, then searched within those results
           // This means the search results are already filtered by the applied filters
-          console.log('🔍 Search results: These results are from searching within the filtered dataset');
-          console.log('🔍 Search + Filter Debug:', {
-            searchQuery,
-            statusFilter,
-            salesFilter,
-            createdByFilter,
-            resultsCount: data.leads?.length || 0,
-            totalResults: data.total || 0
-          });
           // Apply client-side status filter if needed
           let filteredLeads = data.leads || [];
           if (statusFilter) {
@@ -522,7 +483,6 @@ const LeadCreationComponent: React.FC = () => {
           }));
         } else {
           // Handle regular fetch
-          console.log('[Regular Fetch] Data received for tabs:', Object.keys(data));
           
           // Apply client-side status filter to current tab if needed
           let currentTabData = data[activeStatusTab];
@@ -551,11 +511,9 @@ const LeadCreationComponent: React.FC = () => {
           }));
         }
       } else {
-        console.error('[API Error] Failed to fetch leads:', response.data);
         setApiError('Failed to fetch leads. Please try again.');
       }
     } catch (error: any) {
-      console.error('[Error] Error in fetchLeads:', error);
       setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
@@ -597,7 +555,7 @@ const LeadCreationComponent: React.FC = () => {
         params.statusFilter = 'Enrolled';
       }
       
-      console.log('HandlePageChange params:', params);
+
       
       if (searchQuery !== '') {
         params.query = searchQuery;  // Send the exact search query without trimming
@@ -669,7 +627,6 @@ const LeadCreationComponent: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error changing page:', error);
       setApiError(error.response?.data?.message || 'Failed to change page. Please try again.');
     } finally {
       setIsLoading(false);
@@ -681,14 +638,13 @@ const LeadCreationComponent: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('No token found for filter options fetch');
         return;
       }
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead/filter-options` : `${BASE_URL}/lead/assigned/filter-options`;
 
-      console.log('Fetching filter options from:', endpoint);
+
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -699,24 +655,20 @@ const LeadCreationComponent: React.FC = () => {
       if (response.data.success) {
         const { salesUsers, creators, statuses } = response.data.data;
         
-        console.log('Received filter options:', { salesUsers, creators, statuses });
+
 
         setFilterOptions({
           statuses: statuses || [],
           salesUsers: salesUsers || [],
           creators: creators || []
         });
-      } else {
-        console.error('Failed to fetch filter options:', response.data);
       }
     } catch (error: any) {
-      console.error('Error fetching filter options:', error);
     }
   };
 
   // Immediate search effect
   useEffect(() => {
-    console.log('Filter/Search effect triggered:', { searchQuery, statusFilter, salesFilter, createdByFilter });
     if (searchQuery !== '') {
       setIsSearching(true);
     }
@@ -807,7 +759,6 @@ const LeadCreationComponent: React.FC = () => {
         }));
       }
     } catch (error: any) {
-      console.error('Error changing page size:', error);
       setApiError(error.response?.data?.message || 'Failed to change page size. Please try again.');
     } finally {
       setIsLoading(false);
@@ -940,9 +891,8 @@ const LeadCreationComponent: React.FC = () => {
               }
             }
           );
-        } catch (emailError) {
-          console.error('Error sending notification:', emailError);
-        }
+            } catch (emailError) {
+    }
       }
 
       setSelectedSalesPerson('');
@@ -954,7 +904,6 @@ const LeadCreationComponent: React.FC = () => {
       const errorMessage = error.response?.data?.message || 'Failed to assign leads. Please try again.';
       setApiError(errorMessage);
       toast.error(errorMessage);
-      console.error('Assignment error:', error.response?.data || error);
     } finally {
       setIsLoading(false);
     }
@@ -1148,11 +1097,8 @@ const LeadCreationComponent: React.FC = () => {
   // Handle lead creation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted');
-    console.log('Current form data:', formData);
 
     if (!validate()) {
-      console.log('Validation failed', errors);
       return;
     }
 
@@ -1253,12 +1199,10 @@ const LeadCreationComponent: React.FC = () => {
         fetchLeads();
       } else {
         const errorMessage = response.data.message || 'Failed to process lead. Please try again.';
-        console.error('API Error:', errorMessage);
         setApiError(errorMessage);
         toast.error(errorMessage);
       }
     } catch (error: any) {
-      console.error('Error processing lead:', error.response || error);
       const errorMessage = error.response?.data?.message || 'Failed to process lead. Please try again.';
       setApiError(errorMessage);
       toast.error(errorMessage);
@@ -1294,7 +1238,6 @@ const LeadCreationComponent: React.FC = () => {
   // Update the handleStatusTabChange function
   const handleStatusTabChange = async (status: 'open' | 'Enrolled' | 'inProcess' | 'followup' | 'teamfollowup') => {
     try {
-      console.log(`[Status Tab Change] Switching to ${status} tab`);
       
       // Set the active tab immediately for instant response
       setActiveStatusTab(status);
@@ -1328,7 +1271,7 @@ const LeadCreationComponent: React.FC = () => {
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
 
       const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      console.log(`[API Request] Fetching leads from: ${endpoint}`);
+
 
       // If there's a search query, use the search endpoint
       if (searchQuery.trim()) {
@@ -1385,9 +1328,8 @@ const LeadCreationComponent: React.FC = () => {
                 return;
               }
             }
-          } catch (error) {
-            console.error('Error fetching Enrolled leads for search:', error);
-          }
+                  } catch (error) {
+        }
         } else {
           // Normalize status group to match backend expectations
           let normalizedStatusGroup;
@@ -1464,11 +1406,7 @@ const LeadCreationComponent: React.FC = () => {
         });
 
         if (response.data.success) {
-          console.log(`[API Response] Successfully fetched ${status} leads:`, {
-            total: response.data.data[status]?.pagination.total,
-            currentPage: response.data.data[status]?.pagination.currentPage,
-            leads: response.data.data[status]?.leads.length
-          });
+          
           const { data } = response.data;
           setLeadsData(prev => ({
             ...prev,
@@ -1482,12 +1420,10 @@ const LeadCreationComponent: React.FC = () => {
             }
           }));
         } else {
-          console.error('[API Error] Failed to fetch leads:', response.data);
           setApiError('Failed to fetch leads. Please try again.');
         }
       }
     } catch (error: any) {
-      console.error('[Error] Error in handleStatusTabChange:', error);
       setApiError(error.response?.data?.message || 'Failed to fetch leads. Please try again.');
     } finally {
       setIsLoading(false);
@@ -1529,7 +1465,6 @@ const LeadCreationComponent: React.FC = () => {
             }
           );
         } catch (error) {
-          console.error('Error toggling team followup:', error);
           setApiError('Failed to release team lead. Please try again.');
           return;
         }
@@ -1658,7 +1593,6 @@ const LeadCreationComponent: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error updating status:', error);
       setApiError(error.response?.data?.message || 'Failed to update status');
     }
   };
@@ -1688,7 +1622,6 @@ const LeadCreationComponent: React.FC = () => {
       );
       return salesDepartment?.id;
     } catch (error) {
-      console.error('Error fetching sales department:', error);
       return null;
     }
   };
@@ -1704,11 +1637,9 @@ const LeadCreationComponent: React.FC = () => {
         const executives = response.data.data.users;
         setSalesUsers(executives);
       } else {
-        console.error('No department found with isSalesTeam=true');
         setSalesUsers([]);
       }
     } catch (error) {
-      console.error('Error fetching sales executives:', error);
       setSalesUsers([]);
     } finally {
       setIsLoadingSalesUsers(false);
@@ -1728,7 +1659,6 @@ const LeadCreationComponent: React.FC = () => {
         setPackages(response.data.data);
       }
     } catch (error) {
-      console.error('Error fetching packages:', error);
     }
   };
 
@@ -1789,7 +1719,6 @@ ${(() => {
 
   useEffect(() => {
     if (permissionError) {
-      console.error('Permission error:', permissionError);
       setApiError('Error loading permissions. Please try again or contact support.');
     }
   }, [permissionError]);
@@ -1799,26 +1728,31 @@ ${(() => {
   // Modify the assign button section to add debugging wrapper
   const AssignmentSection = () => {
     const hasAssignmentPermission = checkPermission('Lead Assignment Management', 'edit');
-    console.log('Rendering assignment section, has permission:', hasAssignmentPermission);
     
     if (!hasAssignmentPermission) {
-      console.log('No assignment permission, not rendering assignment controls');
       return null;
     }
+
+    const isDropdownDisabled = selectedLeads.length === 0;
 
     return (
       <>
         <select 
-          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            isDropdownDisabled ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'bg-white'
+          }`}
           value={selectedSalesPerson}
           onChange={(e) => {
-            setSelectedSalesPerson(e.target.value);
-            if (e.target.value) {
-              setCurrentSalesPerson('');
+            if (!isDropdownDisabled) {
+              setSelectedSalesPerson(e.target.value);
+              if (e.target.value) {
+                setCurrentSalesPerson('');
+              }
             }
           }}
+          disabled={isDropdownDisabled}
         >
-          <option value="">Select sales person</option>
+          <option value="">{isDropdownDisabled ? 'Select leads first' : 'Select sales person'}</option>
           {isLoadingSalesUsers ? (
             <option value="" disabled>Loading sales executives...</option>
           ) : (
@@ -1834,10 +1768,10 @@ ${(() => {
           )}
         </select>
         <button 
-          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson || isDropdownDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleAssignSalesPerson}
           disabled={!selectedSalesPerson || selectedLeads.length === 0}
-          title={!selectedSalesPerson ? 'Please select sales person to assign' : ''}
+          title={isDropdownDisabled ? 'Please select leads first' : !selectedSalesPerson ? 'Please select sales person to assign' : ''}
         >
           {getButtonProps().text}
         </button>
@@ -1870,7 +1804,6 @@ ${(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (error) {
-      console.error('Error preparing lead edit:', error);
       toast.error('Failed to prepare lead edit. Please try again.');
     }
   };
@@ -1962,7 +1895,6 @@ ${(() => {
                       <form 
                         onSubmit={(e) => {
                           e.preventDefault();
-                          console.log('Form submitted');
                           handleSubmit(e);
                         }} 
                         className="space-y-6"
@@ -2186,6 +2118,7 @@ ${(() => {
                               <option value="Indeed">Indeed</option>
                               <option value="LinkedIn">LinkedIn</option>
                               <option value="Referral">Referral</option>
+                              <option value="Manual">Manual</option>
                               <option value="Other">Other</option>
                             </select>
                             {errors.leadSource && (
@@ -2263,7 +2196,7 @@ ${(() => {
                   <div className="px-8 py-4">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">Leads</h2>
                         {/* Update search input */}
                         <div className="flex items-center gap-2 relative">
                           <div className="relative">
@@ -2325,7 +2258,6 @@ ${(() => {
                                     <select
                                       value={salesFilter}
                                       onChange={(e) => {
-                                        console.log('Sales filter changed to:', e.target.value);
                                         setSalesFilter(e.target.value);
                                       }}
                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
@@ -2345,7 +2277,6 @@ ${(() => {
                                     <select
                                       value={statusFilter}
                                       onChange={(e) => {
-                                        console.log('Status filter changed to:', e.target.value);
                                         setStatusFilter(e.target.value);
                                       }}
                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
@@ -2365,7 +2296,6 @@ ${(() => {
                                     <select
                                       value={createdByFilter}
                                       onChange={(e) => {
-                                        console.log('Created by filter changed to:', e.target.value);
                                         setCreatedByFilter(e.target.value);
                                       }}
                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
