@@ -1,5 +1,15 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Point to the logo in backend's assets folder
+const logoPath = path.join(__dirname,'..' ,'assets', 'Logo.webp');
+console.log('🛠️ Using logo path:', logoPath);
+
 
 dotenv.config();
 
@@ -551,7 +561,7 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
     subject: options.subject || 'Embark on a Success Journey with Ninez Tech',
     attachments: [{
       filename: 'Logo.webp',
-      path: '../User/src/assets/Logo.webp',
+      path: logoPath,
       cid: 'companyLogo'
     }],
     html: emailHtml,
