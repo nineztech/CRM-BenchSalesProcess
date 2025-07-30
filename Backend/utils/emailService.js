@@ -242,7 +242,7 @@ export const sendClientWelcomeEmail = async (clientData) => {
     subject: 'Welcome to Your Client Portal - CRM Bench Sales Process',
     attachments: [{
       filename: 'Logo.webp',
-      path: '../User/src/assets/Logo.webp',
+      path: './assets/Logo.webp',
       cid: 'companyLogo'
     }],
     html: `

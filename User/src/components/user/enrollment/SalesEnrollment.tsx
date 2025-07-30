@@ -704,7 +704,7 @@ const SalesEnrollment: React.FC = () => {
               const initialPayment = installments.find((inst: any) => inst.installment_number === 0);
               
               if (initialPayment) {
-                // Update the initial payment to mark it as paid and copy edited amount to amount
+                // Update the initial payment to mark it as paid and copy edited amount to amount and net_amount
                 await axios.put(
                   `${BASE_URL}/installments/${initialPayment.id}`,
                   {
@@ -712,9 +712,9 @@ const SalesEnrollment: React.FC = () => {
                     paidDate: new Date().toISOString().split('T')[0],
                     paid_at: new Date().toISOString(),
                     updatedBy: userId,
-                    // Copy edited_amount to amount when sales approves
+                    // Copy edited_amount to amount and net_amount when sales approves
                     amount: initialPayment.edited_amount || initialPayment.amount,
-                    net_amount: initialPayment.edited_net_amount || initialPayment.net_amount
+                    net_amount: initialPayment.edited_amount || initialPayment.net_amount || initialPayment.amount
                   },
                   {
                     headers: {
@@ -725,14 +725,14 @@ const SalesEnrollment: React.FC = () => {
                 );
               }
 
-              // Update all other installments to copy edited amounts to amounts
+              // Update all other installments to copy edited amounts to amounts and net_amount
               const otherInstallments = installments.filter((inst: any) => inst.installment_number > 0);
               const installmentPromises = otherInstallments.map((installment: any) =>
                 axios.put(
                   `${BASE_URL}/installments/${installment.id}`,
                   {
                     amount: installment.edited_amount || installment.amount,
-                    net_amount: installment.edited_net_amount || installment.net_amount,
+                    net_amount: installment.edited_amount || installment.net_amount || installment.amount,
                     dueDate: installment.edited_dueDate || installment.dueDate,
                     remark: installment.edited_remark || installment.remark,
                     updatedBy: userId
