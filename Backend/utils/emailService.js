@@ -7,7 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Point to the logo in backend's assets folder
-const logoPath = path.join(__dirname, 'assets', 'Logo.webp');
+const logoPath = path.join(__dirname,'..' ,'assets', 'Logo.webp');
+console.log('🛠️ Using logo path:', logoPath);
+
 
 dotenv.config();
 
