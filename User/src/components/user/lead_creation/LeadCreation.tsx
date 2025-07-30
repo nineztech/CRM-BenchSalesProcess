@@ -1799,26 +1799,31 @@ ${(() => {
   // Modify the assign button section to add debugging wrapper
   const AssignmentSection = () => {
     const hasAssignmentPermission = checkPermission('Lead Assignment Management', 'edit');
-    console.log('Rendering assignment section, has permission:', hasAssignmentPermission);
     
     if (!hasAssignmentPermission) {
-      console.log('No assignment permission, not rendering assignment controls');
       return null;
     }
+
+    const isDropdownDisabled = selectedLeads.length === 0;
 
     return (
       <>
         <select 
-          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            isDropdownDisabled ? 'bg-gray-100 cursor-not-allowed opacity-50' : 'bg-white'
+          }`}
           value={selectedSalesPerson}
           onChange={(e) => {
-            setSelectedSalesPerson(e.target.value);
-            if (e.target.value) {
-              setCurrentSalesPerson('');
+            if (!isDropdownDisabled) {
+              setSelectedSalesPerson(e.target.value);
+              if (e.target.value) {
+                setCurrentSalesPerson('');
+              }
             }
           }}
+          disabled={isDropdownDisabled}
         >
-          <option value="">Select sales person</option>
+          <option value="">{isDropdownDisabled ? 'Select leads first' : 'Select sales person'}</option>
           {isLoadingSalesUsers ? (
             <option value="" disabled>Loading sales executives...</option>
           ) : (
@@ -1834,10 +1839,10 @@ ${(() => {
           )}
         </select>
         <button 
-          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson || isDropdownDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleAssignSalesPerson}
           disabled={!selectedSalesPerson || selectedLeads.length === 0}
-          title={!selectedSalesPerson ? 'Please select sales person to assign' : ''}
+          title={isDropdownDisabled ? 'Please select leads first' : !selectedSalesPerson ? 'Please select sales person to assign' : ''}
         >
           {getButtonProps().text}
         </button>
@@ -2186,6 +2191,7 @@ ${(() => {
                               <option value="Indeed">Indeed</option>
                               <option value="LinkedIn">LinkedIn</option>
                               <option value="Referral">Referral</option>
+                              <option value="Manual">Manual</option>
                               <option value="Other">Other</option>
                             </select>
                             {errors.leadSource && (
@@ -2263,7 +2269,7 @@ ${(() => {
                   <div className="px-8 py-4">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-semibold text-gray-900">Submitted Leads</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">Leads</h2>
                         {/* Update search input */}
                         <div className="flex items-center gap-2 relative">
                           <div className="relative">
