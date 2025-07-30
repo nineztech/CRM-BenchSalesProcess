@@ -1809,7 +1809,9 @@ ${(() => {
     return (
       <>
         <select 
-          className="border px-4 py-2 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            selectedLeads.length === 0 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+          }`}
           value={selectedSalesPerson}
           onChange={(e) => {
             setSelectedSalesPerson(e.target.value);
@@ -1817,6 +1819,7 @@ ${(() => {
               setCurrentSalesPerson('');
             }
           }}
+          disabled={selectedLeads.length === 0}
         >
           <option value="">Select sales person</option>
           {isLoadingSalesUsers ? (
@@ -1834,10 +1837,10 @@ ${(() => {
           )}
         </select>
         <button 
-          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`${getButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedSalesPerson || selectedLeads.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleAssignSalesPerson}
           disabled={!selectedSalesPerson || selectedLeads.length === 0}
-          title={!selectedSalesPerson ? 'Please select sales person to assign' : ''}
+          title={!selectedSalesPerson ? 'Please select sales person to assign' : selectedLeads.length === 0 ? 'Please select leads to assign' : ''}
         >
           {getButtonProps().text}
         </button>
