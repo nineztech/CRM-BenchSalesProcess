@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Editor } from '@tinymce/tinymce-react';
+import toast from 'react-hot-toast';
 
 interface EmailPopupProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       const loggedInUser = userDataString ? JSON.parse(userDataString) : null;
       
       if (!token || !loggedInUser) {
-        alert('Authentication required. Please login again.');
+        toast.error('Authentication required. Please login again.');
         return;
       }
 
@@ -88,11 +89,11 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       if (response.data.success) {
         setTemplateHtml(response.data.template);
       } else {
-        alert('Failed to load template preview.');
+        toast.error('Failed to load template preview.');
       }
     } catch (error) {
       console.error('Error loading template preview:', error);
-      alert('Failed to load template preview.');
+      toast.error('Failed to load template preview.');
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +111,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       const loggedInUser = userDataString ? JSON.parse(userDataString) : null;
       
       if (!token || !loggedInUser) {
-        alert('Authentication required. Please login again.');
+        toast.error('Authentication required. Please login again.');
         return;
       }
 
@@ -129,7 +130,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
         subject: subject,
         customBody: isCustomizing ? customContent : undefined,
         userData: loggedInUser, // Pass the logged-in user data for the email header
-        skipHeader: isCustomizing // Add this flag to indicate we're using custom content
+        skipHeader: false // Always include the header
       };
 
       const response = await axios.post(
@@ -148,14 +149,14 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
       );
 
       if (response.data.success) {
-        alert('Email sent successfully!');
+        toast.success('Email sent successfully!');
         onClose();
       } else {
-        alert('Failed to send email. Please try again.');
+        toast.error('Failed to send email. Please try again.');
       }
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Failed to send email. Please try again.');
+      toast.error('Failed to send email. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -275,7 +276,7 @@ const EmailPopup: React.FC<EmailPopupProps> = ({
                       
                       {isCustomizing ? (
                         <Editor
-                          apiKey="n1jupubcidq4bqvv01vznzpbcj43hg297pgftp78jszal918"
+                          apiKey={import.meta.env.VITE_TINY_MCE_KEY}
                           value={customContent.split('<div style="padding: 20px 0; margin-bottom: 20px; text-align: left;">')[0] || customContent}
                           init={{
                             height: 500,

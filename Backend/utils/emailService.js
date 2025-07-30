@@ -497,7 +497,11 @@ export const sendPackageDetailsEmail = async (userData, packages, options = {}) 
       </head>
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; line-height: 1.6; text-align: left;">
         <div class="container" style="max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 20px;">
-          ${options.customBody ? formatText(options.customBody) : `
+          ${options.customBody ? `
+            <div style="padding: 5PX 0; text-align: left;">
+              ${formatText(options.customBody)}
+            </div>
+          ` : `
             <div style="padding: 5PX 0; text-align: left;">
               <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px; text-align: left;">Hello ${userData.firstName},</p>
               <p style="margin: 0 0 30px 0; color: #333333; font-size: 15px; text-align: left;">Thank you for your valuable time. I've highlighted details about our company and services below to give you a better understanding of our online presence and commitment to supporting your job search.</p>
