@@ -309,6 +309,7 @@ export const adminApprovalAction = async (req, res) => {
       for (const inst of allInstallments) {
         await inst.update({
           edited_amount: inst.amount,
+          net_amount: inst.amount,
           edited_dueDate: inst.dueDate,
           edited_remark: inst.remark,
           has_admin_update: false
@@ -430,6 +431,32 @@ export const salesApprovalAction = async (req, res) => {
         payable_first_year_percentage: enrolledClient.edited_first_year_percentage,
         payable_first_year_fixed_charge: enrolledClient.edited_first_year_fixed_charge
       });
+
+      // Update any installments that have edited_amount values
+      const installmentsWithEdits = await Installments.findAll({
+        where: {
+          enrolledClientId: id,
+          has_admin_update: true,
+          sales_approval: false
+        }
+      });
+
+      for (const installment of installmentsWithEdits) {
+        if (installment.edited_amount) {
+          await installment.update({
+            amount: installment.edited_amount,
+            net_amount: installment.edited_amount,
+            dueDate: installment.edited_dueDate || installment.dueDate,
+            remark: installment.edited_remark || installment.remark,
+            sales_approval: true,
+            has_admin_update: false,
+            // Keep edited values (don't clear them)
+            edited_amount: installment.edited_amount,
+            edited_dueDate: installment.edited_dueDate,
+            edited_remark: installment.edited_remark
+          });
+        }
+      }
       
       // If both admin and sales have approved, mark initial payment as paid (only for enrollment charge)
       if (enrolledClient.Approval_by_admin && !enrolledClient.clientUserCreated) {

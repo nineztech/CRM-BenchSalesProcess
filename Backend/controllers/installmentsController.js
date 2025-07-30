@@ -665,11 +665,12 @@ export const adminInstallmentApproval = async (req, res) => {
     }
 
     if (approved) {
-      // Admin approves without changes
+      // Admin approves without changes - copy amount to edited_amount and net_amount
       await installment.update({
         admin_id,
         has_admin_update: false,
         edited_amount: installment.amount,
+        net_amount: installment.amount,
         edited_dueDate: installment.dueDate,
         edited_remark: installment.remark
       });
@@ -732,14 +733,15 @@ export const salesInstallmentApproval = async (req, res) => {
       await installment.update({
         sales_approval: true,
         has_admin_update: false,
-        // Apply admin's edited values
+        // Apply admin's edited values - copy edited_amount to both amount and net_amount
         amount: installment.edited_amount || installment.amount,
+        net_amount: installment.edited_amount || installment.net_amount,
         dueDate: installment.edited_dueDate || installment.dueDate,
         remark: installment.edited_remark || installment.remark,
-        // Clear edited values
-        edited_amount: null,
-        edited_dueDate: null,
-        edited_remark: null
+        // Keep edited values (don't clear them)
+        edited_amount: installment.edited_amount,
+        edited_dueDate: installment.edited_dueDate,
+        edited_remark: installment.edited_remark
       });
     } else {
       // Sales rejects admin changes
