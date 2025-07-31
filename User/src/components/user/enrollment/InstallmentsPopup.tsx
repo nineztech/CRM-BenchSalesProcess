@@ -36,7 +36,9 @@ const InstallmentsPopup: React.FC<InstallmentsPopupProps> = ({
   isOpen,
   onClose,
   enrolledClientId,
+  
   isMyReview = false,
+ 
   chargeType = 'enrollment_charge',
   firstYearSalary,
   

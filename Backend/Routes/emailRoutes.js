@@ -23,7 +23,7 @@ router.get('/template-preview', auth, async (req, res) => {
     // Read the logo file and convert to base64
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const logoPath = path.resolve(__dirname, '..', '..', 'User', 'src', 'assets', 'Logo.webp');
+    const logoPath = path.resolve(__dirname, '..', 'assets', 'Logo.webp');
     
     // Check if logo file exists
     if (!fs.existsSync(logoPath)) {
