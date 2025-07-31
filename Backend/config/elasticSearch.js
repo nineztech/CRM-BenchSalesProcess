@@ -14,6 +14,7 @@ const client = new Client({
 // Define lead index mapping
 const LEAD_INDEX = 'leads';
 const ARCHIVED_LEAD_INDEX = 'archived_leads';
+const ENROLLED_CLIENTS_INDEX = 'enrolled_clients';
 
 // Create lead index with mapping
 const createLeadIndex = async () => {
@@ -200,46 +201,46 @@ const processPhoneNumber = (phone) => {
 // Function to index a lead
 const indexLead = async (lead) => {
   try {
-    const isAvailable = await checkElasticsearchConnection();
-    if (!isAvailable) {
-      console.log('Elasticsearch connection not available');
-      return;
-    }
+         const isAvailable = await checkElasticsearchConnection();
+     if (!isAvailable) {
+       return;
+     }
 
-    // Ensure lead has required fields
-    if (!lead || !lead.id) {
-      console.log('Invalid lead data for indexing');
-      return;
-    }
+     // Ensure lead has required fields
+     if (!lead || !lead.id) {
+       return;
+     }
 
-    // Check if the index exists, if not, create it
-    const indexExists = await client.indices.exists({ index: LEAD_INDEX });
-    if (!indexExists) {
-      console.log('Lead index does not exist, creating it...');
-      await createLeadIndex();
-      // Wait a moment for the index to be ready
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+     // Check if the index exists, if not, create it
+     const indexExists = await client.indices.exists({ index: LEAD_INDEX });
+     if (!indexExists) {
+       await createLeadIndex();
+       // Wait a moment for the index to be ready
+       await new Promise(resolve => setTimeout(resolve, 1000));
+     }
 
     // Process contact numbers to create searchable versions without country codes
     const processedContactNumbers = Array.isArray(lead.contactNumbers) 
       ? lead.contactNumbers.map(processPhoneNumber)
       : [];
 
-    // Add the processed numbers to the lead object
-    const leadToIndex = {
-      ...lead,
-      processedContactNumbers,
-      // Keep original contact numbers as well
-      contactNumbers: Array.isArray(lead.contactNumbers) ? lead.contactNumbers : []
-    };
+         // Add the processed numbers to the lead object
+     const leadToIndex = {
+       ...lead,
+       processedContactNumbers,
+       // Keep original contact numbers as well
+       contactNumbers: Array.isArray(lead.contactNumbers) ? lead.contactNumbers : []
+     };
 
-    await client.index({
-      index: LEAD_INDEX,
-      id: lead.id.toString(),
-      body: leadToIndex,
-      refresh: true
-    });
+     // Remove any circular references by stringifying and parsing
+     const sanitizedLead = JSON.parse(JSON.stringify(leadToIndex));
+
+         await client.index({
+       index: LEAD_INDEX,
+       id: lead.id.toString(),
+       body: sanitizedLead,
+       refresh: true
+     });
   } catch (error) {
     console.error(`Error indexing lead ${lead?.id}:`, error.message);
     throw error;
@@ -891,12 +892,388 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
   }
 };
 
+// Function to search enrolled clients
+const searchEnrolledClients = async (query, tabType, page = 1, limit = 10) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      return {
+        total: 0,
+        enrolledClients: []
+      };
+    }
+
+    // Check if the index exists, if not, create it
+    const indexExists = await client.indices.exists({ index: ENROLLED_CLIENTS_INDEX });
+    if (!indexExists) {
+      await createEnrolledClientsIndex();
+      // Wait a moment for the index to be ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const offset = (page - 1) * limit;
+
+    // Process the search query if it looks like a phone number
+    const processedQuery = query.match(/^\+?\d+$/) ? processPhoneNumber(query) : query;
+
+    const searchQuery = {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  wildcard: {
+                    "lead.firstName": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.lastName": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.primaryEmail": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.primaryContact": {
+                      value: `*${processedQuery}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.contactNumbers": {
+                      value: `*${processedQuery}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "assignedMarketingTeam.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "assignedMarketingTeam.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "salesPerson.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 1
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "salesPerson.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 1
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "admin.firstname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 1
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "admin.lastname": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 1
+                    }
+                  }
+                }
+              ],
+              minimum_should_match: 1
+            }
+          }
+        ]
+      }
+    };
+
+    // Add tab-specific filters
+    if (tabType) {
+      switch(tabType.toLowerCase()) {
+        case 'approved':
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                { term: { "Approval_by_sales": true } },
+                { term: { "Approval_by_admin": true } }
+              ]
+            }
+          });
+          break;
+
+        case 'admin_pending':
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                { exists: { field: "packageid" } },
+                { term: { "Approval_by_admin": false } },
+                { term: { "has_update": false } }
+              ]
+            }
+          });
+          break;
+
+        case 'my_review':
+          searchQuery.bool.must.push({
+            bool: {
+              must: [
+                { term: { "has_update": true } },
+                { term: { "Approval_by_admin": false } }
+              ]
+            }
+          });
+          break;
+
+        case 'all':
+        default:
+          // No additional filters for 'all' tab
+          break;
+      }
+    }
+
+    const response = await client.search({
+      index: ENROLLED_CLIENTS_INDEX,
+      body: {
+        from: offset,
+        size: limit,
+        query: searchQuery,
+        sort: [
+          { _score: 'desc' },
+          { createdAt: 'desc' }
+        ]
+      }
+    });
+
+    return {
+      total: response.hits.total.value,
+      enrolledClients: response.hits.hits.map(hit => ({
+        ...hit._source,
+        score: hit._score
+      }))
+    };
+  } catch (error) {
+    console.error('Error searching enrolled clients:', error);
+    return {
+      total: 0,
+      enrolledClients: []
+    };
+  }
+};
+
+// Function to index an enrolled client
+const indexEnrolledClient = async (enrolledClient) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      return;
+    }
+
+    // Check if the index exists, if not, create it
+    const indexExists = await client.indices.exists({ index: ENROLLED_CLIENTS_INDEX });
+    if (!indexExists) {
+      await createEnrolledClientsIndex();
+      // Wait a moment for the index to be ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Process contact numbers to create searchable versions
+    const processedContactNumbers = Array.isArray(enrolledClient.lead?.contactNumbers) 
+      ? enrolledClient.lead.contactNumbers.map(processPhoneNumber)
+      : [];
+
+         // Add the processed numbers to the enrolled client object
+     const enrolledClientToIndex = {
+       ...enrolledClient,
+       lead: {
+         ...enrolledClient.lead,
+         processedContactNumbers
+       }
+     };
+
+     // Remove any circular references by stringifying and parsing
+     const sanitizedEnrolledClient = JSON.parse(JSON.stringify(enrolledClientToIndex));
+
+     await client.index({
+       index: ENROLLED_CLIENTS_INDEX,
+       id: enrolledClient.id.toString(),
+       body: sanitizedEnrolledClient,
+       refresh: true
+     });
+  } catch (error) {
+    console.error('Error indexing enrolled client:', error);
+  }
+};
+
+// Function to update an enrolled client in Elasticsearch
+const updateEnrolledClient = async (enrolledClient) => {
+  try {
+    await indexEnrolledClient(enrolledClient);
+  } catch (error) {
+    console.error('Error updating enrolled client:', error);
+  }
+};
+
+// Function to delete an enrolled client from Elasticsearch
+const deleteEnrolledClient = async (enrolledClientId) => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      return;
+    }
+
+    await client.delete({
+      index: ENROLLED_CLIENTS_INDEX,
+      id: enrolledClientId.toString()
+    });
+  } catch (error) {
+    console.error('Error deleting enrolled client:', error);
+  }
+};
+
+// Create enrolled clients index
+const createEnrolledClientsIndex = async () => {
+  try {
+    const isAvailable = await checkElasticsearchConnection();
+    if (!isAvailable) {
+      return;
+    }
+
+    const indexExists = await client.indices.exists({ index: ENROLLED_CLIENTS_INDEX });
+    if (indexExists) {
+      return;
+    }
+
+    await client.indices.create({
+      index: ENROLLED_CLIENTS_INDEX,
+      body: {
+        mappings: {
+          properties: {
+            id: { type: 'integer' },
+            lead_id: { type: 'integer' },
+            packageid: { type: 'integer' },
+            payable_enrollment_charge: { type: 'float' },
+            payable_offer_letter_charge: { type: 'float' },
+            payable_first_year_percentage: { type: 'float' },
+            payable_first_year_fixed_charge: { type: 'float' },
+            Approval_by_sales: { type: 'boolean' },
+            Sales_person_id: { type: 'integer' },
+            Approval_by_admin: { type: 'boolean' },
+            Admin_id: { type: 'integer' },
+            has_update: { type: 'boolean' },
+            edited_enrollment_charge: { type: 'float' },
+            edited_offer_letter_charge: { type: 'float' },
+            edited_first_year_percentage: { type: 'float' },
+            edited_first_year_fixed_charge: { type: 'float' },
+            initial_payment: { type: 'float' },
+            is_training_required: { type: 'boolean' },
+            first_call_status: { type: 'keyword' },
+            assignTo: { type: 'integer' },
+            resume: { type: 'keyword' },
+            createdAt: { type: 'date' },
+            updatedAt: { type: 'date' },
+            lead: {
+              properties: {
+                id: { type: 'integer' },
+                firstName: { type: 'text', analyzer: 'standard' },
+                lastName: { type: 'text', analyzer: 'standard' },
+                primaryEmail: { type: 'keyword' },
+                primaryContact: { type: 'keyword' },
+                contactNumbers: { type: 'keyword' },
+                processedContactNumbers: { type: 'keyword' },
+                status: { type: 'keyword' },
+                technology: { type: 'keyword' },
+                country: { type: 'keyword' },
+                visaStatus: { type: 'keyword' }
+              }
+            },
+            package: {
+              properties: {
+                id: { type: 'integer' },
+                planName: { type: 'text' },
+                enrollmentCharge: { type: 'float' },
+                offerLetterCharge: { type: 'float' },
+                firstYearSalaryPercentage: { type: 'float' },
+                firstYearFixedPrice: { type: 'float' },
+                features: { type: 'keyword' }
+              }
+            },
+            salesPerson: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text', analyzer: 'standard' },
+                lastname: { type: 'text', analyzer: 'standard' },
+                email: { type: 'keyword' }
+              }
+            },
+            admin: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text', analyzer: 'standard' },
+                lastname: { type: 'text', analyzer: 'standard' },
+                email: { type: 'keyword' }
+              }
+            },
+            assignedMarketingTeam: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text', analyzer: 'standard' },
+                lastname: { type: 'text', analyzer: 'standard' },
+                email: { type: 'keyword' }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Index created successfully
+  } catch (error) {
+    console.error('Error creating enrolled clients index:', error);
+  }
+};
+
 export {
   client,
   LEAD_INDEX,
   ARCHIVED_LEAD_INDEX,
+  ENROLLED_CLIENTS_INDEX,
   createLeadIndex,
   createArchivedLeadIndex,
+  createEnrolledClientsIndex,
+  checkElasticsearchConnection,
+  processPhoneNumber,
+  getStatusGroup,
   indexLead,
   updateLead,
   deleteLead,
@@ -904,5 +1281,9 @@ export {
   indexArchivedLead,
   updateArchivedLead,
   deleteArchivedLead,
-  searchArchivedLeads
+  searchArchivedLeads,
+  indexEnrolledClient,
+  updateEnrolledClient,
+  deleteEnrolledClient,
+  searchEnrolledClients
 }; 

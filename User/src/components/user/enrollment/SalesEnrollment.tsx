@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle, FaPlus, FaTrash, FaListAlt } from 'react-icons/fa';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -149,6 +149,9 @@ const SalesEnrollment: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'approved' | 'admin_pending' | 'my_review'>('all');
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<FormData>({
     packageid: null,
     payable_enrollment_charge: null,
@@ -188,14 +191,55 @@ const SalesEnrollment: React.FC = () => {
     fetchEnrolledClients();
     fetchPackages();
     fetchMarketingTeamLeads();
-  }, [currentPage, activeTab]);
+  }, [currentPage, activeTab]); // Removed searchQuery from dependencies
+
+  // Debounced search effect with better handling
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        setCurrentPage(1);
+        setIsSearching(true);
+        fetchEnrolledClients();
+      } else if (searchQuery === '') {
+        setCurrentPage(1);
+        setIsSearching(false);
+        fetchEnrolledClients();
+      }
+    }, 800); // Increased debounce time
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Track if user is actively typing in search input
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Maintain focus on search input only when user is actively typing
+  useEffect(() => {
+    if (isSearchFocused && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchQuery, isSearchFocused]);
 
   const fetchEnrolledClients = async () => {
-    setLoading(true);
+    // Don't set loading for search queries to prevent UI flicker
+    if (!searchQuery.trim()) {
+      setLoading(true);
+    }
+    
     try {
       const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString()
+      });
+      
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+        params.append('tabType', activeTab);
+      }
+
       const response = await axios.get(
-        `${BASE_URL}/enrolled-clients/sales/all?page=${currentPage}&limit=${pageSize}`,
+        `${BASE_URL}/enrolled-clients/sales/all?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -216,6 +260,7 @@ const SalesEnrollment: React.FC = () => {
       console.error('Error fetching enrolled clients:', error);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -1160,6 +1205,16 @@ const SalesEnrollment: React.FC = () => {
     });
   };
 
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1192,18 +1247,41 @@ const SalesEnrollment: React.FC = () => {
           </div>
         </div>
 
-        {/* Assignment Section */}
-        {activeTab === 'approved' && (
-          <div className="bg-white rounded-xl shadow-sm mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, phone..."
-                    className="border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
-                  />
+        {/* Search Section */}
+        <div className="bg-white rounded-xl shadow-sm mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by name, email, phone, assigned to..."
+                      value={searchQuery}
+                      onChange={handleSearchInputChange}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
+                      className="border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                    />
+                    {isSearching && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-400 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
+              </div>
+              {activeTab === 'approved' && (
                 <div className="flex items-center space-x-4">
                   <select 
                     className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
@@ -1252,10 +1330,10 @@ const SalesEnrollment: React.FC = () => {
                     {getAssignmentButtonProps().text}
                   </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm mb-6">
@@ -1307,6 +1385,20 @@ const SalesEnrollment: React.FC = () => {
               </button>
             </nav>
           </div>
+          {searchQuery && (
+            <div className="px-6 py-3 bg-blue-50 border-t border-blue-200">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-700">
+                  Search results for "{searchQuery}" in {activeTab === 'all' ? 'All Enrollments' : 
+                    activeTab === 'approved' ? 'Approved' : 
+                    activeTab === 'admin_pending' ? 'Admin Review Pending' : 'My Review'} tab
+                </span>
+                <span className="text-sm text-blue-600 font-medium">
+                  {getFilteredClients().length} result{getFilteredClients().length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Configuration Form */}

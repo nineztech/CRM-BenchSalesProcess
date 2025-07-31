@@ -9,6 +9,7 @@ import path from 'path';
 import express from 'express';
 import { createClientUser } from './clientUserController.js';
 import Installments from '../models/installmentsModel.js'; // Added import for Installments
+import { searchEnrolledClients } from '../config/elasticSearch.js';
 const unlinkAsync = promisify(fs.unlink);
 
 // Create enrolled client (automatically called when lead status changes to enrolled)
@@ -617,7 +618,60 @@ const handleError = (error, res) => {
 // Get all enrolled clients for sales with categorized data
 export const getAllEnrolledClientsForSales = async (req, res) => {
   try {
-    const { page = 1, limit = 10, sales_person_id } = req.query;
+    const { page = 1, limit = 10, sales_person_id, search, tabType } = req.query;
+    
+    // If search is provided, use Elasticsearch
+    if (search && search.trim() !== '') {
+      try {
+        const searchResult = await searchEnrolledClients(search, tabType, parseInt(page), parseInt(limit));
+        
+        // Transform the search results to match the expected format
+        const transformedResults = searchResult.enrolledClients.map(client => ({
+          ...client,
+          // Ensure all required fields are present
+          lead: client.lead || {},
+          package: client.package || null,
+          salesPerson: client.salesPerson || null,
+          admin: client.admin || null,
+          assignedMarketingTeam: client.assignedMarketingTeam || null
+        }));
+
+        const createPaginationInfo = (count) => ({
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / limit),
+          totalItems: count,
+          itemsPerPage: parseInt(limit)
+        });
+
+        // Return search results in the same format as regular results
+        return res.status(200).json({
+          success: true,
+          message: 'Enrolled clients retrieved successfully',
+          data: {
+            AllEnrollments: {
+              leads: tabType === 'all' || !tabType ? transformedResults : [],
+              pagination: createPaginationInfo(tabType === 'all' || !tabType ? searchResult.total : 0)
+            },
+            Approved: {
+              leads: tabType === 'approved' ? transformedResults : [],
+              pagination: createPaginationInfo(tabType === 'approved' ? searchResult.total : 0)
+            },
+            AdminReviewPending: {
+              leads: tabType === 'admin_pending' ? transformedResults : [],
+              pagination: createPaginationInfo(tabType === 'admin_pending' ? searchResult.total : 0)
+            },
+            MyReview: {
+              leads: tabType === 'my_review' ? transformedResults : [],
+              pagination: createPaginationInfo(tabType === 'my_review' ? searchResult.total : 0)
+            }
+          }
+        });
+      } catch (searchError) {
+        console.error('Elasticsearch search error:', searchError);
+        // Fall back to database search if Elasticsearch fails
+      }
+    }
+
     const offset = (page - 1) * limit;
 
     const includeConfig = [
@@ -727,9 +781,13 @@ export const getAllEnrolledClientsForSales = async (req, res) => {
         }
       }
     });
-
   } catch (error) {
-    handleError(error, res);
+    console.error('Error fetching enrolled clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching enrolled clients',
+      error: error.message
+    });
   }
 };
 
@@ -760,6 +818,11 @@ export const getAllEnrolledClientsForAdmin = async (req, res) => {
         model: Packages,
         as: 'package',
         attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice','features']
+      },
+      {
+        model: User,
+        as: 'assignedMarketingTeam',
+        attributes: ['id', 'firstname', 'lastname', 'email']
       }
     ];
 
