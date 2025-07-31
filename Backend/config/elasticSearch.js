@@ -26,56 +26,65 @@ const createLeadIndex = async () => {
     }
 
     const indexExists = await client.indices.exists({ index: LEAD_INDEX });
-    if (!indexExists) {
-      await client.indices.create({
-        index: LEAD_INDEX,
-        body: {
-          mappings: {
-            properties: {
-              id: { type: 'integer' },
-              is_Team_Followup: { type: 'boolean' },
-              firstName: { type: 'text' },
-              lastName: { type: 'text' },
-              contactNumbers: { type: 'keyword' },
-              emails: { type: 'keyword' },
-              primaryEmail: { type: 'keyword' },
-              technology: { type: 'keyword' },
-              country: { type: 'keyword' },
-              countryCode: { type: 'keyword' },
-              visaStatus: { type: 'keyword' },
-              status: { type: 'keyword' },
-              statusGroup: { type: 'keyword' },
-              leadSource: { type: 'keyword' },
-              assignTo: { type: 'integer' },
-              assignedUser: {
-                properties: {
-                  id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
-                }
-              },
-              creator: {
-                properties: {
-                  id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
-                }
-              },
-              updater: {
-                properties: {
-                  id: { type: 'integer' },
-                  firstname: { type: 'text' },
-                  lastname: { type: 'text' },
-                  email: { type: 'keyword' }
-                }
+    if (indexExists) {
+      // Delete existing index to recreate with new mapping
+      await client.indices.delete({ index: LEAD_INDEX });
+      console.log('Deleted existing index to recreate with new mapping');
+    }
+    
+    await client.indices.create({
+      index: LEAD_INDEX,
+      body: {
+        mappings: {
+          properties: {
+            id: { type: 'integer' },
+            is_Team_Followup: { type: 'boolean' },
+            firstName: { type: 'text' },
+            lastName: { type: 'text' },
+            contactNumbers: { type: 'keyword' },
+            emails: { type: 'keyword' },
+            primaryEmail: { type: 'keyword' },
+            technology: { type: 'keyword' },
+            country: { type: 'keyword' },
+            countryCode: { type: 'keyword' },
+            visaStatus: { type: 'keyword' },
+            status: { type: 'keyword' },
+            statusGroup: { type: 'keyword' },
+            leadSource: { 
+              type: 'text',
+              fields: {
+                keyword: { type: 'keyword' }
+              }
+            },
+            assignTo: { type: 'integer' },
+            assignedUser: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text' },
+                lastname: { type: 'text' },
+                email: { type: 'keyword' }
+              }
+            },
+            creator: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text' },
+                lastname: { type: 'text' },
+                email: { type: 'keyword' }
+              }
+            },
+            updater: {
+              properties: {
+                id: { type: 'integer' },
+                firstname: { type: 'text' },
+                lastname: { type: 'text' },
+                email: { type: 'keyword' }
               }
             }
           }
         }
-      });
-    }
+      }
+    });
 
     // Also create archived leads index
     await createArchivedLeadIndex();
@@ -114,7 +123,12 @@ const createArchivedLeadIndex = async () => {
               status: { type: 'keyword' },
               leadstatus: { type: 'keyword' },
               archiveReason: { type: 'keyword' },
-              leadSource: { type: 'keyword' },
+              leadSource: { 
+                type: 'text',
+                fields: {
+                  keyword: { type: 'keyword' }
+                }
+              },
               assignTo: { type: 'integer' },
               archivedAt: { type: 'date' },
               assignedUser: {
@@ -427,6 +441,14 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                   wildcard: {
                     "primaryEmail": {
                       value: `*${processedQuery.toLowerCase()}*`
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "leadSource": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
                     }
                   }
                 },

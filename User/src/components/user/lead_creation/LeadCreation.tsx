@@ -2532,9 +2532,21 @@ ${(() => {
                                     {searchQuery ? (
                                       <>
                                         {highlightSearchTerm(lead.firstName, searchQuery)} {highlightSearchTerm(lead.lastName, searchQuery)}
+                                        {lead.leadSource === 'Manual' && (
+                                          <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                            Manual
+                                          </span>
+                                        )}
                                       </>
                                     ) : (
-                                      `${lead.firstName} ${lead.lastName}`
+                                      <>
+                                        {`${lead.firstName} ${lead.lastName}`}
+                                        {lead.leadSource === 'Manual' && (
+                                          <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                            Manual
+                                          </span>
+                                        )}
+                                      </>
                                     )}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
