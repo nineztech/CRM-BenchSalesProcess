@@ -195,7 +195,6 @@ const SalesEnrollment: React.FC = () => {
   // Assignment related state
   const [marketingTeamLeads, setMarketingTeamLeads] = useState<MarketingTeamLead[]>([]);
   const [selectedMarketingTeamLead, setSelectedMarketingTeamLead] = useState<string>('');
-  const [currentMarketingTeamLead, setCurrentMarketingTeamLead] = useState<string>('');
   const [isLoadingMarketingTeamLeads, setIsLoadingMarketingTeamLeads] = useState(false);
   const [selectedClientsForAssignment, setSelectedClientsForAssignment] = useState<number[]>([]);
   const [assignmentRemark, setAssignmentRemark] = useState<string>('');
@@ -312,12 +311,7 @@ const SalesEnrollment: React.FC = () => {
     }
   };
 
-  const getCurrentMarketingTeamLead = (client: EnrolledClient) => {
-    if (client.assignedMarketingTeam) {
-      return `${client.assignedMarketingTeam.firstname} ${client.assignedMarketingTeam.lastname}`;
-    }
-    return '';
-  };
+
 
   const getAssignmentButtonProps = () => {
     if (selectedClientsForAssignment.length === 0) {
@@ -361,7 +355,6 @@ const SalesEnrollment: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const selectedLead = marketingTeamLeads.find(lead => 
         `${lead.firstname} ${lead.lastname}` === selectedMarketingTeamLead
       );
@@ -1306,9 +1299,6 @@ const SalesEnrollment: React.FC = () => {
                     value={selectedMarketingTeamLead}
                     onChange={(e) => {
                       setSelectedMarketingTeamLead(e.target.value);
-                      if (e.target.value) {
-                        setCurrentMarketingTeamLead('');
-                      }
                     }}
                     disabled={selectedClientsForAssignment.length === 0}
                   >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle, FaPlus, FaTrash, FaListAlt } from 'react-icons/fa';
+import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaCheckCircle, FaClock, FaFilePdf, FaInfoCircle, FaListAlt } from 'react-icons/fa';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import PackageFeaturesPopup from './PackageFeaturesPopup';
@@ -93,16 +93,7 @@ interface EnrolledClient {
   } | null;
 }
 
-interface Package {
-  id: number;
-  planName: string;
-  enrollmentCharge: number;
-  offerLetterCharge: number;
-  firstYearSalaryPercentage: number | null;
-  firstYearFixedPrice: number | null;
-  features: string[];
-  status: string;
-}
+
 
 interface FormData {
   approved: boolean;
@@ -154,14 +145,12 @@ const packageColorThemes: { [key: string]: { bg: string; border: string; text: s
 };
 
 const AdminEnrollment: React.FC = () => {
-  const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedClient, setSelectedClient] = useState<EnrolledClient | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [activeTab, setActiveTab] = useState<'all' | 'approved' | 'sales_pending' | 'my_review'>('all');
-  const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     approved: false,
@@ -173,14 +162,12 @@ const AdminEnrollment: React.FC = () => {
     edited_installments: []
   });
   const [enrollmentData, setEnrollmentData] = useState<any>(null);
-  const [selectedResume, setSelectedResume] = useState<File | null>(null);
   const [showResumePreview, setShowResumePreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showPackageFeatures, setShowPackageFeatures] = useState(false);
   const [selectedPackageForFeatures, setSelectedPackageForFeatures] = useState<{name: string; features: string[]} | null>(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const [pendingApprovalClient, setPendingApprovalClient] = useState<EnrolledClient | null>(null);
-  const [showInitialPayment, setShowInitialPayment] = useState(false);
   const [showInstallmentsPopup, setShowInstallmentsPopup] = useState(false);
   const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
   const [hasInstallmentError, setHasInstallmentError] = useState(false);
@@ -189,13 +176,10 @@ const AdminEnrollment: React.FC = () => {
   // Assignment related state
   const [marketingTeamLeads, setMarketingTeamLeads] = useState<MarketingTeamLead[]>([]);
   const [selectedMarketingTeamLead, setSelectedMarketingTeamLead] = useState<string>('');
-  const [currentMarketingTeamLead, setCurrentMarketingTeamLead] = useState<string>('');
   const [isLoadingMarketingTeamLeads, setIsLoadingMarketingTeamLeads] = useState(false);
   const [selectedClientsForAssignment, setSelectedClientsForAssignment] = useState<number[]>([]);
   const [assignmentRemark, setAssignmentRemark] = useState<string>('');
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
-  const [assignmentLoading, setAssignmentLoading] = useState(false);
-  const [currentAssignments, setCurrentAssignments] = useState<{[key: number]: number}>({});
 
   // Search functionality
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -268,7 +252,6 @@ const AdminEnrollment: React.FC = () => {
             assignments[client.id] = client.assignedMarketingTeam.id;
           }
         });
-        setCurrentAssignments(assignments);
 
         let tabKey = 'AllEnrollments';
         if (activeTab === 'approved') tabKey = 'Approved';
@@ -288,7 +271,7 @@ const AdminEnrollment: React.FC = () => {
     try {
       const response = await axios.get(`${BASE_URL}/packages/all`);
       if (response.data.success) {
-        setPackages(response.data.data.filter((pkg: Package) => pkg.status === 'active'));
+        // Packages are not used in this component
       }
     } catch (error) {
       console.error('Error fetching packages:', error);
@@ -351,12 +334,7 @@ const AdminEnrollment: React.FC = () => {
     }
   };
 
-  const getCurrentMarketingTeamLead = (client: EnrolledClient) => {
-    if (client.assignedMarketingTeam) {
-      return `${client.assignedMarketingTeam.firstname} ${client.assignedMarketingTeam.lastname}`;
-    }
-    return '';
-  };
+
 
   const getAssignmentButtonProps = () => {
     if (selectedClientsForAssignment.length === 0) {
@@ -400,7 +378,7 @@ const AdminEnrollment: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
+    
       const selectedLead = marketingTeamLeads.find(lead => 
         `${lead.firstname} ${lead.lastname}` === selectedMarketingTeamLead
       );
@@ -418,7 +396,6 @@ const AdminEnrollment: React.FC = () => {
   };
 
   const confirmAssignment = async () => {
-    setAssignmentLoading(true);
     try {
       const token = localStorage.getItem('token');
       const selectedLead = marketingTeamLeads.find(lead => 
@@ -459,8 +436,6 @@ const AdminEnrollment: React.FC = () => {
     } catch (error) {
       console.error('Error assigning clients:', error);
       toast.error('Failed to assign clients to marketing team');
-    } finally {
-      setAssignmentLoading(false);
     }
   };
 
@@ -753,10 +728,7 @@ const AdminEnrollment: React.FC = () => {
     return [];
   };
 
-  const handleApprovalIconClick = (client: EnrolledClient) => {
-    setPendingApprovalClient(client);
-    setShowConfirmPopup(true);
-  };
+
   const handleConfirmApproval = async () => {
     if (pendingApprovalClient) {
       await handleApprove(pendingApprovalClient);
@@ -779,396 +751,332 @@ const AdminEnrollment: React.FC = () => {
     setSearchQuery('');
   };
 
-  const handleClientSelection = (client: EnrolledClient) => {
-    setSelectedClientsForAssignment(prev => {
-      if (prev.includes(client.id)) {
-        return prev.filter(c => c !== client.id);
-      } else {
-        return [...prev, client.id];
-      }
-    });
-  };
+  // const handleClientSelection = (client: EnrolledClient) => {
+  //   setSelectedClientsForAssignment(prev => {
+  //     if (prev.includes(client.id)) {
+  //       return prev.filter(c => c !== client.id);
+  //     } else {
+  //       return [...prev, client.id];
+  //     }
+  //   });
+  // };
 
-  // Update the handleAssign function
-  const handleAssign = async (remarkText: string) => {
-    if (!selectedMarketingTeamLead) {
-      toast.error('Please select a marketing team lead first');
-      return;
-    }
 
-    setAssignmentLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const selectedLead = marketingTeamLeads.find(lead => 
-        `${lead.firstname} ${lead.lastname}` === selectedMarketingTeamLead
-      );
-
-      if (!selectedLead) {
-        toast.error('Selected marketing team lead not found');
-        return;
-      }
-      
-      console.log('Attempting to assign clients:', {
-        selectedMarketingTeamLead,
-        clientCount: selectedClientsForAssignment.length,
-        remarkText
-      });
-
-      // Create assignments for each selected client
-      const assignmentPromises = selectedClientsForAssignment.map(clientId => 
-        axios.post(
-          `${BASE_URL}/client-assignments/assign-enrolled`,
-          {
-            clientId: clientId,
-            assignedToId: selectedLead.id,
-            remarkText: remarkText.trim()
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        ).catch(error => {
-          // Log individual assignment errors
-          console.error(`Error assigning client ${clientId}:`, error.response?.data || error.message);
-          throw error; // Re-throw to be caught by Promise.all
-        })
-      );
-
-      await Promise.all(assignmentPromises);
-      toast.success(`Successfully assigned ${selectedClientsForAssignment.length} client(s) to marketing team`);
-      
-      // Reset state
-      setSelectedClientsForAssignment([]);
-      setShowAssignmentDialog(false);
-      setSelectedMarketingTeamLead('');
-      
-      // Refresh the data
-      fetchEnrolledClients();
-    } catch (error) {
-      console.error('Error assigning clients:', error);
-      toast.error('Failed to assign clients to marketing team');
-    } finally {
-      setAssignmentLoading(false);
-    }
-  };
 
   const handleViewInstallments = (client: EnrolledClient) => {
     setSelectedClientForInstallments(client);
     setShowInstallmentsPopup(true);
   };
 
-  const renderTableHeader = () => (
-    <tr>
-      {activeTab === 'approved' && (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          <input
-            type="checkbox"
-            onChange={(e) => {
-              const clients = getFilteredClients();
-              if (e.target.checked) {
-                setSelectedClientsForAssignment(clients.map(client => client.id));
-              } else {
-                setSelectedClientsForAssignment([]);
-              }
-            }}
-            checked={selectedClientsForAssignment.length === getFilteredClients().length && getFilteredClients().length > 0}
-            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-          />
-        </th>
-      )}
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Lead Details
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-        Enrolled Date
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Package
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Pricing
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Status
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Resume
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Email
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        Training Required
-      </th>
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-        First Call Status
-      </th>
-      {activeTab === 'approved' && (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Marketing Team
-        </th>
-      )}
-      {(activeTab !== 'approved' && activeTab !== 'sales_pending') && (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Actions
-        </th>
-      )}
-    </tr>
-  );
+  // const renderTableHeader = () => (
+  //   <tr>
+  //     {activeTab === 'approved' && (
+  //       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //         <input
+  //           type="checkbox"
+  //           onChange={(e) => {
+  //             const clients = getFilteredClients();
+  //             if (e.target.checked) {
+  //               setSelectedClientsForAssignment(clients.map(client => client.id));
+  //             } else {
+  //               setSelectedClientsForAssignment([]);
+  //             }
+  //           }}
+  //           checked={selectedClientsForAssignment.length === getFilteredClients().length && getFilteredClients().length > 0}
+  //           className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+  //         />
+  //       </th>
+  //     )}
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Lead Details
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+  //       Enrolled Date
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Package
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Pricing
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Status
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Resume
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Email
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       Training Required
+  //     </th>
+  //     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //       First Call Status
+  //     </th>
+  //     {activeTab === 'approved' && (
+  //       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //         Marketing Team
+  //       </th>
+  //     )}
+  //     {(activeTab !== 'approved' && activeTab !== 'sales_pending') && (
+  //       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+  //         Actions
+  //       </th>
+  //     )}
+  //   </tr>
+  // );
 
-  const renderTableRow = (client: EnrolledClient, idx: number) => (
-    <tr key={client.id} className="hover:bg-gray-50">
-      {activeTab === 'approved' && (
-        <td className="px-6 py-4 whitespace-nowrap text-start">
-          <input
-            type="checkbox"
-            checked={selectedClientsForAssignment.includes(client.id)}
-            onChange={() => handleClientSelection(client)}
-            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-          />
-        </td>
-      )}
-      <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        <div className="flex items-center">
-          <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900">
-              {client.lead.firstName} {client.lead.lastName}
-            </div>
-            <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
-            {client.lead.contactNumbers && (
-              <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
-            )}
-            <div className="text-xs text-gray-400">
-              {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
-            </div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        <span className="text-sm text-gray-900">
-          {new Date(client.createdAt).toLocaleDateString()}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        <div className="text-sm text-gray-900 flex items-center gap-2">
-          {client.package ? (
-            <>
-              <button
-                onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
-                className="text-blue-600 hover:text-blue-900"
-                title="View Package Features"
-              >
-                <FaInfoCircle className="w-4 h-4" />
-              </button>
-              {client.package.planName}
-            </>
-          ) : (
-            'Not Selected'
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        {client.package && (
-          <div className={`${packageColorThemes[client.package.planName]?.bg || 'bg-gray-50'} 
-                           ${packageColorThemes[client.package.planName]?.border || 'border-gray-200'} 
-                           border rounded-lg p-3 space-y-2`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleViewInstallments(client)}
-                  className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
-                  title="View Installments"
-                >
-                  <FaListAlt className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium text-gray-700">Enrollment:</span>
-              </div>
-              <span className="text-sm text-gray-900">
-                {formatCurrency(
-                  activeTab === 'approved'
-                    ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
-                    : (activeTab === 'my_review' && client.edited_enrollment_charge !== null)
-                      ? client.edited_enrollment_charge
-                      : client.payable_enrollment_charge
-                )}
-              </span>
-            </div>
+  // const renderTableRow = (client: EnrolledClient, idx: number) => (
+  //   <tr key={client.id} className="hover:bg-gray-50">
+  //     {activeTab === 'approved' && (
+  //       <td className="px-6 py-4 whitespace-nowrap text-start">
+  //         <input
+  //           type="checkbox"
+  //           checked={selectedClientsForAssignment.includes(client.id)}
+  //           onChange={() => handleClientSelection(client)}
+  //           className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+  //         />
+  //       </td>
+  //     )}
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       <div className="flex items-center">
+  //         <div className="ml-4">
+  //           <div className="text-sm font-medium text-gray-900">
+  //             {client.lead.firstName} {client.lead.lastName}
+  //           </div>
+  //           <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+  //           {client.lead.contactNumbers && (
+  //             <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+  //           )}
+  //           <div className="text-xs text-gray-400">
+  //             {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       <span className="text-sm text-gray-900">
+  //         {new Date(client.createdAt).toLocaleDateString()}
+  //       </span>
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       <div className="text-sm text-gray-900 flex items-center gap-2">
+  //         {client.package ? (
+  //           <>
+  //             <button
+  //               onClick={() => handleShowFeatures(client.package!.planName, client.package!.features)}
+  //               className="text-blue-600 hover:text-blue-900"
+  //               title="View Package Features"
+  //             >
+  //               <FaInfoCircle className="w-4 h-4" />
+  //             </button>
+  //             {client.package.planName}
+  //           </>
+  //         ) : (
+  //           'Not Selected'
+  //         )}
+  //       </div>
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       {client.package && (
+  //         <div className={`${packageColorThemes[client.package.planName]?.bg || 'bg-gray-50'} 
+  //                          ${packageColorThemes[client.package.planName]?.border || 'border-gray-200'} 
+  //                          border rounded-lg p-3 space-y-2`}>
+  //           <div className="flex items-center justify-between">
+  //             <div className="flex items-center gap-2">
+  //               <button
+  //                 onClick={() => handleViewInstallments(client)}
+  //                 className={`${packageColorThemes[client.package.planName]?.text || 'text-gray-600'} hover:opacity-75 transition-opacity`}
+  //                 title="View Installments"
+  //               >
+  //                 <FaListAlt className="w-4 h-4" />
+  //               </button>
+  //               <span className="text-sm font-medium text-gray-700">Enrollment:</span>
+  //             </div>
+  //             <span className="text-sm text-gray-900">
+  //               {formatCurrency(
+  //                 activeTab === 'approved'
+  //                   ? (client.edited_enrollment_charge !== null ? client.edited_enrollment_charge : client.payable_enrollment_charge)
+  //                   : (activeTab === 'my_review' && client.edited_enrollment_charge !== null)
+  //                     ? client.edited_enrollment_charge
+  //                     : client.payable_enrollment_charge
+  //               )}
+  //             </span>
+  //           </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
-              <span className="text-sm text-gray-900">
-                {formatCurrency(
-                  activeTab === 'approved'
-                    ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
-                    : (activeTab === 'my_review' && client.edited_offer_letter_charge !== null)
-                      ? client.edited_offer_letter_charge
-                      : client.payable_offer_letter_charge
-                )}
-              </span>
-            </div>
+  //           <div className="flex items-center justify-between">
+  //             <span className="text-sm font-medium text-gray-700">Offer Letter:</span>
+  //             <span className="text-sm text-gray-900">
+  //               {formatCurrency(
+  //                 activeTab === 'approved'
+  //                   ? (client.edited_offer_letter_charge !== null ? client.edited_offer_letter_charge : client.payable_offer_letter_charge)
+  //                   : (activeTab === 'my_review' && client.edited_offer_letter_charge !== null)
+  //                     ? client.edited_offer_letter_charge
+  //                     : client.payable_offer_letter_charge
+  //               )}
+  //             </span>
+  //           </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">First Year:</span>
-              <span className="text-sm text-gray-900">
-                {activeTab === 'approved'
-                  ? (client.edited_first_year_percentage !== null
-                      ? `${client.edited_first_year_percentage}%`
-                      : client.edited_first_year_fixed_charge !== null
-                        ? formatCurrency(client.edited_first_year_fixed_charge)
-                        : client.payable_first_year_percentage
-                          ? `${client.payable_first_year_percentage}%`
-                          : formatCurrency(client.payable_first_year_fixed_charge)
-                    )
-                  : (activeTab === 'my_review' && client.edited_first_year_percentage !== null)
-                    ? `${client.edited_first_year_percentage}%`
-                    : (activeTab === 'my_review' && client.edited_first_year_fixed_charge !== null)
-                      ? formatCurrency(client.edited_first_year_fixed_charge)
-                      : client.payable_first_year_percentage 
-                        ? `${client.payable_first_year_percentage}%` 
-                        : formatCurrency(client.payable_first_year_fixed_charge)
-                }
-              </span>
-            </div>
-          </div>
-        )}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        {getStatusBadge(client)}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        {client.resume ? (
-          <button
-            onClick={() => handleResumePreview(client.resume, client.id)}
-            className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
-            title="View Resume"
-          >
-            <FaFilePdf className="w-4 h-4" />
-            <span>View</span>
-          </button>
-        ) : (
-          <span className="text-gray-400 text-sm">No Resume</span>
-        )}
-      </td>
-      <td className="px-6 py-4 text-sm  whitespace-nowrap text-start">
-        <a
-          href={`mailto:${client.lead.primaryEmail}`}
-          className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
-          title="Send Email"
-        >
-          <span>Send Email</span>
-        </a>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-          client.is_training_required 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-800'
-        }`}>
-          {client.is_training_required ? 'Yes' : 'No'}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-start">
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-          client.first_call_status === 'done' 
-            ? 'bg-green-100 text-green-800'
-            : client.first_call_status === 'onhold'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {client.first_call_status ? client.first_call_status.charAt(0).toUpperCase() + client.first_call_status.slice(1) : 'Pending'}
-        </span>
-      </td>
-      {activeTab === 'approved' && (
-        <td className="px-6 py-4 whitespace-nowrap text-start">
-          {client.assignedMarketingTeam ? (
-            <span className="text-sm text-green-600 font-medium">
-              {highlightSearchTerm(client.assignedMarketingTeam.firstname, searchQuery)} {highlightSearchTerm(client.assignedMarketingTeam.lastname, searchQuery)}
-            </span>
-          ) : (
-            <span className="text-sm text-gray-500">Unassigned</span>
-          )}
-        </td>
-      )}
-      {activeTab !== 'approved' && (
-        <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
-        {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
-          <button
-            onClick={() => handleReview(client)}
-            className="text-purple-600 hover:text-blue-900 mr-3"
-            title="Review"
-          >
-            <FaEdit className="w-4 h-4" />
-          </button>
-        )}
-        {activeTab === 'my_review' && (
-          <button
-            onClick={() => {
-              setSelectedClient(client);
-              setShowUpdateForm(false);
-            }}
-            className="text-purple-600 hover:text-purple-900"
-            title="Review Changes"
-          >
-            <FaEdit className="w-4 h-4" />
-          </button>
-        )}
-      </td>
-      )}
-    </tr>
-  );
+  //           <div className="flex items-center justify-between">
+  //             <span className="text-sm font-medium text-gray-700">First Year:</span>
+  //             <span className="text-sm text-gray-900">
+  //               {activeTab === 'approved'
+  //                 ? (client.edited_first_year_percentage !== null
+  //                     ? `${client.edited_first_year_percentage}%`
+  //                     : client.edited_first_year_fixed_charge !== null
+  //                       ? formatCurrency(client.edited_first_year_fixed_charge)
+  //                       : client.payable_first_year_percentage
+  //                         ? `${client.payable_first_year_percentage}%`
+  //                         : formatCurrency(client.payable_first_year_fixed_charge)
+  //                   )
+  //                 : (activeTab === 'my_review' && client.edited_first_year_percentage !== null)
+  //                   ? `${client.edited_first_year_percentage}%`
+  //                   : (activeTab === 'my_review' && client.edited_first_year_fixed_charge !== null)
+  //                     ? formatCurrency(client.edited_first_year_fixed_charge)
+  //                     : client.payable_first_year_percentage 
+  //                       ? `${client.payable_first_year_percentage}%` 
+  //                       : formatCurrency(client.payable_first_year_fixed_charge)
+  //               }
+  //             </span>
+  //           </div>
+  //         </div>
+  //       )}
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       {getStatusBadge(client)}
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       {client.resume ? (
+  //         <button
+  //           onClick={() => handleResumePreview(client.resume, client.id)}
+  //           className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+  //           title="View Resume"
+  //         >
+  //           <FaFilePdf className="w-4 h-4" />
+  //           <span>View</span>
+  //         </button>
+  //       ) : (
+  //         <span className="text-gray-400 text-sm">No Resume</span>
+  //       )}
+  //     </td>
+  //     <td className="px-6 py-4 text-sm  whitespace-nowrap text-start">
+  //       <a
+  //         href={`mailto:${client.lead.primaryEmail}`}
+  //         className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
+  //         title="Send Email"
+  //       >
+  //         <span>Send Email</span>
+  //       </a>
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+  //         client.is_training_required 
+  //           ? 'bg-green-100 text-green-800' 
+  //           : 'bg-gray-100 text-gray-800'
+  //       }`}>
+  //         {client.is_training_required ? 'Yes' : 'No'}
+  //       </span>
+  //     </td>
+  //     <td className="px-6 py-4 whitespace-nowrap text-start">
+  //       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+  //         client.first_call_status === 'done' 
+  //           ? 'bg-green-100 text-green-800'
+  //           : client.first_call_status === 'onhold'
+  //             ? 'bg-red-100 text-red-800'
+  //             : 'bg-yellow-100 text-yellow-800'
+  //       }`}>
+  //         {client.first_call_status ? client.first_call_status.charAt(0).toUpperCase() + client.first_call_status.slice(1) : 'Pending'}
+  //       </span>
+  //     </td>
+  //     {activeTab === 'approved' && (
+  //       <td className="px-6 py-4 whitespace-nowrap text-start">
+  //         {client.assignedMarketingTeam ? (
+  //           <span className="text-sm text-green-600 font-medium">
+  //             {highlightSearchTerm(client.assignedMarketingTeam.firstname, searchQuery)} {highlightSearchTerm(client.assignedMarketingTeam.lastname, searchQuery)}
+  //           </span>
+  //         ) : (
+  //           <span className="text-sm text-gray-500">Unassigned</span>
+  //         )}
+  //       </td>
+  //     )}
+  //     {activeTab !== 'approved' && (
+  //       <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
+  //       {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
+  //         <button
+  //           onClick={() => handleReview(client)}
+  //           className="text-purple-600 hover:text-blue-900 mr-3"
+  //           title="Review"
+  //         >
+  //           <FaEdit className="w-4 h-4" />
+  //         </button>
+  //       )}
+  //       {activeTab === 'my_review' && (
+  //         <button
+  //           onClick={() => {
+  //             setSelectedClient(client);
+  //           }}
+  //           className="text-purple-600 hover:text-purple-900"
+  //           title="Review Changes"
+  //         >
+  //           <FaEdit className="w-4 h-4" />
+  //         </button>
+  //       )}
+  //     </td>
+  //     )}
+  //   </tr>
+  // );
 
-  const renderAssignmentButtons = () => {
-    if (activeTab === 'approved' && selectedClientsForAssignment.length > 0) {
-      const isReassignment = selectedClientsForAssignment.every(clientId => {
-        const client = getFilteredClients().find(c => c.id === clientId);
-        return client?.assignedMarketingTeam;
-      });
-      const buttonText = isReassignment ? 'Reassign Selected' : 'Assign Selected';
+  // const renderAssignmentButtons = () => {
+  //   if (activeTab === 'approved' && selectedClientsForAssignment.length > 0) {
+  //     const isReassignment = selectedClientsForAssignment.every(clientId => {
+  //       const client = getFilteredClients().find(c => c.id === clientId);
+  //       return client?.assignedMarketingTeam;
+  //     });
+  //     const buttonText = isReassignment ? 'Reassign Selected' : 'Assign Selected';
 
-      return (
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedMarketingTeamLead}
-            onChange={(e) => setSelectedMarketingTeamLead(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
-            disabled={isLoadingMarketingTeamLeads}
-          >
-            <option value="">{isLoadingMarketingTeamLeads ? 'Loading...' : 'Select Marketing Team Lead'}</option>
-            {!isLoadingMarketingTeamLeads && marketingTeamLeads.map((user) => {
-              const isCurrentMarketingTeamLead = selectedClientsForAssignment.some(
-                clientId => {
-                  const client = getFilteredClients().find(c => c.id === clientId);
-                  return client?.assignedMarketingTeam?.id === user.id;
-                }
-              );
-              return (
-                <option 
-                  key={user.id} 
-                  value={`${user.firstname} ${user.lastname}`}
-                  disabled={isCurrentMarketingTeamLead}
-                >
-                  {user.firstname} {user.lastname} {isCurrentMarketingTeamLead ? '(Current)' : ''}
-                </option>
-              );
-            })}
-          </select>
-          <button
-            onClick={handleAssignToMarketingTeam}
-            disabled={selectedClientsForAssignment.length === 0 || !selectedMarketingTeamLead || assignmentLoading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            <FaUserTie />
-            {buttonText}
-          </button>
-        </div>
-      );
-    }
-    return null;
-  };
+  //     return (
+  //       <div className="flex items-center gap-2">
+  //         <select
+  //           value={selectedMarketingTeamLead}
+  //           onChange={(e) => setSelectedMarketingTeamLead(e.target.value)}
+  //           className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm"
+  //           disabled={isLoadingMarketingTeamLeads}
+  //         >
+  //           <option value="">{isLoadingMarketingTeamLeads ? 'Loading...' : 'Select Marketing Team Lead'}</option>
+  //           {!isLoadingMarketingTeamLeads && marketingTeamLeads.map((user) => {
+  //             const isCurrentMarketingTeamLead = selectedClientsForAssignment.some(
+  //               clientId => {
+  //                 const client = getFilteredClients().find(c => c.id === clientId);
+  //                 return client?.assignedMarketingTeam?.id === user.id;
+  //               }
+  //             );
+  //             return (
+  //               <option 
+  //                 key={user.id} 
+  //                 value={`${user.firstname} ${user.lastname}`}
+  //                 disabled={isCurrentMarketingTeamLead}
+  //               >
+  //                 {user.firstname} {user.lastname} {isCurrentMarketingTeamLead ? '(Current)' : ''}
+  //               </option>
+  //             );
+  //           })}
+  //         </select>
+  //         <button
+  //           onClick={handleAssignToMarketingTeam}
+  //           disabled={selectedClientsForAssignment.length === 0 || !selectedMarketingTeamLead || assignmentLoading}
+  //           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+  //         >
+  //           <FaUserTie />
+  //           {buttonText}
+  //         </button>
+  //       </div>
+  //     );
+  //   }
+  //   return null;
+  // };
 
   if (loading) {
     return (
@@ -1245,9 +1153,6 @@ const AdminEnrollment: React.FC = () => {
                     value={selectedMarketingTeamLead}
                     onChange={(e) => {
                       setSelectedMarketingTeamLead(e.target.value);
-                      if (e.target.value) {
-                        setCurrentMarketingTeamLead('');
-                      }
                     }}
                     disabled={selectedClientsForAssignment.length === 0}
                   >
@@ -2053,7 +1958,6 @@ const AdminEnrollment: React.FC = () => {
                         <button
                           onClick={() => {
                             setSelectedClient(client);
-                            setShowUpdateForm(false);
                           }}
                           className="text-purple-600 hover:text-purple-900"
                           title="Review Changes"
