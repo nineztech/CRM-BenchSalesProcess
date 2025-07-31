@@ -794,8 +794,100 @@ export const getAllEnrolledClientsForSales = async (req, res) => {
 // Get all enrolled clients for admin with categorized data
 export const getAllEnrolledClientsForAdmin = async (req, res) => {
   try {
-    const { page = 1, limit = 10, admin_id } = req.query;
+    const { page = 1, limit = 10, admin_id, search, tabType } = req.query;
     const offset = (page - 1) * limit;
+
+    // If search query is provided, use Elasticsearch
+    if (search && search.trim()) {
+      try {
+        const searchResults = await searchEnrolledClients(search, tabType, parseInt(page), parseInt(limit));
+        
+        // Transform Elasticsearch results to match expected format
+        const transformedResults = searchResults.enrolledClients.map(client => ({
+          id: client.id,
+          lead_id: client.lead_id,
+          packageid: client.packageid,
+          payable_enrollment_charge: client.payable_enrollment_charge,
+          payable_offer_letter_charge: client.payable_offer_letter_charge,
+          payable_first_year_percentage: client.payable_first_year_percentage,
+          payable_first_year_fixed_charge: client.payable_first_year_fixed_charge,
+          Approval_by_sales: client.Approval_by_sales,
+          Sales_person_id: client.Sales_person_id,
+          Approval_by_admin: client.Approval_by_admin,
+          Admin_id: client.Admin_id,
+          has_update: client.has_update,
+          edited_enrollment_charge: client.edited_enrollment_charge,
+          edited_offer_letter_charge: client.edited_offer_letter_charge,
+          edited_first_year_percentage: client.edited_first_year_percentage,
+          edited_first_year_fixed_charge: client.edited_first_year_fixed_charge,
+          createdAt: client.createdAt,
+          updatedAt: client.updatedAt,
+          is_training_required: client.is_training_required,
+          first_call_status: client.first_call_status,
+          lead: client.lead,
+          package: client.package,
+          salesPerson: client.salesPerson,
+          admin: client.admin,
+          resume: client.resume,
+          assignedMarketingTeam: client.assignedMarketingTeam
+        }));
+
+        const createPaginationInfo = (total) => ({
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit)
+        });
+
+        // Filter results based on tabType
+        let filteredResults = transformedResults;
+        let totalCount = searchResults.total;
+
+        if (tabType === 'approved') {
+          filteredResults = transformedResults.filter(client => 
+            client.Approval_by_sales && client.Approval_by_admin
+          );
+          totalCount = filteredResults.length;
+        } else if (tabType === 'sales_pending') {
+          filteredResults = transformedResults.filter(client => 
+            client.has_update && !client.Approval_by_admin
+          );
+          totalCount = filteredResults.length;
+        } else if (tabType === 'my_review') {
+          filteredResults = transformedResults.filter(client => 
+            client.packageid && !client.Approval_by_admin && !client.has_update
+          );
+          totalCount = filteredResults.length;
+        }
+
+        res.status(200).json({
+          success: true,
+          message: 'Enrolled clients retrieved successfully',
+          data: {
+            AllEnrollments: {
+              leads: tabType === 'all' ? filteredResults : [],
+              pagination: createPaginationInfo(tabType === 'all' ? totalCount : 0)
+            },
+            Approved: {
+              leads: tabType === 'approved' ? filteredResults : [],
+              pagination: createPaginationInfo(tabType === 'approved' ? totalCount : 0)
+            },
+            SalesReviewPending: {
+              leads: tabType === 'sales_pending' ? filteredResults : [],
+              pagination: createPaginationInfo(tabType === 'sales_pending' ? totalCount : 0)
+            },
+            MyReview: {
+              leads: tabType === 'my_review' ? filteredResults : [],
+              pagination: createPaginationInfo(tabType === 'my_review' ? totalCount : 0)
+            }
+          }
+        });
+        return;
+      } catch (error) {
+        console.error('Error searching enrolled clients:', error);
+        // Fall back to database query if Elasticsearch fails
+      }
+    }
 
     const includeConfig = [
       {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaEdit, FaTimes, FaUserTie, FaGraduationCap, FaBox, FaCheckCircle, FaClock, FaFilePdf, FaUpload, FaInfoCircle, FaPlus, FaTrash, FaListAlt } from 'react-icons/fa';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -8,6 +8,22 @@ import InstallmentsPopup from './InstallmentsPopup';
 import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
+
+// Helper function to highlight search terms
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm || !text) return text;
+  
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <span key={index} className="bg-yellow-200 font-semibold">
+        {part}
+      </span>
+    ) : part
+  );
+};
 
 interface EnrolledClient {
   id: number;
@@ -181,20 +197,60 @@ const AdminEnrollment: React.FC = () => {
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [currentAssignments, setCurrentAssignments] = useState<{[key: number]: number}>({});
 
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   const pageSize = 10;
 
   useEffect(() => {
     fetchEnrolledClients();
     fetchPackages();
     fetchMarketingTeamLeads();
-  }, [currentPage, activeTab]);
+  }, [currentPage, activeTab]); // Removed searchQuery from dependencies
+
+  // Debounced search effect with better handling
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        setCurrentPage(1);
+        setIsSearching(true);
+        fetchEnrolledClients();
+      } else if (searchQuery === '') {
+        setCurrentPage(1);
+        setIsSearching(false);
+        fetchEnrolledClients();
+      }
+    }, 800); // Increased debounce time
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Maintain focus on search input only when user is actively typing
+  useEffect(() => {
+    if (isSearchFocused && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchQuery, isSearchFocused]);
 
   const fetchEnrolledClients = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString()
+      });
+      
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+        params.append('tabType', activeTab);
+      }
+
       const response = await axios.get(
-        `${BASE_URL}/enrolled-clients/admin/all?page=${currentPage}&limit=${pageSize}`,
+        `${BASE_URL}/enrolled-clients/admin/all?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -224,6 +280,7 @@ const AdminEnrollment: React.FC = () => {
       console.error('Error fetching enrolled clients:', error);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -713,6 +770,15 @@ const AdminEnrollment: React.FC = () => {
   };
 
   // Add new function for handling client selection for assignment
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
+
   const handleClientSelection = (client: EnrolledClient) => {
     setSelectedClientsForAssignment(prev => {
       if (prev.includes(client.id)) {
@@ -1020,7 +1086,7 @@ const AdminEnrollment: React.FC = () => {
         <td className="px-6 py-4 whitespace-nowrap text-start">
           {client.assignedMarketingTeam ? (
             <span className="text-sm text-green-600 font-medium">
-              {client.assignedMarketingTeam.firstname} {client.assignedMarketingTeam.lastname}
+              {highlightSearchTerm(client.assignedMarketingTeam.firstname, searchQuery)} {highlightSearchTerm(client.assignedMarketingTeam.lastname, searchQuery)}
             </span>
           ) : (
             <span className="text-sm text-gray-500">Unassigned</span>
@@ -1136,18 +1202,41 @@ const AdminEnrollment: React.FC = () => {
           </div>
         </div>
 
-        {/* Assignment Section */}
-        {activeTab === 'approved' && (
-          <div className="bg-white rounded-xl shadow-sm mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, phone..."
-                    className="border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
-                  />
+        {/* Search Section */}
+        <div className="bg-white rounded-xl shadow-sm mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by name, email, phone, assigned to..."
+                      value={searchQuery}
+                      onChange={handleSearchInputChange}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
+                      className="border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                    />
+                    {isSearching && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-400 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
+              </div>
+              {activeTab === 'approved' && (
                 <div className="flex items-center space-x-4">
                   <select 
                     className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
@@ -1196,10 +1285,10 @@ const AdminEnrollment: React.FC = () => {
                     {getAssignmentButtonProps().text}
                   </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm mb-6">
@@ -1251,6 +1340,20 @@ const AdminEnrollment: React.FC = () => {
               </button>
             </nav>
           </div>
+          {searchQuery && (
+            <div className="px-6 py-3 bg-blue-50 border-t border-blue-200">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-700">
+                  Search results for "{searchQuery}" in {activeTab === 'all' ? 'All Enrollments' : 
+                    activeTab === 'approved' ? 'Approved' : 
+                    activeTab === 'sales_pending' ? 'Sales Review Pending' : 'My Review'} tab
+                </span>
+                <span className="text-sm text-blue-600 font-medium">
+                  {getFilteredClients().length} result{getFilteredClients().length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Form Modal */}
@@ -1766,14 +1869,26 @@ const AdminEnrollment: React.FC = () => {
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {client.lead.firstName} {client.lead.lastName}
+                            {highlightSearchTerm(client.lead.firstName, searchQuery)} {highlightSearchTerm(client.lead.lastName, searchQuery)}
                           </div>
-                          <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+                          <div className="text-sm text-gray-500">{highlightSearchTerm(client.lead.primaryEmail, searchQuery)}</div>
                           {client.lead.contactNumbers && (
-                            <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+                            <div className="text-sm text-gray-500">
+                              {client.lead.contactNumbers.map((phone, index) => (
+                                <span key={index}>
+                                  {highlightSearchTerm(phone, searchQuery)}
+                                  {index < client.lead.contactNumbers.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
                           )}
                           <div className="text-xs text-gray-400">
-                            {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
+                            {client.lead.technology?.map((tech, index) => (
+                              <span key={index}>
+                                {highlightSearchTerm(tech, searchQuery)}
+                                {index < client.lead.technology.length - 1 ? ', ' : ''}
+                              </span>
+                            )) || 'No technology specified'} • {highlightSearchTerm(client.lead.visaStatus, searchQuery)}
                           </div>
                         </div>
                       </div>
@@ -1916,7 +2031,7 @@ const AdminEnrollment: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-start">
                         {client.assignedMarketingTeam ? (
                           <span className="text-sm text-green-600 font-medium">
-                            {client.assignedMarketingTeam.firstname} {client.assignedMarketingTeam.lastname}
+                            {highlightSearchTerm(client.assignedMarketingTeam.firstname, searchQuery)} {highlightSearchTerm(client.assignedMarketingTeam.lastname, searchQuery)}
                           </span>
                         ) : (
                           <span className="text-sm text-gray-500">Unassigned</span>
@@ -2044,6 +2159,21 @@ const AdminEnrollment: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add InstallmentsPopup */}
+      {showInstallmentsPopup && selectedClientForInstallments && (
+        <InstallmentsPopup
+          isOpen={showInstallmentsPopup}
+          onClose={() => {
+            setShowInstallmentsPopup(false);
+            setSelectedClientForInstallments(null);
+          }}
+          enrolledClientId={selectedClientForInstallments.id}
+          totalCharge={selectedClientForInstallments.payable_enrollment_charge}
+          isMyReview={activeTab === 'my_review'}
+          editedTotalCharge={activeTab === 'my_review' ? selectedClientForInstallments.edited_enrollment_charge : undefined}
+        />
       )}
 
       {/* Render ConfirmationPopup for approval */}

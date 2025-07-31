@@ -9,6 +9,22 @@ import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5006/api";
 
+// Helper function to highlight search terms
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm || !text) return text;
+  
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => 
+    regex.test(part) ? (
+      <span key={index} className="bg-yellow-200 font-semibold">
+        {part}
+      </span>
+    ) : part
+  );
+};
+
 interface EnrolledClient {
   id: number;
   lead_id: number;
@@ -2352,14 +2368,26 @@ const SalesEnrollment: React.FC = () => {
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {client.lead.firstName} {client.lead.lastName}
+                            {highlightSearchTerm(client.lead.firstName, searchQuery)} {highlightSearchTerm(client.lead.lastName, searchQuery)}
                           </div>
-                          <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
+                          <div className="text-sm text-gray-500">{highlightSearchTerm(client.lead.primaryEmail, searchQuery)}</div>
                           {client.lead.contactNumbers && (
-                            <div className="text-sm text-gray-500">{client.lead.contactNumbers.join(', ')}</div>
+                            <div className="text-sm text-gray-500">
+                              {client.lead.contactNumbers.map((phone, index) => (
+                                <span key={index}>
+                                  {highlightSearchTerm(phone, searchQuery)}
+                                  {index < client.lead.contactNumbers.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
                           )}
                           <div className="text-xs text-gray-400">
-                            {client.lead.technology?.join(', ') || 'No technology specified'} • {client.lead.visaStatus}
+                            {client.lead.technology?.map((tech, index) => (
+                              <span key={index}>
+                                {highlightSearchTerm(tech, searchQuery)}
+                                {index < client.lead.technology.length - 1 ? ', ' : ''}
+                              </span>
+                            )) || 'No technology specified'} • {highlightSearchTerm(client.lead.visaStatus, searchQuery)}
                           </div>
                         </div>
                       </div>
@@ -2503,7 +2531,7 @@ const SalesEnrollment: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-start">
                         {client.assignedMarketingTeam ? (
                           <span className="text-sm text-green-600 font-medium">
-                            {client.assignedMarketingTeam.firstname} {client.assignedMarketingTeam.lastname}
+                            {highlightSearchTerm(client.assignedMarketingTeam.firstname, searchQuery)} {highlightSearchTerm(client.assignedMarketingTeam.lastname, searchQuery)}
                           </span>
                         ) : (
                           <span className="text-sm text-gray-500">Unassigned</span>
