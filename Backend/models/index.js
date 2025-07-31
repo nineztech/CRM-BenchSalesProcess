@@ -437,46 +437,46 @@ export const syncModels = async () => {
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0;');
 
     // Create User table first
-    await User.sync({ alter: false });
+    await User.sync({ alter: true });
     console.log('User table synced successfully');
 
     // Create Department table
-    await Department.sync({ alter: false });
+    await Department.sync({ alter: true });
     console.log('Department table synced successfully');
 
     // Create Activity table
-    await Activity.sync({ alter: false });
+    await Activity.sync({ alter: true });
     console.log('Activity table synced successfully');
 
     
     // Create RolePermission table
-    await RolePermission.sync({ alter: false });
+    await RolePermission.sync({ alter: true });
     console.log('RolePermission table synced successfully');
 
     // Create AdminPermission table
-    await AdminPermission.sync({ alter: false });
+    await AdminPermission.sync({ alter: true });
     console.log('AdminPermission table synced successfully');
 
-   await Installments.sync({ alter: false });
+   await Installments.sync({ alter: true });
     console.log('Installments table synced successfully');
-    await SpecialUserPermission.sync({ alter: false });
+    await SpecialUserPermission.sync({ alter: true });
     console.log('SpecialUserPermission table synced successfully');
 
     // Create other tables
-    await Lead.sync({ alter: false });
+    await Lead.sync({ alter: true });
     console.log('Lead table synced successfully');
 
-    await ArchivedLead.sync({ alter: false });
+    await ArchivedLead.sync({ alter: true });
     console.log('ArchivedLead table synced successfully');
 
     // Create other tables
-    await Packages.sync({ alter: false });
+    await Packages.sync({ alter: true });
     console.log('Packages table synced successfully');
 
-    await LeadAssignment.sync({ alter: false });
+    await LeadAssignment.sync({ alter: true });
     console.log('LeadAssignment table synced successfully');
 
-    await EnrolledClients.sync({ alter: false });
+    await EnrolledClients.sync({ alter: true });
     console.log('EnrolledClients table synced successfully');
 
     await Installments.sync({ alter: true });
