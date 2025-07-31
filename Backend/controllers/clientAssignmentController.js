@@ -191,6 +191,180 @@ export const assignClient = async (req, res) => {
   }
 };
 
+// Assign Enrolled Client to Marketing Team
+export const assignEnrolledClient = async (req, res) => {
+  try {
+    const { clientId, assignedToId, remarkText } = req.body;
+    const userId = req.user?.id;
+
+    console.log('Enrolled client assignment request:', { clientId, assignedToId, remarkText, userId });
+
+    if (!clientId || !assignedToId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client ID and Assigned To ID are required"
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required"
+      });
+    }
+
+    // Check if enrolled client exists
+    const enrolledClient = await EnrolledClients.findByPk(clientId);
+    if (!enrolledClient) {
+      return res.status(404).json({
+        success: false,
+        message: `Enrolled client not found with ID: ${clientId}`
+      });
+    }
+
+    // Check if assigned user exists and is a marketing team lead
+    const assignedUser = await User.findOne({
+      where: { id: assignedToId },
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          where: { isMarketingTeam: true },
+          required: true
+        }
+      ]
+    });
+
+    if (!assignedUser) {
+      return res.status(404).json({
+        success: false,
+        message: `Marketing team lead not found with ID: ${assignedToId}`
+      });
+    }
+
+    // Check if client is already assigned to the same user
+    if (enrolledClient.assignTo === assignedToId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client is already assigned to this marketing team lead"
+      });
+    }
+
+    // Update the enrolled client with new assignment
+    const previousAssignedId = enrolledClient.assignTo;
+    
+    await enrolledClient.update({
+      assignTo: assignedToId,
+      updatedBy: userId
+    });
+
+    // Get existing assignment if any
+    const existingAssignment = await ClientAssignment.findOne({
+      where: { clientId, status: 'active' }
+    });
+
+    let assignment;
+    if (existingAssignment) {
+      // Update existing assignment
+      const allPreviousAssignedIds = [...(existingAssignment.allPreviousAssignedIds || []), existingAssignment.assignedToId];
+
+      // Get existing remarks and ensure they have all required fields
+      const existingRemarks = (existingAssignment.remark || []).map(oldRemark => ({
+        changedTo: {
+          to: Number(oldRemark.changedTo?.to || 0),
+          from: Number(oldRemark.changedTo?.from || 0)
+        },
+        text: oldRemark.text || '',
+        timestamp: oldRemark.timestamp || oldRemark.createdAt || new Date().toISOString()
+      }));
+
+      // Create new remark for reassignment
+      const newRemark = {
+        changedTo: {
+          to: Number(assignedToId),
+          from: Number(existingAssignment.assignedToId)
+        },
+        text: remarkText || 'Client reassigned to marketing team',
+        timestamp: new Date().toISOString()
+      };
+      
+      const remark = [...existingRemarks, newRemark];
+
+      await existingAssignment.update({
+        assignedToId,
+        previousAssignedId: existingAssignment.assignedToId,
+        allPreviousAssignedIds,
+        updatedBy: userId,
+        remark,
+        reassignedBy: userId
+      });
+      
+      assignment = existingAssignment;
+    } else {
+      // Create new assignment
+      const remark = [{
+        changedTo: {
+          to: Number(assignedToId),
+          from: Number(previousAssignedId || 0)
+        },
+        text: remarkText || 'Client assigned to marketing team',
+        timestamp: new Date().toISOString()
+      }];
+
+      assignment = await ClientAssignment.create({
+        clientId,
+        assignedToId,
+        previousAssignedId,
+        allPreviousAssignedIds: previousAssignedId ? [previousAssignedId] : [],
+        createdBy: userId,
+        status: 'active',
+        remark,
+        reassignedBy: null
+      });
+    }
+
+    // Fetch assignment with details
+    const assignmentWithDetails = await ClientAssignment.findByPk(assignment.id, {
+      include: [
+        {
+          model: User,
+          as: 'assignedTo',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'previousAssigned',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: EnrolledClients,
+          as: 'enrolledClient',
+          attributes: ['id', 'lead_id', 'packageid', 'assignTo']
+        }
+      ]
+    });
+
+    res.status(201).json({
+      success: true,
+      message: existingAssignment ? "Enrolled client reassigned to marketing team successfully" : "Enrolled client assigned to marketing team successfully",
+      data: assignmentWithDetails
+    });
+
+  } catch (error) {
+    console.error("Error in assignEnrolledClient:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 // Get Client Assignment
 export const getClientAssignment = async (req, res) => {
   try {
@@ -290,6 +464,54 @@ export const getClientAssignment = async (req, res) => {
   }
 };
 
+// Get Enrolled Client Assignment
+export const getEnrolledClientAssignment = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    
+    const assignment = await ClientAssignment.findOne({
+      where: { clientId, status: 'active' },
+      include: [
+        {
+          model: User,
+          as: 'assignedTo',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'previousAssigned',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'firstname', 'lastname', 'email']
+        },
+        {
+          model: EnrolledClients,
+          as: 'enrolledClient',
+          attributes: ['id', 'lead_id', 'packageid', 'assignTo']
+        }
+      ]
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "No active assignment found for this enrolled client"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: assignment
+    });
+  } catch (error) {
+    console.error("Error fetching enrolled client assignment:", error);
+    handleError(error, res);
+  }
+};
+
 // Get Client Assignment History
 export const getClientAssignmentHistory = async (req, res) => {
   try {
@@ -338,16 +560,18 @@ export const getMarketingTeamLeads = async (req, res) => {
       where: {
         status: 'active',
         role: 'user',  // assuming regular users, not admins
-        subrole: 'Team Lead',
-        '$department.departmentName$': 'Marketing' // This will filter by marketing department
+        subrole: 'Team Lead'
       },
       attributes: ['id', 'firstname', 'lastname', 'email', 'departmentId', 'status'],
       include: [
         {
           model: Department,
           as: 'department',
-          attributes: ['departmentName'],
-          required: true // This ensures INNER JOIN
+          attributes: ['departmentName', 'isMarketingTeam'],
+          required: true, // This ensures INNER JOIN
+          where: {
+            isMarketingTeam: true
+          }
         }
       ]
     });

@@ -222,6 +222,14 @@ const EnrolledClients = sequelize.define(
       type: DataTypes.ENUM('pending', 'onhold', 'done'),
       allowNull: false,
       defaultValue: 'pending'
+    },
+    assignTo: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
     }
   },
   {
@@ -245,6 +253,9 @@ const EnrolledClients = sequelize.define(
       },
       {
         fields: ['Approval_by_admin']
+      },
+      {
+        fields: ['assignTo']
       }
     ],
     hooks: {

@@ -641,6 +641,11 @@ export const getAllEnrolledClientsForSales = async (req, res) => {
         model: Packages,
         as: 'package',
         attributes: ['id', 'planName', 'enrollmentCharge', 'offerLetterCharge', 'firstYearSalaryPercentage', 'firstYearFixedPrice', 'features']
+      },
+      {
+        model: User,
+        as: 'assignedMarketingTeam',
+        attributes: ['id', 'firstname', 'lastname', 'email']
       }
     ];
 

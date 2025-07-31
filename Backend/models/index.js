@@ -300,6 +300,12 @@ EnrolledClients.belongsTo(User, {
   onDelete: 'SET NULL'
 });
 
+EnrolledClients.belongsTo(User, { 
+  foreignKey: 'assignTo', 
+  as: 'assignedMarketingTeam',
+  onDelete: 'SET NULL'
+});
+
 Lead.hasOne(EnrolledClients, { 
   foreignKey: 'lead_id', 
   as: 'enrolledClient'
@@ -328,6 +334,11 @@ User.hasMany(EnrolledClients, {
 User.hasMany(EnrolledClients, { 
   foreignKey: 'updatedBy', 
   as: 'updatedEnrolledClients'
+});
+
+User.hasMany(EnrolledClients, { 
+  foreignKey: 'assignTo', 
+  as: 'assignedMarketingEnrolledClients'
 });
 
 // ClientAssignment associations

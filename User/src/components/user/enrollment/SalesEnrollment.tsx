@@ -32,6 +32,7 @@ interface EnrolledClient {
   initial_payment: number | null;
   is_training_required: boolean;
   first_call_status: 'pending' | 'onhold' | 'done';
+  assignTo: number | null;
   lead: {
     id: number;
     firstName: string;
@@ -66,6 +67,12 @@ interface EnrolledClient {
     email: string;
   } | null;
   resume: string | null;
+  assignedMarketingTeam?: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    email: string;
+  } | null;
 }
 
 interface Package {
@@ -100,7 +107,18 @@ interface FormData {
   is_training_required: boolean;
 }
 
-
+interface MarketingTeamLead {
+  id: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  departmentId: number;
+  status: string;
+  department: {
+    departmentName: string;
+    isMarketingTeam: boolean;
+  };
+}
 
 // Add color themes mapping
 const packageColorThemes: { [key: string]: { bg: string; border: string; text: string } } = {
@@ -155,11 +173,21 @@ const SalesEnrollment: React.FC = () => {
   const [selectedClientForInstallments, setSelectedClientForInstallments] = useState<EnrolledClient | null>(null);
   const [hasInstallmentError, setHasInstallmentError] = useState(false);
 
+  // Assignment related state
+  const [marketingTeamLeads, setMarketingTeamLeads] = useState<MarketingTeamLead[]>([]);
+  const [selectedMarketingTeamLead, setSelectedMarketingTeamLead] = useState<string>('');
+  const [currentMarketingTeamLead, setCurrentMarketingTeamLead] = useState<string>('');
+  const [isLoadingMarketingTeamLeads, setIsLoadingMarketingTeamLeads] = useState(false);
+  const [selectedClientsForAssignment, setSelectedClientsForAssignment] = useState<number[]>([]);
+  const [assignmentRemark, setAssignmentRemark] = useState<string>('');
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+
   const pageSize = 10;
 
   useEffect(() => {
     fetchEnrolledClients();
     fetchPackages();
+    fetchMarketingTeamLeads();
   }, [currentPage, activeTab]);
 
   const fetchEnrolledClients = async () => {
@@ -200,6 +228,142 @@ const SalesEnrollment: React.FC = () => {
     } catch (error) {
       console.error('Error fetching packages:', error);
     }
+  };
+
+  const fetchMarketingTeamLeads = async () => {
+    setIsLoadingMarketingTeamLeads(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BASE_URL}/client-assignments/marketing-team-leads`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.data.success) {
+        setMarketingTeamLeads(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching marketing team leads:', error);
+      toast.error('Failed to fetch marketing team leads');
+    } finally {
+      setIsLoadingMarketingTeamLeads(false);
+    }
+  };
+
+  const getCurrentMarketingTeamLead = (client: EnrolledClient) => {
+    if (client.assignedMarketingTeam) {
+      return `${client.assignedMarketingTeam.firstname} ${client.assignedMarketingTeam.lastname}`;
+    }
+    return '';
+  };
+
+  const getAssignmentButtonProps = () => {
+    if (selectedClientsForAssignment.length === 0) {
+      return { text: 'Select Clients', color: 'bg-gray-400' };
+    }
+    if (!selectedMarketingTeamLead) {
+      return { text: 'Select Marketing Team Lead', color: 'bg-gray-400' };
+    }
+    
+    // Check if any selected client is already assigned to any marketing team lead
+    const selectedClients = getFilteredClients().filter(client => selectedClientsForAssignment.includes(client.id));
+    const hasAssignedClients = selectedClients.some(client => client.assignedMarketingTeam);
+    
+    return { 
+      text: hasAssignedClients ? 'Reassign to Marketing Team' : 'Assign to Marketing Team', 
+      color: 'bg-blue-500 hover:bg-blue-600' 
+    };
+  };
+
+  const handleClientCheckboxChange = (clientId: number) => {
+    setSelectedClientsForAssignment(prev => 
+      prev.includes(clientId) 
+        ? prev.filter(id => id !== clientId)
+        : [...prev, clientId]
+    );
+  };
+
+  const handleSelectAllClients = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const clients = getFilteredClients();
+    if (e.target.checked) {
+      setSelectedClientsForAssignment(clients.map(client => client.id));
+    } else {
+      setSelectedClientsForAssignment([]);
+    }
+  };
+
+  const handleAssignToMarketingTeam = async () => {
+    if (selectedClientsForAssignment.length === 0 || !selectedMarketingTeamLead) {
+      toast.error('Please select clients and a marketing team lead');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const selectedLead = marketingTeamLeads.find(lead => 
+        `${lead.firstname} ${lead.lastname}` === selectedMarketingTeamLead
+      );
+
+      if (!selectedLead) {
+        toast.error('Selected marketing team lead not found');
+        return;
+      }
+
+      setShowAssignmentDialog(true);
+    } catch (error) {
+      console.error('Error preparing assignment:', error);
+      toast.error('Failed to prepare assignment');
+    }
+  };
+
+  const confirmAssignment = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const selectedLead = marketingTeamLeads.find(lead => 
+        `${lead.firstname} ${lead.lastname}` === selectedMarketingTeamLead
+      );
+
+      if (!selectedLead) {
+        toast.error('Selected marketing team lead not found');
+        return;
+      }
+
+      // Assign each selected client
+      const assignmentPromises = selectedClientsForAssignment.map(clientId =>
+        axios.post(`${BASE_URL}/client-assignments/assign-enrolled`, {
+          clientId,
+          assignedToId: selectedLead.id,
+          remarkText: assignmentRemark || 'Assigned to marketing team'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      );
+
+      await Promise.all(assignmentPromises);
+
+      toast.success(`Successfully assigned ${selectedClientsForAssignment.length} client(s) to marketing team`);
+      
+      // Reset state
+      setSelectedClientsForAssignment([]);
+      setSelectedMarketingTeamLead('');
+      setAssignmentRemark('');
+      setShowAssignmentDialog(false);
+      
+      // Refresh data
+      fetchEnrolledClients();
+    } catch (error) {
+      console.error('Error assigning clients:', error);
+      toast.error('Failed to assign clients to marketing team');
+    }
+  };
+
+  const cancelAssignment = () => {
+    setShowAssignmentDialog(false);
+    setAssignmentRemark('');
   };
 
   const handleEdit = async (client: EnrolledClient) => {
@@ -1027,6 +1191,71 @@ const SalesEnrollment: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Assignment Section */}
+        {activeTab === 'approved' && (
+          <div className="bg-white rounded-xl shadow-sm mb-6">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, phone..."
+                    className="border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                  />
+                </div>
+                <div className="flex items-center space-x-4">
+                  <select 
+                    className={`border px-4 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      selectedClientsForAssignment.length === 0 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                    }`}
+                    value={selectedMarketingTeamLead}
+                    onChange={(e) => {
+                      setSelectedMarketingTeamLead(e.target.value);
+                      if (e.target.value) {
+                        setCurrentMarketingTeamLead('');
+                      }
+                    }}
+                    disabled={selectedClientsForAssignment.length === 0}
+                  >
+                    <option value="">Select marketing team lead</option>
+                    {isLoadingMarketingTeamLeads ? (
+                      <option value="" disabled>Loading marketing team leads...</option>
+                    ) : (
+                      marketingTeamLeads.map((user) => {
+                        const userName = `${user.firstname} ${user.lastname}`;
+                        // Check if any selected client is already assigned to this user
+                        const selectedClients = getFilteredClients().filter(client => selectedClientsForAssignment.includes(client.id));
+                        const isCurrentlyAssigned = selectedClients.some(client => 
+                          client.assignedMarketingTeam && 
+                          client.assignedMarketingTeam.id === user.id
+                        );
+                        
+                        return (
+                          <option 
+                            key={user.id}
+                            value={userName}
+                            disabled={isCurrentlyAssigned}
+                          >
+                            {userName} {isCurrentlyAssigned ? '(Currently Assigned)' : ''}
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                  <button 
+                    className={`${getAssignmentButtonProps().color} text-white px-5 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-sm hover:shadow ${!selectedMarketingTeamLead || selectedClientsForAssignment.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={handleAssignToMarketingTeam}
+                    disabled={!selectedMarketingTeamLead || selectedClientsForAssignment.length === 0}
+                    title={!selectedMarketingTeamLead ? 'Please select marketing team lead to assign' : selectedClientsForAssignment.length === 0 ? 'Please select clients to assign' : ''}
+                  >
+                    {getAssignmentButtonProps().text}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm mb-6">
@@ -1959,25 +2188,20 @@ const SalesEnrollment: React.FC = () => {
 
         {/* Enrolled Clients Grid */}
         <div className="bg-white rounded-xl shadow-sm">
-          {/* <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {activeTab === 'all' && 'All Enrolled Clients'}
-              {activeTab === 'approved' && 'Approved Enrollments'}
-              {activeTab === 'admin_pending' && 'Admin Review Pending'}
-              {activeTab === 'my_review' && 'My Review - Admin Changes'}
-            </h2>
-            <p className="text-sm text-gray-600">
-              {activeTab === 'all' && 'Configure packages and pricing for enrolled clients'}
-              {activeTab === 'approved' && 'View all approved enrollments'}
-              {activeTab === 'admin_pending' && 'Enrollments pending admin review'}
-              {activeTab === 'my_review' && 'Review and approve/reject admin changes'}
-            </p>
-          </div> */}
-
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  {activeTab === 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        onChange={handleSelectAllClients}
+                        checked={selectedClientsForAssignment.length === getFilteredClients().length && getFilteredClients().length > 0}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Lead Details
@@ -2006,6 +2230,11 @@ const SalesEnrollment: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     First Call Status
                   </th>
+                  {activeTab === 'approved' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Marketing Team
+                    </th>
+                  )}
                   {(activeTab !== 'approved' && activeTab !== 'admin_pending') && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -2016,6 +2245,16 @@ const SalesEnrollment: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {getFilteredClients().map((client: EnrolledClient, idx: number) => (
                   <tr key={client.id} className="hover:bg-gray-50">
+                    {activeTab === 'approved' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start">
+                        <input
+                          type="checkbox"
+                          onChange={() => handleClientCheckboxChange(client.id)}
+                          checked={selectedClientsForAssignment.includes(client.id)}
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-start">{(currentPage - 1) * pageSize + idx + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-start">
                       <div className="flex items-center">
@@ -2168,6 +2407,17 @@ const SalesEnrollment: React.FC = () => {
                         {client.first_call_status ? client.first_call_status.charAt(0).toUpperCase() + client.first_call_status.slice(1) : 'Pending'}
                       </span>
                     </td>
+                    {activeTab === 'approved' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-start">
+                        {client.assignedMarketingTeam ? (
+                          <span className="text-sm text-green-600 font-medium">
+                            {client.assignedMarketingTeam.firstname} {client.assignedMarketingTeam.lastname}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">Unassigned</span>
+                        )}
+                      </td>
+                    )}
                     {activeTab !== 'approved' && (
                       <td className="px-6 py-4 whitespace-nowrap text-start text-sm font-medium">
                       {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
@@ -2246,6 +2496,50 @@ const SalesEnrollment: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Assignment Dialog */}
+      {showAssignmentDialog && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3 text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Assign to Marketing Team
+              </h3>
+              <div className="mt-2 px-7 py-3">
+                <p className="text-sm text-gray-500 mb-4">
+                  Assign {selectedClientsForAssignment.length} client(s) to {selectedMarketingTeamLead}
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assignment Remark (Optional)
+                  </label>
+                  <textarea
+                    value={assignmentRemark}
+                    onChange={(e) => setAssignmentRemark(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Enter assignment remark..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelAssignment}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmAssignment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Confirm Assignment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Render ConfirmationPopup for approval */}
       <ConfirmationPopup
