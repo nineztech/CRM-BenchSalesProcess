@@ -128,9 +128,9 @@ interface MarketingTeamLead {
 // Add color themes mapping
 const packageColorThemes: { [key: string]: { bg: string; border: string; text: string } } = {
   'Premium Plan': {
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
-    text: 'text-purple-600'
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-600'
   },
   'Standard Plan': {
     bg: 'bg-blue-50',
@@ -1082,7 +1082,7 @@ const AdminEnrollment: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
       </div>
     );
@@ -1095,8 +1095,8 @@ const AdminEnrollment: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <FaUserTie className="text-purple-600 text-[35px]" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaUserTie className="text-blue-600 text-[35px]" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 text-left">Admin Enrollment Management</h1>
@@ -1104,7 +1104,7 @@ const AdminEnrollment: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <FaGraduationCap className="text-purple-500 " />
+              <FaGraduationCap className="text-blue-500 " />
               <span>{enrollmentData?.AllEnrollments?.pagination?.totalItems || 0} Total Enrolled Clients</span>
             </div>
           </div>
@@ -1129,7 +1129,7 @@ const AdminEnrollment: React.FC = () => {
                     />
                     {isSearching && (
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       </div>
                     )}
                   </div>
@@ -1203,7 +1203,7 @@ const AdminEnrollment: React.FC = () => {
                 onClick={() => setActiveTab('all')}
                 className={`py-3 px-6 border-b-2 font-medium text-base ${
                   activeTab === 'all'
-                    ? 'border-purple-500 text-purple-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1214,7 +1214,7 @@ const AdminEnrollment: React.FC = () => {
                 onClick={() => setActiveTab('my_review')}
                 className={`py-2 px-4 border-b-2 font-medium text-sm ${
                   activeTab === 'my_review'
-                    ? 'border-purple-500 text-purple-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1225,7 +1225,7 @@ const AdminEnrollment: React.FC = () => {
                 onClick={() => setActiveTab('sales_pending')}
                 className={`py-2 px-4 border-b-2 font-medium text-sm ${
                   activeTab === 'sales_pending'
-                    ? 'border-purple-500 text-purple-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1236,7 +1236,7 @@ const AdminEnrollment: React.FC = () => {
                 onClick={() => setActiveTab('approved')}
                 className={`py-2 px-4 border-b-2 font-medium text-sm ${
                   activeTab === 'approved'
-                    ? 'border-purple-500 text-purple-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1371,7 +1371,7 @@ const AdminEnrollment: React.FC = () => {
                             type="number"
                             value={formData.edited_enrollment_charge || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, edited_enrollment_charge: Number(e.target.value) }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
                             step="0.01"
                           />
@@ -1384,7 +1384,7 @@ const AdminEnrollment: React.FC = () => {
                             type="number"
                             value={formData.edited_offer_letter_charge || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, edited_offer_letter_charge: Number(e.target.value) }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
                             step="0.01"
                           />
@@ -1431,7 +1431,7 @@ const AdminEnrollment: React.FC = () => {
                               type="number"
                               value={formData.edited_first_year_percentage || ''}
                               onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_percentage: Number(e.target.value) }))}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="0.00"
                               step="0.01"
                               max="100"
@@ -1447,7 +1447,7 @@ const AdminEnrollment: React.FC = () => {
                               type="number"
                               value={formData.edited_first_year_fixed_charge || ''}
                               onChange={(e) => setFormData(prev => ({ ...prev, edited_first_year_fixed_charge: Number(e.target.value) }))}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="0.00"
                               step="0.01"
                               min="0"
@@ -1462,7 +1462,7 @@ const AdminEnrollment: React.FC = () => {
                       <h3 className="font-medium text-gray-900 mb-4">Modify Installments</h3>
                       {loadingInstallments ? (
                         <div className="text-center py-4">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                         </div>
                       ) : (
                         <div className="space-y-4">
@@ -1474,9 +1474,9 @@ const AdminEnrollment: React.FC = () => {
                           
                           {/* Initial Payment Section */}
                           {formData.edited_installments.filter(inst => inst.is_initial_payment).map((installment) => (
-                            <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg shadow-sm border-2 border-purple-200">
+                            <div key={installment.id} className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg shadow-sm border-2 border-blue-200">
                               <div className="col-span-3 mb-2">
-                                <h4 className="text-sm font-semibold text-purple-700">Initial Payment</h4>
+                                <h4 className="text-sm font-semibold text-blue-700">Initial Payment</h4>
                               </div>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1490,7 +1490,7 @@ const AdminEnrollment: React.FC = () => {
                                     'amount',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="0.00"
                                   step="0.01"
                                 />
@@ -1507,7 +1507,7 @@ const AdminEnrollment: React.FC = () => {
                                     'dueDate',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                               </div>
                               <div>
@@ -1522,7 +1522,7 @@ const AdminEnrollment: React.FC = () => {
                                     'remark',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="Add a note..."
                                 />
                               </div>
@@ -1544,7 +1544,7 @@ const AdminEnrollment: React.FC = () => {
                                     'amount',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="0.00"
                                   step="0.01"
                                 />
@@ -1561,7 +1561,7 @@ const AdminEnrollment: React.FC = () => {
                                     'dueDate',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
                               </div>
                               <div>
@@ -1576,7 +1576,7 @@ const AdminEnrollment: React.FC = () => {
                                     'remark',
                                     e.target.value
                                   )}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="Add a note..."
                                 />
                               </div>
@@ -1623,7 +1623,7 @@ const AdminEnrollment: React.FC = () => {
                           });
                         }
                       }}
-                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label htmlFor="is_training_required" className="ml-2 block text-sm text-gray-900">
                       Training Required
@@ -1643,7 +1643,7 @@ const AdminEnrollment: React.FC = () => {
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
                     {formLoading ? 'Processing...' : (formData.approved ? 'Approve' : 'Send Back to Sales')}
                   </button>
@@ -1948,7 +1948,7 @@ const AdminEnrollment: React.FC = () => {
                       {activeTab === 'all' && !(client.Approval_by_sales && client.Approval_by_admin) && (
                         <button
                           onClick={() => handleReview(client)}
-                          className="text-purple-600 hover:text-blue-900 mr-3"
+                          className="text-blue-600 hover:text-blue-900 mr-3"
                           title="Review"
                         >
                           <FaEdit className="w-4 h-4" />
@@ -1959,7 +1959,7 @@ const AdminEnrollment: React.FC = () => {
                           onClick={() => {
                             setSelectedClient(client);
                           }}
-                          className="text-purple-600 hover:text-purple-900"
+                          className="text-blue-600 hover:text-blue-900"
                           title="Review Changes"
                         >
                           <FaEdit className="w-4 h-4" />
