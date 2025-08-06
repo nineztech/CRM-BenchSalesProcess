@@ -416,6 +416,12 @@ const LeadCreationComponent: React.FC = () => {
         sortOrder: 'DESC'
       };
 
+      // For users without view all permission who are searching, fetch all data for the current tab
+      if (searchQuery !== '' && !hasViewAllLeadsPermission) {
+        params.limit = 1000; // Fetch a large number to get all data for searching
+        params.page = 1; // Start from first page
+      }
+
       // Add filter parameters to backend for server-side filtering
       if (salesFilter) params.salesFilter = salesFilter;
       if (createdByFilter) params.createdByFilter = createdByFilter;
@@ -529,13 +535,13 @@ const LeadCreationComponent: React.FC = () => {
           // Handle search results for users with limited permissions (client-side search within assigned leads)
           console.log('[Search Results - Limited Permissions] Searching within assigned leads');
           
-          // Get the current tab data
+          // Get the current tab data - this now contains all data for the tab since we fetched with limit=1000
           let currentTabData = data[activeStatusTab];
           if (!currentTabData || !currentTabData.leads) {
             currentTabData = { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } };
           }
           
-          // Perform client-side search within assigned leads
+          // Perform client-side search within all assigned leads for the current tab
           const searchLower = searchQuery.toLowerCase();
           const searchFilteredLeads = currentTabData.leads.filter((lead: Lead) => {
             return (
@@ -559,7 +565,7 @@ const LeadCreationComponent: React.FC = () => {
             finalFilteredLeads = finalFilteredLeads.filter((lead: Lead) => lead.status === statusFilter);
           }
           
-          console.log('[Client-side Search] Found:', finalFilteredLeads.length, 'leads within assigned leads');
+          console.log('[Client-side Search] Found:', finalFilteredLeads.length, 'leads within all assigned leads for current tab');
           
           setLeadsData(prev => ({
             ...prev,
@@ -643,6 +649,12 @@ const LeadCreationComponent: React.FC = () => {
         sortBy: 'createdAt',
         sortOrder: 'DESC'
       };
+
+      // For users without view all permission who are searching, fetch all data for the current tab
+      if (searchQuery !== '' && !hasViewAllLeadsPermission) {
+        params.limit = 1000; // Fetch a large number to get all data for searching
+        params.page = 1; // Start from first page since we're fetching all data
+      }
 
       // Add filter parameters to backend for server-side filtering
       if (salesFilter) params.salesFilter = salesFilter;
@@ -898,6 +910,11 @@ const LeadCreationComponent: React.FC = () => {
         sortBy: 'createdAt',
         sortOrder: 'DESC'
       };
+
+      // For users without view all permission who are searching, fetch all data for the current tab
+      if (searchQuery !== '' && !hasViewAllLeadsPermission) {
+        params.limit = 1000; // Fetch a large number to get all data for searching
+      }
 
       // Add filter parameters if they exist
       if (statusFilter) params.statusFilter = statusFilter;
