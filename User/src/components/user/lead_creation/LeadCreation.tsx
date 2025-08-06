@@ -372,12 +372,16 @@ const LeadCreationComponent: React.FC = () => {
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
 
-      // For users without view all permission, we'll use the search endpoint for consistency
-      // This ensures that search always goes through the backend for proper pagination
-
-      // For users with view all permission or when not searching, proceed with normal API call
+      // For users with view all permission, they can search all leads
+      // For users without view all permission, they should search within their assigned leads only
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      let endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      let endpoint = baseEndpoint;
+      
+      // Only use search endpoint for users with view all permission
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
+        endpoint = `${BASE_URL}/search/leads`;
+      }
+      
       // Special handling for Enrolled tab: always search only in Enrolled object
       if (searchQuery !== '' && activeStatusTab === 'Enrolled') {
         endpoint = baseEndpoint;
@@ -431,7 +435,8 @@ const LeadCreationComponent: React.FC = () => {
       
       console.log('FetchLeads params:', params);
       
-      if (searchQuery !== '') {
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
+        // For users with view all permission, use backend search
         params.query = searchQuery;
         params.statusGroup = normalizedStatusGroup;
         // When searching with filters, we want to search within the filtered data
@@ -485,9 +490,9 @@ const LeadCreationComponent: React.FC = () => {
         
         const { data } = response.data;
         
-        if (searchQuery.trim()) {
-          // Handle search results for all users regardless of permissions
-          console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
+        if (searchQuery.trim() && hasViewAllLeadsPermission) {
+          // Handle search results for users with view all permission (backend search)
+          console.log('[Search Results - View All] Found:', data.leads?.length || 0, 'leads');
           console.log('[Search + Filters] Search query:', searchQuery, 'Filters:', { statusFilter, salesFilter, createdByFilter });
           
           // When searching with filters, ensure we're searching within filtered data
@@ -516,6 +521,54 @@ const LeadCreationComponent: React.FC = () => {
                 total: data.total || filteredLeads.length,
                 totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / pageSize),
                 currentPage: data.currentPage || 1,
+                limit: pageSize
+              }
+            }
+          }));
+        } else if (searchQuery.trim() && !hasViewAllLeadsPermission) {
+          // Handle search results for users with limited permissions (client-side search within assigned leads)
+          console.log('[Search Results - Limited Permissions] Searching within assigned leads');
+          
+          // Get the current tab data
+          let currentTabData = data[activeStatusTab];
+          if (!currentTabData || !currentTabData.leads) {
+            currentTabData = { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } };
+          }
+          
+          // Perform client-side search within assigned leads
+          const searchLower = searchQuery.toLowerCase();
+          const searchFilteredLeads = currentTabData.leads.filter((lead: Lead) => {
+            return (
+              lead.firstName?.toLowerCase().includes(searchLower) ||
+              lead.lastName?.toLowerCase().includes(searchLower) ||
+              lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+              lead.primaryContact?.includes(searchQuery) ||
+              lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+              lead.country?.toLowerCase().includes(searchLower) ||
+              lead.visaStatus?.toLowerCase().includes(searchLower) ||
+              lead.status?.toLowerCase().includes(searchLower) ||
+              lead.leadSource?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
+            );
+          });
+          
+          // Apply additional filters if any
+          let finalFilteredLeads = searchFilteredLeads;
+          if (statusFilter) {
+            finalFilteredLeads = finalFilteredLeads.filter((lead: Lead) => lead.status === statusFilter);
+          }
+          
+          console.log('[Client-side Search] Found:', finalFilteredLeads.length, 'leads within assigned leads');
+          
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: finalFilteredLeads,
+              pagination: {
+                total: finalFilteredLeads.length,
+                totalPages: Math.ceil(finalFilteredLeads.length / pageSize),
+                currentPage: 1,
                 limit: pageSize
               }
             }
@@ -577,7 +630,12 @@ const LeadCreationComponent: React.FC = () => {
 
       const hasViewAllLeadsPermission = await checkPermission('View All Leads', 'view');
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      let endpoint = baseEndpoint;
+      
+      // Only use search endpoint for users with view all permission
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
+        endpoint = `${BASE_URL}/search/leads`;
+      }
 
       const params: any = {
         page: newPage,
@@ -599,7 +657,8 @@ const LeadCreationComponent: React.FC = () => {
       
       console.log('HandlePageChange params:', params);
       
-      if (searchQuery !== '') {
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
+        // For users with view all permission, use backend search
         params.query = searchQuery;  // Send the exact search query without trimming
         // Normalize status group to match backend expectations
         let normalizedStatusGroup;
@@ -634,8 +693,8 @@ const LeadCreationComponent: React.FC = () => {
 
       if (response.data.success) {
         const { data } = response.data;
-        if (searchQuery.trim()) {
-          // Handle search results pagination - backend already applied filters
+        if (searchQuery.trim() && hasViewAllLeadsPermission) {
+          // Handle search results pagination for users with view all permission (backend search)
           let filteredLeads = data.leads || [];
           
           setLeadsData(prev => ({
@@ -645,6 +704,61 @@ const LeadCreationComponent: React.FC = () => {
               pagination: {
                 total: data.total || filteredLeads.length,
                 totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / pageSize),
+                currentPage: newPage,
+                limit: pageSize
+              }
+            }
+          }));
+        } else if (searchQuery.trim() && !hasViewAllLeadsPermission) {
+          // Handle search results pagination for users with limited permissions (client-side search)
+          // For pagination with limited permissions, we need to re-fetch all assigned leads and re-apply search
+          console.log('[Page Change - Limited Permissions] Re-applying search for pagination');
+          
+          // Get the current tab data
+          let currentTabData = data[activeStatusTab];
+          if (!currentTabData || !currentTabData.leads) {
+            currentTabData = { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: pageSize } };
+          }
+          
+          // Perform client-side search within assigned leads
+          const searchLower = searchQuery.toLowerCase();
+          const searchFilteredLeads = currentTabData.leads.filter((lead: Lead) => {
+            return (
+              lead.firstName?.toLowerCase().includes(searchLower) ||
+              lead.lastName?.toLowerCase().includes(searchLower) ||
+              lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+              lead.primaryContact?.includes(searchQuery) ||
+              lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+              lead.country?.toLowerCase().includes(searchLower) ||
+              lead.visaStatus?.toLowerCase().includes(searchLower) ||
+              lead.status?.toLowerCase().includes(searchLower) ||
+              lead.leadSource?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
+            );
+          });
+          
+          // Apply additional filters if any
+          let finalFilteredLeads = searchFilteredLeads;
+          if (statusFilter) {
+            finalFilteredLeads = finalFilteredLeads.filter((lead: Lead) => lead.status === statusFilter);
+          }
+          
+          // Calculate pagination for client-side search
+          const totalPages = Math.ceil(finalFilteredLeads.length / pageSize);
+          const startIndex = (newPage - 1) * pageSize;
+          const endIndex = startIndex + pageSize;
+          const paginatedLeads = finalFilteredLeads.slice(startIndex, endIndex);
+          
+          console.log('[Client-side Search Pagination] Found:', finalFilteredLeads.length, 'leads, showing page', newPage);
+          
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: paginatedLeads,
+              pagination: {
+                total: finalFilteredLeads.length,
+                totalPages: totalPages,
                 currentPage: newPage,
                 limit: pageSize
               }
@@ -771,7 +885,12 @@ const LeadCreationComponent: React.FC = () => {
 
       // Select endpoint based on View All Leads permission and search query
       const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
-      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
+      let endpoint = baseEndpoint;
+      
+      // Only use search endpoint for users with view all permission
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
+        endpoint = `${BASE_URL}/search/leads`;
+      }
 
       const params: any = {
         page: 1,
@@ -785,8 +904,8 @@ const LeadCreationComponent: React.FC = () => {
       if (salesFilter) params.salesFilter = salesFilter;
       if (createdByFilter) params.createdByFilter = createdByFilter;
 
-      // Add search parameters if searching
-      if (searchQuery !== '') {
+      // Add search parameters if searching and user has view all permission
+      if (searchQuery !== '' && hasViewAllLeadsPermission) {
         params.query = searchQuery;
         // Normalize status group to match backend expectations
         let normalizedStatusGroup;
@@ -823,8 +942,8 @@ const LeadCreationComponent: React.FC = () => {
         const { data } = response.data;
         setPageSize(newSize);
         
-        if (searchQuery.trim()) {
-          // Handle search results for page size change
+        if (searchQuery.trim() && hasViewAllLeadsPermission) {
+          // Handle search results for page size change (backend search)
           let filteredLeads = data.leads || [];
           
           setLeadsData(prev => ({
@@ -834,6 +953,54 @@ const LeadCreationComponent: React.FC = () => {
               pagination: {
                 total: data.total || filteredLeads.length,
                 totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / newSize),
+                currentPage: 1,
+                limit: newSize
+              }
+            }
+          }));
+        } else if (searchQuery.trim() && !hasViewAllLeadsPermission) {
+          // Handle search results for page size change (client-side search)
+          console.log('[Page Size Change - Limited Permissions] Re-applying search for page size change');
+          
+          // Get the current tab data
+          let currentTabData = data[activeStatusTab];
+          if (!currentTabData || !currentTabData.leads) {
+            currentTabData = { leads: [], pagination: { total: 0, totalPages: 0, currentPage: 1, limit: newSize } };
+          }
+          
+          // Perform client-side search within assigned leads
+          const searchLower = searchQuery.toLowerCase();
+          const searchFilteredLeads = currentTabData.leads.filter((lead: Lead) => {
+            return (
+              lead.firstName?.toLowerCase().includes(searchLower) ||
+              lead.lastName?.toLowerCase().includes(searchLower) ||
+              lead.primaryEmail?.toLowerCase().includes(searchLower) ||
+              lead.primaryContact?.includes(searchQuery) ||
+              lead.technology?.some((tech: string) => tech.toLowerCase().includes(searchLower)) ||
+              lead.country?.toLowerCase().includes(searchLower) ||
+              lead.visaStatus?.toLowerCase().includes(searchLower) ||
+              lead.status?.toLowerCase().includes(searchLower) ||
+              lead.leadSource?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.firstname?.toLowerCase().includes(searchLower) ||
+              lead.assignedUser?.lastname?.toLowerCase().includes(searchLower)
+            );
+          });
+          
+          // Apply additional filters if any
+          let finalFilteredLeads = searchFilteredLeads;
+          if (statusFilter) {
+            finalFilteredLeads = finalFilteredLeads.filter((lead: Lead) => lead.status === statusFilter);
+          }
+          
+          console.log('[Client-side Search Page Size] Found:', finalFilteredLeads.length, 'leads');
+          
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: finalFilteredLeads,
+              pagination: {
+                total: finalFilteredLeads.length,
+                totalPages: Math.ceil(finalFilteredLeads.length / newSize),
                 currentPage: 1,
                 limit: newSize
               }

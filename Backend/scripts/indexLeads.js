@@ -69,7 +69,7 @@ export const reindexEnrolledClients = async () => {
         {
           model: Lead,
           as: 'lead',
-          attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers'],
+          attributes: ['id', 'firstName', 'lastName', 'primaryEmail', 'primaryContact', 'status', 'technology', 'country', 'visaStatus', 'contactNumbers', 'leadSource'],
           where: { status: 'Enrolled' }
         },
         {

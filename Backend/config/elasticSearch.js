@@ -454,6 +454,30 @@ const searchLeads = async (query, statusGroup, page = 1, limit = 10, statusFilte
                 },
                 {
                   wildcard: {
+                    "leadSource.keyword": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "leadSource": {
+                      value: `*${processedQuery}*`,
+                      boost: 1
+                    }
+                  }
+                },
+                {
+                  term: {
+                    "leadSource.keyword": {
+                      value: processedQuery,
+                      boost: 4
+                    }
+                  }
+                },
+                {
+                  wildcard: {
                     "processedContactNumbers": {
                       value: `*${processedQuery}*`,
                       boost: 2
@@ -846,6 +870,30 @@ const searchArchivedLeads = async (query, page = 1, limit = 10) => {
                             boost: 2
                           }
                         }
+                      },
+                      {
+                        wildcard: {
+                          "leadSource.keyword": {
+                            value: `*${processedQuery.toLowerCase()}*`,
+                            boost: 3
+                          }
+                        }
+                      },
+                      {
+                        wildcard: {
+                          "leadSource": {
+                            value: `*${processedQuery}*`,
+                            boost: 1
+                          }
+                        }
+                      },
+                      {
+                        term: {
+                          "leadSource.keyword": {
+                            value: processedQuery,
+                            boost: 4
+                          }
+                        }
                       }
                     ]
                   }
@@ -1029,6 +1077,38 @@ const searchEnrolledClients = async (query, tabType, page = 1, limit = 10) => {
                     "admin.lastname": {
                       value: `*${processedQuery.toLowerCase()}*`,
                       boost: 1
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.leadSource": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 2
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.leadSource.keyword": {
+                      value: `*${processedQuery.toLowerCase()}*`,
+                      boost: 3
+                    }
+                  }
+                },
+                {
+                  wildcard: {
+                    "lead.leadSource": {
+                      value: `*${processedQuery}*`,
+                      boost: 1
+                    }
+                  }
+                },
+                {
+                  term: {
+                    "lead.leadSource.keyword": {
+                      value: processedQuery,
+                      boost: 4
                     }
                   }
                 }
@@ -1236,7 +1316,13 @@ const createEnrolledClientsIndex = async () => {
                 status: { type: 'keyword' },
                 technology: { type: 'keyword' },
                 country: { type: 'keyword' },
-                visaStatus: { type: 'keyword' }
+                visaStatus: { type: 'keyword' },
+                leadSource: { 
+                  type: 'text',
+                  fields: {
+                    keyword: { type: 'keyword' }
+                  }
+                }
               }
             },
             package: {
