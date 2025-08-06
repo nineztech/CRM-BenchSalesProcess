@@ -61,7 +61,7 @@ const startServer = async () => {
     // Initialize Elasticsearch (non-blocking)
     try {
       await createLeadIndex();
-       await reindexLeads();
+      await reindexLeads();
       console.log(colors.green("✅ Elasticsearch index created successfully!"));
     } catch (error) {
       console.warn(colors.yellow("⚠️ Elasticsearch initialization failed. The application will continue without search functionality."));

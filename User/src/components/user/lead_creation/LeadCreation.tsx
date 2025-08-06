@@ -406,7 +406,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       const params: any = {
-        page: leadsData[activeStatusTab].pagination.currentPage,
+        page: leadsData[activeStatusTab]?.pagination?.currentPage || 1,
         limit: pageSize,
         sortBy: 'createdAt',
         sortOrder: 'DESC'
@@ -841,7 +841,7 @@ const LeadCreationComponent: React.FC = () => {
       return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
     }
     if (status === 'followup') {
-      return leadsData.followup.pagination.total;
+      return leadsData.followup?.pagination?.total || 0;
     }
     return leadsData[status as keyof typeof leadsData]?.pagination.total || 0;
   };
@@ -850,7 +850,7 @@ const LeadCreationComponent: React.FC = () => {
   const filteredLeads = searchQuery 
     ? leadsData[activeStatusTab]?.leads || []
     : activeStatusTab === 'followup' 
-      ? leadsData.followup.leads 
+      ? leadsData.followup?.leads || []
       : leadsData[activeStatusTab]?.leads || [];
 
   // Use the filtered leads directly since we're using server-side pagination
@@ -868,9 +868,9 @@ const LeadCreationComponent: React.FC = () => {
     }
 
     // Find the first lead that is being reassigned (already has assignedUser)
-    const firstReassignedIndex = selectedLeads.find(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
+    const firstReassignedIndex = selectedLeads.find(index => leadsData[activeStatusTab]?.leads?.[index]?.assignedUser);
     if (firstReassignedIndex !== undefined) {
-      setPendingReassign({ lead: leadsData[activeStatusTab].leads[firstReassignedIndex], user: selectedUser });
+      setPendingReassign({ lead: leadsData[activeStatusTab]?.leads?.[firstReassignedIndex], user: selectedUser });
       setShowReassignRemarkModal(true);
       return;
     }
@@ -890,7 +890,7 @@ const LeadCreationComponent: React.FC = () => {
       }
 
       for (const leadIndex of selectedLeads) {
-        const lead = leadsData[activeStatusTab].leads[leadIndex];
+        const lead = leadsData[activeStatusTab]?.leads?.[leadIndex];
         if (!lead || !lead.id) continue;
 
         // First create the lead assignment
@@ -965,7 +965,7 @@ const LeadCreationComponent: React.FC = () => {
     
     // Get the sales person of the first selected lead
     const firstSelectedLead = selectedLeads[0];
-    return leadsData[activeStatusTab].leads[firstSelectedLead]?.assignedUser ? `${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.firstname} ${leadsData[activeStatusTab].leads[firstSelectedLead].assignedUser.lastname}` : '';
+    return leadsData[activeStatusTab]?.leads?.[firstSelectedLead]?.assignedUser ? `${leadsData[activeStatusTab]?.leads?.[firstSelectedLead]?.assignedUser?.firstname} ${leadsData[activeStatusTab]?.leads?.[firstSelectedLead]?.assignedUser?.lastname}` : '';
   };
 
   React.useEffect(() => {
@@ -979,7 +979,7 @@ const LeadCreationComponent: React.FC = () => {
   const getButtonProps = () => {
     if (selectedLeads.length === 0) return { text: 'Assign', color: 'bg-indigo-600' };
     
-    const hasSalesPerson = selectedLeads.some(index => leadsData[activeStatusTab].leads[index]?.assignedUser);
+    const hasSalesPerson = selectedLeads.some(index => leadsData[activeStatusTab]?.leads?.[index]?.assignedUser);
     
     if (hasSalesPerson) {
       return { 
@@ -1496,7 +1496,7 @@ const LeadCreationComponent: React.FC = () => {
 
   // Update the handleStatusChange function
   const handleStatusChange = async (leadId: number, newStatus: string) => {
-    const lead = leadsData[activeStatusTab].leads.find(l => l.id === leadId);
+    const lead = leadsData[activeStatusTab]?.leads?.find(l => l.id === leadId);
     if (!lead) return;
 
     setSelectedLeadForStatus(lead);
@@ -2190,6 +2190,7 @@ ${(() => {
                               <option value="LinkedIn">LinkedIn</option>
                               <option value="Referral">Referral</option>
                               <option value="Manual">Manual</option>
+                               <option value="Portal">Portal</option>
                               <option value="Other">Other</option>
                             </select>
                             {errors.leadSource && (
@@ -2273,7 +2274,7 @@ ${(() => {
                           <div className="relative">
                             <input
                               type="text"
-                              placeholder="Search by name, email, phone..."
+                              placeholder="Search by name, email, phone, portal..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               className="w-64 px-4 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -2526,7 +2527,7 @@ ${(() => {
                                     </PermissionGuard>
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
-                                    {(leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize + index + 1}
+                                    {((leadsData[activeStatusTab]?.pagination?.currentPage || 1) - 1) * pageSize + index + 1}
                                   </td>
                                   <td className="px-4 py-0 text-sm text-start text-gray-900 border-b whitespace-nowrap">
                                     {searchQuery ? (
@@ -2537,6 +2538,11 @@ ${(() => {
                                             Manual
                                           </span>
                                         )}
+                                        {lead.leadSource === 'Portal' && (
+                                          <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                            Portal
+                                          </span>
+                                        )}
                                       </>
                                     ) : (
                                       <>
@@ -2544,6 +2550,11 @@ ${(() => {
                                         {lead.leadSource === 'Manual' && (
                                           <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                                             Manual
+                                          </span>
+                                        )}
+                                        {lead.leadSource === 'Portal' && (
+                                          <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                            Portal
                                           </span>
                                         )}
                                       </>
@@ -2642,12 +2653,17 @@ ${(() => {
                                                         : 'text-gray-500'
                                                     }`} 
                                                   />
-                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
-                                                    <span className="text-indigo-200">Follow up in:</span>
-                                                    <Countdown
-                                                      date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
-                                                      renderer={countdownRenderer}
-                                                    />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <span className="text-indigo-200">Follow up in:</span>
+                                                      <Countdown
+                                                        date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
+                                                        renderer={countdownRenderer}
+                                                      />
+                                                    </div>
+                                                    <div className="text-indigo-200 text-xs">
+                                                      Date: {lead.followUpDate} | Time: {lead.followUpTime}
+                                                    </div>
                                                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
                                                   </div>
                                                 </div>
@@ -2694,12 +2710,17 @@ ${(() => {
                                                         : 'text-gray-500'
                                                     }`} 
                                                   />
-                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20 flex items-center gap-2">
-                                                    <span className="text-indigo-200">Follow up in:</span>
-                                                    <Countdown
-                                                      date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
-                                                      renderer={countdownRenderer}
-                                                    />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <span className="text-indigo-200">Follow up in:</span>
+                                                      <Countdown
+                                                        date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
+                                                        renderer={countdownRenderer}
+                                                      />
+                                                    </div>
+                                                    <div className="text-indigo-200 text-xs">
+                                                      Date: {lead.followUpDate} | Time: {lead.followUpTime}
+                                                    </div>
                                                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
                                                   </div>
                                                 </div>
@@ -2819,31 +2840,31 @@ ${(() => {
                   {/* Pagination */}
                   <div className="flex justify-between items-center px-8 py-5 border-t">
                     <div className="text-sm text-gray-600">
-                      {leadsData[activeStatusTab].pagination.total > 0 ? (
-                        <>Showing {((leadsData[activeStatusTab].pagination.currentPage - 1) * pageSize) + 1} to {
+                      {leadsData[activeStatusTab]?.pagination?.total > 0 ? (
+                        <>Showing {((leadsData[activeStatusTab]?.pagination?.currentPage - 1) * pageSize) + 1} to {
                           Math.min(
-                            leadsData[activeStatusTab].pagination.currentPage * pageSize,
-                            leadsData[activeStatusTab].pagination.total
+                            leadsData[activeStatusTab]?.pagination?.currentPage * pageSize,
+                            leadsData[activeStatusTab]?.pagination?.total
                           )
-                        } of {leadsData[activeStatusTab].pagination.total} leads</>
+                        } of {leadsData[activeStatusTab]?.pagination?.total} leads</>
                       ) : (
                         <>No leads found</>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage - 1)}
-                        disabled={leadsData[activeStatusTab].pagination.currentPage === 1}
+                        onClick={() => handlePageChange((leadsData[activeStatusTab]?.pagination?.currentPage || 1) - 1)}
+                        disabled={leadsData[activeStatusTab]?.pagination?.currentPage === 1}
                         className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                       >
                         Previous
                       </button>
                       <span className="px-4 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                        Page {leadsData[activeStatusTab].pagination.currentPage} of {leadsData[activeStatusTab].pagination.totalPages}
+                        Page {leadsData[activeStatusTab]?.pagination?.currentPage || 1} of {leadsData[activeStatusTab]?.pagination?.totalPages || 1}
                       </span>
                       <button
-                        onClick={() => handlePageChange(leadsData[activeStatusTab].pagination.currentPage + 1)}
-                        disabled={leadsData[activeStatusTab].pagination.currentPage >= leadsData[activeStatusTab].pagination.totalPages}
+                        onClick={() => handlePageChange((leadsData[activeStatusTab]?.pagination?.currentPage || 1) + 1)}
+                        disabled={(leadsData[activeStatusTab]?.pagination?.currentPage || 1) >= (leadsData[activeStatusTab]?.pagination?.totalPages || 1)}
                         className="px-4 py-2 bg-gray-100 rounded-md text-sm hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                       >
                         Next
