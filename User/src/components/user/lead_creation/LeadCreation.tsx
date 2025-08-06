@@ -485,8 +485,8 @@ const LeadCreationComponent: React.FC = () => {
         
         const { data } = response.data;
         
-        if (searchQuery.trim() && hasViewAllLeadsPermission) {
-          // Handle search results for users with view all permission
+        if (searchQuery.trim()) {
+          // Handle search results for all users regardless of permissions
           console.log('[Search Results] Found:', data.leads?.length || 0, 'leads');
           console.log('[Search + Filters] Search query:', searchQuery, 'Filters:', { statusFilter, salesFilter, createdByFilter });
           
@@ -769,8 +769,9 @@ const LeadCreationComponent: React.FC = () => {
       //   return;
       // }
 
-      // Select endpoint based on View All Leads permission
-      const endpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      // Select endpoint based on View All Leads permission and search query
+      const baseEndpoint = hasViewAllLeadsPermission ? `${BASE_URL}/lead` : `${BASE_URL}/lead/assigned`;
+      const endpoint = searchQuery !== '' ? `${BASE_URL}/search/leads` : baseEndpoint;
 
       const params: any = {
         page: 1,
@@ -784,6 +785,33 @@ const LeadCreationComponent: React.FC = () => {
       if (salesFilter) params.salesFilter = salesFilter;
       if (createdByFilter) params.createdByFilter = createdByFilter;
 
+      // Add search parameters if searching
+      if (searchQuery !== '') {
+        params.query = searchQuery;
+        // Normalize status group to match backend expectations
+        let normalizedStatusGroup;
+        switch(activeStatusTab) {
+          case 'open':
+            normalizedStatusGroup = 'open';
+            break;
+          case 'inProcess':
+            normalizedStatusGroup = 'inProcess';
+            break;
+          case 'followup':
+            normalizedStatusGroup = 'followUp';
+            break;
+          case 'teamfollowup':
+            normalizedStatusGroup = 'teamfollowup';
+            break;
+          case 'Enrolled':
+            normalizedStatusGroup = 'Enrolled';
+            break;
+          default:
+            normalizedStatusGroup = activeStatusTab;
+        }
+        params.statusGroup = normalizedStatusGroup;
+      }
+
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -794,17 +822,37 @@ const LeadCreationComponent: React.FC = () => {
       if (response.data.success) {
         const { data } = response.data;
         setPageSize(newSize);
-        setLeadsData(prev => ({
-          ...prev,
-          [activeStatusTab]: {
-            ...data[activeStatusTab],
-            pagination: {
-              ...data[activeStatusTab].pagination,
-              currentPage: 1,
-              limit: newSize
+        
+        if (searchQuery.trim()) {
+          // Handle search results for page size change
+          let filteredLeads = data.leads || [];
+          
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              leads: filteredLeads,
+              pagination: {
+                total: data.total || filteredLeads.length,
+                totalPages: data.totalPages || Math.ceil((data.total || filteredLeads.length) / newSize),
+                currentPage: 1,
+                limit: newSize
+              }
             }
-          }
-        }));
+          }));
+        } else {
+          // Handle regular page size change
+          setLeadsData(prev => ({
+            ...prev,
+            [activeStatusTab]: {
+              ...data[activeStatusTab],
+              pagination: {
+                ...data[activeStatusTab].pagination,
+                currentPage: 1,
+                limit: newSize
+              }
+            }
+          }));
+        }
       }
     } catch (error: any) {
       console.error('Error changing page size:', error);
