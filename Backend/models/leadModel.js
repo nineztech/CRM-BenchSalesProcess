@@ -119,7 +119,7 @@ const Lead = sequelize.define(
       }
     },
     visaStatus: {
-      type: DataTypes.ENUM('H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other'),
+      type: DataTypes.ENUM('H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other', 'USC'),
       allowNull: false,
       validate: {
         notEmpty: true

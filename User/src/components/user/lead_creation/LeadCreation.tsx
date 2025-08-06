@@ -2214,9 +2214,13 @@ ${(() => {
                               <option value="">Select visa status</option>
                               <option value="H1B">H1B</option>
                               <option value="L1">L1</option>
-                              <option value="H4">H4</option>
                               <option value="F1">F1</option>
-                              <option value="B2">B2</option>
+                              <option value="Green Card">Green Card</option>
+                              <option value="Citizen">Citizen</option>
+                              <option value="H4 EAD">H4 EAD</option>
+                              <option value="L2 EAD">L2 EAD</option>
+                              <option value="USC">USC</option>
+                              <option value="Other">Other</option>
                             </select>
                             {errors.visaStatus && (
                               <p className="mt-1.5 text-sm text-red-600">{errors.visaStatus}</p>

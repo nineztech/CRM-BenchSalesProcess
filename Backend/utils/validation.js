@@ -74,7 +74,7 @@ export const validateLead = (data) => {
   }
 
   // Validate Visa Status
-  const validVisaStatuses = ['H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other'];
+  const validVisaStatuses = ['H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other', 'USC'];
   if (!validVisaStatuses.includes(data.visaStatus)) {
     return 'Invalid visa status. Valid values are: ' + validVisaStatuses.join(', ');
   }

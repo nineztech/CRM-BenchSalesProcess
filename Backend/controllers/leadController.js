@@ -159,7 +159,7 @@ export const createLead = async (req, res) => {
     }
 
     // Validate visa status enum
-    const validVisaStatuses = ['H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other'];
+    const validVisaStatuses = ['H1B', 'L1', 'F1', 'Green Card', 'Citizen', 'H4 EAD', 'L2 EAD', 'Other', 'USC'];
     if (!validVisaStatuses.includes(visaStatus)) {
       return res.status(400).json({
         success: false,
