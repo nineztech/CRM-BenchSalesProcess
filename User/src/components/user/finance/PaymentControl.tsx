@@ -62,7 +62,6 @@ interface Installment {
       primaryEmail: string;
       technology: string[];
       visaStatus: string;
-      leadSource: string;
     };
     package: {
       id: number;
@@ -80,7 +79,6 @@ interface ClientGroup {
     primaryEmail: string;
     technology: string[];
     visaStatus: string;
-    leadSource: string;
   };
   package: {
     id: number;
@@ -501,16 +499,6 @@ const PaymentControl: React.FC<PaymentControlProps> = () => {
                         <div className="flex items-center space-x-3 mb-1">
                           <h3 className="text-lg font-bold text-gray-900 truncate">
                             {clientGroup.lead.firstName} {clientGroup.lead.lastName}
-                            {clientGroup.lead.leadSource === 'Manual' && (
-                              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                Manual
-                              </span>
-                            )}
-                            {clientGroup.lead.leadSource === 'Portal' && (
-                              <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                Portal
-                              </span>
-                            )}
                           </h3>
                           <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm flex-shrink-0">
                             {clientGroup.lead.visaStatus}

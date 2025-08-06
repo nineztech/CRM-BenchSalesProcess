@@ -30,15 +30,6 @@ export const reindexLeads = async () => {
 
     console.log(`Found ${leads.length} leads to reindex`);
 
-    // Check if Elasticsearch is available before proceeding
-    const { checkElasticsearchConnection } = await import('../config/elasticSearch.js');
-    const isElasticsearchAvailable = await checkElasticsearchConnection();
-    
-    if (!isElasticsearchAvailable) {
-      console.log('⚠️ Elasticsearch is not available. Skipping lead reindexing.');
-      return;
-    }
-
     let successCount = 0;
     let errorCount = 0;
 
@@ -50,7 +41,6 @@ export const reindexLeads = async () => {
         successCount++;
       } catch (error) {
         errorCount++;
-        console.error(`Error indexing lead ${lead.id}:`, error.message);
       }
     }
 
@@ -97,15 +87,6 @@ export const reindexEnrolledClients = async () => {
 
     console.log(`Found ${enrolledClients.length} enrolled clients to reindex`);
 
-    // Check if Elasticsearch is available before proceeding
-    const { checkElasticsearchConnection } = await import('../config/elasticSearch.js');
-    const isElasticsearchAvailable = await checkElasticsearchConnection();
-    
-    if (!isElasticsearchAvailable) {
-      console.log('⚠️ Elasticsearch is not available. Skipping enrolled clients reindexing.');
-      return;
-    }
-
     let successCount = 0;
     let errorCount = 0;
 
@@ -117,7 +98,6 @@ export const reindexEnrolledClients = async () => {
         successCount++;
       } catch (error) {
         errorCount++;
-        console.error(`Error indexing enrolled client ${enrolledClient.id}:`, error.message);
       }
     }
 
@@ -128,5 +108,5 @@ export const reindexEnrolledClients = async () => {
 };
 
 // Run the reindexing
-// reindexLeads();
-// reindexEnrolledClients(); 
+reindexLeads();
+reindexEnrolledClients(); 

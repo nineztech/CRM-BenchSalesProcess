@@ -41,7 +41,6 @@ interface EnrolledClient {
     primaryEmail: string;
     technology: string[];
     visaStatus: string;
-    leadSource: string;
   };
   package: {
     planName: string;
@@ -292,7 +291,7 @@ const AccountAdmin: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {tabKey} ({tabData?.pagination?.totalItems || 0})
+                {tabKey} ({tabData.pagination.totalItems})
               </button>
             ))}
           </nav>
@@ -330,16 +329,6 @@ const AccountAdmin: React.FC = () => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {client.lead.firstName} {client.lead.lastName}
-                            {client.lead.leadSource === 'Manual' && (
-                              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                Manual
-                              </span>
-                            )}
-                            {client.lead.leadSource === 'Portal' && (
-                              <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                Portal
-                              </span>
-                            )}
                           </div>
                           <div className="text-sm text-gray-500">{client.lead.primaryEmail}</div>
                           <div className="text-xs text-gray-400">
