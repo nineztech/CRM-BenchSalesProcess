@@ -57,6 +57,7 @@ interface EnrolledClient {
     technology: string[];
     country: string;
     visaStatus: string;
+    leadSource: string;
   };
   package: {
     id: number;
@@ -1775,6 +1776,16 @@ const AdminEnrollment: React.FC = () => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {highlightSearchTerm(client.lead.firstName, searchQuery)} {highlightSearchTerm(client.lead.lastName, searchQuery)}
+                            {client.lead.leadSource === 'Manual' && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                Manual
+                              </span>
+                            )}
+                            {client.lead.leadSource === 'Portal' && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                Portal
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">{highlightSearchTerm(client.lead.primaryEmail, searchQuery)}</div>
                           {client.lead.contactNumbers && (
