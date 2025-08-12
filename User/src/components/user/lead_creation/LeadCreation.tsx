@@ -1346,6 +1346,18 @@ const LeadCreationComponent: React.FC = () => {
     }
     if (!formData.primaryContact.trim()) {
       newErrors.primaryContact = 'Primary Contact is required';
+    } else {
+      // Check for duplicate phone number in existing leads
+      const isDuplicatePhone = Object.values(leadsData).some(tabData => 
+        tabData.leads.some(lead => 
+          lead.primaryContact === formData.primaryContact && 
+          (!isEditing || lead.id !== selectedLead?.id)
+        )
+      );
+      
+      if (isDuplicatePhone) {
+        newErrors.primaryContact = 'Phone number already exists for another lead';
+      }
     }
     if (!formData.primaryEmail.trim()) {
       newErrors.primaryEmail = 'Primary Email is required';
@@ -1385,6 +1397,10 @@ const LeadCreationComponent: React.FC = () => {
 
     if (!validate()) {
       console.log('Validation failed', errors);
+      // Show toast error for validation failures
+      if (errors.primaryContact) {
+        toast.error(errors.primaryContact);
+      }
       return;
     }
 
