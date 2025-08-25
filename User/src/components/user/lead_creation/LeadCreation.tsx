@@ -2896,6 +2896,30 @@ ${(() => {
                                                 <option value="Dead">Dead</option>
                                                 <option value="notinterested">Not Interested</option>
                                               </select>
+                                              {lead.followUpDate && lead.followUpTime && (
+                                                <div className="group relative">
+                                                  <FaClock 
+                                                    className={`h-4 w-4 cursor-help ${
+                                                      parseFollowUpDateTime(lead.followUpDate, lead.followUpTime) <= new Date() 
+                                                        ? 'text-red-500' 
+                                                        : 'text-gray-500'
+                                                    }`} 
+                                                  />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <span className="text-indigo-200">Follow up in:</span>
+                                                      <Countdown
+                                                        date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
+                                                        renderer={countdownRenderer}
+                                                      />
+                                                    </div>
+                                                    <div className="text-indigo-200 text-xs">
+                                                      Date: {lead.followUpDate} | Time: {lead.followUpTime}
+                                                    </div>
+                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           </PermissionGuard>
                                         ) : (
@@ -2929,34 +2953,40 @@ ${(() => {
                                                 <option value="Dead">Dead</option>
                                                 <option value="notinterested">Not Interested</option>
                                               </select>
+                                              {lead.followUpDate && lead.followUpTime && (
+                                                <div className="relative">
+                                                  <FaClock 
+                                                    className={`h-4 w-4 cursor-help ${
+                                                      parseFollowUpDateTime(lead.followUpDate, lead.followUpTime) <= new Date() 
+                                                        ? 'text-red-500' 
+                                                        : 'text-gray-500'
+                                                    }`} 
+                                                    onMouseEnter={(e) => {
+                                                      const popup = e.currentTarget.nextElementSibling as HTMLElement;
+                                                      if (popup) popup.style.opacity = '1';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                      const popup = e.currentTarget.nextElementSibling as HTMLElement;
+                                                      if (popup) popup.style.opacity = '0';
+                                                    }}
+                                                  />
+                                                  <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 transition-all duration-200 shadow-lg border border-indigo-500/20 pointer-events-none">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <span className="text-indigo-200">Follow up in:</span>
+                                                      <Countdown
+                                                        date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
+                                                        renderer={countdownRenderer}
+                                                      />
+                                                    </div>
+                                                    <div className="text-indigo-200 text-xs">
+                                                      Date: {lead.followUpDate} | Time: {lead.followUpTime}
+                                                    </div>
+                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           </PermissionGuard>
-                                        )}
-                                        
-                                        {/* Timer icon moved outside the status select container */}
-                                        {lead.followUpDate && lead.followUpTime && (
-                                          <div className="group relative ml-2">
-                                            <FaClock 
-                                              className={`h-4 w-4 cursor-help ${
-                                                parseFollowUpDateTime(lead.followUpDate, lead.followUpTime) <= new Date() 
-                                                  ? 'text-red-500' 
-                                                  : 'text-gray-500'
-                                              }`} 
-                                            />
-                                            <div className="absolute z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs rounded-md px-3 py-2 left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg border border-indigo-500/20">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-indigo-200">Follow up in:</span>
-                                                <Countdown
-                                                  date={parseFollowUpDateTime(lead.followUpDate, lead.followUpTime)}
-                                                  renderer={countdownRenderer}
-                                                />
-                                              </div>
-                                              <div className="text-indigo-200 text-xs">
-                                                Date: {lead.followUpDate} | Time: {lead.followUpTime}
-                                              </div>
-                                              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-indigo-700 border-r border-b border-indigo-500/20"></div>
-                                            </div>
-                                          </div>
                                         )}
                                       </PermissionGuard>
                                     </div>
