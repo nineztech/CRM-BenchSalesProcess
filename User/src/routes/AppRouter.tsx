@@ -211,7 +211,7 @@ const AppRouter: React.FC = () => {
           <Route path="/documentation" element={
             <ProtectedRoute>
               <UserLayout>
-                <Documentation />
+                <Documentation/>
               </UserLayout>
             </ProtectedRoute>
           } />
