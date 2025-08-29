@@ -25,6 +25,7 @@ import { PermissionsProvider } from '../hooks/usePermissions';
 import AccountSale from '../components/user/finance/AccountSale';
 import AccountAdmin from '../components/user/finance/AccountAdmin';
 import PaymentControl from '../components/user/finance/PaymentControl';
+import Documentation from '../components/common/Documentation/Documentation';
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -203,6 +204,14 @@ const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <UserLayout>
                 <EmailTemplates />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/documentation" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <Documentation />
               </UserLayout>
             </ProtectedRoute>
           } />

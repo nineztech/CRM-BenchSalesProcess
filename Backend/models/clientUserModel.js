@@ -163,7 +163,20 @@ const ClientUser = sequelize.define(
       allowNull: false,
       defaultValue: true
     },
+    isFirstLogin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
     lastLogin: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    changePasswordOtp: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    changePasswordOtpExpiry: {
       type: DataTypes.DATE,
       allowNull: true
     },

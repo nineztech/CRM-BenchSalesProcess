@@ -6,6 +6,7 @@ import session from "express-session"; // optional
 import { connectDB, sequelize } from "./config/dbConnection.js";
 import router from "./Routes/index.js";
 import addOtpFields from './migrations/addOtpFields.js';
+import addClientUserOtpFields from './migrations/addClientUserOtpFields.js';
 import { createDefaultActivities } from './controllers/activityController.js';
 import migrateEnrolledLeads from './migrations/migrateEnrolledLeads.js';
 import emailRoutes from './Routes/emailRoutes.js';
@@ -79,6 +80,10 @@ const startServer = async () => {
       .then(() => {
         // Run OTP fields migration
         return addOtpFields();
+      })
+      .then(() => {
+        // Run ClientUser OTP fields migration
+        return addClientUserOtpFields();
       })
       .then(async () => {
         // Create default activities

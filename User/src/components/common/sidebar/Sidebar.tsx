@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope, FaGraduationCap, FaUserTie, FaUserCog, FaMoneyBillWave, FaHandHoldingUsd, FaCreditCard } from 'react-icons/fa';
+import { FaUserPlus, FaGift, FaUsers, FaBuilding, FaLock, FaArchive, FaChevronDown, FaHome, FaEnvelope, FaGraduationCap, FaUserTie, FaUserCog, FaMoneyBillWave, FaHandHoldingUsd, FaCreditCard, FaBook } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoIcon from '../../../assets/Logo.webp';
@@ -191,6 +191,13 @@ const Sidebar: React.FC = () => {
       to: '/packages',
       text: 'Packages',
       activity: 'Package Management',
+      permission: 'view'
+    },
+    {
+      icon: <FaBook />,
+      to: '/documentation',
+      text: 'Documentation',
+      activity: 'Documentation Management',
       permission: 'view'
     },
   ];

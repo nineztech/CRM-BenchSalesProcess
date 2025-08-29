@@ -34,7 +34,7 @@ router.use('/search', searchRoutes)
 router.use('/enrolled-clients', enrolledClientsRoutes)
 router.use('/installments', installmentsRoutes)
 router.use('/client-assignments', clientAssignmentRoutes)
-router.use('/api/clientusers', clientUserRoutes);
+router.use('/clientusers', clientUserRoutes);
 
 
 export default router

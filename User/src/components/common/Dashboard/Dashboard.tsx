@@ -21,7 +21,9 @@ import {
   FaClock, 
   FaMoneyBillWave,
   FaArrowUp,
-  FaArrowDown
+  FaArrowDown,
+  FaBook,
+  FaQuestionCircle
 } from 'react-icons/fa';
 // import usePermissions from '../../../hooks/usePermissions';
 
@@ -640,6 +642,64 @@ const Dashboard: React.FC = () => {
           ))}
         </motion.div>
       </div>
+
+      {/* Documentation Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
+        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-lg bg-blue-100">
+              <FaBook className="text-blue-600 text-xl" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Documentation & Help</h2>
+              <p className="text-sm text-gray-600">Access system documentation and support resources</p>
+            </div>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => window.location.href = '/documentation'}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <FaQuestionCircle />
+            View Documentation
+          </motion.button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <FaBook className="text-green-600" />
+              <h3 className="font-medium text-gray-900">User Guides</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Comprehensive guides for all system features</p>
+            <span className="text-xs text-blue-600 font-medium">Updated regularly</span>
+          </div>
+          
+          <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <FaQuestionCircle className="text-purple-600" />
+              <h3 className="font-medium text-gray-900">Video Tutorials</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Step-by-step video guides for complex tasks</p>
+            <span className="text-xs text-blue-600 font-medium">15+ videos available</span>
+          </div>
+          
+          <div className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+            <div className="flex items-center gap-3 mb-3">
+              <FaQuestionCircle className="text-orange-600" />
+              <h3 className="font-medium text-gray-900">Support</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Get help from our support team</p>
+            <span className="text-xs text-blue-600 font-medium">24/7 available</span>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

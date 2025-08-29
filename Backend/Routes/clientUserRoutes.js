@@ -5,7 +5,10 @@ import {
   updateClientUser,
   resetPassword,
   toggleActiveStatus,
-  loginClientUser
+  loginClientUser,
+  sendChangePasswordOtp,
+  verifyChangePasswordOtp,
+  changePassword
 } from '../controllers/clientUserController.js';
 import  protect  from '../middleware/auth.js';
 
@@ -13,9 +16,12 @@ const router = express.Router();
 
 // Public routes
 router.post('/login', loginClientUser);
+router.post('/send-change-password-otp', sendChangePasswordOtp);
+router.post('/verify-change-password-otp', verifyChangePasswordOtp);
+router.post('/change-password', changePassword);
 
 // Protected routes
-router.use(protect);
+// router.use(protect);
 
 router.route('/')
   .get(getAllClientUsers);

@@ -231,6 +231,18 @@ export const createDefaultActivities = async () => {
         editRoute: "/finance/payment-control",
         deleteRoute: "/finance/payment-control",
         status: "active"
+      },
+
+      // Documentation Activity
+      {
+        name: "Documentation Management",
+        category: "System",
+        description: "Access and manage system documentation, user guides, and help resources",
+        viewRoute: "/documentation",
+        addRoute: "/documentation",
+        editRoute: "/documentation",
+        deleteRoute: "/documentation",
+        status: "active"
       }
     ];
 

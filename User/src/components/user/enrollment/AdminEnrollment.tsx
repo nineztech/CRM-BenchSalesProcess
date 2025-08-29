@@ -692,13 +692,19 @@ const AdminEnrollment: React.FC = () => {
     if (client.Approval_by_sales && client.Approval_by_admin) {
       return (
         <div>
-          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Fully Approved</span>
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center gap-1">
+            <FaCheckCircle className="w-3 h-3" />
+            {/* Fully Approved */}
+          </span>
           <br />
           <span className="text-gray-500 text-xs mt-1">Initial credentials email sent.</span>
         </div>
       );
     } else if (client.Approval_by_admin && !client.has_update) {
-      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Admin Approved</span>;
+      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full flex items-center gap-1">
+        <FaCheckCircle className="w-3 h-3" />
+        Admin Approved
+      </span>;
     } else if (client.has_update) {
       return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending Sales Review</span>;
     } else {
@@ -1966,15 +1972,25 @@ const AdminEnrollment: React.FC = () => {
                         </button>
                       )}
                       {activeTab === 'my_review' && (
+                        <div>
                         <button
-                          onClick={() => {
-                            setSelectedClient(client);
-                          }}
+                          onClick={() => handleReview(client)}
                           className="text-blue-600 hover:text-blue-900"
                           title="Review Changes"
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
+                       <button
+                            onClick={() => {
+                              setPendingApprovalClient(client);
+                              setShowConfirmPopup(true);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                            title="Approve"
+                          >
+                            <FaCheckCircle className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </td>
                     )}

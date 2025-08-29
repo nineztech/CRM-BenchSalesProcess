@@ -400,6 +400,77 @@ const getEmailHeader = (userData) => {
 `;
 };
 
+export const sendChangePasswordOtpEmail = async (userData) => {
+  console.log('Attempting to send change password OTP email to:', userData.email);
+
+  const mailOptions = {
+    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    to: userData.email,
+    subject: 'Change Password OTP - Student Portal',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 15px !important; }
+              .content { padding: 20px !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #334155;">
+          <div class="container" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <!-- Header -->
+            <div style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #e2e8f0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Change Password</h1>
+              <p style="margin: 10px 0 0; color: #e0f2fe; font-size: 16px;">Student Portal Security</p>
+            </div>
+
+            <!-- Content -->
+            <div class="content" style="padding: 32px 40px; text-align: center;">
+              <p style="color: #334155; font-size: 16px; margin: 0;">Hello ${userData.firstName} ${userData.lastName},</p>
+              <p style="color: #64748b; font-size: 15px; margin: 24px 0;">You have requested to change your password. Please use the verification code below:</p>
+              
+              <!-- OTP Display -->
+              <div style="background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%); border: 2px solid #e2e8f0; border-radius: 12px; padding: 32px; margin: 32px 0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="font-family: monospace; font-size: 36px; letter-spacing: 12px; color: #667eea; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  ${userData.otp}
+                </div>
+                <p style="color: #94a3b8; font-size: 14px; margin: 16px 0 0 0;">This code will expire in 10 minutes</p>
+              </div>
+
+              <!-- Security Notice -->
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 14px; margin: 0; line-height: 1.5;">
+                  If you didn't request this password change, you can safely ignore this email. Your account security is important to us.
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 24px 40px; border-top: 1px solid #e2e8f0; background-color: #f8fafc; border-radius: 0 0 12px 12px;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">This is an automated message. Please do not reply to this email.</p>
+              <p style="color: #64748b; font-size: 14px; margin: 8px 0 0 0;">Student Portal Team</p>
+              <p style="color: #667eea; margin: 8px 0 0 0; font-weight: 600;">"Empowering Your Learning Journey"</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+  };
+
+  try {
+    console.log('Sending change password OTP email...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Change password OTP email sent successfully:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending change password OTP email:', error);
+    return false;
+  }
+};
+
 export const sendPackageDetailsEmail = async (userData, packages, options = {}) => {
   console.log('Attempting to send package details email to:', options.to || userData.email);
 
