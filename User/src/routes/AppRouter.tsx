@@ -25,7 +25,13 @@ import { PermissionsProvider } from '../hooks/usePermissions';
 import AccountSale from '../components/user/finance/AccountSale';
 import AccountAdmin from '../components/user/finance/AccountAdmin';
 import PaymentControl from '../components/user/finance/PaymentControl';
-import Documentation from '../components/common/Documentation/Documentation';
+import Documentation from '../components/common/Documentation/Doc';
+
+import AgreementPage from "../components/common/Documentation/AgreementPage";
+// import SignaturePage from "../components/common/Documentation/SignaturePage";
+import OpenDocumentPage from "../components/common/Documentation/OpenDocumentPage";
+import SendMailPage from "../components/common/Documentation/SendMailPage";
+
 
 // Layout component that includes Navbar
 const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -38,7 +44,7 @@ const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="app-container">
-      <Sidebar/>
+      <Sidebar />
       <Navbar />
       <div className="content-layout">
         <main className="main-content">
@@ -49,6 +55,7 @@ const UserLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+// ...existing code...
 const AppRouter: React.FC = () => {
   return (
     <Router>
@@ -69,7 +76,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/profile" element={
             <ProtectedRoute>
               <UserLayout>
@@ -77,16 +83,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
-          {/* Regular user packages route */}
-          {/* <Route path="/packages" element={
-            <ProtectedRoute>
-              <UserLayout>
-                <Packages />
-              </UserLayout>
-            </ProtectedRoute>
-          } /> */}
-
           <Route path="/leadcreation" element={
             <ProtectedRoute>
               <UserLayout>
@@ -94,8 +90,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
-          {/* Enrollment routes */}
           <Route path="/enrollment-sales" element={
             <ProtectedRoute>
               <UserLayout>
@@ -103,7 +97,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/enrollment-admin" element={
             <ProtectedRoute>
               <UserLayout>
@@ -111,8 +104,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
-          {/* Finance routes */}
           <Route path="/account-sale" element={
             <ProtectedRoute>
               <UserLayout>
@@ -127,7 +118,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/finance/payment-control" element={
             <ProtectedRoute>
               <UserLayout>
@@ -135,22 +125,13 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
-          {/* <Route path="/sales" element={
-            <ProtectedRoute>
-              <UserLayout>
-                <SaleCreationComponent/>
-              </UserLayout>
-            </ProtectedRoute>
-          } /> */}
           <Route path="/archived-leads" element={
             <ProtectedRoute>
               <UserLayout>
-                <ArchivedLeads/>
+                <ArchivedLeads />
               </UserLayout>
             </ProtectedRoute>
           } />
-          {/* Department route - accessible to any user with proper permissions */}
           <Route path="/departments" element={
             <ProtectedRoute>
               <UserLayout>
@@ -158,8 +139,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
-          {/* Admin-only routes */}
           <Route path="/users" element={
             <ProtectedRoute>
               <UserLayout>
@@ -167,7 +146,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/admins" element={
             <ProtectedRoute>
               <UserLayout>
@@ -175,7 +153,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/roles" element={
             <ProtectedRoute>
               <UserLayout>
@@ -183,7 +160,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/department-permissions" element={
             <ProtectedRoute>
               <UserLayout>
@@ -191,7 +167,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/packages" element={
             <ProtectedRoute>
               <UserLayout>
@@ -199,7 +174,6 @@ const AppRouter: React.FC = () => {
               </UserLayout>
             </ProtectedRoute>
           } />
-
           <Route path="/email-templates" element={
             <ProtectedRoute>
               <UserLayout>
@@ -208,20 +182,57 @@ const AppRouter: React.FC = () => {
             </ProtectedRoute>
           } />
 
+          {/* Documentation routes */}
           <Route path="/documentation" element={
             <ProtectedRoute>
               <UserLayout>
-                <Documentation/>
+                <Documentation />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/agreement" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AgreementPage />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/documentation/agreement" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <AgreementPage />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          {/* <Route path="/documentation/signature" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <SignaturePage />
+              </UserLayout>
+            </ProtectedRoute>
+          } /> */}
+          <Route path="/documentation/open" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <OpenDocumentPage />
+              </UserLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/documentation/sendmail" element={
+            <ProtectedRoute>
+              <UserLayout>
+                <SendMailPage />
               </UserLayout>
             </ProtectedRoute>
           } />
 
-          {/* Catch all route - redirect to login */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Redirect any unknown routes to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </PermissionsProvider>
     </Router>
   );
 };
+
 
 export default AppRouter; 
