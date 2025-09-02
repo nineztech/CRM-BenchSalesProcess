@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { Home, UserPlus, Users, Building, Mail, Gift, ChevronDown } from 'lucide-react';
+import { 
+  MdHome, 
+  MdPersonAdd, 
+  MdPeople, 
+  MdBusiness, 
+  MdMail, 
+  MdCardGiftcard, 
+  MdKeyboardArrowDown 
+} from 'react-icons/md';
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -27,49 +35,49 @@ const Sidebar: React.FC = () => {
   // Define menu items for student/client placement
   const menuItems: MenuItem[] = [
     {
-      icon: <Home />,
+      icon: <MdHome />,
       to: '/dashboard',
       text: 'Dashboard'
     },
     {
-      icon: <UserPlus />,
+      icon: <MdPersonAdd />,
       to: '/profile',
       text: 'My Profile'
     },
     {
-      icon: <Users />,
+      icon: <MdPeople />,
       to: '/placements',
       text: 'Placements'
     },
     {
-      icon: <Building />,
+      icon: <MdBusiness />,
       to: '#',
       text: 'E-Learning',
       subItems: [
         {
-          icon: <Mail />,
+          icon: <MdMail />,
           to: '/courses',
           text: 'My Courses'
         },
         {
-          icon: <Gift />,
+          icon: <MdCardGiftcard />,
           to: '/assignments',
           text: 'Assignments'
         },
         {
-          icon: <Users />,
+          icon: <MdPeople />,
           to: '/progress',
           text: 'Progress Track'
         }
       ]
     },
     {
-      icon: <Mail />,
+      icon: <MdMail />,
       to: '/resume',
       text: 'Resume Builder'
     },
     {
-      icon: <Users />,
+      icon: <MdPeople />,
       to: '/interviews',
       text: 'Interview Prep'
     }
@@ -95,14 +103,14 @@ const Sidebar: React.FC = () => {
               {isActive && (
                 <div className="absolute left-0 top-0 h-full w-1 bg-blue-600" />
               )}
-              <span className={`text-lg ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+              <span className={`text-2xl ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
                 {item.icon}
               </span>
               {isExpanded && (
                 <div className="ml-3 flex-1 flex items-center justify-between">
                   <span className="font-medium">{item.text}</span>
-                  <ChevronDown
-                    className={`transform transition-transform duration-200 ${
+                  <MdKeyboardArrowDown
+                    className={`text-xl transform transition-transform duration-200 ${
                       (item.text === 'E-Learning' && isElearningOpen) ? 'rotate-180' : ''
                     }`}
                   />
@@ -130,7 +138,7 @@ const Sidebar: React.FC = () => {
                   {isSubItemActive && (
                     <div className="absolute left-0 top-0 h-full w-1 bg-blue-600" />
                   )}
-                  <span className={`text-lg ${isSubItemActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span className={`text-2xl ${isSubItemActive ? 'text-blue-600' : 'text-gray-500'}`}>
                     {subItem.icon}
                   </span>
                   <span className="ml-3 whitespace-nowrap font-medium">
@@ -224,7 +232,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, to, text, isExpanded, i
       {isActive && (
         <div className="absolute left-0 top-0 h-full w-1 bg-blue-600" />
       )}
-      <span className={`text-lg ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>{icon}</span>
+      <span className={`text-2xl ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>{icon}</span>
       {isExpanded && (
         <span className="ml-3 whitespace-nowrap font-medium">
           {text}

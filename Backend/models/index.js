@@ -11,6 +11,8 @@ import SpecialUserPermission from './specialUserPermissionModel.js';
 import EnrolledClients from './enrolledClientsModel.js';
 import Installments from './installmentsModel.js';
 import ClientAssignment from './clientAssignmentModel.js';
+import ResumeChecklist from './resumeChecklistModel.js';
+import ClientUser from './clientUserModel.js';
 import {sequelize} from '../config/dbConnection.js';
 
 // Department associations
@@ -430,6 +432,41 @@ EnrolledClients.hasOne(ClientAssignment, {
   }
 });
 
+// ResumeChecklist associations
+ResumeChecklist.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator',
+  onDelete: 'RESTRICT'
+});
+
+ResumeChecklist.belongsTo(User, {
+  foreignKey: 'updatedBy',
+  as: 'updater',
+  onDelete: 'RESTRICT'
+});
+
+User.hasMany(ResumeChecklist, {
+  foreignKey: 'createdBy',
+  as: 'createdResumeChecklists'
+});
+
+User.hasMany(ResumeChecklist, {
+  foreignKey: 'updatedBy',
+  as: 'updatedResumeChecklists'
+});
+
+// ResumeChecklist associations with ClientUser
+ResumeChecklist.belongsTo(ClientUser, {
+  foreignKey: 'clientUserId',
+  as: 'clientUser',
+  onDelete: 'SET NULL'
+});
+
+ClientUser.hasMany(ResumeChecklist, {
+  foreignKey: 'clientUserId',
+  as: 'resumeChecklists'
+});
+
 // Function to sync all models in the correct order
 export const syncModels = async () => {
   try {
@@ -484,6 +521,12 @@ export const syncModels = async () => {
     await ClientAssignment.sync({ alter: true });
     console.log('ClientAssignment table synced successfully');
 
+    await ClientUser.sync({ alter: true });
+    console.log('ClientUser table synced successfully');
+
+    await ResumeChecklist.sync({ alter: true });
+    console.log('ResumeChecklist table synced successfully');
+
     // Re-enable foreign key checks
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
 
@@ -507,5 +550,7 @@ export {
   SpecialUserPermission,
   EnrolledClients,
   Installments,
-  ClientAssignment
+  ClientAssignment,
+  ResumeChecklist,
+  ClientUser
 };

@@ -14,6 +14,7 @@ import enrolledClientsRoutes from './enrolledClientsRoutes.js'
 import installmentsRoutes from './installmentsRoutes.js'
 import clientAssignmentRoutes from './clientAssignmentRoutes.js'
 import clientUserRoutes from './clientUserRoutes.js';
+import resumeChecklistRoutes from './resumeChecklistRoutes.js';
 
 
 import express from 'express'
@@ -35,6 +36,7 @@ router.use('/enrolled-clients', enrolledClientsRoutes)
 router.use('/installments', installmentsRoutes)
 router.use('/client-assignments', clientAssignmentRoutes)
 router.use('/clientusers', clientUserRoutes);
+router.use('/resume-checklists', resumeChecklistRoutes);
 
 
 export default router
