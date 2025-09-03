@@ -13,8 +13,10 @@ import emailRoutes from './Routes/emailRoutes.js';
 import bulkRoutes from './Routes/bulkRoutes.js';
 import { createLeadIndex } from './config/elasticSearch.js';
 import { reindexLeads, reindexEnrolledClients } from './scripts/indexLeads.js';
+import uploadRoutes from './Routes/upload.js'; // Adjust path as needed
 
-// Load environment variables
+
+
 dotenv.config();
 
 // Import models (this triggers model definitions + associations)
@@ -38,6 +40,7 @@ app.use(cors({
 app.use("/api", router);
 app.use('/api/email', emailRoutes);
 app.use('/api/bulk', bulkRoutes);
+app.use('/api', uploadRoutes); // This will make the endpoints available at /api/upload-pdf, etc.
 
 // Error handling middleware
 app.use((err, req, res, next) => {

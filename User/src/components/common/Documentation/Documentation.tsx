@@ -1271,13 +1271,11 @@ import AccountSaleDoc from "./Doc";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { useDropzone } from "react-dropzone";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min?url";
+import { useDropzone } from "react-dropzone"; 
 
-// 👇 set worker path explicitly
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 const Documentation: React.FC = () => {
+
   const [step, setStep] = useState<
     | "enrolled"
     | "upload"
@@ -1292,47 +1290,76 @@ const Documentation: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isEmailSending, setIsEmailSending] = useState(false);
 
   const onDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles[0]) {
       setFile(acceptedFiles[0]);
+      console.log("File selected:", acceptedFiles[0]);
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "application/pdf": [".pdf"] },
+    maxFiles: 1,
   });
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
+    console.log("PDF loaded successfully. Pages:", numPages);
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error("Failed to load PDF:", error);
+    alert("Failed to load PDF. Please try a different file.");
   };
 
   const handleUploadToBackend = async () => {
-    if (!file) return;
+    if (!file) {
+      alert("Please select a file first");
+      return;
+    }
 
+    setIsUploading(true);
     const formData = new FormData();
     formData.append("pdf", file);
 
     try {
-      const res = await fetch("http://localhost:5006/upload-pdf", {
+      const res = await fetch("http://localhost:5006/api/upload-pdf", {
         method: "POST",
         body: formData,
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
       console.log("Upload Response:", data);
-      setUploadedFileName(data.filename);
-      alert("✅ PDF uploaded successfully!");
+      
+      if (data.success) {
+        setUploadedFileName(data.filename);
+        alert("✅ PDF uploaded successfully!");
+      } else {
+        throw new Error(data.message || "Upload failed");
+      }
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("❌ PDF upload failed. Check console.");
+      alert(`❌ PDF upload failed: ${error.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleSendMail = async () => {
-    if (!uploadedFileName) return alert("No file uploaded to send!");
+    if (!uploadedFileName) {
+      alert("No file uploaded to send!");
+      return;
+    }
 
+    setIsEmailSending(true);
     try {
       const res = await fetch("http://localhost:5006/send-mail", {
         method: "POST",
@@ -1345,15 +1372,23 @@ const Documentation: React.FC = () => {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
       console.log("SendMail Response:", data);
+      
       if (data.success) {
         alert("📩 Email sent successfully!");
       } else {
-        alert("❌ Email sending failed.");
+        throw new Error(data.message || "Email sending failed");
       }
     } catch (error) {
       console.error("SendMail failed:", error);
+      alert(`❌ Email sending failed: ${error.message}`);
+    } finally {
+      setIsEmailSending(false);
     }
   };
 
@@ -1398,6 +1433,7 @@ const Documentation: React.FC = () => {
       {step === "upload" && (
         <>
           <div className="flex flex-col items-center">
+            <h2 className="text-2xl font-bold mb-4">Upload PDF Document</h2>
             <div
               {...getRootProps()}
               className={`w-96 h-40 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer transition ${
@@ -1415,21 +1451,40 @@ const Documentation: React.FC = () => {
               )}
             </div>
 
+            {file && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-700">
+                  <strong>Selected:</strong> {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              </div>
+            )}
+
             {/* PDF Preview */}
             {file && (
               <div className="mt-6 w-full flex flex-col items-center">
                 <h3 className="mb-2 text-lg font-semibold">PDF Preview</h3>
-                <div className="border rounded-md p-4 shadow-lg bg-white">
-                  <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
-                    {Array.from(new Array(numPages), (_el, index) => (
+                <div className="border rounded-md p-4 shadow-lg bg-white max-h-96 overflow-y-auto">
+                  <Document 
+                    file={file} 
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    loading={<div className="text-center p-4">Loading PDF...</div>}
+                  >
+                    {numPages && Array.from(new Array(Math.min(numPages, 3)), (_el, index) => (
                       <Page
                         key={`page_${index + 1}`}
                         pageNumber={index + 1}
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         width={500}
+                        className="mb-4"
                       />
                     ))}
+                    {numPages && numPages > 3 && (
+                      <div className="text-center text-gray-500 mt-4">
+                        ... and {numPages - 3} more pages
+                      </div>
+                    )}
                   </Document>
                 </div>
               </div>
@@ -1446,20 +1501,20 @@ const Documentation: React.FC = () => {
             <div className="flex gap-4">
               <button
                 onClick={handleUploadToBackend}
-                disabled={!file}
+                disabled={!file || isUploading}
                 className={`px-6 py-2 rounded-lg transition ${
-                  file
+                  file && !isUploading
                     ? "bg-green-600 text-white hover:bg-green-700"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                ⬆ Upload
+                {isUploading ? "⏳ Uploading..." : "⬆ Upload"}
               </button>
               <button
                 onClick={handleNext}
-                disabled={!file}
+                disabled={!uploadedFileName}
                 className={`px-6 py-2 rounded-lg transition ${
-                  file
+                  uploadedFileName
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
@@ -1493,9 +1548,14 @@ const Documentation: React.FC = () => {
             {step === "send-mail" ? (
               <button
                 onClick={handleSendMail}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                disabled={isEmailSending}
+                className={`px-6 py-2 rounded-lg transition ${
+                  isEmailSending
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-purple-600 text-white hover:bg-purple-700"
+                }`}
               >
-                📩 Send Mail
+                {isEmailSending ? "📤 Sending..." : "📩 Send Mail"}
               </button>
             ) : step === "review" ? (
               <button
