@@ -16,7 +16,14 @@ const authMiddleware = (req, res, next) => {
         if (!userId) {
             return res.status(401).json({ message: 'Invalid token: No user ID found' });
         }
-        req.user = { id: userId };
+        
+        // Check if this is a client user
+        const isClientUser = decoded.type === 'client';
+        
+        req.user = { 
+            id: userId,
+            clientUserId: isClientUser ? userId : null
+        };
         next();
     } catch (error) {
         res.status(400).json({ message: 'Invalid token.' });

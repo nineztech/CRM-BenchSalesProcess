@@ -1,25 +1,50 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Layout } from './common';
 import LoginPage from '../pages/LoginPage';
 import Dashboard from '../pages/Dashboard';
+import ResumeChecklistPage from '../pages/ResumeChecklist';
 import ProtectedRoute from './auth/ProtectedRoute';
 
 const Router: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   // Handle URL routing manually
   useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
     const path = window.location.pathname;
     
     if (isAuthenticated && (path === '/' || path === '/login')) {
       // If authenticated and on root or login page, redirect to dashboard
       window.history.replaceState(null, '', '/dashboard');
-    } else if (!isAuthenticated && path === '/dashboard') {
-      // If not authenticated and on dashboard, redirect to root
+      setCurrentPath('/dashboard');
+    } else if (!isAuthenticated && (path === '/dashboard' || path === '/resume-checklist')) {
+      // If not authenticated and on protected pages, redirect to root
       window.history.replaceState(null, '', '/');
+      setCurrentPath('/');
     }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [isAuthenticated]);
+
+  const renderContent = () => {
+    switch (currentPath) {
+      case '/dashboard':
+        return <Dashboard />;
+      case '/resume-checklist':
+        return <ResumeChecklistPage />;
+      default:
+        return <Dashboard />;
+    }
+  };
 
   if (loading) {
     return (
@@ -36,7 +61,7 @@ const Router: React.FC = () => {
     return (
       <ProtectedRoute>
         <Layout>
-          <Dashboard />
+          {renderContent()}
         </Layout>
       </ProtectedRoute>
     );

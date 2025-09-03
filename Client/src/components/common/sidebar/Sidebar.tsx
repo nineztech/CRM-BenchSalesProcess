@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MdHome, 
   MdPersonAdd, 
@@ -19,7 +19,7 @@ interface MenuItem {
 const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isElearningOpen, setIsElearningOpen] = useState(false);
-  const [currentPath, setCurrentPath] = useState('/dashboard');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   // Function to handle mouse enter on sidebar
   const handleMouseEnter = () => {
@@ -31,6 +31,18 @@ const Sidebar: React.FC = () => {
     setIsExpanded(false);
     setIsElearningOpen(false);
   };
+
+  // Listen for path changes
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // Define menu items for student/client placement
   const menuItems: MenuItem[] = [
@@ -80,6 +92,11 @@ const Sidebar: React.FC = () => {
       icon: <MdPeople />,
       to: '/interviews',
       text: 'Interview Prep'
+    },
+    {
+      icon: <MdCardGiftcard />,
+      to: '/resume-checklist',
+      text: 'Resume Checklist'
     }
   ];
 
@@ -128,6 +145,7 @@ const Sidebar: React.FC = () => {
                   onClick={() => {
                     setCurrentPath(subItem.to);
                     window.history.pushState(null, '', subItem.to);
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                   }}
                   className={`flex items-center h-12 pl-12 pr-3 text-sm transition-colors relative w-full text-left ${
                     isSubItemActive
@@ -222,6 +240,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, to, text, isExpanded, i
       onClick={() => {
         setCurrentPath(to);
         window.history.pushState(null, '', to);
+        window.dispatchEvent(new PopStateEvent('popstate'));
       }}
       className={`flex items-center h-12 px-3 text-sm transition-colors relative w-full text-left ${
         isActive

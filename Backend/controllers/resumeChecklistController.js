@@ -39,8 +39,7 @@ export const createResumeChecklist = async (req, res) => {
       addressHistory,
       visaExperienceCertificate,
       remarks,
-      status,
-      clientUserId
+      status
     } = req.body;
 
     // Validate required fields
@@ -90,7 +89,7 @@ export const createResumeChecklist = async (req, res) => {
       visaExperienceCertificate,
       remarks: remarks || null,
       status: status || 'draft',
-      clientUserId: clientUserId || null,
+      clientUserId: req.user.clientUserId || null,
       createdBy: req.user.id,
       updatedBy: null
     };
