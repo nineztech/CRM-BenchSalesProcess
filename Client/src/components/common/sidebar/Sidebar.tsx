@@ -8,6 +8,7 @@ import {
   MdCardGiftcard, 
   MdKeyboardArrowDown 
 } from 'react-icons/md';
+import Logo from '../../../assets/Logo.webp';
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -193,12 +194,12 @@ const Sidebar: React.FC = () => {
       >
         {/* Logo Section */}
         <div className="flex items-center h-16 px-3 flex-shrink-0">
-          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">C</span>
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center">
+            <img src={Logo} alt="Logo" className="h-8 w-8 object-contain" />
           </div>
           {isExpanded && (
             <span className="ml-3 font-semibold text-[18px] flex items-center relative">
-              Student Portal
+              Client Portal
               {/* <span className="absolute -top-2 left-[95px]">
                 <span className="inline-flex items-center justify-center rounded-full bg-purple-600 text-white text-xs font-bold px-2.5 py-0.5 shadow-md" style={{ minWidth: 28, maxHeight: 17, minHeight: 15, paddingBottom: 5 }}>
                   pro

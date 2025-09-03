@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { UserCircle, LogOut } from "lucide-react";
 import { useAuth } from '../../../contexts/AuthContext';
+import { getCurrentUser } from '../../../services/authService';
 
 const Header: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
-      const { user, logout } = useAuth();
+  const [displayName, setDisplayName] = useState<string>('Client Name');
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,6 +17,21 @@ const Header: React.FC = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser && currentUser.username) {
+      // Split username by underscore to get firstname and lastname
+      const nameParts = currentUser.username.split('_');
+      if (nameParts.length >= 2) {
+        const firstName = nameParts[0];
+        const lastName = nameParts[1];
+        setDisplayName(`${firstName} ${lastName}`);
+      } else {
+        setDisplayName(currentUser.username);
+      }
+    }
+  }, [user]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +59,7 @@ const Header: React.FC = () => {
         {/* Center: Title */}
         <div className="flex-1 flex justify-center">
           <h1 className="text-xl font-semibold text-gray-800">
-           Client Name
+           {displayName}
           </h1>
         </div>
 
