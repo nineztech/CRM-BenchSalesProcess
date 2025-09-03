@@ -69,7 +69,15 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
     status: 'draft'
   });
 
-  const sections = [
+  const sections = existingChecklist ? [
+    'Personal Information',
+    'Educational Information', 
+    'Technical Information',
+    'Current Information',
+    'Address History',
+    'Visa/Experience/Certificate',
+    'Remarks'
+  ] : [
     'Personal Information',
     'Resume Upload',
     'Educational Information', 
@@ -848,52 +856,62 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
         </div>
       )}
 
-      {/* Resume Upload Section */}
-      <div className="border border-gray-200 rounded-lg p-6">
-        <h4 className="text-md font-medium text-gray-900 mb-4">
-          {existingChecklist ? 'Update Resume' : 'Upload Your Resume'}
-        </h4>
-        
-        {selectedResume ? (
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-green-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium">{selectedResume.name}</span>
+      {/* Resume Upload Section - Only show during creation, not during updates */}
+      {!existingChecklist && (
+        <div className="border border-gray-200 rounded-lg p-6">
+          <h4 className="text-md font-medium text-gray-900 mb-4">Upload Your Resume</h4>
+          
+          {selectedResume ? (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-green-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">{selectedResume.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedResume(null)}
+                className="text-red-600 hover:text-red-800 text-sm"
+              >
+                Remove
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectedResume(null)}
-              className="text-red-600 hover:text-red-800 text-sm"
-            >
-              Remove
-            </button>
+          ) : (
+            <label className="flex justify-center px-4 py-8 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-gray-50 cursor-pointer">
+              <input
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleResumeUpload(file);
+                }}
+                disabled={isUploadingResume}
+              />
+              <div className="space-y-2 text-center">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="text-sm text-gray-600">
+                  <span className="text-blue-600">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-gray-500">PDF up to 5MB</p>
+              </div>
+            </label>
+          )}
+        </div>
+      )}
+
+      {/* Show message during updates */}
+      {existingChecklist && (
+        <div className="border border-gray-200 rounded-lg p-6">
+          <div className="text-center py-4">
+            <p className="text-gray-600">Resume upload is only available during checklist creation.</p>
+            <p className="text-sm text-gray-500 mt-2">To update your resume, please use the main checklist view.</p>
           </div>
-        ) : (
-          <label className="flex justify-center px-4 py-8 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-gray-50 cursor-pointer">
-            <input
-              type="file"
-              accept=".pdf"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleResumeUpload(file);
-              }}
-              disabled={isUploadingResume}
-            />
-            <div className="space-y-2 text-center">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              <p className="text-sm text-gray-600">
-                <span className="text-blue-600">Click to upload</span> or drag and drop
-              </p>
-              <p className="text-xs text-gray-500">PDF up to 5MB</p>
-            </div>
-          </label>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 
@@ -917,16 +935,31 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
   );
 
   const renderCurrentSection = () => {
-    switch (currentSection) {
-      case 0: return renderPersonalInformation();
-      case 1: return renderResumeUpload();
-      case 2: return renderEducationalInformation();
-      case 3: return renderTechnicalInformation();
-      case 4: return renderCurrentInformation();
-      case 5: return renderAddressHistory();
-      case 6: return renderVisaExperienceCertificate();
-      case 7: return renderRemarks();
-      default: return null;
+    if (existingChecklist) {
+      // For updates, skip resume upload section
+      switch (currentSection) {
+        case 0: return renderPersonalInformation();
+        case 1: return renderEducationalInformation();
+        case 2: return renderTechnicalInformation();
+        case 3: return renderCurrentInformation();
+        case 4: return renderAddressHistory();
+        case 5: return renderVisaExperienceCertificate();
+        case 6: return renderRemarks();
+        default: return null;
+      }
+    } else {
+      // For creation, include resume upload section
+      switch (currentSection) {
+        case 0: return renderPersonalInformation();
+        case 1: return renderResumeUpload();
+        case 2: return renderEducationalInformation();
+        case 3: return renderTechnicalInformation();
+        case 4: return renderCurrentInformation();
+        case 5: return renderAddressHistory();
+        case 6: return renderVisaExperienceCertificate();
+        case 7: return renderRemarks();
+        default: return null;
+      }
     }
   };
 

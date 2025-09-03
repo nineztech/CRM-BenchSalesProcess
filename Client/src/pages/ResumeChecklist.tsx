@@ -348,26 +348,7 @@ const ResumeChecklistPage: React.FC = () => {
                     <span>View Resume</span>
                   </button>
                   
-                  {!checklist.isResumeUpdated && (
-                    <label className="flex justify-center px-4 py-2 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-blue-50 cursor-pointer">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleResumeUpload(file);
-                        }}
-                        disabled={isUploadingResume}
-                      />
-                      <div className="flex items-center gap-2">
-                        <FaUpload className="w-4 h-4" />
-                        <span className="text-sm text-blue-600">
-                          {isUploadingResume ? 'Uploading...' : 'Update Resume'}
-                        </span>
-                      </div>
-                    </label>
-                  )}
+
                   
                   {checklist.isResumeUpdated && (
                     <span className="text-sm text-green-600 font-medium">
