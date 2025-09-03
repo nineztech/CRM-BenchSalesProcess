@@ -1,21 +1,27 @@
 // const Documentation: React.FC = () => {
-//   const [currentStep, setCurrentStep] = useState<'admin-select' | 'review' | 'client-sign' | 'company-sign' | 'complete'>('admin-select');
-//   const [selectedUser, setSelectedUser] = useState<string>('');
-//   const [selectedFormat, setSelectedFormat] = useState<string>('');
+//   const [currentStep, setCurrentStep] = useState<
+//     "admin-select" | "review" | "client-sign" | "company-sign" | "complete"
+//   >("admin-select");
+//   const [selectedUser, setSelectedUser] = useState<string>("");
+//   const [selectedFormat, setSelectedFormat] = useState<string>("");
 //   const [users, setUsers] = useState<ClientDetails[]>([]);
 //   const [packages, setPackages] = useState<PackageDetails[]>([]);
 //   const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
-//   const [selectedPackage, setSelectedPackage] = useState<PackageDetails | null>(null);
-//   const [selectedClient, setSelectedClient] = useState<ClientDetails | null>(null);
+//   const [selectedPackage, setSelectedPackage] = useState<PackageDetails | null>(
+//     null
+//   );
+//   const [selectedClient, setSelectedClient] = useState<ClientDetails | null>(
+//     null
+//   );
 //   const [isLoading, setIsLoading] = useState(false);
 //   const [isAdmin, setIsAdmin] = useState(true); // Set to true for admin view
 //   const [signatureData, setSignatureData] = useState<SignatureData>({
-//     clientSignature: '',
-//     companySignature: '',
-//     clientSignatureStyle: 'simple',
-//     companySignatureStyle: 'simple',
+//     clientSignature: "",
+//     companySignature: "",
+//     clientSignatureStyle: "simple",
+//     companySignatureStyle: "simple",
 //     clientSignedAt: null,
-//     companySignedAt: null
+//     companySignedAt: null,
 //   });
 
 //   // Company details - Replace with actual data from your API
@@ -27,32 +33,32 @@
 //     website: "www.oppzcrm.com",
 //     registrationNumber: "CA123456789",
 //     representative: "Sarah Johnson",
-//     designation: "Sales Manager"
+//     designation: "Sales Manager",
 //   };
 
 //   // Default document formats
 //   const defaultFormats: DocumentFormat[] = [
 //     {
-//       id: 'standard',
-//       name: 'Standard Enrollment',
-//       description: 'Basic enrollment document with standard terms',
-//       template: 'standard',
-//       isDefault: true
+//       id: "standard",
+//       name: "Standard Enrollment",
+//       description: "Basic enrollment document with standard terms",
+//       template: "standard",
+//       isDefault: true,
 //     },
 //     {
-//       id: 'premium',
-//       name: 'Premium Package',
-//       description: 'Enhanced enrollment document for premium packages',
-//       template: 'premium',
-//       isDefault: false
+//       id: "premium",
+//       name: "Premium Package",
+//       description: "Enhanced enrollment document for premium packages",
+//       template: "premium",
+//       isDefault: false,
 //     },
 //     {
-//       id: 'enterprise',
-//       name: 'Enterprise Solution',
-//       description: 'Comprehensive enrollment document for enterprise clients',
-//       template: 'enterprise',
-//       isDefault: false
-//     }
+//       id: "enterprise",
+//       name: "Enterprise Solution",
+//       description: "Comprehensive enrollment document for enterprise clients",
+//       template: "enterprise",
+//       isDefault: false,
+//     },
 //   ];
 
 //   useEffect(() => {
@@ -63,18 +69,21 @@
 
 //   const fetchUsers = async () => {
 //     try {
-//       const token = localStorage.getItem('token');
+//       const token = localStorage.getItem("token");
 //       if (!token) return;
 
-//       const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/user/all`, {
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-      
+//       const response = await axios.get(
+//         `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/user/all`,
+//         {
+//           headers: { Authorization: `Bearer ${token}` },
+//         }
+//       );
+
 //       if (response.data.success) {
 //         setUsers(response.data.data.users || []);
 //       }
 //     } catch (error) {
-//       console.error('Error fetching users:', error);
+//       console.error("Error fetching users:", error);
 //       // Use sample data for demo
 //       setUsers([
 //         {
@@ -91,32 +100,38 @@
 //           leadSource: "Website",
 //           company: "Tech Solutions Inc.",
 //           position: "Chief Technology Officer",
-//           address: "123 Business Ave, Suite 100, New York, NY 10001"
-//         }
+//           address: "123 Business Ave, Suite 100, New York, NY 10001",
+//         },
 //       ]);
 //     }
 //   };
 
 //   const fetchPackages = async () => {
 //     try {
-//       const token = localStorage.getItem('token');
+//       const token = localStorage.getItem("token");
 //       if (!token) return;
 
-//       const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/packages/all`, {
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-      
+//       const response = await axios.get(
+//         `${
+//           process.env.REACT_APP_API_URL || "http://localhost:5000"
+//         }/packages/all`,
+//         {
+//           headers: { Authorization: `Bearer ${token}` },
+//         }
+//       );
+
 //       if (response.data.success) {
 //         setPackages(response.data.data || []);
 //       }
 //     } catch (error) {
-//       console.error('Error fetching packages:', error);
+//       console.error("Error fetching packages:", error);
 //       // Use sample data for demo
 //       setPackages([
 //         {
 //           id: 1,
 //           planName: "Premium Business Package",
-//           description: "Comprehensive business solution with advanced features and premium support",
+//           description:
+//             "Comprehensive business solution with advanced features and premium support",
 //           enrollmentCharge: 2500,
 //           offerLetterCharge: 1500,
 //           firstYearSalaryPercentage: 15,
@@ -129,17 +144,17 @@
 //             "Advanced Analytics",
 //             "Multi-user Access",
 //             "Data Backup & Recovery",
-//             "Custom Branding"
+//             "Custom Branding",
 //           ],
-//           status: "active"
-//         }
+//           status: "active",
+//         },
 //       ]);
 //     }
 //   };
 
 //   const handleUserChange = (userId: string) => {
 //     setSelectedUser(userId);
-//     const user = users.find(u => u.id.toString() === userId);
+//     const user = users.find((u) => u.id.toString() === userId);
 //     setSelectedClient(user || null);
 //     setSelectedPackage(null);
 //   };
@@ -149,60 +164,78 @@
 //   };
 
 //   const handlePackageSelect = (packageId: string) => {
-//     const pkg = packages.find(p => p.id.toString() === packageId);
+//     const pkg = packages.find((p) => p.id.toString() === packageId);
 //     setSelectedPackage(pkg || null);
 //   };
 
 //   const handleProceedToReview = () => {
 //     if (!selectedUser || !selectedFormat || !selectedPackage) {
-//       toast.error('Please select user, document format, and package before proceeding');
+//       toast.error(
+//         "Please select user, document format, and package before proceeding"
+//       );
 //       return;
 //     }
-//     setCurrentStep('review');
+//     setCurrentStep("review");
 //   };
 
-//   const handleSignatureChange = (field: 'clientSignature' | 'companySignature', value: string) => {
-//     setSignatureData(prev => ({ ...prev, [field]: value }));
+//   const handleSignatureChange = (
+//     field: "clientSignature" | "companySignature",
+//     value: string
+//   ) => {
+//     setSignatureData((prev) => ({ ...prev, [field]: value }));
 //   };
 
-//   const handleSignatureStyleChange = (field: 'clientSignatureStyle' | 'companySignatureStyle', style: any) => {
-//     setSignatureData(prev => ({ ...prev, [field]: style }));
+//   const handleSignatureStyleChange = (
+//     field: "clientSignatureStyle" | "companySignatureStyle",
+//     style: any
+//   ) => {
+//     setSignatureData((prev) => ({ ...prev, [field]: style }));
 //   };
 
 //   const getSignatureStyle = (style: string) => {
 //     switch (style) {
-//       case 'cursive':
-//         return 'font-cursive italic';
-//       case 'italic':
-//         return 'italic';
-//       case 'bold':
-//         return 'font-bold';
-//       case 'underline':
-//         return 'underline';
+//       case "cursive":
+//         return "font-cursive italic";
+//       case "italic":
+//         return "italic";
+//       case "bold":
+//         return "font-bold";
+//       case "underline":
+//         return "underline";
 //       default:
-//         return '';
+//         return "";
 //     }
 //   };
 
 //   const handleClientSign = () => {
 //     if (signatureData.clientSignature.trim()) {
-//       setSignatureData(prev => ({ ...prev, clientSignedAt: new Date().toISOString() }));
-//       setCurrentStep('company-sign');
-//       toast.success('Client signature recorded successfully! Company signature is now unlocked.');
+//       setSignatureData((prev) => ({
+//         ...prev,
+//         clientSignedAt: new Date().toISOString(),
+//       }));
+//       setCurrentStep("company-sign");
+//       toast.success(
+//         "Client signature recorded successfully! Company signature is now unlocked."
+//       );
 //     }
 //   };
 
 //   const handleCompanySign = () => {
 //     if (signatureData.companySignature.trim()) {
-//       setSignatureData(prev => ({ ...prev, companySignedAt: new Date().toISOString() }));
-//       setCurrentStep('complete');
-//       toast.success('Company signature recorded successfully! Document is now complete.');
+//       setSignatureData((prev) => ({
+//         ...prev,
+//         companySignedAt: new Date().toISOString(),
+//       }));
+//       setCurrentStep("complete");
+//       toast.success(
+//         "Company signature recorded successfully! Document is now complete."
+//       );
 //     }
 //   };
 
 //   const handleSendDocument = async () => {
 //     if (!selectedClient || !selectedPackage) {
-//       toast.error('Client and package information is required');
+//       toast.error("Client and package information is required");
 //       return;
 //     }
 
@@ -210,21 +243,23 @@
 //       setIsLoading(true);
 //       // Here you would implement the actual PDF generation and email sending
 //       // For now, we'll simulate the process
-//       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-//       toast.success(`Document sent successfully to ${selectedClient.primaryEmail}`);
-//       console.log('Document sent to:', selectedClient.primaryEmail);
+//       await new Promise((resolve) => setTimeout(resolve, 2000));
+
+//       toast.success(
+//         `Document sent successfully to ${selectedClient.primaryEmail}`
+//       );
+//       console.log("Document sent to:", selectedClient.primaryEmail);
 //     } catch (error) {
-//       console.error('Error sending document:', error);
-//       toast.error('Failed to send document. Please try again.');
+//       console.error("Error sending document:", error);
+//       toast.error("Failed to send document. Please try again.");
 //     } finally {
 //       setIsLoading(false);
 //     }
 //   };
 
 //   const handleDownload = () => {
-//     console.log('Downloading signed enrollment document...');
-//     toast.success('Document download started');
+//     console.log("Downloading signed enrollment document...");
+//     toast.success("Document download started");
 //   };
 
 //   const handlePrint = () => {
@@ -234,27 +269,27 @@
 //   const addNewFormat = () => {
 //     const newFormat: DocumentFormat = {
 //       id: `custom-${Date.now()}`,
-//       name: 'Custom Format',
-//       description: 'Custom document format',
-//       template: 'custom',
-//       isDefault: false
+//       name: "Custom Format",
+//       description: "Custom document format",
+//       template: "custom",
+//       isDefault: false,
 //     };
-//     setDocumentFormats(prev => [...prev, newFormat]);
+//     setDocumentFormats((prev) => [...prev, newFormat]);
 //     setSelectedFormat(newFormat.id);
 //   };
 
 //   const removeFormat = (formatId: string) => {
-//     if (documentFormats.find(f => f.id === formatId)?.isDefault) {
-//       toast.error('Cannot remove default format');
+//     if (documentFormats.find((f) => f.id === formatId)?.isDefault) {
+//       toast.error("Cannot remove default format");
 //       return;
 //     }
-//     setDocumentFormats(prev => prev.filter(f => f.id !== formatId));
+//     setDocumentFormats((prev) => prev.filter((f) => f.id !== formatId));
 //     if (selectedFormat === formatId) {
-//       setSelectedFormat('');
+//       setSelectedFormat("");
 //     }
 //   };
 
-//   if (currentStep === 'complete') {
+//   if (currentStep === "complete") {
 //     return (
 //       <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
 //         <motion.div
@@ -264,22 +299,30 @@
 //         >
 //           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
 //             <FaCheckCircle className="mx-auto h-16 w-16 text-green-500 mb-6" />
-//             <h1 className="text-3xl font-bold text-gray-900 mb-4">Enrollment Document Successfully Signed!</h1>
+//             <h1 className="text-3xl font-bold text-gray-900 mb-4">
+//               Enrollment Document Successfully Signed!
+//             </h1>
 //             <p className="text-lg text-gray-600 mb-8">
-//               Congratulations! {selectedClient?.firstName} {selectedClient?.lastName} has been successfully enrolled as a client. The document is now legally binding.
+//               Congratulations! {selectedClient?.firstName}{" "}
+//               {selectedClient?.lastName} has been successfully enrolled as a
+//               client. The document is now legally binding.
 //             </p>
-            
+
 //             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
 //               <div className="flex items-center gap-2 text-green-700">
 //                 <FaUserCheck />
-//                 <span className="font-medium">Client: {selectedClient?.firstName} {selectedClient?.lastName}</span>
+//                 <span className="font-medium">
+//                   Client: {selectedClient?.firstName} {selectedClient?.lastName}
+//                 </span>
 //               </div>
 //               <div className="flex items-center gap-2 text-green-700 mt-1">
 //                 <FaHandshake />
-//                 <span className="font-medium">Package: {selectedPackage?.planName}</span>
+//                 <span className="font-medium">
+//                   Package: {selectedPackage?.planName}
+//                 </span>
 //               </div>
 //             </div>
-            
+
 //             <div className="flex flex-col sm:flex-row gap-4 justify-center">
 //               <button
 //                 onClick={handleDownload}
@@ -311,35 +354,104 @@
 //         transition={{ duration: 0.5 }}
 //         className="mb-8"
 //       >
-//         <h1 className="text-3xl font-bold text-gray-900">Lead Enrollment Document</h1>
-//         <p className="mt-2 text-lg text-gray-600">Admin panel for creating and managing enrollment documents</p>
-        
+//         <h1 className="text-3xl font-bold text-gray-900">
+//           Lead Enrollment Document
+//         </h1>
+//         <p className="mt-2 text-lg text-gray-600">
+//           Admin panel for creating and managing enrollment documents
+//         </p>
+
 //         {/* Progress Steps */}
 //         <div className="mt-6 flex items-center justify-center">
 //           <div className="flex items-center space-x-4">
-//             <div className={`flex items-center ${currentStep === 'admin-select' ? 'text-blue-600' : 'text-gray-400'}`}>
-//               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'admin-select' ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300'}`}>
+//             <div
+//               className={`flex items-center ${
+//                 currentStep === "admin-select"
+//                   ? "text-blue-600"
+//                   : "text-gray-400"
+//               }`}
+//             >
+//               <div
+//                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+//                   currentStep === "admin-select"
+//                     ? "border-blue-600 bg-blue-600 text-white"
+//                     : "border-gray-300"
+//                 }`}
+//               >
 //                 1
 //               </div>
 //               <span className="ml-2 font-medium">Admin Select</span>
 //             </div>
 //             <div className="w-16 h-0.5 bg-gray-300"></div>
-//             <div className={`flex items-center ${currentStep === 'review' ? 'text-blue-600' : currentStep === 'client-sign' || currentStep === 'company-sign' || currentStep === 'complete' ? 'text-green-600' : 'text-gray-400'}`}>
-//               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'review' ? 'border-blue-600 bg-blue-600 text-white' : currentStep === 'client-sign' || currentStep === 'company-sign' || currentStep === 'complete' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300'}`}>
+//             <div
+//               className={`flex items-center ${
+//                 currentStep === "review"
+//                   ? "text-blue-600"
+//                   : currentStep === "client-sign" ||
+//                     currentStep === "company-sign" ||
+//                     currentStep === "complete"
+//                   ? "text-green-600"
+//                   : "text-gray-400"
+//               }`}
+//             >
+//               <div
+//                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+//                   currentStep === "review"
+//                     ? "border-blue-600 bg-blue-600 text-white"
+//                     : currentStep === "client-sign" ||
+//                       currentStep === "company-sign" ||
+//                       currentStep === "complete"
+//                     ? "border-green-600 bg-green-600 text-white"
+//                     : "border-gray-300"
+//                 }`}
+//               >
 //                 2
 //               </div>
 //               <span className="ml-2 font-medium">Review</span>
 //             </div>
 //             <div className="w-16 h-0.5 bg-gray-300"></div>
-//             <div className={`flex items-center ${currentStep === 'client-sign' ? 'text-blue-600' : currentStep === 'company-sign' || currentStep === 'complete' ? 'text-green-600' : 'text-gray-400'}`}>
-//               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'client-sign' ? 'border-blue-600 bg-blue-600 text-white' : currentStep === 'company-sign' || currentStep === 'complete' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300'}`}>
+//             <div
+//               className={`flex items-center ${
+//                 currentStep === "client-sign"
+//                   ? "text-blue-600"
+//                   : currentStep === "company-sign" || currentStep === "complete"
+//                   ? "text-green-600"
+//                   : "text-gray-400"
+//               }`}
+//             >
+//               <div
+//                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+//                   currentStep === "client-sign"
+//                     ? "border-blue-600 bg-blue-600 text-white"
+//                     : currentStep === "company-sign" ||
+//                       currentStep === "complete"
+//                     ? "border-green-600 bg-green-600 text-white"
+//                     : "border-gray-300"
+//                 }`}
+//               >
 //                 3
 //               </div>
 //               <span className="ml-2 font-medium">Client Sign</span>
 //             </div>
 //             <div className="w-16 h-0.5 bg-gray-300"></div>
-//             <div className={`flex items-center ${currentStep === 'company-sign' ? 'text-blue-600' : currentStep === 'complete' ? 'text-green-600' : 'text-gray-400'}`}>
-//               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'company-sign' ? 'border-blue-600 bg-blue-600 text-white' : currentStep === 'complete' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300'}`}>
+//             <div
+//               className={`flex items-center ${
+//                 currentStep === "company-sign"
+//                   ? "text-blue-600"
+//                   : currentStep === "complete"
+//                   ? "text-green-600"
+//                   : "text-gray-400"
+//               }`}
+//             >
+//               <div
+//                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+//                   currentStep === "company-sign"
+//                     ? "border-blue-600 bg-blue-600 text-white"
+//                     : currentStep === "complete"
+//                     ? "border-green-600 bg-green-600 text-white"
+//                     : "border-gray-300"
+//                 }`}
+//               >
 //                 4
 //               </div>
 //               <span className="ml-2 font-medium">Company Sign</span>
@@ -350,7 +462,7 @@
 
 //       <div className="max-w-6xl mx-auto space-y-6">
 //         {/* Admin Selection Section */}
-//         {currentStep === 'admin-select' && (
+//         {currentStep === "admin-select" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -360,15 +472,21 @@
 //             <div className="flex items-center gap-3 mb-6">
 //               <FaUserTie className="text-blue-600 text-2xl" />
 //               <div>
-//                 <h2 className="text-2xl font-semibold text-gray-900">Admin Configuration</h2>
-//                 <p className="text-gray-600">Select user, document format, and package for enrollment</p>
+//                 <h2 className="text-2xl font-semibold text-gray-900">
+//                   Admin Configuration
+//                 </h2>
+//                 <p className="text-gray-600">
+//                   Select user, document format, and package for enrollment
+//                 </p>
 //               </div>
 //             </div>
 
 //             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 //               {/* User Selection */}
 //               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">Select User (Lead)</label>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Select User (Lead)
+//                 </label>
 //                 <select
 //                   value={selectedUser}
 //                   onChange={(e) => handleUserChange(e.target.value)}
@@ -385,7 +503,9 @@
 
 //               {/* Document Format Selection */}
 //               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">Document Format</label>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Document Format
+//                 </label>
 //                 <div className="flex gap-2">
 //                   <select
 //                     value={selectedFormat}
@@ -410,9 +530,13 @@
 //                 {selectedFormat && (
 //                   <div className="mt-2 flex items-center gap-2">
 //                     <span className="text-sm text-gray-500">
-//                       {documentFormats.find(f => f.id === selectedFormat)?.description}
+//                       {
+//                         documentFormats.find((f) => f.id === selectedFormat)
+//                           ?.description
+//                       }
 //                     </span>
-//                     {!documentFormats.find(f => f.id === selectedFormat)?.isDefault && (
+//                     {!documentFormats.find((f) => f.id === selectedFormat)
+//                       ?.isDefault && (
 //                       <button
 //                         onClick={() => removeFormat(selectedFormat)}
 //                         className="text-red-500 hover:text-red-700"
@@ -429,9 +553,11 @@
 //             {/* Package Selection */}
 //             {selectedUser && (
 //               <div className="mt-6">
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Package</label>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Select Package
+//                 </label>
 //                 <select
-//                   value={selectedPackage?.id || ''}
+//                   value={selectedPackage?.id || ""}
 //                   onChange={(e) => handlePackageSelect(e.target.value)}
 //                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 //                 >
@@ -460,7 +586,7 @@
 //         )}
 
 //         {/* Package Overview */}
-//         {currentStep !== 'admin-select' && selectedPackage && (
+//         {currentStep !== "admin-select" && selectedPackage && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -470,42 +596,62 @@
 //             <div className="flex items-center gap-3 mb-6">
 //               <FaFileContract className="text-blue-600 text-2xl" />
 //               <div>
-//                 <h2 className="text-2xl font-semibold text-gray-900">Package Details</h2>
+//                 <h2 className="text-2xl font-semibold text-gray-900">
+//                   Package Details
+//                 </h2>
 //                 <p className="text-gray-600">Selected package for enrollment</p>
 //               </div>
 //             </div>
 
 //             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 //               <div>
-//                 <h3 className="text-lg font-semibold text-gray-900 mb-3">{selectedPackage.planName}</h3>
-//                 <p className="text-gray-600 mb-4">{selectedPackage.description}</p>
-                
+//                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
+//                   {selectedPackage.planName}
+//                 </h3>
+//                 <p className="text-gray-600 mb-4">
+//                   {selectedPackage.description}
+//                 </p>
+
 //                 <div className="space-y-3">
 //                   <div className="flex justify-between">
 //                     <span className="text-gray-600">Enrollment Charge:</span>
-//                     <span className="font-bold text-xl text-blue-600">${selectedPackage.enrollmentCharge.toLocaleString()}</span>
+//                     <span className="font-bold text-xl text-blue-600">
+//                       ${selectedPackage.enrollmentCharge.toLocaleString()}
+//                     </span>
 //                   </div>
 //                   <div className="flex justify-between">
 //                     <span className="text-gray-600">Offer Letter Charge:</span>
-//                     <span className="font-bold text-lg text-green-600">${selectedPackage.offerLetterCharge.toLocaleString()}</span>
+//                     <span className="font-bold text-lg text-green-600">
+//                       ${selectedPackage.offerLetterCharge.toLocaleString()}
+//                     </span>
 //                   </div>
 //                   {selectedPackage.firstYearSalaryPercentage && (
 //                     <div className="flex justify-between">
-//                       <span className="text-gray-600">First Year Percentage:</span>
-//                       <span className="font-bold text-lg text-purple-600">{selectedPackage.firstYearSalaryPercentage}%</span>
+//                       <span className="text-gray-600">
+//                         First Year Percentage:
+//                       </span>
+//                       <span className="font-bold text-lg text-purple-600">
+//                         {selectedPackage.firstYearSalaryPercentage}%
+//                       </span>
 //                     </div>
 //                   )}
 //                   {selectedPackage.firstYearFixedPrice && (
 //                     <div className="flex justify-between">
-//                       <span className="text-gray-600">First Year Fixed Price:</span>
-//                       <span className="font-bold text-lg text-purple-600">${selectedPackage.firstYearFixedPrice.toLocaleString()}</span>
+//                       <span className="text-gray-600">
+//                         First Year Fixed Price:
+//                       </span>
+//                       <span className="font-bold text-lg text-purple-600">
+//                         ${selectedPackage.firstYearFixedPrice.toLocaleString()}
+//                       </span>
 //                     </div>
 //                   )}
 //                 </div>
 //               </div>
 
 //               <div>
-//                 <h4 className="font-semibold text-gray-900 mb-3">Package Features</h4>
+//                 <h4 className="font-semibold text-gray-900 mb-3">
+//                   Package Features
+//                 </h4>
 //                 <div className="grid grid-cols-1 gap-2">
 //                   {selectedPackage.features.map((feature, index) => (
 //                     <div key={index} className="flex items-center gap-2">
@@ -520,7 +666,7 @@
 //         )}
 
 //         {/* Client Details */}
-//         {currentStep !== 'admin-select' && selectedClient && (
+//         {currentStep !== "admin-select" && selectedClient && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -529,12 +675,18 @@
 //           >
 //             <div className="flex items-center gap-3 mb-4">
 //               <FaUser className="text-green-600 text-xl" />
-//               <h3 className="text-xl font-semibold text-gray-900">Client Details (Former Lead)</h3>
+//               <h3 className="text-xl font-semibold text-gray-900">
+//                 Client Details (Former Lead)
+//               </h3>
 //             </div>
 //             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Full Name</span>
-//                 <p className="text-gray-900">{selectedClient.firstName} {selectedClient.lastName}</p>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Full Name
+//                 </span>
+//                 <p className="text-gray-900">
+//                   {selectedClient.firstName} {selectedClient.lastName}
+//                 </p>
 //               </div>
 //               <div>
 //                 <span className="text-sm font-medium text-gray-500">Email</span>
@@ -545,23 +697,39 @@
 //                 <p className="text-gray-900">{selectedClient.primaryContact}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Company</span>
-//                 <p className="text-gray-900">{selectedClient.company || 'Not specified'}</p>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Company
+//                 </span>
+//                 <p className="text-gray-900">
+//                   {selectedClient.company || "Not specified"}
+//                 </p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Position</span>
-//                 <p className="text-gray-900">{selectedClient.position || 'Not specified'}</p>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Position
+//                 </span>
+//                 <p className="text-gray-900">
+//                   {selectedClient.position || "Not specified"}
+//                 </p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Technology</span>
-//                 <p className="text-gray-900">{selectedClient.technology.join(', ')}</p>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Technology
+//                 </span>
+//                 <p className="text-gray-900">
+//                   {selectedClient.technology.join(", ")}
+//                 </p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Country</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Country
+//                 </span>
 //                 <p className="text-gray-900">{selectedClient.country}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Visa Status</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Visa Status
+//                 </span>
 //                 <p className="text-gray-900">{selectedClient.visaStatus}</p>
 //               </div>
 //             </div>
@@ -569,7 +737,7 @@
 //         )}
 
 //         {/* Company Details */}
-//         {currentStep !== 'admin-select' && (
+//         {currentStep !== "admin-select" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -578,23 +746,35 @@
 //           >
 //             <div className="flex items-center gap-3 mb-4">
 //               <FaBuilding className="text-blue-600 text-xl" />
-//               <h3 className="text-xl font-semibold text-gray-900">Company Details</h3>
+//               <h3 className="text-xl font-semibold text-gray-900">
+//                 Company Details
+//               </h3>
 //             </div>
 //             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Company Name</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Company Name
+//                 </span>
 //                 <p className="text-gray-900">{companyDetails.name}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Registration Number</span>
-//                 <p className="text-gray-900">{companyDetails.registrationNumber}</p>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Registration Number
+//                 </span>
+//                 <p className="text-gray-900">
+//                   {companyDetails.registrationNumber}
+//                 </p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Representative</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Representative
+//                 </span>
 //                 <p className="text-gray-900">{companyDetails.representative}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Designation</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Designation
+//                 </span>
 //                 <p className="text-gray-900">{companyDetails.designation}</p>
 //               </div>
 //               <div>
@@ -606,11 +786,15 @@
 //                 <p className="text-gray-900">{companyDetails.phone}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Website</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Website
+//                 </span>
 //                 <p className="text-gray-900">{companyDetails.website}</p>
 //               </div>
 //               <div>
-//                 <span className="text-sm font-medium text-gray-500">Address</span>
+//                 <span className="text-sm font-medium text-gray-500">
+//                   Address
+//                 </span>
 //                 <p className="text-gray-900">{companyDetails.address}</p>
 //               </div>
 //             </div>
@@ -618,7 +802,7 @@
 //         )}
 
 //         {/* Client Signature Section */}
-//         {currentStep === 'client-sign' && (
+//         {currentStep === "client-sign" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -628,29 +812,41 @@
 //             <div className="flex items-center gap-3 mb-6">
 //               <FaSignature className="text-green-600 text-2xl" />
 //               <div>
-//                 <h3 className="text-xl font-semibold text-gray-900">Client Signature</h3>
-//                 <p className="text-gray-600">Please sign to confirm your enrollment as a client</p>
+//                 <h3 className="text-xl font-semibold text-gray-900">
+//                   Client Signature
+//                 </h3>
+//                 <p className="text-gray-600">
+//                   Please sign to confirm your enrollment as a client
+//                 </p>
 //               </div>
 //             </div>
 
 //             <div className="space-y-4">
 //               <div className="flex items-center gap-4 mb-4">
-//                 <label className="block text-sm font-medium text-gray-700">Signature Style:</label>
+//                 <label className="block text-sm font-medium text-gray-700">
+//                   Signature Style:
+//                 </label>
 //                 <div className="flex gap-2">
 //                   {[
-//                     { type: 'simple', label: 'Simple', icon: FaFont },
-//                     { type: 'cursive', label: 'Cursive', icon: FaPen },
-//                     { type: 'italic', label: 'Italic', icon: FaItalic },
-//                     { type: 'bold', label: 'Bold', icon: FaBold },
-//                     { type: 'underline', label: 'Underline', icon: FaUnderline }
+//                     { type: "simple", label: "Simple", icon: FaFont },
+//                     { type: "cursive", label: "Cursive", icon: FaPen },
+//                     { type: "italic", label: "Italic", icon: FaItalic },
+//                     { type: "bold", label: "Bold", icon: FaBold },
+//                     {
+//                       type: "underline",
+//                       label: "Underline",
+//                       icon: FaUnderline,
+//                     },
 //                   ].map(({ type, label, icon: Icon }) => (
 //                     <button
 //                       key={type}
-//                       onClick={() => handleSignatureStyleChange('clientSignatureStyle', type)}
+//                       onClick={() =>
+//                         handleSignatureStyleChange("clientSignatureStyle", type)
+//                       }
 //                       className={`p-2 border-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${
 //                         signatureData.clientSignatureStyle === type
-//                           ? 'border-green-500 bg-green-50 text-green-700'
-//                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
+//                           ? "border-green-500 bg-green-50 text-green-700"
+//                           : "border-gray-200 hover:border-gray-300 text-gray-600"
 //                       }`}
 //                     >
 //                       <Icon className="text-sm" />
@@ -659,7 +855,7 @@
 //                   ))}
 //                 </div>
 //               </div>
-              
+
 //               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
 //                 <FaSignature className="mx-auto h-12 w-12 text-gray-400 mb-4" />
 //                 <p className="text-sm text-gray-500 mb-4">
@@ -669,13 +865,21 @@
 //                   type="text"
 //                   placeholder="Enter your full name"
 //                   value={signatureData.clientSignature}
-//                   onChange={(e) => handleSignatureChange('clientSignature', e.target.value)}
+//                   onChange={(e) =>
+//                     handleSignatureChange("clientSignature", e.target.value)
+//                   }
 //                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg mb-4"
 //                 />
 //                 {signatureData.clientSignature && (
 //                   <div className="mt-4 p-4 bg-green-50 rounded-lg">
-//                     <p className="text-sm text-green-700 mb-2">Signature Preview:</p>
-//                     <p className={`text-xl ${getSignatureStyle(signatureData.clientSignatureStyle)} text-green-700`}>
+//                     <p className="text-sm text-green-700 mb-2">
+//                       Signature Preview:
+//                     </p>
+//                     <p
+//                       className={`text-xl ${getSignatureStyle(
+//                         signatureData.clientSignatureStyle
+//                       )} text-green-700`}
+//                     >
 //                       {signatureData.clientSignature}
 //                     </p>
 //                   </div>
@@ -697,7 +901,7 @@
 //         )}
 
 //         {/* Company Signature Section */}
-//         {currentStep === 'company-sign' && (
+//         {currentStep === "company-sign" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -707,29 +911,45 @@
 //             <div className="flex items-center gap-3 mb-6">
 //               <FaSignature className="text-blue-600 text-2xl" />
 //               <div>
-//                 <h3 className="text-xl font-semibold text-gray-900">Company Signature</h3>
-//                 <p className="text-gray-600">Please sign on behalf of the company to confirm this enrollment</p>
+//                 <h3 className="text-xl font-semibold text-gray-900">
+//                   Company Signature
+//                 </h3>
+//                 <p className="text-gray-600">
+//                   Please sign on behalf of the company to confirm this
+//                   enrollment
+//                 </p>
 //               </div>
 //             </div>
 
 //             <div className="space-y-4">
 //               <div className="flex items-center gap-4 mb-4">
-//                 <label className="block text-sm font-medium text-gray-700">Signature Style:</label>
+//                 <label className="block text-sm font-medium text-gray-700">
+//                   Signature Style:
+//                 </label>
 //                 <div className="flex gap-2">
 //                   {[
-//                     { type: 'simple', label: 'Simple', icon: FaFont },
-//                     { type: 'cursive', label: 'Cursive', icon: FaPen },
-//                     { type: 'italic', label: 'Italic', icon: FaItalic },
-//                     { type: 'bold', label: 'Bold', icon: FaBold },
-//                     { type: 'underline', label: 'Underline', icon: FaUnderline }
+//                     { type: "simple", label: "Simple", icon: FaFont },
+//                     { type: "cursive", label: "Cursive", icon: FaPen },
+//                     { type: "italic", label: "Italic", icon: FaItalic },
+//                     { type: "bold", label: "Bold", icon: FaBold },
+//                     {
+//                       type: "underline",
+//                       label: "Underline",
+//                       icon: FaUnderline,
+//                     },
 //                   ].map(({ type, label, icon: Icon }) => (
 //                     <button
 //                       key={type}
-//                       onClick={() => handleSignatureStyleChange('companySignatureStyle', type)}
+//                       onClick={() =>
+//                         handleSignatureStyleChange(
+//                           "companySignatureStyle",
+//                           type
+//                         )
+//                       }
 //                       className={`p-2 border-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${
 //                         signatureData.companySignatureStyle === type
-//                           ? 'border-blue-500 bg-blue-50 text-blue-700'
-//                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
+//                           ? "border-blue-500 bg-blue-50 text-blue-700"
+//                           : "border-gray-200 hover:border-gray-300 text-gray-600"
 //                       }`}
 //                     >
 //                       <Icon className="text-sm" />
@@ -738,7 +958,7 @@
 //                   ))}
 //                 </div>
 //               </div>
-              
+
 //               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
 //                 <FaSignature className="mx-auto h-12 w-12 text-gray-400 mb-4" />
 //                 <p className="text-sm text-gray-500 mb-4">
@@ -748,13 +968,21 @@
 //                   type="text"
 //                   placeholder="Enter representative's full name"
 //                   value={signatureData.companySignature}
-//                   onChange={(e) => handleSignatureChange('companySignature', e.target.value)}
+//                   onChange={(e) =>
+//                     handleSignatureChange("companySignature", e.target.value)
+//                   }
 //                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg mb-4"
 //                 />
 //                 {signatureData.companySignature && (
 //                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-//                     <p className="text-sm text-blue-700 mb-2">Signature Preview:</p>
-//                     <p className={`text-xl ${getSignatureStyle(signatureData.companySignatureStyle)} text-blue-700`}>
+//                     <p className="text-sm text-blue-700 mb-2">
+//                       Signature Preview:
+//                     </p>
+//                     <p
+//                       className={`text-xl ${getSignatureStyle(
+//                         signatureData.companySignatureStyle
+//                       )} text-blue-700`}
+//                     >
 //                       {signatureData.companySignature}
 //                     </p>
 //                   </div>
@@ -776,7 +1004,7 @@
 //         )}
 
 //         {/* Action Buttons */}
-//         {currentStep === 'review' && (
+//         {currentStep === "review" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -784,13 +1012,16 @@
 //             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
 //           >
 //             <div className="text-center">
-//               <h3 className="text-xl font-semibold text-gray-900 mb-4">Ready to Proceed?</h3>
+//               <h3 className="text-xl font-semibold text-gray-900 mb-4">
+//                 Ready to Proceed?
+//               </h3>
 //               <p className="text-gray-600 mb-6">
-//                 Please review all the details above. Once confirmed, you can proceed with the enrollment process.
+//                 Please review all the details above. Once confirmed, you can
+//                 proceed with the enrollment process.
 //               </p>
 //               <div className="flex flex-col sm:flex-row gap-4 justify-center">
 //                 <button
-//                   onClick={() => setCurrentStep('client-sign')}
+//                   onClick={() => setCurrentStep("client-sign")}
 //                   className="flex items-center gap-2 bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors text-lg font-semibold"
 //                 >
 //                   <FaHandshake />
@@ -819,7 +1050,7 @@
 //         )}
 
 //         {/* Company Signature Lock Status */}
-//         {currentStep === 'client-sign' && (
+//         {currentStep === "client-sign" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -831,13 +1062,14 @@
 //               <span className="font-medium">Company Signature Locked</span>
 //             </div>
 //             <p className="text-sm text-yellow-600 mt-1">
-//               Company signature will be unlocked once the client signs the document.
+//               Company signature will be unlocked once the client signs the
+//               document.
 //             </p>
 //           </motion.div>
 //         )}
 
 //         {/* Company Signature Unlocked Status */}
-//         {currentStep === 'company-sign' && (
+//         {currentStep === "company-sign" && (
 //           <motion.div
 //             initial={{ opacity: 0, y: 20 }}
 //             animate={{ opacity: 1, y: 0 }}
@@ -849,7 +1081,8 @@
 //               <span className="font-medium">Company Signature Unlocked</span>
 //             </div>
 //             <p className="text-sm text-green-600 mt-1">
-//               Client has signed the document. Company can now proceed with signature.
+//               Client has signed the document. Company can now proceed with
+//               signature.
 //             </p>
 //           </motion.div>
 //         )}
@@ -859,25 +1092,441 @@
 // };
 
 // export default Documentation;
+
+// import { useState } from "react";
+// import AgreementPage from "./AgreementPage";
+// import AccountSaleDoc from "./Doc";
+// import { Document, Page, pdfjs } from "react-pdf";
+// import "react-pdf/dist/Page/AnnotationLayer.css";
+// import "react-pdf/dist/Page/TextLayer.css";
+
+// pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+
+// import { useDropzone } from "react-dropzone";
+
+// pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+
+// const Documentation: React.FC = () => {
+//   const [step, setStep] = useState<
+//     "enrolled" | "upload" | "admin-sign" | "client-sign" | "review"
+//   >("enrolled");
+
+//   const [file, setFile] = useState<File | null>(null);
+//   const [numPages, setNumPages] = useState<number | null>(null);
+
+//   const onDrop = (acceptedFiles: File[]) => {
+//     if (acceptedFiles && acceptedFiles[0]) {
+//       setFile(acceptedFiles[0]);
+//     }
+//   };
+
+//   const { getRootProps, getInputProps, isDragActive } = useDropzone({
+//     onDrop,
+//     accept: { "application/pdf": [".pdf"] },
+//   });
+
+//   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+//     setNumPages(numPages);
+//   };
+
+//   const handleNext = () => {
+//     if (step === "enrolled") setStep("upload");
+//     else if (step === "upload") setStep("admin-sign");
+//     else if (step === "admin-sign") setStep("client-sign");
+//     else if (step === "client-sign") setStep("review");
+//     else if (step === "review") {
+//       alert("All Agreement steps completed!");
+//     }
+//   };
+
+//   const handlePrev = () => {
+//     if (step === "upload") setStep("enrolled");
+//     else if (step === "admin-sign") setStep("upload");
+//     else if (step === "client-sign") setStep("admin-sign");
+//     else if (step === "review") setStep("client-sign");
+//   };
+
+//   return (
+//     <div className="p-6">
+//       {/* STEP 1: Enrolled */}
+//       {step === "enrolled" && (
+//         <>
+//           <AccountSaleDoc />
+//           <div className="flex justify-end mt-6">
+//             <button
+//               onClick={handleNext}
+//               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+//             >
+//               Next ➡
+//             </button>
+//           </div>
+//         </>
+//       )}
+
+//       {/* STEP 2: Upload PDF */}
+//       {step === "upload" && (
+//         <>
+//           <div className="flex flex-col items-center">
+//             {/* Drag & Drop Box */}
+//             <div
+//               {...getRootProps()}
+//               className={`w-96 h-40 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer transition ${
+//                 isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-400"
+//               }`}
+//             >
+//               <input {...getInputProps()} />
+//               {isDragActive ? (
+//                 <p className="text-blue-500">Drop your PDF here...</p>
+//               ) : (
+//                 <p className="text-gray-500">
+//                   Drag & drop a PDF here, or{" "}
+//                   <span className="text-blue-600">browse</span>
+//                 </p>
+//               )}
+//             </div>
+
+//             {/* PDF Preview */}
+//             {file && (
+//               <div className="mt-6 w-full flex flex-col items-center">
+//                 <h3 className="mb-2 text-lg font-semibold">PDF Preview</h3>
+//                 <div className="border rounded-md p-4 shadow-lg bg-white">
+//                   <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
+//                     {Array.from(new Array(numPages), (_el, index) => (
+//                       <Page
+//                         key={`page_${index + 1}`}
+//                         pageNumber={index + 1}
+//                         renderTextLayer={false}
+//                         renderAnnotationLayer={false}
+//                         width={500}
+//                       />
+//                     ))}
+//                   </Document>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+
+//           {/* Navigation */}
+//           <div className="flex justify-between mt-6">
+//             <button
+//               onClick={handlePrev}
+//               className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+//             >
+//               ⬅ Previous
+//             </button>
+//             <button
+//               onClick={handleNext}
+//               disabled={!file} // Prevent next if no file uploaded
+//               className={`px-6 py-2 rounded-lg transition ${
+//                 file
+//                   ? "bg-blue-600 text-white hover:bg-blue-700"
+//                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
+//               }`}
+//             >
+//               Next ➡
+//             </button>
+//           </div>
+//         </>
+//       )}
+
+//       {/* STEP 3+: Agreement Flow */}
+//       {["admin-sign", "client-sign", "review"].includes(step) && (
+//         <>
+//           <AgreementPage step={step} />
+//           <div className="flex justify-between mt-6">
+//             <button
+//               onClick={handlePrev}
+//               className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+//             >
+//               ⬅ Previous
+//             </button>
+
+//             {step === "review" ? (
+//               <button
+//                 onClick={() => alert("Agreement saved & finished!")}
+//                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+//               >
+//                 ✅ Save & Finish
+//               </button>
+//             ) : (
+//               <button
+//                 onClick={handleNext}
+//                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+//               >
+//                 Next ➡
+//               </button>
+//             )}
+//           </div>
+//         </>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default Documentation;
+
+import { useState } from "react";
 import AgreementPage from "./AgreementPage";
 import AccountSaleDoc from "./Doc";
-import OpenDocumentPage from "./OpenDocumentPage";
-import SendMailPage from "./SendMailPage";
-import SignaturePage from "./SignaturePage";
-function Documentation() {
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+import { useDropzone } from "react-dropzone";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min?url";
+
+// 👇 set worker path explicitly
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+const Documentation: React.FC = () => {
+  const [step, setStep] = useState<
+    | "enrolled"
+    | "upload"
+    | "admin-sign"
+    | "client-sign"
+    | "review"
+    | "send-mail"
+    | "signature"
+    | "completed"
+  >("enrolled");
+
+  const [file, setFile] = useState<File | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  const onDrop = (acceptedFiles: File[]) => {
+    if (acceptedFiles && acceptedFiles[0]) {
+      setFile(acceptedFiles[0]);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "application/pdf": [".pdf"] },
+  });
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
+
+  const handleUploadToBackend = async () => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("pdf", file);
+
+    try {
+      const res = await fetch("http://localhost:5006/upload-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      console.log("Upload Response:", data);
+      setUploadedFileName(data.filename);
+      alert("✅ PDF uploaded successfully!");
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("❌ PDF upload failed. Check console.");
+    }
+  };
+
+  const handleSendMail = async () => {
+    if (!uploadedFileName) return alert("No file uploaded to send!");
+
+    try {
+      const res = await fetch("http://localhost:5006/send-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "shahsakshi2102@gmail.com",
+          subject: "Agreement Document",
+          text: "Please find attached agreement.",
+          pdfFile: uploadedFileName,
+        }),
+      });
+
+      const data = await res.json();
+      console.log("SendMail Response:", data);
+      if (data.success) {
+        alert("📩 Email sent successfully!");
+      } else {
+        alert("❌ Email sending failed.");
+      }
+    } catch (error) {
+      console.error("SendMail failed:", error);
+    }
+  };
+
+  const handleNext = () => {
+    if (step === "enrolled") setStep("upload");
+    else if (step === "upload") setStep("admin-sign");
+    else if (step === "admin-sign") setStep("client-sign");
+    else if (step === "client-sign") setStep("review");
+    else if (step === "review") setStep("send-mail");
+    else if (step === "send-mail") setStep("signature");
+    else if (step === "signature") setStep("completed");
+  };
+
+  const handlePrev = () => {
+    if (step === "upload") setStep("enrolled");
+    else if (step === "admin-sign") setStep("upload");
+    else if (step === "client-sign") setStep("admin-sign");
+    else if (step === "review") setStep("client-sign");
+    else if (step === "send-mail") setStep("review");
+    else if (step === "signature") setStep("send-mail");
+    else if (step === "completed") setStep("signature");
+  };
+
   return (
-    <div>
-      <h1>Documentation</h1>
-      {/* Other doc fields */}
-      <AccountSaleDoc/>
-      <AgreementPage/>
-      <OpenDocumentPage/>
-      <SendMailPage/>
-      <SignaturePage/>
-     
-      
+    <div className="p-6">
+      {/* STEP 1: Enrolled */}
+      {step === "enrolled" && (
+        <>
+          <AccountSaleDoc />
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={handleNext}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Next ➡
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* STEP 2: Upload PDF */}
+      {step === "upload" && (
+        <>
+          <div className="flex flex-col items-center">
+            <div
+              {...getRootProps()}
+              className={`w-96 h-40 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer transition ${
+                isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-400"
+              }`}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <p className="text-blue-500">Drop your PDF here...</p>
+              ) : (
+                <p className="text-gray-500">
+                  Drag & drop a PDF here, or{" "}
+                  <span className="text-blue-600">browse</span>
+                </p>
+              )}
+            </div>
+
+            {/* PDF Preview */}
+            {file && (
+              <div className="mt-6 w-full flex flex-col items-center">
+                <h3 className="mb-2 text-lg font-semibold">PDF Preview</h3>
+                <div className="border rounded-md p-4 shadow-lg bg-white">
+                  <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
+                    {Array.from(new Array(numPages), (_el, index) => (
+                      <Page
+                        key={`page_${index + 1}`}
+                        pageNumber={index + 1}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        width={500}
+                      />
+                    ))}
+                  </Document>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={handlePrev}
+              className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+            >
+              ⬅ Previous
+            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleUploadToBackend}
+                disabled={!file}
+                className={`px-6 py-2 rounded-lg transition ${
+                  file
+                    ? "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                ⬆ Upload
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={!file}
+                className={`px-6 py-2 rounded-lg transition ${
+                  file
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Next ➡
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* STEP 3+: Agreement Flow */}
+      {[
+        "admin-sign",
+        "client-sign",
+        "review",
+        "send-mail",
+        "signature",
+      ].includes(step) && (
+        <>
+          <AgreementPage step={step} />
+
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={handlePrev}
+              className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+            >
+              ⬅ Previous
+            </button>
+
+            {step === "send-mail" ? (
+              <button
+                onClick={handleSendMail}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              >
+                📩 Send Mail
+              </button>
+            ) : step === "review" ? (
+              <button
+                onClick={handleNext}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                ✅ Save & Continue
+              </button>
+            ) : step === "completed" ? null : (
+              <button
+                onClick={handleNext}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Next ➡
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* STEP 8: Completed */}
+      {step === "completed" && (
+        <div className="text-center p-10">
+          <h2 className="text-2xl font-bold text-green-600 mb-4">
+            🎉 Process Completed!
+          </h2>
+          <p className="text-gray-700">All steps are done successfully.</p>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default Documentation;
