@@ -1,6 +1,13 @@
 import ResumeChecklist from "../models/resumeChecklistModel.js";
 import { ValidationError, UniqueConstraintError, Op } from "sequelize";
 import User from "../models/userModel.js";
+import ClientUser from "../models/clientUserModel.js";
+import EnrolledClients from "../models/enrolledClientsModel.js";
+import fs from 'fs';
+import { promisify } from 'util';
+import path from 'path';
+
+const unlinkAsync = promisify(fs.unlink);
 
 // Create Resume Checklist
 export const createResumeChecklist = async (req, res) => {
@@ -79,6 +86,22 @@ export const createResumeChecklist = async (req, res) => {
       }
     }
 
+    // Get enrolled client resume if clientUserId exists
+    let defaultResumePath = null;
+    if (req.user.clientUserId) {
+      const clientUser = await ClientUser.findByPk(req.user.clientUserId, {
+        include: [{
+          model: EnrolledClients,
+          as: 'enrolledClient',
+          attributes: ['id', 'resume']
+        }]
+      });
+      
+      if (clientUser?.enrolledClient?.resume) {
+        defaultResumePath = clientUser.enrolledClient.resume;
+      }
+    }
+
     // Create resume checklist data object
     const checklistData = {
       personalInformation,
@@ -90,6 +113,8 @@ export const createResumeChecklist = async (req, res) => {
       remarks: remarks || null,
       status: status || 'draft',
       clientUserId: req.user.clientUserId || null,
+      resume: defaultResumePath, // Set default resume from enrolled client
+      isResumeUpdated: false, // Not updated yet
       createdBy: req.user.id,
       updatedBy: null
     };
@@ -575,6 +600,195 @@ export const getResumeChecklistFilterOptions = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error occurred while getting filter options'
+    });
+  }
+};
+
+// Get resume from enrolled client for checklist creation
+export const getEnrolledClientResume = async (req, res) => {
+  try {
+    const { clientUserId } = req.params;
+    
+    // Find the client user
+    const clientUser = await ClientUser.findByPk(clientUserId, {
+      include: [{
+        model: EnrolledClients,
+        as: 'enrolledClient',
+        attributes: ['id', 'resume']
+      }]
+    });
+
+    if (!clientUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client user not found'
+      });
+    }
+
+    const resumePath = clientUser.enrolledClient?.resume || null;
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        resumePath,
+        hasResume: !!resumePath
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching enrolled client resume:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get resume from enrolled client for current user
+export const getCurrentUserEnrolledClientResume = async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Find the client user by the authenticated user's ID
+    const clientUser = await ClientUser.findOne({
+      where: { id: req.user.id },
+      include: [{
+        model: EnrolledClients,
+        as: 'enrolledClient',
+        attributes: ['id', 'resume']
+      }]
+    });
+
+    if (!clientUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client user not found'
+      });
+    }
+
+    const resumePath = clientUser.enrolledClient?.resume || null;
+    const enrolledClientId = clientUser.enrolledClient?.id || null;
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        resumePath,
+        hasResume: !!resumePath,
+        enrolledClientId
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching current user enrolled client resume:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Upload resume for checklist (only during creation)
+export const uploadChecklistResume = async (req, res) => {
+  try {
+    const { checklistId } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No resume file provided'
+      });
+    }
+
+    const checklist = await ResumeChecklist.findByPk(checklistId);
+    if (!checklist) {
+      // Delete uploaded file if checklist not found
+      await unlinkAsync(req.file.path);
+      return res.status(404).json({
+        success: false,
+        message: 'Resume checklist not found'
+      });
+    }
+
+    // Check if resume has already been updated
+    if (checklist.isResumeUpdated) {
+      await unlinkAsync(req.file.path);
+      return res.status(400).json({
+        success: false,
+        message: 'Resume can only be updated once during checklist creation'
+      });
+    }
+
+    // Delete old resume if exists
+    if (checklist.resume) {
+      try {
+        await unlinkAsync(checklist.resume);
+      } catch (error) {
+        console.error('Error deleting old resume:', error);
+      }
+    }
+
+    // Normalize path with forward slashes
+    const normalizedPath = req.file.path.split(path.sep).join('/');
+
+    // Update resume path and mark as updated
+    await checklist.update({
+      resume: normalizedPath,
+      isResumeUpdated: true,
+      updatedBy: req.user.id
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume uploaded successfully',
+      data: {
+        resumePath: checklist.resume
+      }
+    });
+
+  } catch (error) {
+    // Delete uploaded file if error occurs
+    if (req.file) {
+      try {
+        await unlinkAsync(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting file after upload error:', unlinkError);
+      }
+    }
+    console.error('Error uploading checklist resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Serve checklist resume file
+export const serveChecklistResume = async (req, res) => {
+  try {
+    const { checklistId } = req.params;
+    
+    const checklist = await ResumeChecklist.findByPk(checklistId);
+    if (!checklist || !checklist.resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume not found'
+      });
+    }
+
+    // Send the file
+    res.sendFile(checklist.resume, { root: '.' });
+
+  } catch (error) {
+    console.error('Error serving checklist resume:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
     });
   }
 };

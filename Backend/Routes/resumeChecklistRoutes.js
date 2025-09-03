@@ -6,10 +6,15 @@ import {
   updateResumeChecklist,
   updateResumeChecklistStatus,
   deleteResumeChecklist,
-  getResumeChecklistFilterOptions
+  getResumeChecklistFilterOptions,
+  getEnrolledClientResume,
+  getCurrentUserEnrolledClientResume,
+  uploadChecklistResume,
+  serveChecklistResume
 } from '../controllers/resumeChecklistController.js'
 import express from 'express'
 import authenticate from '../middleware/auth.js'
+import { resumeUpload } from '../config/multerconfig.js'
 
 const resumeChecklistRoute = express.Router()
 
@@ -39,5 +44,17 @@ resumeChecklistRoute.patch("/:id/status", authenticate, updateResumeChecklistSta
 
 // Delete resume checklist
 resumeChecklistRoute.delete("/:id", authenticate, deleteResumeChecklist)
+
+// Get resume from enrolled client for checklist creation
+resumeChecklistRoute.get("/client/:clientUserId/resume", authenticate, getEnrolledClientResume)
+
+// Get resume from enrolled client for current user
+resumeChecklistRoute.get("/client/resume", authenticate, getCurrentUserEnrolledClientResume)
+
+// Upload resume for checklist (only during creation)
+resumeChecklistRoute.post("/:checklistId/resume", authenticate, resumeUpload.single('resume'), uploadChecklistResume)
+
+// Serve checklist resume file
+resumeChecklistRoute.get("/:checklistId/resume", serveChecklistResume)
 
 export default resumeChecklistRoute

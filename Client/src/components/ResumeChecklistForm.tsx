@@ -18,6 +18,12 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [enrolledClientResume, setEnrolledClientResume] = useState<string | null>(null);
+  const [enrolledClientId, setEnrolledClientId] = useState<number | null>(null);
+  const [selectedResume, setSelectedResume] = useState<File | null>(null);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [showResumePreview, setShowResumePreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateResumeChecklistRequest>({
     personalInformation: {
       fullName: '',
@@ -65,6 +71,7 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
 
   const sections = [
     'Personal Information',
+    'Resume Upload',
     'Educational Information', 
     'Technical Information',
     'Current Information',
@@ -85,8 +92,23 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
         remarks: existingChecklist.remarks || '',
         status: existingChecklist.status
       });
+    } else {
+      // Only fetch enrolled client resume during creation, not edit
+      fetchEnrolledClientResume();
     }
   }, [existingChecklist]);
+
+  const fetchEnrolledClientResume = async () => {
+    try {
+      const response = await resumeChecklistService.getEnrolledClientResume();
+      if (response.success && response.data) {
+        setEnrolledClientResume(response.data.resumePath);
+        setEnrolledClientId(response.data.enrolledClientId);
+      }
+    } catch (error) {
+      console.error('Error fetching enrolled client resume:', error);
+    }
+  };
 
   const handleInputChange = (section: string, field: string, value: any, index?: number) => {
     setFormData(prev => {
@@ -210,6 +232,45 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
     }));
   };
 
+  const handleResumeUpload = async (file: File) => {
+    setIsUploadingResume(true);
+    try {
+      setSelectedResume(file);
+    } catch (error) {
+      console.error('Error selecting resume:', error);
+      alert('Failed to select resume. Please try again.');
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+
+  const handleResumePreview = async (resumePath: string | null) => {
+    if (!resumePath || !enrolledClientId) {
+      alert('No resume available');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:5006/api/enrolled-clients/${enrolledClientId}/resume`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        setPreviewUrl(url);
+        setShowResumePreview(true);
+      } else {
+        alert('Failed to load resume');
+      }
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+      alert('Failed to load resume');
+    }
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
@@ -221,6 +282,15 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
       }
       
       if (result.success && result.data) {
+        // Upload resume if selected
+        if (selectedResume && result.data.id) {
+          try {
+            await resumeChecklistService.uploadChecklistResume(result.data.id, selectedResume);
+          } catch (error) {
+            console.error('Error uploading resume:', error);
+            alert('Resume checklist saved but failed to upload resume. Please try uploading again.');
+          }
+        }
         onSave(result.data);
       }
     } catch (error) {
@@ -750,6 +820,83 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
     </div>
   );
 
+  const renderResumeUpload = () => (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-gray-900">Resume Upload</h3>
+      
+      {/* Enrolled Client Resume Section - Only show during creation */}
+      {!existingChecklist && enrolledClientResume && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-md font-medium text-blue-900 mb-3">Resume from Sales Team</h4>
+          <p className="text-sm text-blue-700 mb-4">
+            A resume has been uploaded by the sales team. You can use this resume or upload a new one.
+          </p>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => handleResumePreview(enrolledClientResume)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              View Sales Resume
+            </button>
+            <span className="text-sm text-blue-600 font-medium">✓ Available</span>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Upload Section */}
+      <div className="border border-gray-200 rounded-lg p-6">
+        <h4 className="text-md font-medium text-gray-900 mb-4">
+          {existingChecklist ? 'Update Resume' : 'Upload Your Resume'}
+        </h4>
+        
+        {selectedResume ? (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-green-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-medium">{selectedResume.name}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedResume(null)}
+              className="text-red-600 hover:text-red-800 text-sm"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <label className="flex justify-center px-4 py-8 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-gray-50 cursor-pointer">
+            <input
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleResumeUpload(file);
+              }}
+              disabled={isUploadingResume}
+            />
+            <div className="space-y-2 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-sm text-gray-600">
+                <span className="text-blue-600">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-gray-500">PDF up to 5MB</p>
+            </div>
+          </label>
+        )}
+      </div>
+    </div>
+  );
+
   const renderRemarks = () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Remarks</h3>
@@ -772,12 +919,13 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
   const renderCurrentSection = () => {
     switch (currentSection) {
       case 0: return renderPersonalInformation();
-      case 1: return renderEducationalInformation();
-      case 2: return renderTechnicalInformation();
-      case 3: return renderCurrentInformation();
-      case 4: return renderAddressHistory();
-      case 5: return renderVisaExperienceCertificate();
-      case 6: return renderRemarks();
+      case 1: return renderResumeUpload();
+      case 2: return renderEducationalInformation();
+      case 3: return renderTechnicalInformation();
+      case 4: return renderCurrentInformation();
+      case 5: return renderAddressHistory();
+      case 6: return renderVisaExperienceCertificate();
+      case 7: return renderRemarks();
       default: return null;
     }
   };
@@ -849,6 +997,38 @@ const ResumeChecklistForm: React.FC<ResumeChecklistFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Resume Preview Modal */}
+      {showResumePreview && previewUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Resume Preview</h2>
+              <button
+                onClick={() => {
+                  setShowResumePreview(false);
+                  if (previewUrl) {
+                    window.URL.revokeObjectURL(previewUrl);
+                    setPreviewUrl(null);
+                  }
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 h-full">
+              <iframe
+                src={previewUrl}
+                className="w-full h-full rounded-lg border-0"
+                title="Resume Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

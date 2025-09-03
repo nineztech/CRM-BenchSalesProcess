@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection.js";
+import path from "path";
 
 const ResumeChecklist = sequelize.define(
   "resume_checklists",
@@ -198,6 +199,15 @@ const ResumeChecklist = sequelize.define(
         model: 'users',
         key: 'id'
       }
+    },
+    resume: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    isResumeUpdated: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   },
   {

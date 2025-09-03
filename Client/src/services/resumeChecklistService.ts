@@ -79,6 +79,8 @@ export interface ResumeChecklist {
   updatedBy?: number;
   createdAt?: string;
   updatedAt?: string;
+  resume?: string | null;
+  isResumeUpdated?: boolean;
 }
 
 export interface CreateResumeChecklistRequest {
@@ -230,6 +232,71 @@ class ResumeChecklistService {
       return result;
     } catch (error) {
       console.error('Error deleting resume checklist:', error);
+      throw error;
+    }
+  }
+
+  async getEnrolledClientResume(): Promise<ApiResponse<{ resumePath: string | null; hasResume: boolean; enrolledClientId: number | null }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/resume-checklists/client/resume`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch enrolled client resume');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching enrolled client resume:', error);
+      throw error;
+    }
+  }
+
+  async uploadChecklistResume(checklistId: number, file: File): Promise<ApiResponse<{ resumePath: string }>> {
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE_URL}/resume-checklists/${checklistId}/resume`, {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to upload resume');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      throw error;
+    }
+  }
+
+  async getChecklistResume(checklistId: number): Promise<Blob> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/resume-checklists/${checklistId}/resume`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch resume');
+      }
+
+      return await response.blob();
+    } catch (error) {
+      console.error('Error fetching resume:', error);
       throw error;
     }
   }

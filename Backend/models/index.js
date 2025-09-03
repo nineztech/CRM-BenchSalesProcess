@@ -467,6 +467,19 @@ ClientUser.hasMany(ResumeChecklist, {
   as: 'resumeChecklists'
 });
 
+// ClientUser associations with EnrolledClients
+ClientUser.belongsTo(EnrolledClients, {
+  foreignKey: 'enrolled_client_id',
+  as: 'enrolledClient',
+  onDelete: 'CASCADE'
+});
+
+EnrolledClients.hasOne(ClientUser, {
+  foreignKey: 'enrolled_client_id',
+  as: 'clientUser',
+  onDelete: 'CASCADE'
+});
+
 // Function to sync all models in the correct order
 export const syncModels = async () => {
   try {
