@@ -32,7 +32,7 @@ import AccountSale from "../components/user/finance/AccountSale";
 import AccountAdmin from "../components/user/finance/AccountAdmin";
 import PaymentControl from "../components/user/finance/PaymentControl";
 import Documentation from "../components/common/Documentation/Documentation";
-
+// import "../components/common/Documentation/Agreemnetcss.css"
 // import AgreementPage from "../components/common/Documentation/AgreementPage";
 // import SignaturePage from "../components/common/Documentation/SignaturePage";
 // import OpenDocumentPage from "../components/common/Documentation/OpenDocumentPage";

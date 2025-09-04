@@ -1590,3 +1590,366 @@ const Documentation: React.FC = () => {
 };
 
 export default Documentation;
+
+// import React, { useState, useRef, useEffect } from 'react';
+
+// interface SignatureData {
+//   type: 'typed' | 'drawn' | 'uploaded';
+//   data: string;
+//   timestamp?: Date;
+// }
+
+// interface SignatureOption {
+//   id: string;
+//   label: string;
+//   icon: string;
+// }
+
+// interface FontOption {
+//   id: string;
+//   label: string;
+//   style: React.CSSProperties;
+// }
+
+// const AgreementWithSignature: React.FC = () => {
+//   const [activeTab, setActiveTab] = useState<'type' | 'draw' | 'upload'>('type');
+//   const [signatureText, setSignatureText] = useState<string>('');
+//   const [selectedFont, setSelectedFont] = useState<string>('cursive');
+//   const [signatureHistory, setSignatureHistory] = useState<SignatureData[]>([]);
+//   const [signaturePreview, setSignaturePreview] = useState<string>('');
+//   const canvasRef = useRef<HTMLCanvasElement>(null);
+//   const [isDrawing, setIsDrawing] = useState<boolean>(false);
+
+//   const signatureOptions: SignatureOption[] = [
+//     { id: 'type', label: 'Type', icon: 'text_fields' },
+//     { id: 'draw', label: 'Draw', icon: 'edit' },
+//     { id: 'upload', label: 'Upload', icon: 'cloud_upload' }
+//   ];
+
+//   const fontOptions: FontOption[] = [
+//     { 
+//       id: 'cursive', 
+//       label: 'Cursive', 
+//       style: { fontFamily: 'Dancing Script, cursive', fontSize: '24px' } 
+//     },
+//     { 
+//       id: 'simple', 
+//       label: 'Simple', 
+//       style: { fontFamily: 'Arial, sans-serif', fontSize: '18px' } 
+//     },
+//     { 
+//       id: 'bold', 
+//       label: 'Bold', 
+//       style: { fontFamily: 'Arial, sans-serif', fontSize: '20px', fontWeight: 'bold' } 
+//     },
+//     { 
+//       id: 'taille', 
+//       label: 'Taille', 
+//       style: { fontFamily: 'Times New Roman, serif', fontSize: '22px', fontStyle: 'italic' } 
+//     }
+//   ];
+
+//   // Initialize canvas
+//   useEffect(() => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+
+//     const context = canvas.getContext('2d');
+//     if (!context) return;
+
+//     // Set canvas size
+//     const resizeCanvas = () => {
+//       const ratio = window.devicePixelRatio || 1;
+//       canvas.width = canvas.offsetWidth * ratio;
+//       canvas.height = canvas.offsetHeight * ratio;
+//       context.scale(ratio, ratio);
+//     };
+
+//     resizeCanvas();
+//     window.addEventListener('resize', resizeCanvas);
+
+//     return () => {
+//       window.removeEventListener('resize', resizeCanvas);
+//     };
+//   }, []);
+
+//   // Handle drawing on canvas
+//   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+
+//     const context = canvas.getContext('2d');
+//     if (!context) return;
+
+//     setIsDrawing(true);
+    
+//     let clientX, clientY;
+//     if ('touches' in e) {
+//       clientX = e.touches[0].clientX;
+//       clientY = e.touches[0].clientY;
+//     } else {
+//       clientX = e.clientX;
+//       clientY = e.clientY;
+//     }
+    
+//     const rect = canvas.getBoundingClientRect();
+//     const x = clientX - rect.left;
+//     const y = clientY - rect.top;
+    
+//     context.beginPath();
+//     context.moveTo(x, y);
+//   };
+
+//   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+//     if (!isDrawing) return;
+    
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+
+//     const context = canvas.getContext('2d');
+//     if (!context) return;
+
+//     let clientX, clientY;
+//     if ('touches' in e) {
+//       clientX = e.touches[0].clientX;
+//       clientY = e.touches[0].clientY;
+//     } else {
+//       clientX = e.clientX;
+//       clientY = e.clientY;
+//     }
+    
+//     const rect = canvas.getBoundingClientRect();
+//     const x = clientX - rect.left;
+//     const y = clientY - rect.top;
+    
+//     context.lineTo(x, y);
+//     context.strokeStyle = '#000000';
+//     context.lineWidth = 2;
+//     context.stroke();
+//   };
+
+//   const stopDrawing = () => {
+//     setIsDrawing(false);
+//   };
+
+//   const clearCanvas = () => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+
+//     const context = canvas.getContext('2d');
+//     if (!context) return;
+
+//     context.clearRect(0, 0, canvas.width, canvas.height);
+//   };
+
+//   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0];
+//     if (!file) return;
+
+//     const reader = new FileReader();
+//     reader.onload = (event) => {
+//       if (event.target?.result) {
+//         setSignaturePreview(event.target.result as string);
+//       }
+//     };
+//     reader.readAsDataURL(file);
+//   };
+
+//   const applySignature = () => {
+//     let signatureData = '';
+
+//     if (activeTab === 'type' && signatureText) {
+//       const fontStyle = fontOptions.find(font => font.id === selectedFont)?.style || {};
+//       signatureData = JSON.stringify({ text: signatureText, style: fontStyle });
+      
+//       setSignatureHistory(prev => [...prev, {
+//         type: 'typed',
+//         data: signatureData,
+//         timestamp: new Date()
+//       }]);
+//     } 
+//     else if (activeTab === 'draw') {
+//       const canvas = canvasRef.current;
+//       if (!canvas) return;
+
+//       signatureData = canvas.toDataURL();
+//       setSignatureHistory(prev => [...prev, {
+//         type: 'drawn',
+//         data: signatureData,
+//         timestamp: new Date()
+//       }]);
+//     }
+//     else if (activeTab === 'upload' && signaturePreview) {
+//       setSignatureHistory(prev => [...prev, {
+//         type: 'uploaded',
+//         data: signaturePreview,
+//         timestamp: new Date()
+//       }]);
+//     }
+
+//     // For demo purposes, just show the latest signature
+//     if (signatureData) {
+//       setSignaturePreview(signatureData);
+//     }
+//   };
+
+//   const selectHistorySignature = (signature: SignatureData) => {
+//     setSignaturePreview(signature.data);
+//   };
+
+//   return (
+//     <div className="agreement-container">
+//       <div className="agreement-content">
+//         <div className="agreement-header">
+//           <h1>OPPZ CRM Pro</h1>
+//           <h2>Agreement Document</h2>
+//         </div>
+        
+//         <div className="agreement-text">
+//           <h3>Software License Agreement</h3>
+//           <p>This Software License Agreement (the "Agreement") is entered into as of [Date] (the "Effective Date") by and between OPPZ CRM Pro, with an address at [Address] ("Licensor"), and the client who accepts this agreement ("Licensee").</p>
+          
+//           <h4>1. License Grant</h4>
+//           <p>Subject to the terms of this Agreement, Licensor grants to Licensee a non-exclusive, non-transferable license to use the OPPZ CRM Pro software (the "Software").</p>
+          
+//           <h4>2. Restrictions</h4>
+//           <p>Licensee shall not: (a) modify, adapt, alter, translate, or create derivative works of the Software; (b) sublicense, lease, rent, loan, or otherwise transfer the Software to any third party; (c) reverse engineer, decompile, disassemble, or otherwise attempt to derive the source code for the Software.</p>
+          
+//           <h4>3. Ownership</h4>
+//           <p>The Software is licensed, not sold. Licensor retains all right, title, and interest in and to the Software, including all intellectual property rights therein.</p>
+          
+//           <h4>4. Term and Termination</h4>
+//           <p>This Agreement is effective until terminated. Licensee may terminate it at any time by destroying all copies of the Software. This Agreement will terminate immediately without notice from Licensor if Licensee fails to comply with any provision of this Agreement.</p>
+          
+//           <h4>5. Disclaimer of Warranty</h4>
+//           <p>The Software is provided "AS IS" without warranty of any kind. Licensor disclaims all warranties, either express or implied, including, but not limited to, implied warranties of merchantability and fitness for a particular purpose.</p>
+          
+//           <p>By signing below, Licensee acknowledges that they have read this Agreement, understand it, and agree to be bound by its terms and conditions.</p>
+//         </div>
+        
+//         <div className="signature-preview">
+//           {signaturePreview ? (
+//             signaturePreview.startsWith('data:image') ? (
+//               <img src={signaturePreview} alt="Signature" />
+//             ) : (
+//               <div style={JSON.parse(signaturePreview).style}>
+//                 {JSON.parse(signaturePreview).text}
+//               </div>
+//             )
+//           ) : (
+//             <p>Signature will appear here after signing</p>
+//           )}
+//         </div>
+//       </div>
+      
+//       <div className="signature-panel">
+//         <div className="signature-header">
+//           <h3>Sign Document</h3>
+//         </div>
+        
+//         <div className="signature-options">
+//           {signatureOptions.map(option => (
+//             <div
+//               key={option.id}
+//               className={`signature-option ${activeTab === option.id ? 'active' : ''}`}
+//               onClick={() => setActiveTab(option.id as 'type' | 'draw' | 'upload')}
+//             >
+//               <span className="material-icons">{option.icon}</span>
+//               <span>{option.label}</span>
+//             </div>
+//           ))}
+//         </div>
+        
+//         <div className="signature-tab-content">
+//           {activeTab === 'type' && (
+//             <div className="type-signature">
+//               <input
+//                 type="text"
+//                 placeholder="Enter your full name"
+//                 value={signatureText}
+//                 onChange={(e) => setSignatureText(e.target.value)}
+//               />
+              
+//               <div className="font-options">
+//                 {fontOptions.map(font => (
+//                   <div
+//                     key={font.id}
+//                     className={`font-option ${selectedFont === font.id ? 'active' : ''}`}
+//                     onClick={() => setSelectedFont(font.id)}
+//                     style={font.style}
+//                   >
+//                     {font.label}
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+          
+//           {activeTab === 'draw' && (
+//             <div className="draw-signature">
+//               <canvas
+//                 ref={canvasRef}
+//                 onMouseDown={startDrawing}
+//                 onMouseMove={draw}
+//                 onMouseUp={stopDrawing}
+//                 onMouseLeave={stopDrawing}
+//                 onTouchStart={startDrawing}
+//                 onTouchMove={draw}
+//                 onTouchEnd={stopDrawing}
+//               />
+//               <button className="clear-button" onClick={clearCanvas}>
+//                 Clear
+//               </button>
+//             </div>
+//           )}
+          
+//           {activeTab === 'upload' && (
+//             <div className="upload-signature">
+//               <input
+//                 type="file"
+//                 id="signature-upload"
+//                 accept="image/*"
+//                 onChange={handleFileUpload}
+//               />
+//               <label htmlFor="signature-upload">
+//                 <span className="material-icons">cloud_upload</span>
+//                 <p>Click to upload signature image</p>
+//               </label>
+//             </div>
+//           )}
+//         </div>
+        
+//         <div className="action-buttons">
+//           <button className="apply-button" onClick={applySignature}>
+//             Apply Signature
+//           </button>
+//           <button className="cancel-button">
+//             Cancel
+//           </button>
+//         </div>
+        
+//         <div className="signature-history">
+//           <h4>Signature History</h4>
+//           {signatureHistory.map((signature, index) => (
+//             <div
+//               key={index}
+//               className="signature-history-item"
+//               onClick={() => selectHistorySignature(signature)}
+//             >
+//               {signature.type === 'typed' ? (
+//                 <div style={JSON.parse(signature.data).style}>
+//                   {JSON.parse(signature.data).text}
+//                 </div>
+//               ) : (
+//                 <img src={signature.data} alt="Signature" />
+//               )}
+//               <span>{new Date(signature.timestamp!).toLocaleString()}</span>
+//             </div>
+//           ))}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default AgreementWithSignature;

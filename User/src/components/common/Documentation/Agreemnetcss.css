@@ -1,0 +1,281 @@
+.agreement-container {
+  display: flex;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.agreement-content {
+  flex: 7;
+  padding: 30px;
+  border-right: 1px solid #eaeaea;
+}
+
+.signature-panel {
+  flex: 3;
+  padding: 30px;
+  background: #f9fafb;
+}
+
+.agreement-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #2c7be5;
+}
+
+.agreement-header h1 {
+  color: #2c7be5;
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.agreement-header h2 {
+  color: #555;
+  font-weight: 500;
+}
+
+.agreement-text {
+  height: 500px;
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  background: #fafafa;
+  margin-bottom: 25px;
+}
+
+.agreement-text p {
+  margin-bottom: 15px;
+}
+
+.signature-preview {
+  text-align: center;
+  padding: 20px;
+  border: 1px dashed #2c7be5;
+  border-radius: 8px;
+  background: #f0f7ff;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.signature-preview img {
+  max-width: 100%;
+  max-height: 80px;
+}
+
+.signature-header {
+  margin-bottom: 20px;
+  color: #2c7be5;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.signature-options {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.signature-option {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  margin: 0 5px;
+  border: 2px solid #eaeaea;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.signature-option.active {
+  border-color: #2c7be5;
+  background: #f0f7ff;
+}
+
+.signature-option .material-icons {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #6c757d;
+}
+
+.signature-option.active .material-icons {
+  color: #2c7be5;
+}
+
+.signature-tab-content {
+  margin-bottom: 20px;
+}
+
+.type-signature input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  margin-bottom: 15px;
+}
+
+.font-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.font-option {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.font-option.active {
+  background: #2c7be5;
+  color: white;
+  border-color: #2c7be5;
+}
+
+.draw-signature {
+  text-align: center;
+}
+
+.draw-signature canvas {
+  width: 100%;
+  height: 150px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  background: white;
+  touch-action: none;
+}
+
+.clear-button {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.upload-signature input {
+  display: none;
+}
+
+.upload-signature label {
+  display: block;
+  padding: 40px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.upload-signature label:hover {
+  border-color: #2c7be5;
+}
+
+.upload-signature .material-icons {
+  font-size: 32px;
+  margin-bottom: 10px;
+  color: #6c757d;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.apply-button {
+  padding: 12px 20px;
+  background: #2c7be5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  flex: 2;
+}
+
+.apply-button:hover {
+  background: #1a68d1;
+}
+
+.cancel-button {
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid #6c757d;
+  color: #6c757d;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.cancel-button:hover {
+  background: #6c757d;
+  color: white;
+}
+
+.signature-history {
+  margin-top: 30px;
+}
+
+.signature-history h4 {
+  margin-bottom: 15px;
+  color: #555;
+}
+
+.signature-history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: white;
+  cursor: pointer;
+}
+
+.signature-history-item:hover {
+  border-color: #2c7be5;
+}
+
+.signature-history-item img {
+  width: 100px;
+  height: 50px;
+  margin-bottom: 8px;
+  object-fit: contain;
+}
+
+.signature-history-item span {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+@media (max-width: 992px) {
+  .agreement-container {
+    flex-direction: column;
+  }
+  
+  .agreement-content {
+    border-right: none;
+    border-bottom: 1px solid #eaeaea;
+  }
+}
+
+/* Add material icons */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap');
