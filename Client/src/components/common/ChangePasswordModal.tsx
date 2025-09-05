@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -16,17 +17,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const handleSendOtp = async () => {
     if (!email) {
-      setError('Please enter your email address');
+      toast.error('Please enter your email address');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const response = await fetch('/api/clientusers/send-change-password-otp', {
@@ -40,14 +38,13 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('OTP sent successfully to your email');
+        toast.success('OTP sent successfully to your email');
         setStep('otp');
-        setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError(data.message || 'Failed to send OTP');
+        toast.error(data.message || 'Failed to send OTP');
       }
     } catch (error) {
-      setError('Failed to send OTP. Please try again.');
+      toast.error('Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -55,12 +52,11 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 
   const handleVerifyOtp = async () => {
     if (!otp) {
-      setError('Please enter the OTP');
+      toast.error('Please enter the OTP');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const response = await fetch('/api/clientusers/verify-change-password-otp', {
@@ -74,14 +70,13 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('OTP verified successfully');
+        toast.success('OTP verified successfully');
         setStep('password');
-        setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError(data.message || 'Invalid OTP');
+        toast.error(data.message || 'Invalid OTP');
       }
     } catch (error) {
-      setError('Failed to verify OTP. Please try again.');
+      toast.error('Failed to verify OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -89,22 +84,21 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
-      setError('Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const response = await fetch('/api/clientusers/change-password', {
@@ -118,17 +112,17 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('Password changed successfully!');
+        toast.success('Password changed successfully!');
         setTimeout(() => {
           onClose();
           // Refresh the page or update user state
           window.location.reload();
         }, 2000);
       } else {
-        setError(data.message || 'Failed to change password');
+        toast.error(data.message || 'Failed to change password');
       }
     } catch (error) {
-      setError('Failed to change password. Please try again.');
+      toast.error('Failed to change password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -137,8 +131,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl max-w-md w-full mx-4 border border-white/20">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Change Password</h2>
@@ -152,17 +146,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 
         {/* Content */}
         <div className="p-6">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-green-600 text-sm">{success}</p>
-            </div>
-          )}
 
           {/* Step 1: Email */}
           {step === 'email' && (
@@ -302,5 +285,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 };
 
 export default ChangePasswordModal;
+
+
 
 

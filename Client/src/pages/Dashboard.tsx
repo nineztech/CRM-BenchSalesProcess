@@ -36,11 +36,8 @@ const Dashboard: React.FC = () => {
   
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="flex items-center ml-2">
-              <h1 className="text-3xl font-bold text-gray-900">Client Dashboard</h1>
-        </div>
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto sm:px-2 lg:px-4">
+        <div className="px-2 sm:px-0">
           
           {/* Welcome Section */}
           {/* <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
