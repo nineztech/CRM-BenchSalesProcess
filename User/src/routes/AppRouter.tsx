@@ -32,6 +32,7 @@ import AccountSale from "../components/user/finance/AccountSale";
 import AccountAdmin from "../components/user/finance/AccountAdmin";
 import PaymentControl from "../components/user/finance/PaymentControl";
 import Documentation from "../components/common/Documentation/Documentation";
+import DocumentDashboard from "../components/DocumentDashboard";
 // import "../components/common/Documentation/Agreemnetcss.css"
 // import AgreementPage from "../components/common/Documentation/AgreementPage";
 // import SignaturePage from "../components/common/Documentation/SignaturePage";
@@ -247,6 +248,19 @@ const AppRouter: React.FC = () => {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/documentation/dashboard"
+            element={
+
+              <ProtectedRoute>
+                <UserLayout>
+                  <DocumentDashboard />
+
+                </UserLayout>
+              </ProtectedRoute>
+            }
+          />
           {/* <Route
             path="/agreement"
             element={
@@ -304,3 +318,4 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
+

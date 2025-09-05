@@ -1726,3 +1726,634 @@ const AgreementPage: React.FC = () => {
 };
 
 export default AgreementPage;
+
+// import React, { useState, useRef, useEffect } from "react";
+// import { Document, Page, pdfjs } from "react-pdf";
+// import { motion, AnimatePresence } from "framer-motion";
+// import {
+//   FaFont,
+//   FaPencilAlt,
+//   FaCloudUploadAlt,
+//   FaTimes,
+//   FaCheck,
+//   FaEye,
+//   FaDownload,
+//   FaUndo,
+//   FaChevronLeft,
+//   FaChevronRight,
+//   FaSearchPlus,
+//   FaSearchMinus
+// } from "react-icons/fa";
+
+// // Configure PDF worker
+// pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+// // Signature Style Types
+// type SignatureMode = "type" | "draw" | "upload";
+
+// interface SignaturePosition {
+//   x: number;
+//   y: number;
+//   width: number;
+//   height: number;
+//   page: number;
+// }
+
+// interface SignatureData {
+//   signature: string;
+//   style: string;
+//   mode: SignatureMode;
+//   position?: SignaturePosition;
+//   imageData?: string;
+// }
+
+// const predefinedSignatures = [
+//   { id: 1, name: "Sakshi shah", style: "font-serif italic text-2xl" },
+//   { id: 2, name: "Sakshi shah", style: "font-mono text-xl" },
+//   { id: 3, name: "Sakshi shah", style: "font-sans font-bold text-xl" },
+//   { id: 4, name: "Sakshi shah", style: "font-serif text-xl" },
+//   { id: 5, name: "Sakshi shah", style: "font-cursive italic text-2xl transform -skew-x-12" },
+//   { id: 6, name: "Sakshi shah", style: "font-sans underline text-xl" },
+//   { id: 7, name: "Sakshi shah", style: "font-serif font-light text-xl tracking-wide" },
+//   { id: 8, name: "Sakshi shah", style: "font-mono font-bold text-lg" },
+//   { id: 9, name: "Sakshi shah", style: "font-sans italic font-semibold text-xl" },
+//   { id: 10, name: "Sakshi shah", style: "font-serif text-xl transform rotate-1" },
+//   { id: 11, name: "Sakshi shah", style: "font-cursive text-2xl text-blue-600" },
+//   { id: 12, name: "Sakshi shah", style: "font-sans font-black text-lg tracking-widest" }
+// ];
+
+// const AgreementPage: React.FC = () => {
+//   const [showSignatureModal, setShowSignatureModal] = useState(false);
+//   const [signatureMode, setSignatureMode] = useState<SignatureMode>("type");
+//   const [selectedSignature, setSelectedSignature] = useState(predefinedSignatures[0]);
+//   const [customSignature, setCustomSignature] = useState("");
+//   const [drawnSignature, setDrawnSignature] = useState<string>("");
+//   const [uploadedSignature, setUploadedSignature] = useState<string>("");
+//   const [placedSignatures, setPlacedSignatures] = useState<SignatureData[]>([]);
+//   const [isPlacingSignature, setIsPlacingSignature] = useState(false);
+//   const [currentSignature, setCurrentSignature] = useState<SignatureData | null>(null);
+//   const [numPages, setNumPages] = useState<number | null>(null);
+//   const [pageNumber, setPageNumber] = useState(1);
+//   const [scale, setScale] = useState(1.0);
+//   const [containerWidth, setContainerWidth] = useState(0);
+  
+//   const canvasRef = useRef<HTMLCanvasElement>(null);
+//   const pdfContainerRef = useRef<HTMLDivElement>(null);
+//   const [isDrawing, setIsDrawing] = useState(false);
+
+//   // Drawing functionality
+//   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+    
+//     const rect = canvas.getBoundingClientRect();
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+
+//     setIsDrawing(true);
+//     ctx.beginPath();
+//     ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+//   };
+
+//   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+//     if (!isDrawing) return;
+    
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+    
+//     const rect = canvas.getBoundingClientRect();
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+
+//     ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+//     ctx.stroke();
+//   };
+
+//   const stopDrawing = () => {
+//     setIsDrawing(false);
+//     const canvas = canvasRef.current;
+//     if (canvas) {
+//       setDrawnSignature(canvas.toDataURL());
+//     }
+//   };
+
+//   const clearCanvas = () => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+    
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+    
+//     ctx.clearRect(0, 0, canvas.width, canvas.height);
+//     setDrawnSignature("");
+//   };
+
+//   // Setup canvas
+//   useEffect(() => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+    
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+    
+//     ctx.strokeStyle = "#000";
+//     ctx.lineWidth = 2;
+//     ctx.lineCap = "round";
+//   }, []);
+
+//   // Update container width on resize
+//   useEffect(() => {
+//     const updateWidth = () => {
+//       if (pdfContainerRef.current) {
+//         setContainerWidth(pdfContainerRef.current.offsetWidth);
+//       }
+//     };
+
+//     updateWidth();
+//     window.addEventListener('resize', updateWidth);
+    
+//     return () => {
+//       window.removeEventListener('resize', updateWidth);
+//     };
+//   }, []);
+
+//   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0];
+//     if (file) {
+//       const reader = new FileReader();
+//       reader.onload = (event) => {
+//         if (event.target?.result) {
+//           setUploadedSignature(event.target.result as string);
+//         }
+//       };
+//       reader.readAsDataURL(file);
+//     }
+//   };
+
+//   const handleSignatureSelect = () => {
+//     let signatureData: SignatureData;
+    
+//     if (signatureMode === "type") {
+//       signatureData = {
+//         signature: customSignature || selectedSignature.name,
+//         style: selectedSignature.style,
+//         mode: "type"
+//       };
+//     } else if (signatureMode === "draw") {
+//       signatureData = {
+//         signature: "Hand-drawn signature",
+//         style: "",
+//         mode: "draw",
+//         imageData: drawnSignature
+//       };
+//     } else {
+//       signatureData = {
+//         signature: "Uploaded signature",
+//         style: "",
+//         mode: "upload",
+//         imageData: uploadedSignature
+//       };
+//     }
+    
+//     setCurrentSignature(signatureData);
+//     setIsPlacingSignature(true);
+//     setShowSignatureModal(false);
+//   };
+
+//   const handlePDFClick = (e: React.MouseEvent) => {
+//     if (!isPlacingSignature || !currentSignature) return;
+    
+//     const rect = e.currentTarget.getBoundingClientRect();
+//     const x = e.clientX - rect.left;
+//     const y = e.clientY - rect.top;
+    
+//     const newSignature: SignatureData = {
+//       ...currentSignature,
+//       position: {
+//         x,
+//         y,
+//         width: 120,
+//         height: 40,
+//         page: pageNumber
+//       }
+//     };
+    
+//     setPlacedSignatures(prev => [...prev, newSignature]);
+//     setIsPlacingSignature(false);
+//     setCurrentSignature(null);
+//   };
+
+//   const removeSignature = (index: number) => {
+//     setPlacedSignatures(prev => prev.filter((_, i) => i !== index));
+//   };
+
+//   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+//     setNumPages(numPages);
+//   };
+
+//   const goToPreviousPage = () => {
+//     setPageNumber(prev => Math.max(1, prev - 1));
+//   };
+
+//   const goToNextPage = () => {
+//     setPageNumber(prev => (numPages ? Math.min(numPages, prev + 1) : prev));
+//   };
+
+//   const zoomIn = () => {
+//     setScale(prev => Math.min(2.0, prev + 0.2));
+//   };
+
+//   const zoomOut = () => {
+//     setScale(prev => Math.max(0.5, prev - 0.2));
+//   };
+
+//   // Sample PDF URL - replace with your actual PDF
+//   const samplePdfUrl = "/sample.pdf";
+
+//   return (
+//     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
+//       <div className="flex gap-6">
+//         {/* PDF Preview with Signature Placement */}
+//         <motion.div
+//           initial={{ opacity: 0, x: -20 }}
+//           animate={{ opacity: 1, x: 0 }}
+//           className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 flex-1"
+//         >
+//           <div className="flex justify-between items-center mb-4">
+//             <h2 className="text-xl font-semibold text-gray-800">Agreement Document</h2>
+//             <div className="flex gap-2">
+//               <button
+//                 onClick={() => setShowSignatureModal(true)}
+//                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+//               >
+//                 <FaPencilAlt />
+//                 Add Signature
+//               </button>
+//               <button className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+//                 <FaEye />
+//                 Preview
+//               </button>
+//               <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+//                 <FaDownload />
+//                 Download
+//               </button>
+//             </div>
+//           </div>
+
+//           {/* PDF Navigation Controls */}
+//           <div className="flex justify-between items-center mb-4 bg-gray-50 p-2 rounded-lg">
+//             <div className="flex items-center gap-2">
+//               <button
+//                 onClick={goToPreviousPage}
+//                 disabled={pageNumber <= 1}
+//                 className="p-2 rounded hover:bg-gray-200 disabled:opacity-50"
+//               >
+//                 <FaChevronLeft />
+//               </button>
+//               <span className="text-sm font-medium">
+//                 Page {pageNumber} of {numPages || 0}
+//               </span>
+//               <button
+//                 onClick={goToNextPage}
+//                 disabled={pageNumber >= (numPages || 1)}
+//                 className="p-2 rounded hover:bg-gray-200 disabled:opacity-50"
+//               >
+//                 <FaChevronRight />
+//               </button>
+//             </div>
+            
+//             <div className="flex items-center gap-2">
+//               <button
+//                 onClick={zoomOut}
+//                 disabled={scale <= 0.5}
+//                 className="p-2 rounded hover:bg-gray-200 disabled:opacity-50"
+//               >
+//                 <FaSearchMinus />
+//               </button>
+//               <span className="text-sm font-medium">{Math.round(scale * 100)}%</span>
+//               <button
+//                 onClick={zoomIn}
+//                 disabled={scale >= 2.0}
+//                 className="p-2 rounded hover:bg-gray-200 disabled:opacity-50"
+//               >
+//                 <FaSearchPlus />
+//               </button>
+//             </div>
+//           </div>
+
+//           <div 
+//             ref={pdfContainerRef}
+//             className="relative border rounded-lg overflow-auto bg-gray-200"
+//             style={{ height: "600px" }}
+//             onClick={handlePDFClick}
+//           >
+//             <Document
+//               file={samplePdfUrl}
+//               onLoadSuccess={onDocumentLoadSuccess}
+//               loading={<div className="p-8 text-center">Loading PDF...</div>}
+//             >
+//               <Page 
+//                 pageNumber={pageNumber} 
+//                 scale={scale}
+//                 width={containerWidth > 0 ? containerWidth : undefined}
+//                 loading={<div className="p-8 text-center">Loading page...</div>}
+//               >
+//                 {/* Placed Signatures Overlay */}
+//                 {placedSignatures
+//                   .filter(sig => sig.position?.page === pageNumber)
+//                   .map((sig, index) => (
+//                     <div
+//                       key={index}
+//                       className="absolute group cursor-pointer"
+//                       style={{
+//                         left: sig.position?.x,
+//                         top: sig.position?.y,
+//                         width: sig.position?.width,
+//                         height: sig.position?.height,
+//                       }}
+//                     >
+//                       {sig.mode === "type" ? (
+//                         <div className={`${sig.style} text-blue-600 bg-blue-50 p-2 rounded border-2 border-blue-200`}>
+//                           {sig.signature}
+//                         </div>
+//                       ) : (
+//                         <img 
+//                           src={sig.imageData} 
+//                           alt="Signature" 
+//                           className="w-full h-full object-contain bg-blue-50 rounded border-2 border-blue-200"
+//                         />
+//                       )}
+//                       <button
+//                         onClick={(e) => {
+//                           e.stopPropagation();
+//                           removeSignature(index);
+//                         }}
+//                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+//                       >
+//                         <FaTimes />
+//                       </button>
+//                     </div>
+//                   ))}
+
+//                 {isPlacingSignature && (
+//                   <div className="absolute inset-0 bg-blue-100 bg-opacity-50 flex items-center justify-center z-10">
+//                     <div className="bg-white p-4 rounded-lg shadow-lg">
+//                       <p className="text-gray-700 mb-2">Click where you want to place the signature</p>
+//                       <button
+//                         onClick={() => {
+//                           setIsPlacingSignature(false);
+//                           setCurrentSignature(null);
+//                         }}
+//                         className="text-sm text-gray-500 hover:text-gray-700"
+//                       >
+//                         Cancel
+//                       </button>
+//                     </div>
+//                   </div>
+//                 )}
+//               </Page>
+//             </Document>
+//           </div>
+//         </motion.div>
+
+//         {/* Signature Tools Panel */}
+//         <motion.div
+//           initial={{ opacity: 0, x: 20 }}
+//           animate={{ opacity: 1, x: 0 }}
+//           className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 w-80"
+//         >
+//           <h3 className="text-lg font-semibold text-gray-900 mb-4">Signature Tools</h3>
+          
+//           <div className="space-y-4">
+//             <div className="text-sm text-gray-600">
+//               Signatures placed: {placedSignatures.length}
+//             </div>
+            
+//             {placedSignatures.length > 0 && (
+//               <div className="space-y-2">
+//                 <h4 className="font-medium text-gray-800">Placed Signatures:</h4>
+//                 {placedSignatures.map((sig, index) => (
+//                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+//                     <span className="text-sm text-gray-700 truncate">
+//                       {sig.signature} (Page {sig.position?.page})
+//                     </span>
+//                     <button
+//                       onClick={() => removeSignature(index)}
+//                       className="text-red-500 hover:text-red-700 text-xs"
+//                     >
+//                       <FaTimes />
+//                     </button>
+//                   </div>
+//                 ))}
+//               </div>
+//             )}
+
+//             <button
+//               onClick={() => setShowSignatureModal(true)}
+//               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition"
+//             >
+//               <FaPencilAlt />
+//               Create New Signature
+//             </button>
+
+//             {placedSignatures.length > 0 && (
+//               <button className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">
+//                 <FaCheck />
+//                 Complete Document
+//               </button>
+//             )}
+//           </div>
+//         </motion.div>
+//       </div>
+
+//       {/* Enhanced Signature Modal */}
+//       <AnimatePresence>
+//         {showSignatureModal && (
+//           <motion.div
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             exit={{ opacity: 0 }}
+//             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+//             onClick={() => setShowSignatureModal(false)}
+//           >
+//             <motion.div
+//               initial={{ scale: 0.9, opacity: 0 }}
+//               animate={{ scale: 1, opacity: 1 }}
+//               exit={{ scale: 0.9, opacity: 0 }}
+//               className="bg-white rounded-2xl p-8 w-[800px] max-w-[90vw] max-h-[90vh] overflow-y-auto"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <div className="flex justify-between items-center mb-6">
+//                 <h2 className="text-2xl font-bold text-gray-900">My Signature</h2>
+//                 <button
+//                   onClick={() => setShowSignatureModal(false)}
+//                   className="text-gray-500 hover:text-gray-700 text-xl"
+//                 >
+//                   <FaTimes />
+//                 </button>
+//               </div>
+
+//               {/* Signature Mode Tabs */}
+//               <div className="flex mb-6 bg-gray-100 p-1 rounded-lg">
+//                 {[
+//                   { mode: "type", label: "TYPE", icon: FaFont },
+//                   { mode: "draw", label: "DRAW", icon: FaPencilAlt },
+//                   { mode: "upload", label: "UPLOAD", icon: FaCloudUploadAlt }
+//                 ].map(({ mode, label, icon: Icon }) => (
+//                   <button
+//                     key={mode}
+//                     onClick={() => setSignatureMode(mode as SignatureMode)}
+//                     className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md transition ${
+//                       signatureMode === mode
+//                         ? "bg-blue-600 text-white shadow-md"
+//                         : "text-gray-600 hover:text-gray-800"
+//                     }`}
+//                   >
+//                     <Icon className="text-lg" />
+//                     <span className="font-medium">{label}</span>
+//                   </button>
+//                 ))}
+//               </div>
+
+//               {/* TYPE Mode */}
+//               {signatureMode === "type" && (
+//                 <div>
+//                   <div className="mb-4">
+//                     <input
+//                       type="text"
+//                       placeholder="Enter your name"
+//                       value={customSignature}
+//                       onChange={(e) => setCustomSignature(e.target.value)}
+//                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     />
+//                   </div>
+
+//                   <div className="grid grid-cols-2 gap-4 mb-6">
+//                     {predefinedSignatures.map((sig) => (
+//                       <div
+//                         key={sig.id}
+//                         onClick={() => setSelectedSignature(sig)}
+//                         className={`p-4 border-2 rounded-lg cursor-pointer transition ${
+//                           selectedSignature.id === sig.id
+//                             ? "border-blue-500 bg-blue-50"
+//                             : "border-gray-200 hover:border-gray-300"
+//                         }`}
+//                       >
+//                         <div className={`${sig.style} text-center`}>
+//                           {customSignature || sig.name}
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+
+//                   <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+//                     <h4 className="text-sm font-medium text-gray-700 mb-2">Preview:</h4>
+//                     <div className={`${selectedSignature.style} text-center py-2`}>
+//                       {customSignature || selectedSignature.name}
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* DRAW Mode */}
+//               {signatureMode === "draw" && (
+//                 <div>
+//                   <div className="mb-4">
+//                     <p className="text-sm text-gray-600 mb-2">Draw your signature below:</p>
+//                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+//                       <canvas
+//                         ref={canvasRef}
+//                         width={720}
+//                         height={200}
+//                         className="border border-gray-200 rounded cursor-crosshair w-full"
+//                         onMouseDown={startDrawing}
+//                         onMouseMove={draw}
+//                         onMouseUp={stopDrawing}
+//                         onMouseLeave={stopDrawing}
+//                       />
+//                     </div>
+//                     <div className="flex justify-between items-center mt-2">
+//                       <button
+//                         onClick={clearCanvas}
+//                         className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm"
+//                       >
+//                         <FaUndo />
+//                         Clear
+//                       </button>
+//                       <div className="flex gap-2">
+//                         <div className="w-4 h-4 bg-black rounded-full border-2 border-gray-300 cursor-pointer"></div>
+//                         <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-gray-300 cursor-pointer"></div>
+//                         <div className="w-4 h-4 bg-green-600 rounded-full border-2 border-gray-300 cursor-pointer"></div>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* UPLOAD Mode */}
+//               {signatureMode === "upload" && (
+//                 <div>
+//                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
+//                     <label className="cursor-pointer block">
+//                       <FaCloudUploadAlt className="text-4xl text-gray-400 mx-auto mb-3" />
+//                       <p className="text-gray-600">Click to upload signature image</p>
+//                       <p className="text-xs text-gray-500 mt-2">PNG, JPG up to 5MB</p>
+//                       <input
+//                         type="file"
+//                         accept="image/*"
+//                         onChange={handleFileUpload}
+//                         className="hidden"
+//                       />
+//                     </label>
+//                   </div>
+
+//                   {uploadedSignature && (
+//                     <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+//                       <h4 className="text-sm font-medium text-gray-700 mb-2">Preview:</h4>
+//                       <img 
+//                         src={uploadedSignature} 
+//                         alt="Uploaded signature" 
+//                         className="h-16 object-contain mx-auto border rounded"
+//                       />
+//                     </div>
+//                   )}
+//                 </div>
+//               )}
+
+//               {/* Action Buttons */}
+//               <div className="flex justify-between">
+//                 <button
+//                   onClick={() => setShowSignatureModal(false)}
+//                   className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={handleSignatureSelect}
+//                   disabled={
+//                     (signatureMode === "type" && !customSignature && !selectedSignature) ||
+//                     (signatureMode === "draw" && !drawnSignature) ||
+//                     (signatureMode === "upload" && !uploadedSignature)
+//                   }
+//                   className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+//                 >
+//                   Sign
+//                 </button>
+//               </div>
+//             </motion.div>
+//           </motion.div>
+//         )}
+//       </AnimatePresence>
+
+//       {isPlacingSignature && (
+//         <div className="fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg">
+//           <p className="text-sm">Click on the document to place your signature</p>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default AgreementPage;
+
+

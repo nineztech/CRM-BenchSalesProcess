@@ -1265,7 +1265,7 @@
 
 // export default Documentation;
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import AgreementPage from "./AgreementPage";
 import AccountSaleDoc from "./Doc";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -1274,36 +1274,31 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { useDropzone } from "react-dropzone"; 
 
 pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
 const Documentation: React.FC = () => {
-
-  const [step, setStep] = useState<
-    | "enrolled"
-    | "upload"
-    | "admin-sign"
-    | "client-sign"
-    | "review"
-    | "send-mail"
-    | "signature"
-    | "completed"
-  >("enrolled");
-
+  const [step, setStep] = useState<"enrolled" | "upload" | "admin-sign" | "client-sign" | "review" | "send-mail" | "signature" | "completed">("enrolled");
   const [file, setFile] = useState<File | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isEmailSending, setIsEmailSending] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const onDrop = (acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles[0]) {
       setFile(acceptedFiles[0]);
-      console.log("File selected:", acceptedFiles[0]);
+      setUploadError(null);
+      console.log("File selected:", acceptedFiles[0].name, acceptedFiles[0].size);
     }
-  };
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { "application/pdf": [".pdf"] },
+    accept: { 
+      "application/pdf": [".pdf"] 
+    },
     maxFiles: 1,
+    maxSize: 20 * 1024 * 1024,
   });
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -1313,45 +1308,53 @@ const Documentation: React.FC = () => {
 
   const onDocumentLoadError = (error: Error) => {
     console.error("Failed to load PDF:", error);
-    alert("Failed to load PDF. Please try a different file.");
+    setUploadError("Failed to load PDF. Please try a different file.");
   };
 
-  const handleUploadToBackend = async () => {
-    if (!file) {
-      alert("Please select a file first");
-      return;
+ const handleUploadToBackend = async () => {
+  if (!file) {
+    setUploadError("Please select a file first");
+    return;
+  }
+
+  setIsUploading(true);
+  setUploadError(null);
+
+  const formData = new FormData();
+  formData.append("pdf", file);
+
+  try {
+    console.log("Uploading file:", file.name, file.size);
+
+    const res = await fetch("http://localhost:5006/api/upload-pdf", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Server error response:", errorText);
+      throw new Error(`Server error: ${res.status} ${res.statusText}`);
     }
 
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("pdf", file);
+    const data = await res.json();
+    console.log("Upload Response:", data);
 
-    try {
-      const res = await fetch("http://localhost:5006/api/upload-pdf", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log("Upload Response:", data);
-      
-      if (data.success) {
-        setUploadedFileName(data.filename);
-        alert("✅ PDF uploaded successfully!");
-      } else {
-        throw new Error(data.message || "Upload failed");
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert(`❌ PDF upload failed: ${error.message}`);
-    } finally {
-      setIsUploading(false);
+    if (data.success) {
+      setUploadedFileName(data.filename); // Store the backend filename
+      alert("✅ PDF uploaded successfully!");
+    } else {
+      throw new Error(data.message || "Upload failed");
     }
-  };
+  } catch (error) {
+    console.error("Upload failed:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    setUploadError(`❌ PDF upload failed: ${errorMessage}`);
+    alert(`❌ PDF upload failed: ${errorMessage}`);
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   const handleSendMail = async () => {
     if (!uploadedFileName) {
@@ -1434,6 +1437,14 @@ const Documentation: React.FC = () => {
         <>
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-bold mb-4">Upload PDF Document</h2>
+            
+            {/* Error message display */}
+            {uploadError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {uploadError}
+              </div>
+            )}
+            
             <div
               {...getRootProps()}
               className={`w-96 h-40 border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer transition ${
@@ -1590,6 +1601,8 @@ const Documentation: React.FC = () => {
 };
 
 export default Documentation;
+
+
 
 // import React, { useState, useRef, useEffect } from 'react';
 
